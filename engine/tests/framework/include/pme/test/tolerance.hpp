@@ -4,12 +4,12 @@
 // tolerance when it fails. No engine dependency.
 #pragma once
 
+#include <doctest/doctest.h>
+
 #include <cmath>
 #include <iomanip>
 #include <sstream>
 #include <string>
-
-#include <doctest/doctest.h>
 
 namespace pme::test {
 
@@ -45,52 +45,54 @@ inline std::string describe(const char* kind, double actual, double expected, do
 
 }  // namespace pme::test
 
-// Each macro evaluates its arguments once and passes when the error is <= tolerance (false for NaN).
+// Each macro evaluates its arguments once and passes when the error is <= tolerance (false for
+// NaN).
 // clang-format off
+// NOLINTBEGIN(cppcoreguidelines-macro-usage)
 #define PME_CHECK_REL(actual, expected, tolerance)                                             \
-    do {                                                                                       \
+    {                                                                                      \
         const double pme_a = (actual);                                                         \
         const double pme_e = (expected);                                                       \
         const double pme_t = (tolerance);                                                      \
         const double pme_err = ::pme::test::relative_error(pme_a, pme_e);                      \
         INFO(::pme::test::describe("relative error", pme_a, pme_e, pme_err, pme_t, "(rel)"));  \
         CHECK(pme_err <= pme_t);                                                               \
-    } while (false)
+    }
 
 #define PME_CHECK_CENTS(actual, expected, tolerance)                                           \
-    do {                                                                                       \
+    {                                                                                      \
         const double pme_a = (actual);                                                         \
         const double pme_e = (expected);                                                       \
         const double pme_t = (tolerance);                                                      \
         const double pme_err = std::fabs(::pme::test::cents(pme_a, pme_e));                    \
         INFO(::pme::test::describe("pitch error", pme_a, pme_e, pme_err, pme_t, "cent"));      \
         CHECK(pme_err <= pme_t);                                                               \
-    } while (false)
+    }
 
 #define PME_CHECK_DB(actual, expected, tolerance)                                              \
-    do {                                                                                       \
+    {                                                                                      \
         const double pme_a = (actual);                                                         \
         const double pme_e = (expected);                                                       \
         const double pme_t = (tolerance);                                                      \
         const double pme_err = std::fabs(::pme::test::decibels(pme_a, pme_e));                 \
         INFO(::pme::test::describe("level error", pme_a, pme_e, pme_err, pme_t, "dB"));        \
         CHECK(pme_err <= pme_t);                                                               \
-    } while (false)
+    }
 
 // Values already in dB (for example spectral envelopes): the error is the plain difference.
 #define PME_CHECK_DB_VALUE(actual_db, expected_db, tolerance)                                  \
-    do {                                                                                       \
+    {                                                                                      \
         const double pme_a = (actual_db);                                                      \
         const double pme_e = (expected_db);                                                    \
         const double pme_t = (tolerance);                                                      \
         const double pme_err = std::fabs(pme_a - pme_e);                                       \
         INFO(::pme::test::describe("level difference", pme_a, pme_e, pme_err, pme_t, "dB"));   \
         CHECK(pme_err <= pme_t);                                                               \
-    } while (false)
+    }
 
 // Durations in seconds, compared in samples at sample_rate_hz.
 #define PME_CHECK_SAMPLES(actual_seconds, expected_seconds, sample_rate_hz, tolerance_samples) \
-    do {                                                                                       \
+    {                                                                                      \
         const double pme_a = (actual_seconds);                                                 \
         const double pme_e = (expected_seconds);                                               \
         const double pme_t = (tolerance_samples);                                              \
@@ -98,5 +100,6 @@ inline std::string describe(const char* kind, double actual, double expected, do
             std::fabs(::pme::test::samples_between(pme_a, pme_e, (sample_rate_hz)));           \
         INFO(::pme::test::describe("time error", pme_a, pme_e, pme_err, pme_t, "sample"));     \
         CHECK(pme_err <= pme_t);                                                               \
-    } while (false)
+    }
+// NOLINTEND(cppcoreguidelines-macro-usage)
 // clang-format on

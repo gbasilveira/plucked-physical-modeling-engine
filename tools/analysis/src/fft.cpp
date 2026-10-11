@@ -11,20 +11,21 @@ namespace pme::analysis {
 
 namespace {
 
-// exp(-2 pi i k / n) computed directly (not by recurrence) so twiddle error stays at rounding level.
+// exp(-2 pi i k / n) computed directly (not by recurrence) so twiddle error stays at rounding
+// level.
 Complex twiddle(std::size_t k, std::size_t n) {
     const double angle = -2.0 * std::numbers::pi * static_cast<double>(k) / static_cast<double>(n);
     return {std::cos(angle), std::sin(angle)};
 }
 
-// In-place iterative radix-2 transform; data.size() must be a power of two. `inverse` flips the sign
-// of the exponent and does not scale.
+// In-place iterative radix-2 transform; data.size() must be a power of two. `inverse` flips the
+// sign of the exponent and does not scale.
 void fft_pow2_in_place(std::vector<Complex>& data, bool inverse) {
     const std::size_t n = data.size();
     if (n <= 1) {
         return;
     }
-    const unsigned bits = static_cast<unsigned>(std::countr_zero(n));
+    const auto bits = static_cast<unsigned>(std::countr_zero(n));
     for (std::size_t i = 0; i < n; ++i) {
         std::size_t j = 0;
         for (unsigned b = 0; b < bits; ++b) {
@@ -106,13 +107,9 @@ std::vector<Complex> transform(std::span<const Complex> x, bool inverse) {
 
 }  // namespace
 
-std::size_t next_pow2(std::size_t n) {
-    return n <= 1 ? 1 : std::bit_ceil(n);
-}
+std::size_t next_pow2(std::size_t n) { return n <= 1 ? 1 : std::bit_ceil(n); }
 
-std::vector<Complex> fft(std::span<const Complex> x) {
-    return transform(x, false);
-}
+std::vector<Complex> fft(std::span<const Complex> x) { return transform(x, false); }
 
 std::vector<Complex> ifft(std::span<const Complex> x) {
     std::vector<Complex> out = transform(x, true);

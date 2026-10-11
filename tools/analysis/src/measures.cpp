@@ -196,7 +196,8 @@ InharmonicityFit fit_inharmonicity(std::span<const int> partial_numbers,
         const std::vector<double> delta = solve_least_squares(j, neg_r);
         f0 *= std::exp(delta[0]);
         b += delta[1] / scale_b;
-        if (std::fabs(delta[0]) < 1e-15 && std::fabs(delta[1] / scale_b) < 1e-15 * (1.0 + std::fabs(b))) {
+        if (std::fabs(delta[0]) < 1e-15 &&
+            std::fabs(delta[1] / scale_b) < 1e-15 * (1.0 + std::fabs(b))) {
             break;
         }
     }
@@ -215,6 +216,7 @@ InharmonicityFit fit_inharmonicity(std::span<const int> partial_numbers,
 
 // ---- Contact time ------------------------------------------------------------------------------
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): rate in Hz then threshold in force units.
 ContactInterval measure_contact(std::span<const double> force, double sample_rate_hz,
                                 double threshold) {
     ContactInterval out;
@@ -266,8 +268,8 @@ SpectralEnvelope spectral_envelope(std::span<const double> signal, double sample
     double window_sum = 0.0;
     for (std::size_t i = 0; i < n; ++i) {
         const double w = options.window == SpectrumWindow::hann
-                             ? 0.5 - 0.5 * std::cos(2.0 * std::numbers::pi * static_cast<double>(i) /
-                                                    static_cast<double>(n))
+                             ? 0.5 - 0.5 * std::cos(2.0 * std::numbers::pi *
+                                                    static_cast<double>(i) / static_cast<double>(n))
                              : 1.0;
         windowed[i] = signal[i] * w;
         window_sum += w;
@@ -297,7 +299,8 @@ SpectralEnvelope spectral_envelope(std::span<const double> signal, double sample
     const double f_max = std::min(options.f_max_hz, 0.5 * sample_rate_hz);
     SpectralEnvelope env;
     for (int i = 0;; ++i) {
-        const double fc = options.f_min_hz * std::exp2(static_cast<double>(i) / options.points_per_octave);
+        const double fc =
+            options.f_min_hz * std::exp2(static_cast<double>(i) / options.points_per_octave);
         if (fc > f_max) {
             break;
         }

@@ -2,14 +2,16 @@
 // P0.3-T2: the golden-feature comparator passes identical features and flags a 1% decay change;
 // P0.3-R4: file format round trip, per-partial overrides and structural failures.
 
-#include <string>
-
+#include <numbers>
 #include <pme/analysis/golden.hpp>
 #include <pme/test/tolerance.hpp>
+#include <string>
 
 using namespace pme::analysis;
 
 namespace {
+
+constexpr double kContactTime = 0.0031;
 
 GoldenFeatures make_reference() {
     GoldenFeatures g;
@@ -23,7 +25,7 @@ GoldenFeatures make_reference() {
         p.frequency_hz = 110.0 * n;
         p.amplitude = 1.0 / n;
         p.sigma_per_s = 0.5 + 0.25 * n;
-        p.t60_s = 3.0 * 2.302585092994046 / p.sigma_per_s;
+        p.t60_s = 3.0 * std::numbers::ln10 / p.sigma_per_s;
         g.partials.push_back(p);
     }
     g.partials[1].second_decay = GoldenDecay2{0.2, 1.5};
@@ -31,7 +33,7 @@ GoldenFeatures make_reference() {
     env.frequencies_hz = {100.0, 200.0, 400.0};
     env.magnitude_db = {-20.0, -25.0, -40.0};
     g.spectral_envelope = env;
-    g.contact_time_s = 0.0031;
+    g.contact_time_s = kContactTime;
     g.energy = GoldenEnergy{1e-12, 2e-13};
     return g;
 }
@@ -106,21 +108,25 @@ TEST_CASE("P0.3-R4 each default tolerance flags a change just outside it") {
     }
     {
         GoldenFeatures c = ref;
-        c.spectral_envelope->magnitude_db[1] += 1.1;
+        if (c.spectral_envelope) {
+            c.spectral_envelope->magnitude_db[1] += 1.1;
+        }
         const auto r = compare_golden(ref, c);
         REQUIRE(find(r, "spectral_envelope") != nullptr);
         CHECK_FALSE(find(r, "spectral_envelope")->pass);
     }
     {
         GoldenFeatures c = ref;
-        c.contact_time_s = *ref.contact_time_s * 1.011;
+        c.contact_time_s = kContactTime * 1.011;
         CHECK_FALSE(compare_golden(ref, c).pass);
-        c.contact_time_s = *ref.contact_time_s * 1.009;
+        c.contact_time_s = kContactTime * 1.009;
         CHECK(compare_golden(ref, c).pass);
     }
     {
         GoldenFeatures c = ref;
-        c.energy->max_relative_drift += 2e-9;
+        if (c.energy) {
+            c.energy->max_relative_drift += 2e-9;
+        }
         CHECK_FALSE(compare_golden(ref, c).pass);
     }
 }
@@ -155,7 +161,9 @@ TEST_CASE("P0.3-R4 missing features and mismatched grids fail") {
     CHECK(find(r, "partial[3]")->note.find("missing") != std::string::npos);
 
     c = ref;
-    c.spectral_envelope->frequencies_hz[1] = 201.0;
+    if (c.spectral_envelope) {
+        c.spectral_envelope->frequencies_hz[1] = 201.0;
+    }
     CHECK_FALSE(compare_golden(ref, c).pass);
 
     c = ref;
@@ -178,8 +186,8 @@ TEST_CASE("P0.3-R4 missing features and mismatched grids fail") {
 TEST_CASE("P0.3-R4 parser rejects malformed files naming the field") {
     CHECK_THROWS_AS(parse_golden("{"), GoldenError);
     CHECK_THROWS_WITH_AS(parse_golden("{}"), doctest::Contains("schema_version"), GoldenError);
-    CHECK_THROWS_WITH_AS(parse_golden(R"({"schema_version": 2})"), doctest::Contains("schema_version"),
-                         GoldenError);
+    CHECK_THROWS_WITH_AS(parse_golden(R"({"schema_version": 2})"),
+                         doctest::Contains("schema_version"), GoldenError);
     std::string text = serialize_golden(make_reference());
     const auto pos = text.find("\"scenario\"");
     REQUIRE(pos != std::string::npos);

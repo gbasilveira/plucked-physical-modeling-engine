@@ -13,7 +13,8 @@ namespace pme::analysis {
 class Matrix {
 public:
     Matrix() = default;
-    Matrix(std::size_t rows, std::size_t cols) : rows_(rows), cols_(cols), data_(rows * cols, 0.0) {}
+    Matrix(std::size_t rows, std::size_t cols)
+        : rows_(rows), cols_(cols), data_(rows * cols, 0.0) {}
 
     [[nodiscard]] std::size_t rows() const { return rows_; }
     [[nodiscard]] std::size_t cols() const { return cols_; }

@@ -3,12 +3,17 @@
 
 #include <cmath>
 #include <fstream>
+#include <iostream>
+#include <nlohmann/json.hpp>
 #include <numbers>
 #include <stdexcept>
 
-#include <nlohmann/json.hpp>
-
 namespace pme::analysis::testing {
+
+void log_line(const std::string& line) {
+    std::cout << line
+              << std::endl;  // NOLINT(performance-avoid-endl): flush so evidence survives aborts
+}
 
 std::vector<SignalCase> load_t1_cases() {
     const std::string path = std::string(PME_ANALYSIS_TESTDATA) + "/p0_3_t1_signals.json";
@@ -25,8 +30,9 @@ std::vector<SignalCase> load_t1_cases() {
         c.sample_rates_hz = jc.at("sample_rates_hz").get<std::vector<double>>();
         c.duration_s = jc.at("duration_s").get<double>();
         for (const auto& jp : jc.at("partials")) {
-            c.partials.push_back({jp.at("frequency_hz").get<double>(), jp.at("amplitude").get<double>(),
-                                  jp.at("sigma_per_s").get<double>(), jp.at("phase_rad").get<double>()});
+            c.partials.push_back(
+                {jp.at("frequency_hz").get<double>(), jp.at("amplitude").get<double>(),
+                 jp.at("sigma_per_s").get<double>(), jp.at("phase_rad").get<double>()});
         }
         if (jc.contains("partial_numbers")) {
             c.partial_numbers = jc.at("partial_numbers").get<std::vector<int>>();

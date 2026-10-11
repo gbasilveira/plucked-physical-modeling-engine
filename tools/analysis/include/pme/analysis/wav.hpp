@@ -15,7 +15,7 @@
 
 namespace pme::analysis {
 
-enum class WavFormat { pcm16, pcm24, pcm32, float32, float64 };
+enum class WavFormat : std::uint8_t { pcm16, pcm24, pcm32, float32, float64 };
 
 class WavError : public std::runtime_error {
 public:
@@ -28,7 +28,9 @@ struct WavData {
     WavFormat format = WavFormat::pcm16;
     std::vector<double> samples;  // interleaved, frames * channels values
 
-    [[nodiscard]] std::size_t frames() const { return channels == 0 ? 0 : samples.size() / channels; }
+    [[nodiscard]] std::size_t frames() const {
+        return channels == 0 ? 0 : samples.size() / channels;
+    }
 };
 
 // Throws WavError on malformed or unsupported input.

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 // P0.3-R5: WAV round trips for every supported format, WAVE_FORMAT_EXTENSIBLE on read, and errors.
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
-#include <vector>
-
 #include <pme/analysis/wav.hpp>
 #include <pme/test/tolerance.hpp>
+#include <vector>
 
 using pme::analysis::WavData;
 using pme::analysis::WavError;
@@ -34,11 +34,15 @@ WavData make_signal(WavFormat format, unsigned channels) {
 
 double step_for(WavFormat f) {
     switch (f) {
-        case WavFormat::pcm16: return 1.0 / 32768.0;
-        case WavFormat::pcm24: return 1.0 / 8388608.0;
-        case WavFormat::pcm32: return 1.0 / 2147483648.0;
-        case WavFormat::float32: return 0.0;  // exact for float32 values (checked below)
-        case WavFormat::float64: return 0.0;
+        case WavFormat::pcm16:
+            return 1.0 / 32768.0;
+        case WavFormat::pcm24:
+            return 1.0 / 8388608.0;
+        case WavFormat::pcm32:
+            return 1.0 / 2147483648.0;
+        case WavFormat::float32:
+        case WavFormat::float64:
+            return 0.0;  // exact (float32 inputs are pre-rounded)
     }
     return 0.0;
 }
@@ -93,19 +97,43 @@ TEST_CASE("P0.3-R5 file round trip") {
 TEST_CASE("P0.3-R5 reads WAVE_FORMAT_EXTENSIBLE and skips unknown chunks") {
     // Hand-built file: LIST chunk (odd size, padded), then fmt (extensible, 24-bit stereo), data.
     std::vector<std::uint8_t> b;
-    auto u16 = [&](std::uint16_t v) { b.push_back(static_cast<std::uint8_t>(v & 0xFF)); b.push_back(static_cast<std::uint8_t>(v >> 8)); };
-    auto u32 = [&](std::uint32_t v) { u16(v & 0xFFFF); u16(static_cast<std::uint16_t>(v >> 16)); };
-    auto tag = [&](const char* t) { for (int i = 0; i < 4; ++i) b.push_back(static_cast<std::uint8_t>(t[i])); };
-    tag("RIFF"); u32(0); tag("WAVE");
-    tag("LIST"); u32(3); b.push_back('a'); b.push_back('b'); b.push_back('c'); b.push_back(0);
-    tag("fmt "); u32(40);
-    u16(0xFFFE); u16(2); u32(48000); u32(48000 * 6); u16(6); u16(24);
-    u16(22); u16(24); u32(3);  // cbSize, valid bits, channel mask
-    u16(1);                    // sub-format GUID begins with the PCM tag
+    auto u16 = [&](std::uint16_t v) {
+        b.push_back(static_cast<std::uint8_t>(v & 0xFF));
+        b.push_back(static_cast<std::uint8_t>(v >> 8));
+    };
+    auto u32 = [&](std::uint32_t v) {
+        u16(v & 0xFFFF);
+        u16(static_cast<std::uint16_t>(v >> 16));
+    };
+    auto tag = [&](const char* t) {
+        for (int i = 0; i < 4; ++i) b.push_back(static_cast<std::uint8_t>(t[i]));
+    };
+    tag("RIFF");
+    u32(0);
+    tag("WAVE");
+    tag("LIST");
+    u32(3);
+    b.push_back('a');
+    b.push_back('b');
+    b.push_back('c');
+    b.push_back(0);
+    tag("fmt ");
+    u32(40);
+    u16(0xFFFE);
+    u16(2);
+    u32(48000);
+    u32(48000 * 6);
+    u16(6);
+    u16(24);
+    u16(22);
+    u16(24);
+    u32(3);  // cbSize, valid bits, channel mask
+    u16(1);  // sub-format GUID begins with the PCM tag
     for (int i = 0; i < 14; ++i) b.push_back(0);
-    tag("data"); u32(12);
+    tag("data");
+    u32(12);
     // frames: (+0.5, -0.25) and (-1.0, 0.0)
-    const std::int32_t v[4] = {0x400000, -0x200000, -0x800000, 0};
+    const std::array<std::int32_t, 4> v = {0x400000, -0x200000, -0x800000, 0};
     for (const std::int32_t s : v) {
         b.push_back(static_cast<std::uint8_t>(s & 0xFF));
         b.push_back(static_cast<std::uint8_t>((s >> 8) & 0xFF));
@@ -126,21 +154,29 @@ TEST_CASE("P0.3-R5 rejects malformed and unsupported files with clear errors") {
     const std::vector<std::uint8_t> too_short = {'R', 'I', 'F', 'F'};
     CHECK_THROWS_AS(pme::analysis::parse_wav(too_short), WavError);
 
-    std::vector<std::uint8_t> not_wave = pme::analysis::encode_wav(make_signal(WavFormat::pcm16, 1));
+    std::vector<std::uint8_t> not_wave =
+        pme::analysis::encode_wav(make_signal(WavFormat::pcm16, 1));
     not_wave[8] = 'X';
-    CHECK_THROWS_WITH_AS(pme::analysis::parse_wav(not_wave), doctest::Contains("not a RIFF/WAVE"), WavError);
+    CHECK_THROWS_WITH_AS(pme::analysis::parse_wav(not_wave), doctest::Contains("not a RIFF/WAVE"),
+                         WavError);
 
     std::vector<std::uint8_t> rf64 = pme::analysis::encode_wav(make_signal(WavFormat::pcm16, 1));
-    rf64[0] = 'R'; rf64[1] = 'F'; rf64[2] = '6'; rf64[3] = '4';
+    rf64[0] = 'R';
+    rf64[1] = 'F';
+    rf64[2] = '6';
+    rf64[3] = '4';
     CHECK_THROWS_WITH_AS(pme::analysis::parse_wav(rf64), doctest::Contains("RF64"), WavError);
 
     std::vector<std::uint8_t> adpcm = pme::analysis::encode_wav(make_signal(WavFormat::pcm16, 1));
     adpcm[20] = 2;  // format tag 2 = MS ADPCM
-    CHECK_THROWS_WITH_AS(pme::analysis::parse_wav(adpcm), doctest::Contains("unsupported format"), WavError);
+    CHECK_THROWS_WITH_AS(pme::analysis::parse_wav(adpcm), doctest::Contains("unsupported format"),
+                         WavError);
 
-    std::vector<std::uint8_t> truncated = pme::analysis::encode_wav(make_signal(WavFormat::pcm16, 1));
+    std::vector<std::uint8_t> truncated =
+        pme::analysis::encode_wav(make_signal(WavFormat::pcm16, 1));
     truncated.resize(truncated.size() - 10);
-    CHECK_THROWS_WITH_AS(pme::analysis::parse_wav(truncated), doctest::Contains("truncated"), WavError);
+    CHECK_THROWS_WITH_AS(pme::analysis::parse_wav(truncated), doctest::Contains("truncated"),
+                         WavError);
 
     WavData bad_rate = make_signal(WavFormat::pcm16, 1);
     bad_rate.sample_rate_hz = 44100.5;

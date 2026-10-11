@@ -5,10 +5,9 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <vector>
-
 #include <pme/analysis/measures.hpp>
 #include <pme/test/tolerance.hpp>
+#include <vector>
 
 using namespace pme::analysis;
 
@@ -41,8 +40,8 @@ TEST_CASE("P0.3-R3 double-decay fit returns both rates and the knee time") {
     std::vector<double> a;
     for (int i = 0; i < 100; ++i) {
         t.push_back(0.05 * i);
-        const double ln = t.back() < knee ? -sigma1 * t.back()
-                                          : -sigma1 * knee - sigma2 * (t.back() - knee);
+        const double ln =
+            t.back() < knee ? -sigma1 * t.back() : -sigma1 * knee - sigma2 * (t.back() - knee);
         a.push_back(std::exp(ln));
     }
     const DoubleDecayFit fit = fit_double_decay(t, a);
@@ -87,8 +86,10 @@ TEST_CASE("P0.3-R3 contact time of a half-sine pulse is sub-sample accurate") {
         const ContactInterval c = measure_contact(force, fs, threshold);
         INFO("offset " << offset);
         REQUIRE(c.found);
-        PME_CHECK_SAMPLES(c.duration_s, expected, fs, 0.15);  // the pulse kink costs about 0.1 sample
-        PME_CHECK_SAMPLES(c.start_s, t0 + width * std::asin(threshold) / std::numbers::pi, fs, 0.15);
+        PME_CHECK_SAMPLES(c.duration_s, expected, fs,
+                          0.15);  // the pulse kink costs about 0.1 sample
+        PME_CHECK_SAMPLES(c.start_s, t0 + width * std::asin(threshold) / std::numbers::pi, fs,
+                          0.15);
     }
     CHECK_FALSE(measure_contact(std::vector<double>(10, 0.0), fs, 0.5).found);
 }
@@ -148,7 +149,8 @@ TEST_CASE("P0.3-R3 spectral envelope of a sinusoid peaks at half its amplitude w
     for (const double db : env.magnitude_db) {
         peak = std::max(peak, db);
     }
-    // |X| = A / 2 = 0.25 -> power 0.0625 -> -12.04 dB, band-averaged power is lower by the peak width.
+    // |X| = A / 2 = 0.25 -> power 0.0625 -> -12.04 dB, band-averaged power is lower by the peak
+    // width.
     CHECK(peak < -12.0);
     CHECK(peak > -22.0);
 }
@@ -170,6 +172,7 @@ TEST_CASE("P0.3-R3 energy accounting reports drift and step change and monotonic
     CHECK(strict.first_increase_index == 499);
 
     std::vector<double> decaying;
+    decaying.reserve(100);
     for (int i = 0; i < 100; ++i) {
         decaying.push_back(std::exp(-0.01 * i));
     }

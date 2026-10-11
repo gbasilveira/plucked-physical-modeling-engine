@@ -29,17 +29,17 @@ struct PartialTrackingOptions {
 // x(t) ~ sum_k amplitude_k exp(-sigma_k t) cos(2 pi frequency_k t + phase_k), t = n / sample_rate.
 struct PartialEstimate {
     double frequency_hz = 0.0;
-    double sigma_per_s = 0.0;   // amplitude proportional to exp(-sigma t)
-    double t60_s = 0.0;         // 3 ln(10) / sigma; infinity when sigma <= 0
-    double amplitude = 0.0;     // at t = 0
-    double phase_rad = 0.0;     // at t = 0
-    std::vector<double> envelope_times_s;      // frame centres
-    std::vector<double> envelope_amplitudes;   // amplitude of this partial at each frame centre
+    double sigma_per_s = 0.0;                 // amplitude proportional to exp(-sigma t)
+    double t60_s = 0.0;                       // 3 ln(10) / sigma; infinity when sigma <= 0
+    double amplitude = 0.0;                   // at t = 0
+    double phase_rad = 0.0;                   // at t = 0
+    std::vector<double> envelope_times_s;     // frame centres
+    std::vector<double> envelope_amplitudes;  // amplitude of this partial at each frame centre
 };
 
 struct PartialTrackingResult {
-    std::vector<PartialEstimate> partials;   // in frequency order for peak picking, else input order
-    double relative_residual = 0.0;          // ||data - model|| / ||data|| over the fitted bins
+    std::vector<PartialEstimate> partials;  // in frequency order for peak picking, else input order
+    double relative_residual = 0.0;         // ||data - model|| / ||data|| over the fitted bins
     int iterations = 0;
     bool converged = false;
 };

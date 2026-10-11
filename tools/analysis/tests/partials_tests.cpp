@@ -5,16 +5,16 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
-
 #include <pme/analysis/measures.hpp>
 #include <pme/analysis/partials.hpp>
 #include <pme/test/tolerance.hpp>
+#include <sstream>
 
 #include "testdata.hpp"
 
 using pme::analysis::PartialTrackingOptions;
 using pme::analysis::PartialTrackingResult;
+using pme::analysis::testing::log_line;
 using pme::analysis::testing::SignalCase;
 
 namespace {
@@ -29,7 +29,8 @@ Worst check_against(const SignalCase& c, const PartialTrackingResult& result) {
     Worst worst;
     if (result.partials.size() != c.partials.size()) {
         for (const auto& p : result.partials) {
-            std::printf("  found %.4f Hz sigma %.4f\n", p.frequency_hz, p.sigma_per_s);
+            log_line("  found " + std::to_string(p.frequency_hz) + " Hz sigma " +
+                     std::to_string(p.sigma_per_s));
         }
     }
     REQUIRE(result.partials.size() == c.partials.size());
@@ -39,9 +40,11 @@ Worst check_against(const SignalCase& c, const PartialTrackingResult& result) {
         const auto& truth = c.partials[k];
         PME_CHECK_CENTS(est.frequency_hz, truth.frequency_hz, 0.01);
         PME_CHECK_REL(est.sigma_per_s, truth.sigma_per_s, 0.005);
-        worst.cents = std::max(worst.cents, std::fabs(pme::test::cents(est.frequency_hz, truth.frequency_hz)));
-        worst.decay_percent = std::max(
-            worst.decay_percent, 100.0 * pme::test::relative_error(est.sigma_per_s, truth.sigma_per_s));
+        worst.cents = std::max(worst.cents,
+                               std::fabs(pme::test::cents(est.frequency_hz, truth.frequency_hz)));
+        worst.decay_percent =
+            std::max(worst.decay_percent,
+                     100.0 * pme::test::relative_error(est.sigma_per_s, truth.sigma_per_s));
     }
     return worst;
 }
@@ -56,8 +59,10 @@ PartialTrackingOptions options_with_offset(const SignalCase& c, double relative_
 }
 
 void report(const char* what, const SignalCase& c, double fs, const Worst& w) {
-    std::printf("[P0.3-T1] %s %s fs=%.0f: worst %.3g cent, %.3g %% decay\n", what, c.name.c_str(), fs,
-                w.cents, w.decay_percent);
+    std::ostringstream out;
+    out << "[P0.3-T1] " << what << ' ' << c.name << " fs=" << fs << ": worst " << w.cents
+        << " cent, " << w.decay_percent << " % decay";
+    log_line(out.str());
 }
 
 }  // namespace
@@ -128,7 +133,8 @@ TEST_CASE("P0.3-T1 case C separates unison partials 1 Hz apart") {
         const double fs = c.sample_rates_hz.front();
         const std::vector<double> x = pme::analysis::testing::synthesize(c, fs);
         PartialTrackingOptions opt;
-        opt.approx_frequencies_hz = {c.partials[0].frequency_hz + 0.05, c.partials[1].frequency_hz - 0.05};
+        opt.approx_frequencies_hz = {c.partials[0].frequency_hz + 0.05,
+                                     c.partials[1].frequency_hz - 0.05};
         opt.envelope_frame_s = 0.0;
         const auto result = pme::analysis::track_partials(x, fs, opt);
         report("C", c, fs, check_against(c, result));
@@ -144,15 +150,19 @@ TEST_CASE("P0.3-R3 case B inharmonicity fit recovers f0 and B") {
         const std::vector<double> x = pme::analysis::testing::synthesize(c, fs);
         const auto result = pme::analysis::track_partials(x, fs, options_with_offset(c, 2e-4));
         std::vector<double> freqs;
+        freqs.reserve(result.partials.size());
         for (const auto& p : result.partials) {
             freqs.push_back(p.frequency_hz);
         }
         const auto fit = pme::analysis::fit_inharmonicity(c.partial_numbers, freqs);
         PME_CHECK_REL(fit.b, c.inharmonicity_b, 1e-3);
         PME_CHECK_CENTS(fit.f0_hz, c.f0_hz, 0.01);
-        std::printf("[P0.3-R3] inharmonicity: B error %.3g (rel), f0 error %.3g cent, rms %.3g cent\n",
-                    pme::test::relative_error(fit.b, c.inharmonicity_b),
-                    std::fabs(pme::test::cents(fit.f0_hz, c.f0_hz)), fit.rms_cents);
+        std::ostringstream out;
+        out << "[P0.3-R3] inharmonicity: B error "
+            << pme::test::relative_error(fit.b, c.inharmonicity_b) << " (rel), f0 error "
+            << std::fabs(pme::test::cents(fit.f0_hz, c.f0_hz)) << " cent, rms " << fit.rms_cents
+            << " cent";
+        log_line(out.str());
     }
 }
 
@@ -175,7 +185,8 @@ TEST_CASE("P0.3-R3 partial tracking returns amplitude envelope and phase") {
             REQUIRE(est.envelope_times_s.size() == 8);
             REQUIRE(est.envelope_amplitudes.size() == 8);
             for (std::size_t j = 0; j < 8; ++j) {
-                const double expected = truth.amplitude * std::exp(-truth.sigma_per_s * est.envelope_times_s[j]);
+                const double expected =
+                    truth.amplitude * std::exp(-truth.sigma_per_s * est.envelope_times_s[j]);
                 PME_CHECK_REL(est.envelope_amplitudes[j], expected, 1e-5);
             }
         }
@@ -194,9 +205,14 @@ TEST_CASE("P0.3-T1 case A survives rounding the signal to float32") {
         }
         const auto result = pme::analysis::track_partials(x, fs, options_with_offset(c, 3e-4));
         REQUIRE(result.partials.size() == 1);
-        const double cents = std::fabs(pme::test::cents(result.partials[0].frequency_hz, c.partials[0].frequency_hz));
-        const double decay = 100.0 * pme::test::relative_error(result.partials[0].sigma_per_s, c.partials[0].sigma_per_s);
-        std::printf("[P0.3-T1] float32 input %s: %.3g cent, %.3g %% decay\n", c.name.c_str(), cents, decay);
+        const double cents = std::fabs(
+            pme::test::cents(result.partials[0].frequency_hz, c.partials[0].frequency_hz));
+        const double decay = 100.0 * pme::test::relative_error(result.partials[0].sigma_per_s,
+                                                               c.partials[0].sigma_per_s);
+        std::ostringstream out;
+        out << "[P0.3-T1] float32 input " << c.name << ": " << cents << " cent, " << decay
+            << " % decay";
+        log_line(out.str());
         CHECK(cents < 0.01);
         CHECK(decay < 0.5);
     }

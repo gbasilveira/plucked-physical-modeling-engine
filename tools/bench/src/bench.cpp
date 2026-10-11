@@ -7,11 +7,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
-
-#include <nlohmann/json.hpp>
 
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
@@ -57,8 +57,8 @@ std::string cpu_model() {
     std::ifstream in("/proc/cpuinfo");
     std::string line;
     while (std::getline(in, line)) {
-        if (line.rfind("model name", 0) == 0 || line.rfind("Model", 0) == 0 ||
-            line.rfind("Hardware", 0) == 0) {
+        if (line.starts_with("model name") || line.starts_with("Model") ||
+            line.starts_with("Hardware")) {
             const auto colon = line.find(':');
             if (colon != std::string::npos) {
                 const auto start = line.find_first_not_of(" \t", colon + 1);
@@ -112,7 +112,7 @@ Result run_benchmark(const Benchmark& benchmark, const Options& options) {
 
     // Calibrate: calls per repetition so that a repetition lasts at least min_repetition_ns.
     const double once = std::max(elapsed_ns(benchmark.fn, 1), 1.0);
-    long long inner = static_cast<long long>(std::ceil(options.min_repetition_ns / once));
+    auto inner = static_cast<long long>(std::ceil(options.min_repetition_ns / once));
     inner = std::clamp<long long>(inner, 1, 1'000'000'000LL);
     result.inner_iterations = inner;
 
@@ -189,15 +189,16 @@ std::string to_json(const std::vector<Result>& results, const Options& options, 
                        {"min_repetition_ns", options.min_repetition_ns}};
     Json list = Json::array();
     for (const Result& r : results) {
-        Json entry = {{"name", r.name},
-                      {"unit", r.unit},
-                      {"work_per_call", r.work_per_call},
-                      {"repetitions", r.repetitions},
-                      {"inner_iterations", r.inner_iterations},
-                      {"median_ns", r.median_ns},
-                      {"min_ns", r.min_ns},
-                      {"iqr_ns", r.iqr_ns},
-                      {"throughput_per_s", r.median_ns > 0.0 ? r.work_per_call * 1e9 / r.median_ns : 0.0}};
+        Json entry = {
+            {"name", r.name},
+            {"unit", r.unit},
+            {"work_per_call", r.work_per_call},
+            {"repetitions", r.repetitions},
+            {"inner_iterations", r.inner_iterations},
+            {"median_ns", r.median_ns},
+            {"min_ns", r.min_ns},
+            {"iqr_ns", r.iqr_ns},
+            {"throughput_per_s", r.median_ns > 0.0 ? r.work_per_call * 1e9 / r.median_ns : 0.0}};
         list.push_back(entry);
     }
     doc["results"] = list;
@@ -250,9 +251,11 @@ int run_main(int argc, char** argv) {
             continue;
         }
         const Result r = run_benchmark(b, options);
-        std::fprintf(stderr, "%-32s median %12.1f ns  min %12.1f ns  iqr %10.1f ns  (%lld calls x %d)\n",
-                     r.name.c_str(), r.median_ns, r.min_ns, r.iqr_ns, r.inner_iterations,
-                     r.repetitions);
+        std::cerr << std::left << std::setw(32) << r.name << std::right << std::fixed
+                  << std::setprecision(1) << " median " << std::setw(12) << r.median_ns
+                  << " ns  min " << std::setw(12) << r.min_ns << " ns  iqr " << std::setw(10)
+                  << r.iqr_ns << " ns  (" << r.inner_iterations << " calls x " << r.repetitions
+                  << ")\n";
         results.push_back(r);
     }
     if (list_only) {

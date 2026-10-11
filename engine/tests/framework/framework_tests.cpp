@@ -3,7 +3,6 @@
 
 #include <cmath>
 #include <limits>
-
 #include <pme/test/tolerance.hpp>
 
 TEST_CASE("P0.3-R1 relative error uses the expected value as scale") {

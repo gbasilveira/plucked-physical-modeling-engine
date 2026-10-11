@@ -2,12 +2,12 @@
 // P0.3-R3: the library's own FFT and dense solves, each against a direct implementation.
 
 #include <algorithm>
+#include <array>
 #include <cmath>
-#include <vector>
-
 #include <pme/analysis/fft.hpp>
 #include <pme/analysis/linalg.hpp>
 #include <pme/test/tolerance.hpp>
+#include <vector>
 
 #include "testdata.hpp"
 
@@ -16,8 +16,8 @@ using pme::analysis::testing::Uniform;
 
 namespace {
 
-std::vector<Complex> random_signal(std::size_t n, std::uint64_t seed) {
-    Uniform rng(seed);
+std::vector<Complex> random_signal(std::size_t n) {
+    Uniform rng(100 + n);
     std::vector<Complex> x(n);
     for (Complex& v : x) {
         const double re = rng.symmetric();
@@ -40,7 +40,7 @@ double max_abs_diff(const std::vector<Complex>& a, const std::vector<Complex>& b
 
 TEST_CASE("P0.3-R3 fft matches the direct DFT for power-of-two and arbitrary lengths") {
     for (const std::size_t n : {1U, 2U, 3U, 8U, 12U, 17U, 64U, 100U, 255U, 256U, 1000U}) {
-        const std::vector<Complex> x = random_signal(n, 100 + n);
+        const std::vector<Complex> x = random_signal(n);
         const std::vector<Complex> fast = pme::analysis::fft(x);
         const std::vector<Complex> slow = pme::analysis::dft_direct(x);
         INFO("length " << n);
@@ -50,7 +50,7 @@ TEST_CASE("P0.3-R3 fft matches the direct DFT for power-of-two and arbitrary len
 
 TEST_CASE("P0.3-R3 ifft inverts fft") {
     for (const std::size_t n : {16U, 45U, 128U, 997U}) {
-        const std::vector<Complex> x = random_signal(n, 7 + n);
+        const std::vector<Complex> x = random_signal(n);
         const std::vector<Complex> back = pme::analysis::ifft(pme::analysis::fft(x));
         INFO("length " << n);
         CHECK(max_abs_diff(x, back) < 1e-13);
@@ -68,7 +68,8 @@ TEST_CASE("P0.3-R3 fft_real zero-pads and matches the complex transform") {
         for (std::size_t i = 0; i < x.size(); ++i) {
             padded[i] = x[i];
         }
-        CHECK(max_abs_diff(pme::analysis::fft_real(x, size), pme::analysis::dft_direct(padded)) < 1e-11);
+        CHECK(max_abs_diff(pme::analysis::fft_real(x, size), pme::analysis::dft_direct(padded)) <
+              1e-11);
     }
     CHECK_THROWS_AS(pme::analysis::fft_real(x, 10), std::invalid_argument);
 }
@@ -133,7 +134,8 @@ TEST_CASE("P0.3-R3 least squares reports rank deficiency") {
 
 TEST_CASE("P0.3-R3 square solve matches a hand-solved system") {
     pme::analysis::Matrix a(3, 3);
-    const double values[3][3] = {{0.0, 2.0, 1.0}, {1.0, 1.0, 1.0}, {2.0, 0.0, 3.0}};
+    const std::array<std::array<double, 3>, 3> values = {
+        {{0.0, 2.0, 1.0}, {1.0, 1.0, 1.0}, {2.0, 0.0, 3.0}}};
     for (std::size_t r = 0; r < 3; ++r) {
         for (std::size_t c = 0; c < 3; ++c) {
             a(r, c) = values[r][c];

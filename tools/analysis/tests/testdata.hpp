@@ -34,6 +34,9 @@ std::vector<SignalCase> load_t1_cases();
 // x[n] = sum a exp(-sigma t) cos(2 pi f t + phase), t = n / fs, float64.
 std::vector<double> synthesize(const SignalCase& c, double sample_rate_hz);
 
+// Writes one line of test evidence (achieved accuracy) to standard output.
+void log_line(const std::string& line);
+
 // Uniform [0, 1) from mt19937_64 (the raw engine output is specified by the standard, unlike the
 // library distributions).
 class Uniform {

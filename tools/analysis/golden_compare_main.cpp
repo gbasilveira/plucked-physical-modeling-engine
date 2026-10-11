@@ -3,7 +3,8 @@
 // Compares two golden-feature files (P0.3-R4). Exit 0: every feature within tolerance. Exit 1: at
 // least one feature outside tolerance (listed on stdout). Exit 2: usage or file error.
 
-#include <cstdio>
+#include <array>
+#include <cstddef>
 #include <exception>
 #include <iostream>
 #include <string>
@@ -13,8 +14,8 @@
 
 int main(int argc, char** argv) {
     bool verbose = false;
-    std::string paths[2];
-    int count = 0;
+    std::array<std::string, 2> paths;
+    std::size_t count = 0;
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg = argv[i];
         if (arg == "-v" || arg == "--verbose") {

@@ -3,12 +3,10 @@
 // tools/bench/compare.py reads.
 
 #include <cstdint>
-#include <string>
-
 #include <nlohmann/json.hpp>
-
 #include <pme/bench/bench.hpp>
 #include <pme/test/tolerance.hpp>
+#include <string>
 
 namespace {
 

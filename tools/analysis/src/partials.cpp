@@ -2,6 +2,7 @@
 #include "pme/analysis/partials.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -53,7 +54,14 @@ struct Basis {
     Complex ds;  // dS/du
 };
 
-Basis hann_dtft(Complex u, double nu, double n_samples, double theta) {
+struct Window {
+    double n_samples;  // N
+    double theta;      // 2 pi / N
+};
+
+Basis hann_dtft(Complex u, double nu, const Window& win) {
+    const double n_samples = win.n_samples;
+    const double theta = win.theta;
     const double a = u.real();
     const double b = u.imag() - nu;
     const double n_a = n_samples * a;
@@ -73,15 +81,16 @@ Basis hann_dtft(Complex u, double nu, double n_samples, double theta) {
 
 struct Spectrum {
     double fs = 0.0;
-    double n = 0.0;       // signal length N
-    std::size_t m = 0;    // transform size M
-    double theta = 0.0;   // 2 pi / N
+    double n = 0.0;          // signal length N
+    std::size_t m = 0;       // transform size M
+    double theta = 0.0;      // 2 pi / N
     std::vector<Complex> x;  // bins 0 .. M/2 of the Hann-windowed, zero-padded signal
     [[nodiscard]] double bin_hz() const { return fs / static_cast<double>(m); }
     [[nodiscard]] double nu(std::size_t bin) const {
         return kTwoPi * static_cast<double>(bin) / static_cast<double>(m);
     }
     [[nodiscard]] double duration() const { return n / fs; }
+    [[nodiscard]] Window window() const { return {n, theta}; }
 };
 
 struct Param {
@@ -133,8 +142,8 @@ Evaluation evaluate(const Spectrum& sp, const std::vector<Param>& params,
         const Complex um{-p.sigma / sp.fs, -two_pi_over_fs * p.f};
         for (std::size_t j = 0; j < bins.size(); ++j) {
             const double nu = sp.nu(bins[j]);
-            const Basis bp = hann_dtft(up, nu, sp.n, sp.theta);
-            const Basis bm = hann_dtft(um, nu, sp.n, sp.theta);
+            const Basis bp = hann_dtft(up, nu, sp.window());
+            const Basis bm = hann_dtft(um, nu, sp.window());
             model[j] += 0.5 * (c * bp.s + std::conj(c) * bm.s);
             if (with_jacobian) {
                 const Complex d_f = 0.5 * (c * bp.ds * (kI * two_pi_over_fs) +
@@ -143,7 +152,8 @@ Evaluation evaluate(const Spectrum& sp, const std::vector<Param>& params,
                 const Complex d_alpha = 0.5 * (bp.s + bm.s);
                 const Complex d_beta = 0.5 * kI * (bp.s - bm.s);
                 const std::size_t col = kParamsPerPartial * k;
-                const Complex derivs[kParamsPerPartial] = {d_f, d_sigma, d_alpha, d_beta};
+                const std::array<Complex, kParamsPerPartial> derivs = {d_f, d_sigma, d_alpha,
+                                                                       d_beta};
                 for (std::size_t q = 0; q < kParamsPerPartial; ++q) {
                     ev.jacobian(2 * j, col + q) = derivs[q].real();
                     ev.jacobian(2 * j + 1, col + q) = derivs[q].imag();
@@ -242,8 +252,8 @@ FitOutcome levenberg_marquardt(const Spectrum& sp, std::vector<Param>& params,
                 trial[k].sigma += d_sigma;
                 trial[k].alpha += delta[col + 2] / scale[col + 2];
                 trial[k].beta += delta[col + 3] / scale[col + 3];
-                step_measure = std::max({step_measure, std::fabs(d_f) * duration,
-                                         std::fabs(d_sigma) * duration});
+                step_measure = std::max(
+                    {step_measure, std::fabs(d_f) * duration, std::fabs(d_sigma) * duration});
             }
             Evaluation next = evaluate(sp, trial, bins, true);
             if (std::isfinite(next.cost) && next.cost <= current.cost) {
@@ -434,7 +444,8 @@ void compute_envelopes(std::span<const double> signal, double fs,
     }
     for (std::size_t frame = 0; frame < frames; ++frame) {
         const std::size_t start = frame * frame_len;
-        const double centre = (static_cast<double>(start) + 0.5 * static_cast<double>(frame_len)) / fs;
+        const double centre =
+            (static_cast<double>(start) + 0.5 * static_cast<double>(frame_len)) / fs;
         Matrix a(frame_len, 2 * k_count);
         for (std::size_t i = 0; i < frame_len; ++i) {
             const double dt = (static_cast<double>(start + i) / fs) - centre;
@@ -501,12 +512,13 @@ PartialTrackingResult track_partials(std::span<const double> signal, double samp
             }
         } catch (const std::runtime_error&) {
             // Keep the starting values; the joint fit below still runs.
+            continue;
         }
     }
 
     // Stage 2: all partials jointly.
-    const FitOutcome outcome = levenberg_marquardt(sp, params, bins_near(sp, freqs, radius),
-                                                   options.max_iterations);
+    const FitOutcome outcome =
+        levenberg_marquardt(sp, params, bins_near(sp, freqs, radius), options.max_iterations);
     result.iterations = outcome.iterations;
     result.converged = outcome.converged;
     result.relative_residual = outcome.relative_residual;

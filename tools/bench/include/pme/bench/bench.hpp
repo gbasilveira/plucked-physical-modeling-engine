@@ -22,13 +22,13 @@ struct Options {
 
 struct Result {
     std::string name;
-    std::string unit;              // work unit per call, for example "samples"
-    double work_per_call = 1.0;    // units of work done by one call
+    std::string unit;            // work unit per call, for example "samples"
+    double work_per_call = 1.0;  // units of work done by one call
     int repetitions = 0;
     long long inner_iterations = 0;  // calls per timed repetition
     double median_ns = 0.0;          // per call
     double min_ns = 0.0;
-    double iqr_ns = 0.0;             // Q3 - Q1 over the repetitions
+    double iqr_ns = 0.0;  // Q3 - Q1 over the repetitions
 };
 
 struct Info {
@@ -75,17 +75,20 @@ Result run_benchmark(const Benchmark& benchmark, const Options& options);
 // Machine and build information; the CPU model is read without privileges ("unknown" if not found).
 Info collect_info();
 
-// The JSON document: {"schema_version": 1, "machine": ..., "build": ..., "settings": ..., "results": [...]}.
+// The JSON document: {"schema_version": 1, "machine": ..., "build": ..., "settings": ...,
+// "results": [...]}.
 std::string to_json(const std::vector<Result>& results, const Options& options, const Info& info);
 
-// Entry point for a benchmark executable: --repetitions N, --warmup N, --min-time-ms X, --filter TEXT,
+// Entry point for a benchmark executable: --repetitions N, --warmup N, --min-time-ms X, --filter
+// TEXT,
 // --out FILE, --list. Returns the process exit code.
 int run_main(int argc, char** argv);
 
 }  // namespace pme::bench
 
-#define PME_BENCHMARK(identifier, unit_text, work_per_call)                                   \
-    static void pme_bench_fn_##identifier();                                                  \
-    static const ::pme::bench::Registrar pme_bench_registrar_##identifier(                     \
-        #identifier, unit_text, work_per_call, &pme_bench_fn_##identifier);                    \
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage): static registration needs a macro.
+#define PME_BENCHMARK(identifier, unit_text, work_per_call)                 \
+    static void pme_bench_fn_##identifier();                                \
+    static const ::pme::bench::Registrar pme_bench_registrar_##identifier(  \
+        #identifier, unit_text, work_per_call, &pme_bench_fn_##identifier); \
     static void pme_bench_fn_##identifier()

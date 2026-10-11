@@ -5,19 +5,21 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <vector>
 
 namespace pme::analysis {
 
-// ---- Decay (ORC-01, ORC-16) ----------------------------------------------------------------------
+// ---- Decay (ORC-01, ORC-16)
+// ----------------------------------------------------------------------
 
 // T60 = 3 ln(10) / sigma for amplitude proportional to exp(-sigma t); infinity when sigma <= 0.
 double t60_from_sigma(double sigma_per_s);
 
 struct DecayFit {
-    double sigma_per_s = 0.0;       // amplitude proportional to exp(-sigma t)
-    double log_amplitude_0 = 0.0;   // ln of the amplitude at t = 0
+    double sigma_per_s = 0.0;      // amplitude proportional to exp(-sigma t)
+    double log_amplitude_0 = 0.0;  // ln of the amplitude at t = 0
     double t60_s = 0.0;
     double rms_log_residual = 0.0;  // rms of the fit in ln(amplitude)
 };
@@ -35,7 +37,8 @@ struct DoubleDecayFit {
 
 // Continuous two-slope fit of ln(amplitude): slope -sigma1 before the knee, -sigma2 after it. The
 // knee is found by a grid search over [t[1], t[n-2]] refined by golden-section search.
-DoubleDecayFit fit_double_decay(std::span<const double> times_s, std::span<const double> amplitudes);
+DoubleDecayFit fit_double_decay(std::span<const double> times_s,
+                                std::span<const double> amplitudes);
 
 // ---- Inharmonicity (SPEC-STR, ORC-03) -----------------------------------------------------------
 
@@ -55,29 +58,31 @@ InharmonicityFit fit_inharmonicity(std::span<const int> partial_numbers,
 
 struct ContactInterval {
     bool found = false;
-    double start_s = 0.0;     // first upward crossing of the threshold
-    double end_s = 0.0;       // last downward crossing
+    double start_s = 0.0;  // first upward crossing of the threshold
+    double end_s = 0.0;    // last downward crossing
     double duration_s = 0.0;
 };
 
 // Interval where `force` exceeds `threshold`: from the first upward crossing to the last downward
 // crossing, each located by linear interpolation between samples (sub-sample). A signal that starts
 // or ends above the threshold reports that sample time as the crossing.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): rate in Hz then threshold in force units.
 ContactInterval measure_contact(std::span<const double> force, double sample_rate_hz,
                                 double threshold);
 
-// ---- Spectral envelope (ORC-17, golden features) -------------------------------------------------
+// ---- Spectral envelope (ORC-17, golden features)
+// -------------------------------------------------
 
-enum class SpectrumWindow { hann, rectangular };
-enum class SpectrumNormalisation {
+enum class SpectrumWindow : std::uint8_t { hann, rectangular };
+enum class SpectrumNormalisation : std::uint8_t {
     raw,       // |X[k]|
     coherent,  // |X[k]| / sum(w): a sinusoid of amplitude A peaks at A / 2
 };
 
 struct SpectralEnvelopeOptions {
     double f_min_hz = 20.0;
-    double f_max_hz = 20000.0;   // clamped to the Nyquist frequency
-    int points_per_octave = 12;  // spacing of the log-frequency grid
+    double f_max_hz = 20000.0;             // clamped to the Nyquist frequency
+    int points_per_octave = 12;            // spacing of the log-frequency grid
     double smoothing_octaves = 1.0 / 3.0;  // width of the power-averaging band
     SpectrumWindow window = SpectrumWindow::hann;
     SpectrumNormalisation normalisation = SpectrumNormalisation::coherent;
@@ -91,7 +96,8 @@ struct SpectralEnvelope {
 SpectralEnvelope spectral_envelope(std::span<const double> signal, double sample_rate_hz,
                                    const SpectralEnvelopeOptions& options = {});
 
-// ---- Energy accounting (ORC-02, ORC-09, ORC-15) --------------------------------------------------
+// ---- Energy accounting (ORC-02, ORC-09, ORC-15)
+// --------------------------------------------------
 
 struct EnergyReport {
     double max_relative_drift = 0.0;        // max |H[n] - H[0]| / |H[0]|

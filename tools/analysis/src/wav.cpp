@@ -44,27 +44,28 @@ void put_tag(std::vector<std::uint8_t>& out, const char* tag) {
     }
 }
 
-bool tag_is(const std::uint8_t* p, const char* tag) {
-    return std::memcmp(p, tag, 4) == 0;
-}
+bool tag_is(const std::uint8_t* p, const char* tag) { return std::memcmp(p, tag, 4) == 0; }
 
 unsigned bits_of(WavFormat f) {
     switch (f) {
-        case WavFormat::pcm16: return 16;
-        case WavFormat::pcm24: return 24;
-        case WavFormat::pcm32: return 32;
-        case WavFormat::float32: return 32;
-        case WavFormat::float64: return 64;
+        case WavFormat::pcm16:
+            return 16;
+        case WavFormat::pcm24:
+            return 24;
+        case WavFormat::pcm32:
+        case WavFormat::float32:
+            return 32;
+        case WavFormat::float64:
+            return 64;
     }
     return 0;
 }
 
-bool is_float(WavFormat f) {
-    return f == WavFormat::float32 || f == WavFormat::float64;
-}
+bool is_float(WavFormat f) { return f == WavFormat::float32 || f == WavFormat::float64; }
 
-std::int64_t clamp_round(double x, unsigned bits) {
-    const double scale = std::ldexp(1.0, static_cast<int>(bits) - 1);
+template <int Bits>
+std::int64_t clamp_round(double x) {
+    const double scale = std::ldexp(1.0, Bits - 1);
     const double v = std::round(x * scale);
     const double lo = -scale;
     const double hi = scale - 1.0;
@@ -101,8 +102,11 @@ WavData parse_wav(std::span<const std::uint8_t> bytes) {
         const std::size_t body = pos + 8;
         if (body + size > bytes.size()) {
             if (tag_is(chunk, "data") || tag_is(chunk, "fmt ")) {
-                throw WavError("WAV: chunk '" + std::string(reinterpret_cast<const char*>(chunk), 4) +
-                               "' is truncated");
+                std::string id;
+                for (std::size_t i = 0; i < 4; ++i) {
+                    id.push_back(static_cast<char>(chunk[i]));
+                }
+                throw WavError("WAV: chunk '" + id + "' is truncated");
             }
             break;  // a damaged trailing metadata chunk does not affect the audio
         }
@@ -171,7 +175,8 @@ WavData parse_wav(std::span<const std::uint8_t> bytes) {
     for (std::size_t i = 0; i < count; ++i, p += bytes_per_sample) {
         switch (format) {
             case WavFormat::pcm16:
-                wav.samples[i] = static_cast<double>(static_cast<std::int16_t>(read_u16(p))) / 32768.0;
+                wav.samples[i] =
+                    static_cast<double>(static_cast<std::int16_t>(read_u16(p))) / 32768.0;
                 break;
             case WavFormat::pcm24: {
                 std::uint32_t v = static_cast<std::uint32_t>(p[0]) |
@@ -214,7 +219,8 @@ std::vector<std::uint8_t> encode_wav(const WavData& wav) {
     }
     const unsigned bits = bits_of(wav.format);
     const unsigned bytes_per_sample = bits / 8U;
-    const std::uint64_t data_size = static_cast<std::uint64_t>(wav.samples.size()) * bytes_per_sample;
+    const std::uint64_t data_size =
+        static_cast<std::uint64_t>(wav.samples.size()) * bytes_per_sample;
     if (data_size > 0xFFFFFFFFULL - 64U) {
         throw WavError("WAV: data larger than 4 GiB is not supported");
     }
@@ -237,17 +243,20 @@ std::vector<std::uint8_t> encode_wav(const WavData& wav) {
     for (const double x : wav.samples) {
         switch (wav.format) {
             case WavFormat::pcm16:
-                put_u16(out, static_cast<std::uint16_t>(static_cast<std::int16_t>(clamp_round(x, 16))));
+                put_u16(out,
+                        static_cast<std::uint16_t>(static_cast<std::int16_t>(clamp_round<16>(x))));
                 break;
             case WavFormat::pcm24: {
-                const auto v = static_cast<std::uint32_t>(static_cast<std::int32_t>(clamp_round(x, 24)));
+                const auto v =
+                    static_cast<std::uint32_t>(static_cast<std::int32_t>(clamp_round<24>(x)));
                 out.push_back(static_cast<std::uint8_t>(v & 0xFFU));
                 out.push_back(static_cast<std::uint8_t>((v >> 8U) & 0xFFU));
                 out.push_back(static_cast<std::uint8_t>((v >> 16U) & 0xFFU));
                 break;
             }
             case WavFormat::pcm32:
-                put_u32(out, static_cast<std::uint32_t>(static_cast<std::int32_t>(clamp_round(x, 32))));
+                put_u32(out,
+                        static_cast<std::uint32_t>(static_cast<std::int32_t>(clamp_round<32>(x))));
                 break;
             case WavFormat::float32:
                 put_u32(out, std::bit_cast<std::uint32_t>(static_cast<float>(x)));
@@ -282,7 +291,10 @@ void write_wav(const std::filesystem::path& path, const WavData& wav) {
     if (!out) {
         throw WavError("WAV: cannot create " + path.string());
     }
-    out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    // ostream::write takes const char*.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    out.write(reinterpret_cast<const char*>(bytes.data()),
+              static_cast<std::streamsize>(bytes.size()));
     if (!out) {
         throw WavError("WAV: write failed for " + path.string());
     }

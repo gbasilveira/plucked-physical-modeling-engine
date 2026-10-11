@@ -2,12 +2,11 @@
 #include "pme/analysis/golden.hpp"
 
 #include <cmath>
-#include <cstdio>
 #include <fstream>
+#include <iomanip>
 #include <limits>
-#include <sstream>
-
 #include <nlohmann/json.hpp>
+#include <sstream>
 
 namespace pme::analysis {
 
@@ -34,7 +33,8 @@ double number(const Json& object, const char* key, const std::string& where) {
     return v.get<double>();
 }
 
-std::optional<double> optional_number(const Json& object, const char* key, const std::string& where) {
+std::optional<double> optional_number(const Json& object, const char* key,
+                                      const std::string& where) {
     if (!object.contains(key)) {
         return std::nullopt;
     }
@@ -168,8 +168,9 @@ std::string serialize_golden(const GoldenFeatures& g) {
     doc["scenario"] = g.scenario;
     doc["sample_rate_hz"] = g.sample_rate_hz;
     doc["producer"] = {{"tool", g.producer_tool}, {"version", g.producer_version}};
-    doc["units"] = {{"frequency", "Hz"}, {"sigma", "1/s"}, {"t60", "s"}, {"amplitude", "linear"},
-                    {"magnitude_db", "dB"}, {"contact_time", "s"}, {"tolerances", "see schema"}};
+    doc["units"] = {{"frequency", "Hz"},         {"sigma", "1/s"},       {"t60", "s"},
+                    {"amplitude", "linear"},     {"magnitude_db", "dB"}, {"contact_time", "s"},
+                    {"tolerances", "see schema"}};
     Json partials = Json::array();
     for (const GoldenPartial& p : g.partials) {
         Json jp = {{"index", p.index},
@@ -310,7 +311,8 @@ ComparisonResult compare_golden(const GoldenFeatures& ref, const GoldenFeatures&
             }
         }
         if (cp == nullptr) {
-            add_missing(out, name, "partial present in the reference is missing from the candidate");
+            add_missing(out, name,
+                        "partial present in the reference is missing from the candidate");
             continue;
         }
         PartialTolerance over;
@@ -324,14 +326,15 @@ ComparisonResult compare_golden(const GoldenFeatures& ref, const GoldenFeatures&
         const double decay_tol = over.decay_rate_relative.value_or(tol.decay_rate_relative);
         add(out, name + ".decay_rate", relative_diff(cp->sigma_per_s, rp.sigma_per_s), decay_tol,
             "relative");
-        if (rp.second_decay) {
-            if (!cp->second_decay) {
+        if (const auto& ref_second = rp.second_decay; ref_second) {
+            const auto& cand_second = cp->second_decay;
+            if (!cand_second) {
                 add_missing(out, name + ".second_decay_rate",
                             "second decay present in the reference is missing from the candidate");
             } else {
                 add(out, name + ".second_decay_rate",
-                    relative_diff(cp->second_decay->sigma_per_s, rp.second_decay->sigma_per_s),
-                    decay_tol, "relative");
+                    relative_diff(cand_second->sigma_per_s, ref_second->sigma_per_s), decay_tol,
+                    "relative");
             }
         }
     }
@@ -348,7 +351,8 @@ ComparisonResult compare_golden(const GoldenFeatures& ref, const GoldenFeatures&
 
     if (ref.spectral_envelope) {
         if (!cand.spectral_envelope) {
-            add_missing(out, "spectral_envelope", "reference has a spectral envelope, candidate has none");
+            add_missing(out, "spectral_envelope",
+                        "reference has a spectral envelope, candidate has none");
         } else {
             const GoldenEnvelope& re = *ref.spectral_envelope;
             const GoldenEnvelope& ce = *cand.spectral_envelope;
@@ -370,7 +374,9 @@ ComparisonResult compare_golden(const GoldenFeatures& ref, const GoldenFeatures&
                     }
                 }
                 add(out, "spectral_envelope", worst, tol.spectral_envelope_db, "dB",
-                    "largest difference at " + std::to_string(re.frequencies_hz.empty() ? 0.0 : re.frequencies_hz[at]) + " Hz");
+                    "largest difference at " +
+                        std::to_string(re.frequencies_hz.empty() ? 0.0 : re.frequencies_hz[at]) +
+                        " Hz");
             }
         }
     }
@@ -390,7 +396,8 @@ ComparisonResult compare_golden(const GoldenFeatures& ref, const GoldenFeatures&
                 std::fabs(cand.energy->max_relative_drift - ref.energy->max_relative_drift),
                 tol.energy_absolute, "absolute");
             add(out, "energy.max_relative_step_change",
-                std::fabs(cand.energy->max_relative_step_change - ref.energy->max_relative_step_change),
+                std::fabs(cand.energy->max_relative_step_change -
+                          ref.energy->max_relative_step_change),
                 tol.energy_absolute, "absolute");
         }
     }
@@ -403,11 +410,9 @@ std::string format_comparison(const ComparisonResult& result, bool failures_only
         if (failures_only && r.pass) {
             continue;
         }
-        char line[256];
-        std::snprintf(line, sizeof line, "%s %-34s difference %.6g %s (tolerance %.6g)",
-                      r.pass ? "ok  " : "FAIL", r.feature.c_str(), r.difference, r.unit.c_str(),
-                      r.tolerance);
-        out << line;
+        out << (r.pass ? "ok   " : "FAIL ") << std::left << std::setw(34) << r.feature << std::right
+            << " difference " << std::setprecision(6) << r.difference << ' ' << r.unit
+            << " (tolerance " << r.tolerance << ")";
         if (!r.note.empty()) {
             out << " - " << r.note;
         }

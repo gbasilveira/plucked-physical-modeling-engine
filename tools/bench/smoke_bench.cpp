@@ -2,7 +2,6 @@
 // Smoke benchmark (P0.3-R6): a trivial loop that proves the harness runs and writes valid JSON.
 
 #include <cstdint>
-
 #include <pme/bench/bench.hpp>
 
 PME_BENCHMARK(smoke_sum_loop, "samples", 4096) {
@@ -13,6 +12,4 @@ PME_BENCHMARK(smoke_sum_loop, "samples", 4096) {
     pme::bench::do_not_optimize(sum);
 }
 
-int main(int argc, char** argv) {
-    return pme::bench::run_main(argc, argv);
-}
+int main(int argc, char** argv) { return pme::bench::run_main(argc, argv); }

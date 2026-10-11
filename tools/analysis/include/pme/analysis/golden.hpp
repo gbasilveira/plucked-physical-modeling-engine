@@ -51,8 +51,8 @@ struct PartialTolerance {
 };
 
 // Defaults: SPEC-ORC for frequency (0.01 cent, ORC-01/ORC-16), decay rate (0.5%, ORC-16), spectral
-// envelope (1 dB, ORC-17) and contact time (1%, ORC-08); the planner's choice for amplitude (0.1 dB)
-// and energy values (1e-9 absolute, ORC-15's per-step float64 figure).
+// envelope (1 dB, ORC-17) and contact time (1%, ORC-08); the planner's choice for amplitude (0.1
+// dB) and energy values (1e-9 absolute, ORC-15's per-step float64 figure).
 struct GoldenTolerances {
     double frequency_cents = 0.01;
     double amplitude_db = 0.1;
@@ -83,12 +83,12 @@ GoldenFeatures read_golden_file(const std::string& path);
 void write_golden_file(const std::string& path, const GoldenFeatures& features);
 
 struct FeatureResult {
-    std::string feature;     // for example "partial[3].decay_rate"
-    double difference = 0.0; // measured, in `unit`
+    std::string feature;      // for example "partial[3].decay_rate"
+    double difference = 0.0;  // measured, in `unit`
     double tolerance = 0.0;
-    std::string unit;        // "cent", "dB", "relative", "absolute", "-"
+    std::string unit;  // "cent", "dB", "relative", "absolute", "-"
     bool pass = true;
-    std::string note;        // set for structural failures (missing partial, grid mismatch)
+    std::string note;  // set for structural failures (missing partial, grid mismatch)
 };
 
 struct ComparisonResult {
