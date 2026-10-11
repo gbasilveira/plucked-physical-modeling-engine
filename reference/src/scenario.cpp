@@ -131,7 +131,7 @@ StringParams string_params(const json& j, const std::string& ctx) {
     } else if (bnd == "clamped") {
         p.boundary = Boundary::Clamped;
     } else {
-        throw RefError(ctx + ".boundary: expected \"pinned\" or \"clamped\"");
+        throw RefError(ctx + R"(.boundary: expected "pinned" or "clamped")");
     }
     p.detuneH = num(j, "detuneH", 0.0, ctx);
     const std::string be = text(j, "bridgeEnd", "at_L", ctx);
@@ -140,7 +140,7 @@ StringParams string_params(const json& j, const std::string& ctx) {
     } else if (be == "at_0") {
         p.bridgeEnd = BridgeEnd::At0;
     } else {
-        throw RefError(ctx + ".bridgeEnd: expected \"at_L\" or \"at_0\"");
+        throw RefError(ctx + R"(.bridgeEnd: expected "at_L" or "at_0")");
     }
     return p;
 }
@@ -375,7 +375,7 @@ Scenario parse_scenario(std::string_view json_text) {
                                    "\"conductance\"");
                 }
             }
-            sc.bridges.push_back(std::move(b));
+            sc.bridges.push_back(b);
         }
     }
     if (doc.contains("plate")) {
@@ -414,7 +414,7 @@ Scenario parse_scenario(std::string_view json_text) {
             o.x = num(jo, "x", 0.0, c);
             const std::string pol = text(jo, "polarisation", "v", c);
             if (pol != "v" && pol != "h") {
-                throw RefError(c + ".polarisation: expected \"v\" or \"h\"");
+                throw RefError(c + R"(.polarisation: expected "v" or "h")");
             }
             o.polarisation = pol == "h" ? 1 : 0;
             if (jo.contains("point")) {

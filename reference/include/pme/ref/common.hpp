@@ -4,6 +4,7 @@
 // uses the description structures of engine/include/pme (header-only use) and no engine code.
 #pragma once
 
+#include <numbers>
 #include <stdexcept>
 #include <string>
 
@@ -11,7 +12,7 @@
 
 namespace pme::ref {
 
-inline constexpr double kPi = 3.14159265358979323846;
+inline constexpr double kPi = std::numbers::pi;
 
 // Thrown for every input the reference does not model and for every non-convergence. The message
 // names the offending field or quantity.

@@ -89,9 +89,9 @@ TEST_CASE("P0.5-R7 hammer scenarios report a contact time") {
     Scenario sc = read_scenario_file(scenario_path("hammer_two_strings_bridge.json"));
     sc.duration = 0.1;
     const Rendered r = render_scenario(sc);
-    REQUIRE(r.features.contact_time_s.has_value());
-    CHECK(*r.features.contact_time_s > 1e-4);
-    CHECK(*r.features.contact_time_s < 1e-2);
+    const double contact_time = r.features.contact_time_s.value_or(0.0);
+    CHECK(contact_time > 1e-4);
+    CHECK(contact_time < 1e-2);
 }
 
 TEST_CASE("P0.5-R7 WAV and energy outputs") {

@@ -120,14 +120,14 @@ std::vector<double> decimate(const std::vector<double>& x, int factor) {
     if (factor <= 1) {
         return x;
     }
-    const int half = 8 * factor;
+    const std::ptrdiff_t half = 8 * static_cast<std::ptrdiff_t>(factor);
     std::vector<double> taps(static_cast<std::size_t>(2 * half + 1));
     const double fc = 0.45 / factor;  // cycles per input sample
     double sum = 0.0;
-    for (int i = -half; i <= half; ++i) {
-        const double t = i;
+    for (std::ptrdiff_t i = -half; i <= half; ++i) {
+        const auto t = static_cast<double>(i);
         const double sinc = i == 0 ? 2.0 * fc : std::sin(2.0 * kPi * fc * t) / (kPi * t);
-        const double win = 0.5 + 0.5 * std::cos(kPi * t / (half + 1));
+        const double win = 0.5 + 0.5 * std::cos(kPi * t / static_cast<double>(half + 1));
         taps[static_cast<std::size_t>(i + half)] = sinc * win;
         sum += sinc * win;
     }
@@ -135,11 +135,13 @@ std::vector<double> decimate(const std::vector<double>& x, int factor) {
         t /= sum;
     }
     std::vector<double> y;
-    for (std::size_t n = 0; n < x.size(); n += static_cast<std::size_t>(factor)) {
+    y.reserve(x.size() / static_cast<std::size_t>(factor) + 1);
+    const auto len = static_cast<std::ptrdiff_t>(x.size());
+    for (std::ptrdiff_t n = 0; n < len; n += factor) {
         double s = 0.0;
-        for (int i = -half; i <= half; ++i) {
-            const long idx = static_cast<long>(n) + i;
-            if (idx >= 0 && idx < static_cast<long>(x.size())) {
+        for (std::ptrdiff_t i = -half; i <= half; ++i) {
+            const std::ptrdiff_t idx = n + i;
+            if (idx >= 0 && idx < len) {
                 s += taps[static_cast<std::size_t>(i + half)] * x[static_cast<std::size_t>(idx)];
             }
         }
@@ -158,6 +160,7 @@ pme::analysis::WavData results_to_wav(const Results& r, bool normalise) {
         throw RefError("WAV output needs an integer sample rate fs");
     }
     std::vector<std::vector<double>> chans;
+    chans.reserve(r.signals.size());
     for (const auto& s : r.signals) {
         chans.push_back(decimate(s.data, r.oversampling));
     }

@@ -48,6 +48,7 @@ std::vector<double> decay_rates(const Results& r, const std::string& signal, dou
     opt.envelope_frame_s = 0.0;
     const auto fit = pme::analysis::track_partials(r.signal(signal), r.sim_rate, opt);
     std::vector<double> sigma;
+    sigma.reserve(fit.partials.size());
     for (const auto& p : fit.partials) {
         sigma.push_back(p.sigma_per_s);
     }

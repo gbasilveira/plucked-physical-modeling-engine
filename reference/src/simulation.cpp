@@ -156,8 +156,6 @@ struct Contact {
     std::vector<ContactEntry> entries;
 };
 
-enum class ObsKind { Direct };
-
 struct Hammer {
     double mass = 0.0;
     double velocity = 0.0;
@@ -169,11 +167,11 @@ struct Hammer {
 
 class Sim {
 public:
-    Sim(const Scenario& sc, const SimulationOptions& opt) : sc_(sc), opt_(opt) {}
+    Sim(Scenario sc, const SimulationOptions& opt) : sc_(std::move(sc)), opt_(opt) {}
     Results run();
 
 private:
-    const Scenario& sc_;
+    Scenario sc_;
     SimulationOptions opt_;
     double k_ = 0.0;
     double theta_ = 0.25;
@@ -211,11 +209,11 @@ private:
     void build_blocks();
     void build_interface();
     void build_contacts();
-    SysState zero_state() const;
+    [[nodiscard]] SysState zero_state() const;
     void initial_states(SysState& cur, SysState& prev);
 
     void advance(const SysState& cur, const SysState& prev, const SysForce* force, SysState& next);
-    double gap(const Contact& c, const SysState& s) const;
+    [[nodiscard]] double gap(const Contact& c, const SysState& s) const;
     void solve_contacts(const std::vector<double>& gfree, const std::vector<double>& gcur,
                         const std::vector<double>& gprev, std::vector<double>& gnext,
                         std::vector<double>& phi, std::size_t step, NewtonStats& stats) const;
@@ -226,15 +224,17 @@ private:
     };
     EnergyParts pair_energy(SysState& newer, SysState& older, const std::vector<double>& gnew,
                             const std::vector<double>& gold, bool cache_valid);
-    double step_loss(const SysState& next, const SysState& prev, const SysState& cur,
-                     const std::vector<double>& gnext, const std::vector<double>& gprev,
-                     const std::vector<double>& gcur) const;
-    double observe(const ObservationSpec& o, const SysState& cur, const SysState& prev,
-                   const SysState& next, const std::vector<double>& gcur,
-                   const std::vector<double>& phi) const;
-    double bridge_parallel(std::size_t b, const SysState& s) const;
+    [[nodiscard]] double step_loss(const SysState& next, const SysState& prev, const SysState& cur,
+                                   const std::vector<double>& gnext,
+                                   const std::vector<double>& gprev,
+                                   const std::vector<double>& gcur) const;
+    [[nodiscard]] double observe(const ObservationSpec& o, const SysState& cur,
+                                 const SysState& prev, const SysState& next,
+                                 const std::vector<double>& gcur,
+                                 const std::vector<double>& phi) const;
+    [[nodiscard]] double bridge_parallel(std::size_t b, const SysState& s) const;
     void block_x(const Block& b, const SysState& s, std::vector<double>& x) const;
-    double interface_w(const Block& b, const SysState& s) const;
+    [[nodiscard]] double interface_w(const Block& b, const SysState& s) const;
 };
 
 void Sim::build_blocks() {
@@ -317,7 +317,7 @@ void Sim::build_blocks() {
                     dot += col[i] * b.y[i];
                 }
                 b.schur = a.get(b.n, b.n) - dot;
-                b.row = static_cast<std::size_t>(2 * spec.bridge + pol);
+                b.row = 2 * static_cast<std::size_t>(spec.bridge) + static_cast<std::size_t>(pol);
             } else {
                 b.chol = BandCholesky(a);
             }
@@ -1051,10 +1051,11 @@ void Sim::initial_states(SysState& cur, SysState& prev) {
             prev.u[j][i] = cur.u[j][i] - 0.5 * k_ * k_ * kx[i];
         }
     }
-    if (has_plate_ && sc_.plate->has_initial) {
+    if (has_plate_ && sc_.plate.has_value() && sc_.plate->has_initial) {
+        const PlateSpec& ps = *sc_.plate;
         for (const auto& [idx, wgt] :
-             bilinear_weights(plate_op_.grid, sc_.plate->initial_x, sc_.plate->initial_y)) {
-            cur.q[idx] = sc_.plate->initial_amplitude * wgt;
+             bilinear_weights(plate_op_.grid, ps.initial_x, ps.initial_y)) {
+            cur.q[idx] = ps.initial_amplitude * wgt;
         }
         // Time-symmetric start at rest, as for the strings.
         std::vector<double> kq;

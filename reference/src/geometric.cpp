@@ -63,12 +63,12 @@ Results simulate_geometric(const Scenario& sc, const SimulationOptions& options)
             "geometric: EA - T must be positive (the axial stiffness exceeds the tension)");
     }
     const int nn = spec.intervals;
-    const std::size_t n = static_cast<std::size_t>(nn - 1);
+    const auto n = static_cast<std::size_t>(nn - 1);
     const double len = ph.length;
     const double h = len / nn;
     const double k = 1.0 / (sc.fs * sc.oversampling);
     const double theta = sc.theta;
-    const std::size_t steps = static_cast<std::size_t>(std::llround(sc.duration / k));
+    const auto steps = static_cast<std::size_t>(std::llround(sc.duration / k));
     const bool clamped = spec.params.boundary == Boundary::Clamped;
     const StringStencil st{n, h, ph.tension, ph.ei, false, clamped, clamped};
 

@@ -22,6 +22,7 @@ std::vector<double> measure_partials(const std::vector<double>& signal, double f
     opt.envelope_frame_s = 0.0;
     const auto res = pme::analysis::track_partials(signal, fs, opt);
     std::vector<double> f;
+    f.reserve(res.partials.size());
     for (const auto& p : res.partials) {
         f.push_back(p.frequency_hz);
     }

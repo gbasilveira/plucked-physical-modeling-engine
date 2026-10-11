@@ -27,6 +27,7 @@ namespace {
 using Array = nb::ndarray<nb::numpy, double, nb::ndim<1>>;
 
 Array to_array(const std::vector<double>& v) {
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): handed to the capsule below, which owns it.
     auto* data = new double[v.empty() ? 1 : v.size()];
     if (!v.empty()) {
         std::memcpy(data, v.data(), v.size() * sizeof(double));

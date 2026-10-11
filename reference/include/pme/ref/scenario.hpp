@@ -5,6 +5,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -68,7 +69,7 @@ struct HammerSpec {
     bool wall = false;
 };
 
-enum class BridgeModelKind { MassSpringDashpot, Conductance };
+enum class BridgeModelKind : std::uint8_t { MassSpringDashpot, Conductance };
 
 // Bridge point (SPEC-BRG). `desc` holds the position (body frame), theta_b and the horizontal
 // conductance G_h; the parallel axis is modelled by `kind`.
@@ -103,7 +104,7 @@ struct BarrierSpec {
     BarrierParams params;
 };
 
-enum class ObservationKind {
+enum class ObservationKind : std::uint8_t {
     StringDisplacement,
     StringVelocity,
     BridgeForce,         // component along the bridge's parallel axis (SPEC-BRG)
