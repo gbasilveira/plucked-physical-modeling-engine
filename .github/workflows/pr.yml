@@ -214,6 +214,22 @@ jobs:
           if [ "${{ matrix.system }}" = windows ]; then exe="$exe.exe"; fi
           test -f "$exe"
           PME_BENCH_SMOKE="$exe" uv run pytest tools/tests/test_p0_3_t3.py -rs
+      - name: P0.3-R5 WAV cross-language test (PME_WAV_TOOL)
+        # C++ writes and Python reads, and the reverse, for every WAV format. A skip here is a
+        # failure: the tool exists and the test must run on all three systems.
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: |
+          exe="$GITHUB_WORKSPACE/build/$PRESET/tools/analysis/pme_wav_roundtrip"
+          if [ "${{ matrix.system }}" = windows ]; then exe="$exe.exe"; fi
+          test -f "$exe"
+          set -o pipefail
+          PME_WAV_TOOL="$exe" uv run pytest tools/tests/test_p0_3_r5_cross_language.py -rs | tee wav-cross-language.log
+          if grep -Eq '(skipped|SKIPPED)' wav-cross-language.log; then
+            echo "::error::the WAV cross-language test was skipped"
+            exit 1
+          fi
 
       - name: "${{ matrix.preset_b }}: configure"
         if: ${{ matrix.preset_b != '' && !cancelled() }}

@@ -27,6 +27,15 @@ set_target_properties(pme_golden_compare PROPERTIES
   CXX_EXTENSIONS OFF
   COMPILE_WARNING_AS_ERROR ON)
 
+# Cross-language WAV check (tools/tests/test_p0_3_r5_cross_language.py, PME_WAV_TOOL).
+add_executable(pme_wav_roundtrip wav_roundtrip_main.cpp)
+target_link_libraries(pme_wav_roundtrip PRIVATE pme_build_options pme_analysis)
+set_target_properties(pme_wav_roundtrip PROPERTIES
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
+  COMPILE_WARNING_AS_ERROR ON)
+
 # ---- Tests -------------------------------------------------------------------------------------
 set(PME_ANALYSIS_TESTDATA "${CMAKE_CURRENT_SOURCE_DIR}/testdata")
 
