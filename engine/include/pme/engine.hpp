@@ -90,7 +90,8 @@ public:
 
     /// Take the oldest pending diagnostic (SPEC-API "Diagnostics"). Lock-free. Also drains the
     /// retire queue (SPEC-EXEC "Instrument lifetime").
-    /// Thread: non-audio. Allocates: no; may free retired instruments. Returns false and leaves `d` unchanged if none is pending.
+    /// Thread: non-audio. Allocates: no; may free retired instruments. Returns false and leaves `d`
+    /// unchanged if none is pending.
     bool popDiagnostic(Diagnostic& d) noexcept;
 
 private:

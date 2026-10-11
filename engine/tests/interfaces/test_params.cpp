@@ -47,8 +47,8 @@ TEST_CASE("P0.4-T3 findParam finds every entry and returns null for unused ids")
 }
 
 TEST_CASE("P0.4-T3 the registry holds the SPEC-API continuous parameters") {
-    // SPEC-API "Parameter classes": pedal values (1003 also the una corda shift), kappa_s, output gains, damper
-    // timing.
+    // SPEC-API "Parameter classes": pedal values (1003 also the una corda shift), kappa_s, output
+    // gains, damper timing.
     for (const pme::ParamId id : {1001u, 1002u, 1003u, 2001u, 3001u, 4001u, 4002u, 4003u}) {
         const pme::ParamInfo* p = pme::findParam(id);
         REQUIRE(p != nullptr);

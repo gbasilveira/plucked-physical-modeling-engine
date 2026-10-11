@@ -60,21 +60,21 @@ struct PlateParams {
     double dEdMcR{};      ///< Linear coefficient of E_R with MC (Pa per unit MC), SPEC-BODY.
     double dGdMc{};       ///< Linear coefficient of G_LR with MC (Pa per unit MC), SPEC-BODY.
     double dRhodMc{};  ///< Linear coefficient of density with MC (kg/m^3 per unit MC), SPEC-BODY.
-    double lossFactor{};        ///< Wood loss factor eta (dimensionless), SPEC-BODY "Modal data".
-    double rimStiffness{};      ///< Translational rim support stiffness per unit rim length k_rim
-                                ///< (N/m^2), SPEC-BODY.
-    double fMax{};              ///< Highest kept body mode frequency f_max (Hz), SPEC-BODY.
-    std::vector<RibDesc> ribs;  ///< Ribs as straight attached beams, SPEC-BODY.
+    double lossFactor{};         ///< Wood loss factor eta (dimensionless), SPEC-BODY "Modal data".
+    double rimStiffness{};       ///< Translational rim support stiffness per unit rim length k_rim
+                                 ///< (N/m^2), SPEC-BODY.
+    double fMax{};               ///< Highest kept body mode frequency f_max (Hz), SPEC-BODY.
+    std::vector<RibDesc> ribs;   ///< Ribs as straight attached beams, SPEC-BODY.
     std::vector<Point> outline;  ///< Outline polygon in the body frame (m), z = 0, vertices in
                                  ///< order, not closed; empty = the lengthX x lengthY rectangle.
     int thicknessNx{};           ///< Thickness grid points along x (>= 2 when the grid is used).
     int thicknessNy{};           ///< Thickness grid points along y (>= 2 when the grid is used).
-    std::vector<double> thicknessGrid;  ///< h (m) on a regular Nx x Ny grid over the outline's
-                                        ///< bounding box, row-major [j * Nx + i], bilinearly
-                                        ///< interpolated; empty = uniform `thickness`.
+    std::vector<double> thicknessGrid;    ///< h (m) on a regular Nx x Ny grid over the outline's
+                                          ///< bounding box, row-major [j * Nx + i], bilinearly
+                                          ///< interpolated; empty = uniform `thickness`.
     std::vector<BridgeBeamDesc> bridges;  ///< Bridges as polyline beams, SPEC-BODY.
-    double rimRotationalStiffness{};  ///< Rotational rim stiffness per unit length k_rim,theta
-                                      ///< (N m/rad per m); 0 = none (MAY, SPEC-BODY).
+    double rimRotationalStiffness{};      ///< Rotational rim stiffness per unit length k_rim,theta
+                                          ///< (N m/rad per m); 0 = none (MAY, SPEC-BODY).
 };
 
 /// Description of a body (SPEC-API `BodyParams`; SPEC-BODY). Sample-rate independent.

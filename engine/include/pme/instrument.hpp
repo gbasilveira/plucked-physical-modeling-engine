@@ -66,8 +66,8 @@ struct Defaults {
     double sympatheticGain{1.0};        ///< kappa_s in [0, 1] (SPEC-BODY "Sympathetic path").
     double sympatheticLowPass{5000.0};  ///< f_symp (Hz) (SPEC-BODY).
     int localBridgeModes{64};           ///< M_b (SPEC-BODY, SPEC-INST).
-    double localBridgeFSplit{2000.0};  ///< f_split (Hz) for buildLocalBridge; SPEC-INST default
-                                       ///< 2 kHz, provisional until B3-T2 and V3 (SI-0003).
+    double localBridgeFSplit{2000.0};   ///< f_split (Hz) for buildLocalBridge; SPEC-INST default
+                                        ///< 2 kHz, provisional until B3-T2 and V3 (SI-0003).
 };
 
 /// Complete instrument description (SPEC-API `InstrumentDesc`). Data, not code (SPEC-INST).

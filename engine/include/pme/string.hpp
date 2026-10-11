@@ -29,12 +29,12 @@ enum class BridgeEnd : std::uint8_t {
 struct StringParams {
     double L{};      ///< Speaking length (m), SPEC-STR. A rear or duplex segment holds its own L_d.
     double dCore{};  ///< Core diameter d_c (m), SPEC-STR "Wound strings".
-    double rhoCore{};  ///< Core density rho_c (kg/m^3), SPEC-STR.
-    double ECore{};    ///< Core Young's modulus E_c (Pa), SPEC-STR.
-    double dOuter{};   ///< Outer (winding) diameter d_o (m), SPEC-STR.
-    double rhoWind{};  ///< Winding density rho_w (kg/m^3), SPEC-STR.
-    double packing{};  ///< Winding packing factor eta_w, 0.75 to 0.9 for round wire (SPEC-STR).
-    double epsWind{};  ///< Winding stiffness fraction eps_w of the core's EI (SPEC-STR).
+    double rhoCore{};   ///< Core density rho_c (kg/m^3), SPEC-STR.
+    double ECore{};     ///< Core Young's modulus E_c (Pa), SPEC-STR.
+    double dOuter{};    ///< Outer (winding) diameter d_o (m), SPEC-STR.
+    double rhoWind{};   ///< Winding density rho_w (kg/m^3), SPEC-STR.
+    double packing{};   ///< Winding packing factor eta_w, 0.75 to 0.9 for round wire (SPEC-STR).
+    double epsWind{};   ///< Winding stiffness fraction eps_w of the core's EI (SPEC-STR).
     double f1Target{};  ///< Target first-partial frequency f_1 (Hz), SPEC-STR. For a group with
                         ///< key >= 0, compileInstrument replaces it with the tuning-curve value
                         ///< in its compiled copy; for key = -1 it is used as given (SI-0004).
