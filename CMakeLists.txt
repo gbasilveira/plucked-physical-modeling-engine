@@ -44,3 +44,10 @@ add_library(pme::engine ALIAS pme_engine)
 foreach(module IN LISTS PME_MODULES)
   target_link_libraries(pme_engine INTERFACE pme_${module})
 endforeach()
+
+# ---- P0.3: test and analysis framework ----
+include(pme_testing)
+add_subdirectory(engine/tests/framework)
+add_subdirectory(tools/analysis)
+add_subdirectory(tools/bench)
+# ---- end P0.3 ----
