@@ -178,7 +178,7 @@ buffers.
 | `P0.4-R3` | compile stubs return `NotImplemented` and leave outputs unchanged; `prepare` checks; `toString`; allocation count of `process` (not in rt-safety builds); exact zeros. |
 | `P0.4-T3`, `P0.4-R4` | registry invariants; `params.json` equals the generator output. |
 | `P0.4-R5` | event fields; trivially-copyable static assertions. |
-| `ICR-0001 ...` | interfaces version is 2; retired id 1010 is not registered; v2 description defaults; `collectRetired` on prepared and unprepared engines. |
+| `P0.4-T1`, `P0.4-T3`, `P0.4-R3` `ICR-0001 ...` | interfaces version is 2; retired id 1010 is not registered; v2 description defaults; `collectRetired` on prepared and unprepared engines. |
 
 Detail: `pme::toString(Status)` is found by argument-dependent lookup and shadows doctest's own
 `toString` in `CHECK(status == ...)`. The test executable defines `DOCTEST_CONFIG_DOUBLE_STRINGIFY`

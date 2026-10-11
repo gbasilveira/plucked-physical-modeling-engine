@@ -62,7 +62,7 @@ TEST_CASE("P0.4-T3 the registry holds the SPEC-API continuous parameters") {
     }
 }
 
-TEST_CASE("ICR-0001 retired id 1010 is not registered") {
+TEST_CASE("P0.4-T3 ICR-0001 retired id 1010 is not registered") {
     // 1010 unaCorda.shift was retired by ICR-0001 (SI-0007); the id is reserved and never reused.
     CHECK(pme::findParam(1010) == nullptr);
     const pme::ParamInfo* soft = pme::findParam(1003);

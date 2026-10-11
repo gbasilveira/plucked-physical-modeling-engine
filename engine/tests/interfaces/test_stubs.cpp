@@ -145,7 +145,7 @@ TEST_CASE("P0.4-R3 description types are default-constructible with SPEC-INST de
     CHECK_FALSE(pme::nonlinearApiDeclared);
 }
 
-TEST_CASE("ICR-0001 interfaces-v2 description defaults") {
+TEST_CASE("P0.4-R3 ICR-0001 interfaces-v2 description defaults") {
     CHECK(pme::SegmentDesc{}.unisonDetuneCents == 0.0);
     const pme::PlateParams plate;
     CHECK(plate.outline.empty());
@@ -162,7 +162,7 @@ TEST_CASE("ICR-0001 interfaces-v2 description defaults") {
     CHECK(pme::InitialDisplacement{}.strengthGamma == 1.0);
 }
 
-TEST_CASE("ICR-0001 collectRetired is a non-audio no-op on any engine") {
+TEST_CASE("P0.4-R3 ICR-0001 collectRetired is a non-audio no-op on any engine") {
     pme::Engine unprepared;
     unprepared.collectRetired();
     pme::Engine prepared;

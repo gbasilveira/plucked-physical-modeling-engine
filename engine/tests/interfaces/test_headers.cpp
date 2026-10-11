@@ -19,4 +19,4 @@ TEST_CASE("P0.4-T1 every public header compiles on its own") {
     CHECK(headers == static_cast<std::size_t>(PME_T1_GENERATED_TU_COUNT));
 }
 
-TEST_CASE("ICR-0001 interfaces version is 2") { CHECK(pme::interfacesVersionMajor == 2); }
+TEST_CASE("P0.4-T1 ICR-0001 interfaces version is 2") { CHECK(pme::interfacesVersionMajor == 2); }
