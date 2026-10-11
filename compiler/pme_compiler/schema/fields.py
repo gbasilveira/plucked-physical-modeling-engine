@@ -21,7 +21,7 @@ SCHEMA_ID = "urn:pme:schema:instrument:1"
 # Closed vocabulary of x-unit annotations (B1-R1).
 UNITS = (
     "1", "index", "m", "kg", "kg/m^3", "Pa", "N", "N/m", "N/m^2", "N/m^p", "N/m^alpha",
-    "N/m^(alpha+1)", "N/rad", "Hz", "1/s", "s^(-1/2)", "s", "s/m", "s/kg", "kg/s", "m/s",
+    "N/m^(alpha+1)", "Hz", "1/s", "s^(-1/2)", "s", "s/m", "s/kg", "kg/s", "m/s",
     "rad", "cent", "bytes",
 )  # fmt: skip
 

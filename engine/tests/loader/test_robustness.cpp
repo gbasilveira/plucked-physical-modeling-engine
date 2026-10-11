@@ -191,7 +191,7 @@ TEST_CASE("B1-R4 numbers that need all seventeen digits survive a write and read
     }
 }
 
-TEST_CASE("B1-R4 wrong types, missing members and unknown keys at the root are reported") {
+TEST_CASE("B1-R4 wrong types and missing members and unknown keys at the root are reported") {
     InstrumentFile out;
     std::vector<LoadError> errors;
     CHECK(pme::loader::loadInstrument(R"({"format": 3, "instrument": [], "blobs": {}, "x": 1})",
