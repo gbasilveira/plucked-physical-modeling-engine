@@ -53,6 +53,7 @@ class PartialTolerance:
     frequency_cents: float | None = None
     amplitude_db: float | None = None
     decay_rate_relative: float | None = None
+    knee_relative: float | None = None
 
 
 @dataclass
@@ -65,6 +66,7 @@ class GoldenTolerances:
     spectral_envelope_db: float = 1.0
     contact_time_relative: float = 0.01
     energy_absolute: float = 1e-9
+    knee_relative: float = 0.05
     partials: dict[int, PartialTolerance] = field(default_factory=dict)
 
 
@@ -202,6 +204,7 @@ def parse_golden(text: str) -> GoldenFeatures:
             "spectral_envelope_db",
             "contact_time_relative",
             "energy_absolute",
+            "knee_relative",
         ):
             v = _optional_number(default, name, "tolerances.default.")
             if v is not None:
@@ -216,6 +219,7 @@ def parse_golden(text: str) -> GoldenFeatures:
                 _optional_number(value, "frequency_cents", where),
                 _optional_number(value, "amplitude_db", where),
                 _optional_number(value, "decay_rate_relative", where),
+                _optional_number(value, "knee_relative", where),
             )
     return g
 
@@ -273,6 +277,7 @@ def serialize_golden(g: GoldenFeatures) -> str:
             "spectral_envelope_db": t.spectral_envelope_db,
             "contact_time_relative": t.contact_time_relative,
             "energy_absolute": t.energy_absolute,
+            "knee_relative": t.knee_relative,
         }
     }
     if t.partials:
@@ -285,6 +290,7 @@ def serialize_golden(g: GoldenFeatures) -> str:
                     ("frequency_cents", pt.frequency_cents),
                     ("amplitude_db", pt.amplitude_db),
                     ("decay_rate_relative", pt.decay_rate_relative),
+                    ("knee_relative", pt.knee_relative),
                 )
                 if v is not None
             }
@@ -385,6 +391,13 @@ def compare_golden(ref: GoldenFeatures, cand: GoldenFeatures) -> ComparisonResul
                     f"{name}.second_decay_rate",
                     _relative(cp.second_decay.sigma_per_s, rp.second_decay.sigma_per_s),
                     d_tol,
+                    "relative",
+                )
+                _add(
+                    out,
+                    f"{name}.knee_s",
+                    _relative(cp.second_decay.knee_s, rp.second_decay.knee_s),
+                    tol.knee_relative if over.knee_relative is None else over.knee_relative,
                     "relative",
                 )
     known = {p.index for p in ref.partials}

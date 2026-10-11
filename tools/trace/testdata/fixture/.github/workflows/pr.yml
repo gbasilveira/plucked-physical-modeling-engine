@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: MIT
+# Fixture workflow for the traceability tests (V1-T1); never run.
+name: pr
+
+on: push
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # Covers: A2-R2
+      - name: ruff check
+        run: uv run ruff check

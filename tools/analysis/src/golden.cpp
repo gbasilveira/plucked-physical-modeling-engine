@@ -143,6 +143,7 @@ GoldenFeatures parse_golden(std::string_view json_text) {
             set("spectral_envelope_db", g.tolerances.spectral_envelope_db);
             set("contact_time_relative", g.tolerances.contact_time_relative);
             set("energy_absolute", g.tolerances.energy_absolute);
+            set("knee_relative", g.tolerances.knee_relative);
         }
         if (t.contains("partials")) {
             for (const auto& [key, value] : t.at("partials").items()) {
@@ -151,6 +152,7 @@ GoldenFeatures parse_golden(std::string_view json_text) {
                 pt.frequency_cents = optional_number(value, "frequency_cents", where);
                 pt.amplitude_db = optional_number(value, "amplitude_db", where);
                 pt.decay_rate_relative = optional_number(value, "decay_rate_relative", where);
+                pt.knee_relative = optional_number(value, "knee_relative", where);
                 try {
                     g.tolerances.partials[std::stoi(key)] = pt;
                 } catch (const std::exception&) {
@@ -201,7 +203,8 @@ std::string serialize_golden(const GoldenFeatures& g) {
                 {"decay_rate_relative", g.tolerances.decay_rate_relative},
                 {"spectral_envelope_db", g.tolerances.spectral_envelope_db},
                 {"contact_time_relative", g.tolerances.contact_time_relative},
-                {"energy_absolute", g.tolerances.energy_absolute}};
+                {"energy_absolute", g.tolerances.energy_absolute},
+                {"knee_relative", g.tolerances.knee_relative}};
     Json tol = {{"default", def}};
     if (!g.tolerances.partials.empty()) {
         Json overrides = Json::object();
@@ -215,6 +218,9 @@ std::string serialize_golden(const GoldenFeatures& g) {
             }
             if (pt.decay_rate_relative) {
                 o["decay_rate_relative"] = *pt.decay_rate_relative;
+            }
+            if (pt.knee_relative) {
+                o["knee_relative"] = *pt.knee_relative;
             }
             overrides[std::to_string(index)] = o;
         }
@@ -335,6 +341,8 @@ ComparisonResult compare_golden(const GoldenFeatures& ref, const GoldenFeatures&
                 add(out, name + ".second_decay_rate",
                     relative_diff(cand_second->sigma_per_s, ref_second->sigma_per_s), decay_tol,
                     "relative");
+                add(out, name + ".knee_s", relative_diff(cand_second->knee_s, ref_second->knee_s),
+                    over.knee_relative.value_or(tol.knee_relative), "relative");
             }
         }
     }

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "known_gaps": [
+    {
+      "id": "P0.1-R5",
+      "phase": "P0.1",
+      "kind": "requirement_uncovered",
+      "reason": "No test checks that LICENSE, CONTRIBUTING.md, CODEOWNERS, .editorconfig and .gitattributes exist and route /data to Git LFS; only the SPDX headers (P0.1-T3) and the clang-format and clang-tidy configurations (lint job) are exercised. Needs a new repository-files test.",
+      "owner": "orchestrator to route (new test; P0.1 follow-up)"
+    },
+    {
+      "id": "P0.1-R6",
+      "phase": "P0.1",
+      "kind": "requirement_uncovered",
+      "reason": "No test checks the ADR template and ADR-0001 to ADR-0003 (documentation files verified only by review). Needs a new test, or acceptance by the gate report.",
+      "owner": "orchestrator to route (new test; P0.1 follow-up)"
+    },
+    {
+      "id": "P0.2-T3",
+      "phase": "P0.2",
+      "kind": "test_missing",
+      "reason": "P0.2-T3 (all workflows pass on an empty change) is a demonstration run, evidenced by workflow runs in docs/gates/G0.md; no test or annotatable step can carry it.",
+      "owner": "planner/orchestrator (accept by gate report, or define a carrier)"
+    },
+    {
+      "id": "P0.4-R1",
+      "phase": "P0.4",
+      "kind": "requirement_uncovered",
+      "reason": "Needs a Covers: comment on a test in engine/tests/interfaces/ (for example P0.4-T1 every public header compiles on its own), which is an ICR-0001 path V1 must not edit.",
+      "owner": "orchestrator to route after the ICR-0001 merge (comment-only edit)"
+    },
+    {
+      "id": "P0.4-R2",
+      "phase": "P0.4",
+      "kind": "requirement_uncovered",
+      "reason": "Needs a Covers: comment on P0.4-T1 (one translation unit per header, headers split by module) in engine/tests/interfaces/, an ICR-0001 path V1 must not edit.",
+      "owner": "orchestrator to route after the ICR-0001 merge (comment-only edit)"
+    },
+    {
+      "id": "P0.4-R6",
+      "phase": "P0.4",
+      "kind": "requirement_uncovered",
+      "reason": "The interfaces-v1 tag and source-compatibility rule have no test; 'P0.4-T1 ICR-0001 interfaces version is 2' (engine/tests/interfaces/, an ICR-0001 path) checks the version constant only. Needs a Covers: comment there or a new test.",
+      "owner": "orchestrator to route after the ICR-0001 merge"
+    }
+  ]
+}

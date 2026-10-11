@@ -2,13 +2,17 @@
 #
 # Test and benchmark helpers (P0.3-R1, P0.3-R6, P0.3-R5).
 #
-#   pme_add_doctest(<target> SOURCES <files...> [LIBRARIES <targets...>] LABELS <labels...> [RT])
+#   pme_add_doctest(<target> SOURCES <files...> [LIBRARIES <targets...>] LABELS <labels...> [RT]
+#                   [TIMEOUT <seconds>])
 #   pme_add_benchmark(<target> SOURCES <files...> [LIBRARIES <targets...>] [ARGS <args...>])
 #
 # Every doctest TEST_CASE becomes its own CTest test (discovered at build time by running the
 # executable with --list-test-cases), so JUnit reports and `ctest -R` work per test case. Test names
 # must not contain a comma, an asterisk or a question mark (doctest filters treat them specially);
 # tools/tests/test_p0_3_r1.py enforces this.
+#
+# TIMEOUT is the CTest timeout in seconds of every discovered test case (default 300; the rtcheck
+# death tests pass 120). The discovery script writes it into set_tests_properties.
 #
 # This file doubles as the discovery script: build rules run `cmake -DPME_DOCTEST_DISCOVER=ON ... -P`
 # on it, which is why the first block below handles script mode.
@@ -37,7 +41,7 @@ function(_pme_doctest_discover)
     string(APPEND script
       "add_test([==[${line}]==] [==[${TEST_EXECUTABLE}]==] [==[--test-case=${filter}]==])\n"
       "set_tests_properties([==[${line}]==] PROPERTIES WORKING_DIRECTORY [==[${TEST_WORKING_DIR}]==]"
-      " LABELS [==[${labels}]==])\n")
+      " LABELS [==[${labels}]==] TIMEOUT ${TEST_TIMEOUT})\n")
     list(APPEND names "${line}")
   endforeach()
   string(APPEND script "set(${TEST_TARGET}_TESTS [==[${names}]==])\n")
@@ -51,13 +55,20 @@ endif()
 
 # ---- Helpers ----------------------------------------------------------------------------------
 function(pme_add_doctest target)
-  cmake_parse_arguments(PARSE_ARGV 1 ARG "RT" "" "SOURCES;LIBRARIES;LABELS")
+  cmake_parse_arguments(PARSE_ARGV 1 ARG "RT" "TIMEOUT" "SOURCES;LIBRARIES;LABELS")
   if(NOT ARG_SOURCES)
     message(FATAL_ERROR "pme_add_doctest(${target}): SOURCES is required")
   endif()
   if(NOT ARG_LABELS)
     message(FATAL_ERROR "pme_add_doctest(${target}): LABELS is required "
                         "(one or more of: ${PME_TEST_LABELS})")
+  endif()
+  if(NOT DEFINED ARG_TIMEOUT)
+    set(ARG_TIMEOUT 300)
+  endif()
+  if(NOT ARG_TIMEOUT MATCHES "^[1-9][0-9]*$")
+    message(FATAL_ERROR "pme_add_doctest(${target}): TIMEOUT must be a positive integer number of "
+                        "seconds, got '${ARG_TIMEOUT}'")
   endif()
   set(labels ${ARG_LABELS})
   if(ARG_RT)
@@ -92,6 +103,7 @@ function(pme_add_doctest target)
       -D "TEST_EXECUTABLE=$<TARGET_FILE:${target}>"
       -D "TEST_WORKING_DIR=${CMAKE_CURRENT_BINARY_DIR}"
       -D "TEST_LABELS=${label_arg}"
+      -D "TEST_TIMEOUT=${ARG_TIMEOUT}"
       -D "CTEST_FILE=${tests_file}"
       -P "${CMAKE_CURRENT_FUNCTION_LIST_FILE}"
     VERBATIM)

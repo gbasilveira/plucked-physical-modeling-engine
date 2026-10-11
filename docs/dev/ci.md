@@ -41,6 +41,7 @@ required checks of `main` (`tools/ci/required_checks.json`, [CONTRIBUTING.md](..
 | `python (linux)`, `python (macos)`, `python (windows)` | per system | `uv sync --locked --all-extras`, `pytest --junitxml` |
 | `coverage` | ubuntu-24.04 | `linux-coverage` (GCC), gcovr HTML and Cobertura, coverage gate |
 | `deps` | ubuntu-24.04 | configure with `PME_FETCH_ALL_DEPS=ON` (every pin resolves) |
+| `traceability` | ubuntu-24.04 | V1: downloads every `junit-*` artifact, builds the traceability matrix, uploads it as the artifact `traceability`, fails on a gap in a `complete` phase (see below) |
 
 Every `build` step per preset is `cmake --preset`, `cmake --build --preset`,
 `ctest --preset <p> -LE "perf|fuzz|soak" --output-on-failure --output-junit <file>`. Nothing
@@ -72,6 +73,35 @@ action, no write permission). The coverage job uploads `coverage/` (HTML and `co
 
 Retention: pull-request artifacts 14 days, nightly 30 days, release 90 days. "Coverage upload"
 means a workflow artifact; no external coverage service is used, as that would need a token.
+
+### Traceability job and artifact (V1)
+
+The last job of `pr.yml` (and of `nightly.yml`) is `traceability`; the whole tool is described in
+[traceability.md](traceability.md).
+
+- **`pr.yml` `traceability`** (required check): `needs: [lint, build, python, coverage, deps]`
+  with `if: always()` (so it runs after a failed job too: a failing test is then a gap). The
+  orchestrator adds `plugin` and `reference-python` to `needs` when it merges D1 and P0.5. Steps:
+  download every `junit-*` artifact of the run into `junit/` (one directory per artifact), write
+  `toJSON(needs)` to `job-results.json`, run `python3 tools/trace/build_matrix.py ... --fail-on-gaps`
+  (system Python 3.12, standard library only), append the per-phase table to the job summary,
+  and upload `traceability.html` and `traceability.json` as the artifact **`traceability`**
+  (retention 14 days, as for the other reports). The job fails when a phase marked `complete` in
+  `docs/status/phase-status.md` has a gap that is not on the allow-list.
+- **`nightly.yml` `traceability`**: the same over the nightly artifacts (retention 30 days); it
+  prints and uploads the matrix and **never fails the run**.
+- **Allow-list** `tools/trace/known-gaps.json` (entries: `id`, `phase`, `reason`, `owner`): a gap
+  that cannot be closed with a link (`Covers:` comment) because it needs a new test or an edit
+  outside V1's paths is listed here while the orchestrator routes it. The list is empty when
+  everything is traced; the matrix reports entries that match no gap.
+- **Reading it for a gate report:** open the `traceability` artifact of the run on the gate commit.
+  The "Gates" table gives, per gate, the required phases that are not complete, the gaps inside
+  them, and the ORC rows still missing for G1, G2 and G6. "V1 matrix has no gaps for ..." in a gate
+  criterion is the gap count of the named phases in the "Phases" table. The JSON
+  (`schema_version` 1) carries the same data per requirement, test and oracle with the jobs and
+  systems that ran it.
+- The `build` job's extra pytest steps (bench smoke, WAV cross-language) write their own JUnit
+  files into `reports/`, so their results reach the matrix too.
 
 ### P0.2-T2: showing the real `lint` job fail
 
@@ -108,6 +138,8 @@ Jobs:
   `ctest -LE "perf|fuzz|soak"`: ASan and UBSan over unit and integration tests; TSan over
   whatever tests exist until C5 adds the scheduler tests.
 - `coverage-build (macos|windows)`: configure and build the coverage presets, nothing else.
+- `traceability`: the traceability matrix over the run's `junit-*` artifacts, uploaded as the
+  artifact `traceability`; reports gaps, never fails (V1, see above).
 - `performance`, `fuzz`, `soak`: `ctest -L perf|fuzz|soak` on Linux (`linux-release`). With no
   such tests they print "no <label> tests yet" and succeed. `--no-tests=ignore` is used there
   and nowhere else, with a comment in the workflow.
