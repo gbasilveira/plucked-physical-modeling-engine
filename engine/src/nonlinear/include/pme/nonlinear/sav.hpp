@@ -81,6 +81,7 @@ public:
     /// (psi = sqrt(2 eps0), V^{n-1} = 0). `InvalidArgument` if fs <= 0, nModes + nLumped == 0,
     /// maxDashpots > kMaxDashpots or a parameter is not positive; the segment is unchanged then.
     /// Thread: non-audio. Allocates: yes.
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): counts in SPEC-NL order
     [[nodiscard]] Status configure(std::size_t nModes, std::size_t nLumped, std::size_t maxDashpots,
                                    double fs, const SavParams& params = {});
 

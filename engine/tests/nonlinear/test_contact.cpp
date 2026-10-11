@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
 #include <numbers>
 #include <vector>
 
@@ -46,15 +45,18 @@ TEST_CASE("A3-R1 configure rejects more than 3 dashpots and invalid arguments") 
     CHECK(seg.setLumped(0, -1.0) == pme::Status::InvalidArgument);
 }
 
-TEST_CASE("A3-R1 a lumped coordinate has beta 1, kappa 0 and gamma dt squared; padding stays zero") {
+TEST_CASE(
+    "A3-R1 a lumped coordinate has beta 1 and kappa 0 and gamma dt squared and padding stays "
+    "zero") {
     const std::size_t nModes = 18;
     SavSegment<float> seg;
     REQUIRE(seg.configure(nModes, 3, 3, kFs) == pme::Status::Ok);
     CHECK(seg.paddedSize() == 32U);
     for (std::size_t i = 0; i < nModes; ++i) {
         pme::osc::OscCoeffsF64 c;
-        REQUIRE(pme::osc::compileOscillatorF64(2.0 * std::numbers::pi * (200.0 + 30.0 * static_cast<double>(i)), 1.0,
-                                               kFs, c) == pme::Status::Ok);
+        REQUIRE(pme::osc::compileOscillatorF64(
+                    2.0 * std::numbers::pi * (200.0 + 30.0 * static_cast<double>(i)), 1.0, kFs,
+                    c) == pme::Status::Ok);
         REQUIRE(seg.setCoordinate(i, c, 0.002) == pme::Status::Ok);
     }
     for (std::size_t i = nModes; i < seg.size(); ++i) {
@@ -178,8 +180,8 @@ TEST_CASE("A3-T4 the reset rule fires once per separation and never raises energ
         vPrev = vNow;
         ePrev = e;
     }
-    std::printf("A3-T4 contacts %d, reset counter %u, worst energy rise at a reset step %.3e\n",
-                contacts, seg.counters().resets, worstRise);
+    MESSAGE("A3-T4 contacts " << contacts << ", reset counter " << seg.counters().resets
+                              << ", worst energy rise at a reset step " << worstRise);
     CHECK(contacts == 20);
     CHECK(seg.counters().resets == static_cast<std::uint32_t>(expectedResets));
     CHECK(worstRise <= 1e-12);
@@ -228,11 +230,9 @@ TEST_CASE("A3-R4 persistent contact relaxes psi only after 50 ms and never raise
         }
         REQUIRE(seg.q()[0] > 0.0);  // the contact is held for the whole 200 ms
     }
-    std::printf("A3-R4 first drift correction at sample %d (threshold %d), corrections %u, worst "
-                "energy rise %.3e, final psi/psi* %.6f\n",
-                firstCorrection, contactSamplesNeeded, seg.counters().driftCorrections, worstRise,
-                seg.psi() / std::sqrt(2.0 * (wall.value(std::span<const double>(seg.q(), 1)) +
-                                             seg.params().eps0)));
+    MESSAGE("A3-R4 first drift correction at sample "
+            << firstCorrection << " (threshold " << contactSamplesNeeded << "), corrections "
+            << seg.counters().driftCorrections << ", worst energy rise " << worstRise);
     CHECK(firstCorrection > contactSamplesNeeded - 2);  // not before 50 ms of contact
     CHECK(firstCorrection <= contactSamplesNeeded + 2);
     CHECK(seg.counters().driftCorrections > 1000U);
@@ -267,8 +267,9 @@ TEST_CASE("A3-R2 several potentials add and share one psi; a dashpot with no con
     REQUIRE(seg.configure(2, 0, 2, kFs) == pme::Status::Ok);
     for (std::size_t i = 0; i < 2; ++i) {
         pme::osc::OscCoeffsF64 c;
-        REQUIRE(pme::osc::compileOscillatorF64(2.0 * std::numbers::pi * (300.0 + 100.0 * static_cast<double>(i)), 0.0,
-                                               kFs, c) == pme::Status::Ok);
+        REQUIRE(pme::osc::compileOscillatorF64(
+                    2.0 * std::numbers::pi * (300.0 + 100.0 * static_cast<double>(i)), 0.0, kFs,
+                    c) == pme::Status::Ok);
         REQUIRE(seg.setCoordinate(i, c, 1.0) == pme::Status::Ok);
     }
     seg.q()[0] = 1e-3;

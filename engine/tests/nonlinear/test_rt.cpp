@@ -20,8 +20,9 @@ TEST_CASE("A3-R2 savStep with r = 1 and r = 4 allocates nothing") {
     REQUIRE(seg.configure(n - 1, 1, 3, fs) == pme::Status::Ok);
     for (std::size_t i = 0; i + 1 < n; ++i) {
         pme::osc::OscCoeffsF64 c;
-        REQUIRE(pme::osc::compileOscillatorF64(2.0 * std::numbers::pi * (100.0 + 60.0 * static_cast<double>(i)), 1.0, fs,
-                                               c) == pme::Status::Ok);
+        REQUIRE(pme::osc::compileOscillatorF64(
+                    2.0 * std::numbers::pi * (100.0 + 60.0 * static_cast<double>(i)), 1.0, fs, c) ==
+                pme::Status::Ok);
         REQUIRE(seg.setCoordinate(i, c, 1.0) == pme::Status::Ok);
         seg.q()[i] = 1e-4F * static_cast<float>(i % 5);
     }

@@ -4,8 +4,8 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
-#include <cstdio>
 #include <vector>
 
 #include "pme/nonlinear/sav.hpp"
@@ -14,6 +14,7 @@
 namespace {
 
 // Dense solve of A x = b by LU with partial pivoting (written independently of the engine).
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): matrix then right-hand side
 std::vector<double> denseSolve(std::vector<double> A, std::vector<double> b, std::size_t n) {
     for (std::size_t col = 0; col < n; ++col) {
         std::size_t piv = col;
@@ -111,7 +112,7 @@ TEST_CASE("A3-T1 Woodbury result equals a dense solve within 1e-12 on random sys
         worst = std::max(worst, rel);
         REQUIRE(rel <= 1e-12);
     }
-    std::printf("A3-T1 worst relative error over 1000 systems: %.3e\n", worst);
+    MESSAGE("A3-T1 worst relative error over 1000 systems: " << worst);
 }
 
 TEST_CASE("A3-R3 r = 0 copies and aliasing z with a is allowed") {
@@ -121,11 +122,11 @@ TEST_CASE("A3-R3 r = 0 copies and aliasing z with a is allowed") {
     CHECK(z == a);
     const std::vector<double> h{0.5, 0.5, 0.5};
     const std::vector<double> w{1.0, 1.0, 1.0};
-    const double* hp[1] = {h.data()};
-    const double* wp[1] = {w.data()};
+    const std::array<const double*, 1> hp{h.data()};
+    const std::array<const double*, 1> wp{w.data()};
     std::vector<double> alias = a;
-    pme::nl::lowRankSolve(alias.data(), alias.data(), 3, 1, hp, wp);
-    pme::nl::lowRankSolve(z.data(), a.data(), 3, 1, hp, wp);
+    pme::nl::lowRankSolve(alias.data(), alias.data(), 3, 1, hp.data(), wp.data());
+    pme::nl::lowRankSolve(z.data(), a.data(), 3, 1, hp.data(), wp.data());
     CHECK(alias == z);
     // r = 1 closed form: a - h (w.a) / (1 + w.h) with w.a = 6, w.h = 1.5.
     CHECK(z[0] == doctest::Approx(1.0 - 0.5 * 6.0 / 2.5));

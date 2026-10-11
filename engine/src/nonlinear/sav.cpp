@@ -24,6 +24,7 @@ constexpr std::size_t kLane = osc::kBankLane;
 // ---- SavSegment ----------------------------------------------------------------------------
 
 template <class S>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): counts in SPEC-NL order
 Status SavSegment<S>::configure(std::size_t nModes, std::size_t nLumped, std::size_t maxDashpots,
                                 double fs, const SavParams& params) {
     const std::size_t n = nModes + nLumped;
@@ -59,7 +60,8 @@ Status SavSegment<S>::configure(std::size_t nModes, std::size_t nLumped, std::si
 
 template <class S>
 void SavSegment<S>::deriveConstants() noexcept {
-    driftThresholdSamples_ = static_cast<std::uint32_t>(std::llround(params_.driftAfterSeconds * fs_));
+    driftThresholdSamples_ =
+        static_cast<std::uint32_t>(std::llround(params_.driftAfterSeconds * fs_));
     driftDecay_ = std::exp(-dt_ / params_.driftTau);
 }
 
@@ -89,7 +91,7 @@ Status SavSegment<S>::setCoordinate(std::size_t i, const osc::OscCoeffsF64& c,
 template <class S>
 Status SavSegment<S>::setLumped(std::size_t i, double mass) noexcept {
     osc::OscCoeffsF64 c;
-    c.beta = 1.0;       // SPEC-NL "Coordinates": omegaHat = sigmaHat = 0 ...
+    c.beta = 1.0;  // SPEC-NL "Coordinates": omegaHat = sigmaHat = 0 ...
     c.kappa = 0.0;
     c.gamma = dt_ * dt_;  // ... so gamma = dt^2.
     return setCoordinate(i, c, mass);
@@ -124,6 +126,7 @@ template class SavSegment<double>;
 
 // ---- low-rank solve --------------------------------------------------------------------------
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): n then r, documented in the header
 void lowRankSolve(double* z, const double* a, std::size_t n, std::size_t r, const double* const* h,
                   const double* const* w) noexcept {
     if (r == 0) {
@@ -217,8 +220,9 @@ void savStep(SavSegment<S>& seg, std::span<const Potential<S>* const> potentials
 
     // Force per unit mass, F^n / m_i (SPEC-NL discrete scheme).
     for (std::size_t i = 0; i < n; ++i) {
-        f[i] = (i < explicitForce.size()) ? static_cast<S>(static_cast<double>(explicitForce[i]) / mass[i])
-                                          : S{};
+        f[i] = (i < explicitForce.size())
+                   ? static_cast<S>(static_cast<double>(explicitForce[i]) / mass[i])
+                   : S{};
     }
 
     // V^n = sum of the potentials (SPEC-NL SAV formulation: several potentials add).
@@ -254,7 +258,8 @@ void savStep(SavSegment<S>& seg, std::span<const Potential<S>* const> potentials
     }
     // SPEC-NL Drift control 2 (SHOULD): relax psi towards sqrt(2(V + eps0)) when above it, once
     // the contact has lasted longer than the threshold.
-    if (seg.params_.driftRelaxation && vNow > 0.0 && seg.contactSamples_ > seg.driftThresholdSamples_) {
+    if (seg.params_.driftRelaxation && vNow > 0.0 &&
+        seg.contactSamples_ > seg.driftThresholdSamples_) {
         const double psiStar = std::sqrt(2.0 * (vNow + seg.params_.eps0));
         const double psiMag = std::abs(seg.psi_);
         if (psiMag > psiStar) {  // lowers |psi|, hence psi^2: only removes energy
@@ -266,7 +271,8 @@ void savStep(SavSegment<S>& seg, std::span<const Potential<S>* const> potentials
 
     // SPEC-NL Skipping: V^n = 0 and every R^n = 0 -> free oscillator update, no gradient, no solve.
     if (vNow == 0.0 && !anyDamping) {
-        osc::stepModes<S, S>(q, u, beta, kappa, gamma, f, n, qPrev, uPrev);  // SPEC-OSC difference form
+        osc::stepModes<S, S>(q, u, beta, kappa, gamma, f, n, qPrev,
+                             uPrev);  // SPEC-OSC difference form
         seg.vPrev_ = 0.0;
         ++seg.counters_.solvesSkipped;
         return;
@@ -336,7 +342,7 @@ void savStep(SavSegment<S>& seg, std::span<const Potential<S>* const> potentials
         hCol[r] = seg.h_[r].data();
         wCol[r] = seg.w_[r].data();
         for (std::size_t i = 0; i < n; ++i) {
-            const double ci = static_cast<double>(d.c[i]);
+            const auto ci = static_cast<double>(d.c[i]);
             hCol[r][i] = d.R * static_cast<double>(gamma[i]) * ci / mass[i];
             wCol[r][i] = ci / (2.0 * dt);
         }
@@ -363,11 +369,13 @@ void savStep(SavSegment<S>& seg, std::span<const Potential<S>* const> potentials
         known[j] = s;
     }
 
-    // a = free update + sum_j h_j (w_j^T z^{n-1}) - h_g psi^{n-1/2}  (SPEC-NL explicit low-rank solve).
+    // a = free update + sum_j h_j (w_j^T z^{n-1}) - h_g psi^{n-1/2}  (SPEC-NL explicit low-rank
+    // solve).
     double* const a = seg.a_.data();
     const double psi = seg.psi_;
     for (std::size_t i = 0; i < n; ++i) {
-        const S uFree = beta[i] * u[i] - kappa[i] * q[i] + gamma[i] * f[i];  // SPEC-OSC difference form
+        const S uFree =
+            beta[i] * u[i] - kappa[i] * q[i] + gamma[i] * f[i];  // SPEC-OSC difference form
         double ai = static_cast<double>(q[i]) + static_cast<double>(uFree);
         for (std::size_t j = 0; j < r; ++j) {
             ai += hCol[j][i] * known[j];
@@ -381,7 +389,8 @@ void savStep(SavSegment<S>& seg, std::span<const Potential<S>* const> potentials
     // z^{n+1} = a - H (I + W^T H)^{-1} W^T a  (Woodbury, SPEC-NL).
     lowRankSolve(a, a, n, r, hConst.data(), wConst.data());
 
-    // u^{n+1} = z^{n+1} - q^n; q^{n+1} = q^n + u^{n+1}; psi^{n+1/2} = psi^{n-1/2} + 1/2 g^T (z^{n+1} - z^{n-1}).
+    // u^{n+1} = z^{n+1} - q^n; q^{n+1} = q^n + u^{n+1}; psi^{n+1/2} = psi^{n-1/2} + 1/2 g^T
+    // (z^{n+1} - z^{n-1}).
     double dPsi = 0.0;
     for (std::size_t i = 0; i < n; ++i) {
         const S uNew = static_cast<S>(a[i] - static_cast<double>(q[i]));
@@ -410,9 +419,10 @@ double savEnergy(const SavSegment<S>& seg) noexcept {
     const std::size_t n = seg.size();
     for (std::size_t i = 0; i < n; ++i) {
         // SPEC-NL: sum m_i H_i, H_i from SPEC-OSC discrete energy.
-        e += seg.mass()[i] * osc::modeEnergy(seg.omegaHat2()[i], static_cast<double>(seg.qPrev()[i]),
-                                             static_cast<double>(seg.q()[i]),
-                                             static_cast<double>(seg.u()[i]), seg.dt());
+        e +=
+            seg.mass()[i] * osc::modeEnergy(seg.omegaHat2()[i], static_cast<double>(seg.qPrev()[i]),
+                                            static_cast<double>(seg.q()[i]),
+                                            static_cast<double>(seg.u()[i]), seg.dt());
     }
     return e + 0.5 * seg.psi() * seg.psi() - seg.params().eps0;
 }

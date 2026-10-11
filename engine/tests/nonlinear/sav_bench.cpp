@@ -35,7 +35,8 @@ struct Fixture {
         for (std::size_t i = 0; i + 1 < nz; ++i) {
             pme::osc::OscCoeffsF64 c;
             static_cast<void>(pme::osc::compileOscillatorF64(
-                2.0 * std::numbers::pi * (60.0 + 8000.0 * static_cast<double>(i) / static_cast<double>(nz)),
+                2.0 * std::numbers::pi *
+                    (60.0 + 8000.0 * static_cast<double>(i) / static_cast<double>(nz)),
                 1.0, kFs, c));
             static_cast<void>(seg.setCoordinate(i, c, 1.0));
             seg.q()[i] = 1e-5F;
@@ -83,6 +84,7 @@ struct Fixture {
     }
 };
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): size and rank
 Fixture& fixture(std::size_t nz, std::size_t dashpots, bool contact) {
     static std::vector<std::unique_ptr<Fixture>> all;
     all.push_back(std::make_unique<Fixture>(nz, contact));

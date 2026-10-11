@@ -7,9 +7,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
 #include <numbers>
 #include <span>
+#include <string>
 #include <vector>
 
 #include "pme/nonlinear/sav.hpp"
@@ -89,7 +89,7 @@ TEST_CASE("A3-T2 quartic potential across many modes conserves energy within 1e-
         pme::nl::savStep<double>(seg, pots, {}, {});
         drift = std::max(drift, std::abs(pme::nl::savEnergy(seg) - e0) / e0);
     }
-    std::printf("A3-T2 quartic: E0 = %.6e, max relative drift over 1e5 steps = %.3e\n", e0, drift);
+    MESSAGE("A3-T2 quartic: E0 = " << e0 << ", max relative drift over 1e5 steps = " << drift);
     CHECK(drift <= 1e-10);
 }
 
@@ -115,17 +115,18 @@ TEST_CASE("A3-T2 tension-modulation potential across many modes conserves energy
         pme::nl::savStep<double>(seg, pots, {}, {});
         drift = std::max(drift, std::abs(pme::nl::savEnergy(seg) - e0) / e0);
     }
-    std::printf("A3-T2 tension: E0 = %.6e, max relative drift over 1e5 steps = %.3e\n", e0, drift);
+    MESSAGE("A3-T2 tension: E0 = " << e0 << ", max relative drift over 1e5 steps = " << drift);
     CHECK(drift <= 1e-10);
 }
 
 TEST_CASE("A3-T3 any dashpot makes energy non-increasing and the balance closes") {
-    const std::array<DashpotCase, 6> cases{{{"r=1 aligned, constant R", 0, true, false},
-                                            {"r=1 aligned, state-dependent R", 0, true, true},
-                                            {"r=2 one separate dashpot", 1, false, false},
-                                            {"r=2 aligned plus one separate", 1, true, true},
-                                            {"r=4 three separate dashpots", 3, false, false},
-                                            {"r=4 three separate, state-dependent R", 3, false, true}}};
+    const std::array<DashpotCase, 6> cases{
+        {{"r=1 aligned, constant R", 0, true, false},
+         {"r=1 aligned, state-dependent R", 0, true, true},
+         {"r=2 one separate dashpot", 1, false, false},
+         {"r=2 aligned plus one separate", 1, true, true},
+         {"r=4 three separate dashpots", 3, false, false},
+         {"r=4 three separate, state-dependent R", 3, false, true}}};
     for (const DashpotCase& cs : cases) {
         CAPTURE(cs.name);
         Rng rng(31U);
@@ -185,8 +186,8 @@ TEST_CASE("A3-T3 any dashpot makes energy non-increasing and the balance closes"
             REQUIRE(diss >= 0.0);
             prev = e;
         }
-        std::printf("A3-T3 %-40s worst step increase %.3e, worst balance error %.3e, E end/E0 %.4f\n",
-                    cs.name, worstIncrease, worstBalance, prev / e0);
+        MESSAGE("A3-T3 " << std::string(cs.name) << ": worst step increase " << worstIncrease
+                         << ", worst balance error " << worstBalance << ", E end/E0 " << prev / e0);
         CHECK(worstIncrease <= 1e-13);
         CHECK(worstBalance <= 1e-12);
         CHECK(prev < 0.99 * e0);  // the dashpot actually removed energy

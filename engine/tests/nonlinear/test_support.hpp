@@ -20,7 +20,9 @@ public:
     /// Uniform in [0, 1).
     double uniform() { return static_cast<double>(eng_() >> 11U) * 0x1.0p-53; }
     double uniform(double lo, double hi) { return lo + (hi - lo) * uniform(); }
-    std::size_t index(std::size_t n) { return static_cast<std::size_t>(uniform() * static_cast<double>(n)); }
+    std::size_t index(std::size_t n) {
+        return static_cast<std::size_t>(uniform() * static_cast<double>(n));
+    }
 
 private:
     std::mt19937_64 eng_;
@@ -74,7 +76,7 @@ private:
     [[nodiscard]] double sum(std::span<const S> z) const noexcept {
         double s = 0.0;
         for (std::size_t i = 0; i < w_.size(); ++i) {
-            const double zi = static_cast<double>(z[i]);
+            const auto zi = static_cast<double>(z[i]);
             s += w_[i] * zi * zi;
         }
         return s;
@@ -88,6 +90,7 @@ private:
 template <class S>
 class WallPotential final : public Potential<S> {
 public:
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): wall, sign, K, p in physical order
     WallPotential(std::size_t index, double wall, double sign, double k, double p)
         : index_(index), wall_(wall), sign_(sign), k_(k), p_(p) {}
     [[nodiscard]] double value(std::span<const S> z) const noexcept override {
