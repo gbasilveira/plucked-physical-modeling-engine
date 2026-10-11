@@ -90,3 +90,8 @@ if(PME_BUILD_PLUGINS)
   add_subdirectory(plugin)
 endif()
 # ---- end D1 ----
+
+# ---- B1: instrument file loader ----
+add_subdirectory(engine/src/runtime/loader)
+add_subdirectory(engine/tests/loader)
+# ---- end B1 ----
