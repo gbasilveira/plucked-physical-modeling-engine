@@ -2,7 +2,8 @@
 # Plug-in shells (D1+). Built only with -DPME_BUILD_PLUGINS=ON (root CMakeLists.txt).
 #   common/ : format-independent controller layer (D1; D3 reuses it for LV2)
 #   clap/   : the CLAP plug-in (D1)
-# D2 and D3 add their directories here.
+#   lv2/    : the LV2 plug-in (D3; Linux only)
+# D2 adds its directory here.
 
 # A plug-in module is a shared library: every static library linked into it needs
 # position-independent code. The engine modules and the third-party libraries are created in
@@ -17,3 +18,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(common)
 add_subdirectory(clap)
+
+# D3: LV2 is built for Linux hosts only.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_subdirectory(lv2)
+endif()

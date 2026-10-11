@@ -29,4 +29,16 @@ inline constexpr const char* kPluginVersion = PME_PLUGIN_VERSION_STRING;
 /// Number of keys: one voice (note group) per key until B1/C1 give the instrument's group count.
 inline constexpr int kKeyCount = 128;
 
+// ---- LV2 (D3) -------------------------------------------------------------------------------
+// Each value below is a single-line string literal: plugin/lv2/CMakeLists.txt reads this header
+// with file(STRINGS ...) to name the bundle directory and the module, and the Turtle generator
+// writes the plug-in URI from it, so no other file spells these strings.
+
+/// LV2 plug-in URI (provisional, D-3). The reserved `.invalid` domain never resolves to anyone.
+inline constexpr const char* kLv2PluginUri = "https://pme.invalid/lv2/instrument";
+/// LV2 bundle directory name (provisional, D-3).
+inline constexpr const char* kLv2BundleDir = "pme.lv2";
+/// LV2 module base name, without prefix or suffix (provisional, D-3).
+inline constexpr const char* kLv2BinaryName = "pme_lv2";
+
 }  // namespace pme::plugin
