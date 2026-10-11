@@ -5,16 +5,19 @@
 //
 // Setup: lossless mode (sigma = 0), f = 0, 10 s at 48 kHz (480 000 steps).
 // Expected: H^(n+1/2) = 1/2 (u^(n+1)/dt)^2 + 1/2 omegaHat^2 q^n q^(n+1) is constant.
-// Tolerance: 1e-12 relative in float64, 1e-5 relative in float32 (max over n of
-// |H^(n+1/2) - H^(1/2)| / |H^(1/2)|). The tolerances are stated in this file; the golden-feature
-// default of pme_analysis (1e-9 absolute) is not used.
+// Tolerance (max over n of |H^(n+1/2) - H^(1/2)| / |H^(1/2)|): 1e-12 in float64; in float32
+// 24 u sqrt(N) / (1 - omegaHat^2 dt^2 / 4) with u = 2^-24, N = 480 000, omegaHat^2 from the
+// compiled oscillator (SPEC-ORC, SI-0009). The tolerances are stated in this file; the
+// golden-feature default of pme_analysis (1e-9 absolute) is not used.
 //
 // Method (independent of the engine sources): coefficients from the SPEC-OSC formulas (SI-0008
 // form) in float64, or from the public pme::compileOscillator for the float32 case; the difference
 // form u^(n+1) = beta u^n - kappa q^n + gamma f^n, q^(n+1) = q^n + u^(n+1) is written here. Energy
 // is always accumulated in float64. Frequencies: 27.5 Hz, 4186 Hz and 21 600 Hz (omega_d dt = 0.9
-// pi, near the 0.95 pi bandwidth limit). Initial state: q^0 = 1, u^0 = 0.5 sqrt(kappa) (about half
-// the peak velocity).
+// pi, near the 0.95 pi bandwidth limit; none within 1 % of fs/6, fs/4, fs/3). The float32 case runs
+// through the in-test kernel and through the engine's ModeBank; the float64 case through the
+// in-test kernel, an inline recursion and the engine's stepModes<double, double>. Initial state:
+// q^0 = 1, u^0 = 0.5 sqrt(kappa) (about half the peak velocity).
 //
 // The balance test checks H^(n+1/2) - H^(n-1/2) = dt [-2 sigmaHat (delta_t. q^n)^2 + f^n delta_t.
 // q^n] for a damped, forced mode in float64, 1e-12 relative to H^(n+1/2).
@@ -24,6 +27,8 @@
 #include <cmath>
 #include <cstddef>
 #include <pme/osc.hpp>
+#include <pme/osc/mode_bank.hpp>
+#include <pme/osc/oscillator.hpp>
 #include <pme/test/tolerance.hpp>
 #include <string>
 
@@ -39,7 +44,13 @@ constexpr double kFs = 48000.0;
 constexpr double kDt = 1.0 / kFs;
 constexpr std::size_t kSteps = 480000;  // 10 s
 constexpr double kTolF64 = 1e-12;
-constexpr double kTolF32 = 1e-5;
+constexpr double kU = 1.0 / 16777216.0;  // 2^-24
+constexpr double kSteps32 = 480000.0;    // N in the SI-0009 bound
+
+/// SPEC-ORC float32 bound 24 u sqrt(N) / (1 - omegaHat^2 dt^2 / 4).
+double float32Bound(double omegaHat2) {
+    return 24.0 * kU * std::sqrt(kSteps32) / (1.0 - omegaHat2 * kDt * kDt / 4.0);
+}
 
 struct FreqCase {
     double hz;
@@ -101,6 +112,30 @@ TEST_CASE("ORC-02 energy is constant in float64") {
                             " kernel=" + pme::oracle::sci(driftKernel));
         CHECK(driftInline <= kTolF64);
         CHECK(driftKernel <= kTolF64);
+
+        // The engine's templated kernel in float64, with the engine's float64 coefficients.
+        pme::osc::OscCoeffsF64 ec{};
+        const bool ok = pme::osc::compileOscillatorF64(omega, 0.0, kFs, ec) == pme::Status::Ok;
+        REQUIRE(ok);
+        PME_CHECK_REL(ec.omegaHat2, c.omegaHat2, 1e-13);
+        PME_CHECK_REL(ec.kappa, c.kappa, 1e-13);
+        double q = 1.0;
+        double u = 0.5 * std::sqrt(c.kappa);
+        const double force = 0.0;
+        double h0 = 0.0;
+        double worst = 0.0;
+        for (std::size_t n = 0; n < kSteps; ++n) {
+            const double qNow = q;
+            pme::osc::stepModes<double, double>(&q, &u, &ec.beta, &ec.kappa, &ec.gamma, &force, 1);
+            const double h = pme::osc::modeEnergy(ec.omegaHat2, qNow, q, u, kDt);
+            if (n == 0) {
+                h0 = h;
+            }
+            worst = std::max(worst, std::fabs(h - h0) / std::fabs(h0));
+        }
+        pme::oracle::report(std::string("ORC-02 float64 ") + fc.label +
+                            ": engine stepModes drift=" + pme::oracle::sci(worst));
+        CHECK(worst <= kTolF64);
     }
 }
 
@@ -116,13 +151,23 @@ void runFloat32(const FreqCase& fc) {
     const Coeffs64 ref = pme::oracle::coefficients64(omega, 0.0, kFs);
     PME_CHECK_REL(oc.omegaHat2, ref.omegaHat2, 1e-13);
 
+    const double tol = float32Bound(oc.omegaHat2);
+    // The compiled coefficients equal the in-test SPEC values (float32 fields correctly rounded).
+    CHECK(oc.beta == static_cast<float>(ref.beta));
+    CHECK(oc.kappa == static_cast<float>(ref.kappa));
+    CHECK(oc.gamma == static_cast<float>(ref.gamma));
+    PME_CHECK_REL(oc.sigmaHat, ref.sigmaHat, 1e-13);
+
+    const auto q0 = 1.0F;
+    const auto u0 = static_cast<float>(0.5 * std::sqrt(ref.kappa));
+
+    // In-test SPEC kernel.
     Oscillator<float> osc;
     osc.beta = oc.beta;
     osc.kappa = oc.kappa;
     osc.gamma = oc.gamma;
-    osc.q = 1.0F;
-    osc.u = static_cast<float>(0.5 * std::sqrt(ref.kappa));
-
+    osc.q = q0;
+    osc.u = u0;
     double h0 = 0.0;
     double worst = 0.0;
     for (std::size_t n = 0; n < kSteps; ++n) {
@@ -135,9 +180,35 @@ void runFloat32(const FreqCase& fc) {
         }
         worst = std::max(worst, std::fabs(h - h0) / std::fabs(h0));
     }
-    pme::oracle::report(std::string("ORC-02 float32 ") + fc.label +
-                        ": max relative drift=" + pme::oracle::sci(worst) + " (limit 1e-05)");
-    CHECK(worst <= kTolF32);
+    pme::oracle::report(std::string("ORC-02 float32 [in-test kernel] ") + fc.label +
+                        ": max relative drift=" + pme::oracle::sci(worst) + " tolerance=" +
+                        pme::oracle::sci(tol) + " ratio=" + pme::oracle::sci(worst / tol));
+    CHECK(worst <= tol);
+
+    // Engine ModeBank (float32).
+    pme::osc::ModeBank bank;
+    bank.resize(1);
+    bank.setMode(0, oc);
+    bank.q()[0] = q0;
+    bank.u()[0] = u0;
+    const std::array<float, 1> noForce{0.0F};
+    h0 = 0.0;
+    double worstBank = 0.0;
+    for (std::size_t n = 0; n < kSteps; ++n) {
+        const auto qNow = static_cast<double>(bank.q()[0]);
+        bank.step(noForce);
+        const double h =
+            pme::oracle::halfStepEnergy(static_cast<double>(bank.u()[0]), qNow,
+                                        static_cast<double>(bank.q()[0]), oc.omegaHat2, kDt);
+        if (n == 0) {
+            h0 = h;
+        }
+        worstBank = std::max(worstBank, std::fabs(h - h0) / std::fabs(h0));
+    }
+    pme::oracle::report(std::string("ORC-02 float32 [engine ModeBank] ") + fc.label +
+                        ": max relative drift=" + pme::oracle::sci(worstBank) + " tolerance=" +
+                        pme::oracle::sci(tol) + " ratio=" + pme::oracle::sci(worstBank / tol));
+    CHECK(worstBank <= tol);
 }
 
 }  // namespace
