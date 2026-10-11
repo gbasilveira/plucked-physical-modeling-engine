@@ -36,15 +36,11 @@ int runChildMode(const char* mode) {
     } else if (is("alloc-outside-scope")) {
         allocate();
     } else if (is("alloc-after-scope")) {
-        {
-            const ScopedRealtimeThread scope;
-        }
+        { const ScopedRealtimeThread scope; }
         allocate();
     } else if (is("alloc-nested-scope")) {
         const ScopedRealtimeThread outer;
-        {
-            const ScopedRealtimeThread inner;
-        }
+        { const ScopedRealtimeThread inner; }
         allocate();  // the outer scope is still active
     } else if (is("blocking-call-in-scope")) {
         const ScopedRealtimeThread scope;

@@ -8,6 +8,8 @@
 #include "pme/rtcheck/rtcheck.hpp"
 
 namespace {
+// The volatile store keeps the allocation observable. A test scratch variable, not engine state.
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 int* volatile g_sink = nullptr;
 }  // namespace
 
@@ -37,8 +39,10 @@ TEST_CASE("P0.2-R5 scope nesting is tracked without the trap") {
 
 TEST_CASE("P0.2-R5 allocation and blockingCall inside a scope do not abort without the trap") {
     const pme::rtcheck::ScopedRealtimeThread scope;
+    // NOLINTBEGIN(cppcoreguidelines-owning-memory): the point is a raw new/delete in a scope.
     g_sink = new int(1);
     delete g_sink;
+    // NOLINTEND(cppcoreguidelines-owning-memory)
     g_sink = nullptr;
     pme::rtcheck::blockingCall("test primitive");
     const std::vector<int> v(16, 1);

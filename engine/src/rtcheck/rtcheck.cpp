@@ -11,6 +11,7 @@ namespace pme::rtcheck {
 namespace {
 // Nesting depth of ScopedRealtimeThread on this thread. Constant-initialised, so access needs no
 // guard, no allocation and no lock (it is read from inside malloc).
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables): per-thread by design.
 constinit thread_local unsigned t_depth = 0;
 }  // namespace
 

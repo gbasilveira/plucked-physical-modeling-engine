@@ -8,10 +8,10 @@
 namespace pme::rtcheck::test {
 
 struct ChildResult {
-    bool launched = false;   // the child process was started and waited for
-    bool signaled = false;   // POSIX: terminated by a signal
-    int signalNumber = 0;    // POSIX: that signal
-    long exitCode = 0;       // exit status (POSIX: when not signaled; Windows: process exit code)
+    bool launched = false;  // the child process was started and waited for
+    bool signaled = false;  // POSIX: terminated by a signal
+    int signalNumber = 0;   // POSIX: that signal
+    long exitCode = 0;      // exit status (POSIX: when not signaled; Windows: process exit code)
     std::string standardError;
 };
 

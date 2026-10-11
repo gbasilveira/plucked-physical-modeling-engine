@@ -18,6 +18,8 @@ public:
     ~ScopedRealtimeThread();
     ScopedRealtimeThread(const ScopedRealtimeThread&) = delete;
     ScopedRealtimeThread& operator=(const ScopedRealtimeThread&) = delete;
+    ScopedRealtimeThread(ScopedRealtimeThread&&) = delete;
+    ScopedRealtimeThread& operator=(ScopedRealtimeThread&&) = delete;
 };
 
 /// True inside a ScopedRealtimeThread scope on the calling thread.

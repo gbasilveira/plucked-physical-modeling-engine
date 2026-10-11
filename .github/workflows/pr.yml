@@ -81,15 +81,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build "clang-${CLANG_APT_MAJOR}" "clang-tidy-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev"
           "clang-tidy-${CLANG_APT_MAJOR}" --version
-      - name: Configure (compile database for clang-tidy)
+      - name: Configure (compile databases for clang-tidy, debug and rt-safety)
         if: ${{ !cancelled() }}
         env:
           CC: clang-${{ env.CLANG_APT_MAJOR }}
           CXX: clang++-${{ env.CLANG_APT_MAJOR }}
-        run: cmake --preset linux-debug -B build/lint-clang
+        run: |
+          cmake --preset linux-debug -B build/lint-debug
+          cmake --preset linux-rt-safety -B build/lint-rt
       - name: clang-tidy
         if: ${{ !cancelled() }}
-        run: python3 tools/ci/run_clang_tidy.py -p build/lint-clang --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
+        run: python3 tools/ci/run_clang_tidy.py -p build/lint-debug -p build/lint-rt --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
 
   build:
     name: build (${{ matrix.name }})
