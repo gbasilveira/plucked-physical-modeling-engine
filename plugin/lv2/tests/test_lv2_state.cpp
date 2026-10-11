@@ -264,3 +264,72 @@ TEST_CASE("D3-R2 patch:Get answers with patch:Set and restore reports the restor
     CHECK(instrument);
     CHECK(structuralValue);
 }
+
+TEST_CASE(
+    "D3-R2 reviewer 200 truncated or mutated or random state strings never crash or change a "
+    "rejected plug-in") {
+    Rig rig;
+    REQUIRE(rig.plugin->activate());
+    rig.plugin->controller().setInstrumentReference("/some/instrument.json");
+    StateStore seed;
+    REQUIRE(rig.plugin->save(StateStore::store, &seed, 0) == LV2_STATE_SUCCESS);
+    const std::string valid = stateText(seed, rig);
+    REQUIRE(valid.size() > 40);
+
+    const auto key = rig.plugin->urids().stateKey;
+    const auto string = rig.plugin->urids().atomString;
+    std::uint64_t rng = 0x9e3779b97f4a7c15ULL;  // fixed seed: the case is deterministic
+    const auto next = [&rng]() {
+        rng = rng * 6364136223846793005ULL + 1442695040888963407ULL;
+        return static_cast<std::uint32_t>(rng >> 33);
+    };
+
+    int rejected = 0;
+    for (int i = 0; i < 200; ++i) {
+        std::string text;
+        switch (i % 4) {
+            case 0:  // truncated at every kind of position
+                text = valid.substr(0, next() % valid.size());
+                break;
+            case 1:  // one byte flipped
+                text = valid;
+                text[next() % text.size()] = static_cast<char>(next());
+                break;
+            case 2:  // random bytes (no NUL inside: the text ends at the NUL put() adds)
+                for (std::uint32_t n = next() % 200; n > 0; --n) {
+                    text.push_back(static_cast<char>(1 + next() % 255));
+                }
+                break;
+            default:  // valid prefix followed by junk
+                text = valid.substr(0, next() % valid.size()) + "}}]]\"\\";
+                break;
+        }
+        const std::string before = [&] {
+            StateStore s;
+            REQUIRE(rig.plugin->save(StateStore::store, &s, 0) == LV2_STATE_SUCCESS);
+            return stateText(s, rig);
+        }();
+        StateStore store;
+        store.put(key, string, text);
+        const LV2_State_Status status = rig.plugin->restore(StateStore::retrieve, &store);
+        if (status != LV2_STATE_SUCCESS) {
+            ++rejected;
+            StateStore s;
+            REQUIRE(rig.plugin->save(StateStore::store, &s, 0) == LV2_STATE_SUCCESS);
+            CHECK_MESSAGE(stateText(s, rig) == before,
+                          "rejected restore changed the plug-in, case ", i);
+        }
+        // Whatever happened, the plug-in still runs and saves.
+        rig.plugin->run(kRigBlock);
+    }
+    CHECK(rejected > 100);  // most mutations are not valid state
+
+    // A restored instrument path longer than a worker job can carry must not overrun a buffer.
+    StateStore longPath;
+    longPath.put(
+        key, string,
+        R"({"instrument":")" + std::string(5000, 'p') +
+            R"(","interfaces_version":2,"params":{},"plugin_version":"0","state_schema_version":1})");
+    (void)rig.plugin->restore(StateStore::retrieve, &longPath);
+    rig.plugin->run(kRigBlock);
+}
