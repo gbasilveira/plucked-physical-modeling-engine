@@ -1,0 +1,352 @@
+# SPDX-License-Identifier: MIT
+# Pull-request workflow (P0.2-R1, R4, R6, R7). Documented in docs/dev/ci.md.
+#
+# Job names are the required checks of `main` (tools/ci/required_checks.json); renaming a job is
+# a change to branch protection. Actions are pinned by commit SHA with the tag in a comment
+# (ADR-0003).
+name: pr
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      p0_2_t2_inject_misformat:
+        description: "P0.2-T2 demonstration: write a mis-formatted C++ file before the format check"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+  # Pinned tools (ADR-0003). clang-format comes from a PyPI wheel; clang-tidy from the Ubuntu
+  # package, because it must see the same Clang resource headers as the compiler that wrote the
+  # compile database.
+  CLANG_FORMAT_VERSION: "18.1.8"
+  CLANG_APT_MAJOR: "18"
+  # The pytest test of the format script (P0.2-T2) uses the same pinned clang-format everywhere.
+  PME_CLANG_FORMAT: "uvx clang-format==18.1.8"
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: Install Python tools from uv.lock
+        run: uv sync --locked --all-extras
+      - name: P0.2-T2 demonstration, inject a mis-formatted file
+        # Only for the demonstration run: manual dispatch with the input set, or a push whose
+        # head commit message contains the marker. The file is staged in the runner's index only.
+        if: ${{ inputs.p0_2_t2_inject_misformat || contains(github.event.head_commit.message, '[p0.2-t2-misformat]') }}
+        run: |
+          mkdir -p engine/tests
+          printf '%s\n' '// SPDX-License-Identifier: MIT' 'int   injected( int a ){return a+1;}' \
+            > engine/tests/p0_2_t2_injected_misformat.cpp
+          git add engine/tests/p0_2_t2_injected_misformat.cpp
+      - name: clang-format
+        if: ${{ !cancelled() }}
+        run: python3 tools/ci/check_format.py --clang-format "uvx clang-format==${CLANG_FORMAT_VERSION}"
+      - name: ruff check
+        if: ${{ !cancelled() }}
+        run: uv run ruff check
+      - name: ruff format --check
+        if: ${{ !cancelled() }}
+        run: uv run ruff format --check
+      - name: mypy (strict)
+        if: ${{ !cancelled() }}
+        run: uv run mypy
+      - name: SPDX headers
+        if: ${{ !cancelled() }}
+        run: uv run python tools/check_spdx.py
+      - name: Install Clang and clang-tidy
+        if: ${{ !cancelled() }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build "clang-${CLANG_APT_MAJOR}" "clang-tidy-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev"
+          "clang-tidy-${CLANG_APT_MAJOR}" --version
+      - name: Configure (compile database for clang-tidy)
+        if: ${{ !cancelled() }}
+        env:
+          CC: clang-${{ env.CLANG_APT_MAJOR }}
+          CXX: clang++-${{ env.CLANG_APT_MAJOR }}
+        run: cmake --preset linux-debug -B build/lint-clang
+      - name: clang-tidy
+        if: ${{ !cancelled() }}
+        run: python3 tools/ci/run_clang_tidy.py -p build/lint-clang --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
+
+  build:
+    name: build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-msvc
+            os: windows-2025
+            system: windows
+            preset_a: windows-debug
+            preset_b: windows-rt-safety
+            py: python
+          - name: windows-clang-cl
+            os: windows-2025
+            system: windows
+            preset_a: windows-debug
+            preset_b: windows-rt-safety
+            py: python
+          - name: macos-arm64
+            os: macos-15
+            system: macos
+            preset_a: macos-debug
+            preset_b: macos-rt-safety
+            py: python3
+          - name: macos-universal
+            os: macos-15
+            system: macos
+            preset_a: macos-release
+            preset_b: ""
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64;x86_64
+            py: python3
+          - name: linux-gcc
+            os: ubuntu-24.04
+            system: linux
+            preset_a: linux-debug
+            preset_b: linux-rt-safety
+            py: python3
+          - name: linux-clang
+            os: ubuntu-24.04
+            system: linux
+            preset_a: linux-debug
+            preset_b: linux-rt-safety
+            py: python3
+    env:
+      PY: ${{ matrix.py }}
+      CMAKE_ARGS: ${{ matrix.cmake_args }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja (Linux)
+        if: matrix.system == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Install Clang and its runtime libraries (linux-clang)
+        if: matrix.name == 'linux-clang'
+        # libclang-rt-<major>-dev supplies the sanitizer and profile runtimes, so that the same
+        # Clang that builds here is proven to link them (the nightly asan and tsan jobs use it).
+        run: |
+          sudo apt-get install -y "clang-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev"
+          echo "CC=clang-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+          echo "CXX=clang++-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Select clang-cl (windows-clang-cl)
+        if: matrix.name == 'windows-clang-cl'
+        shell: bash
+        run: |
+          echo "CC=clang-cl" >> "$GITHUB_ENV"
+          echo "CXX=clang-cl" >> "$GITHUB_ENV"
+          clang-cl --version
+      - name: Toolchain versions
+        shell: bash
+        run: |
+          cmake --version
+          ninja --version
+          "${CXX:-c++}" --version || true
+      - name: Create the report directory
+        shell: bash
+        run: mkdir -p reports
+
+      - name: "${{ matrix.preset_a }}: configure"
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: cmake --preset "$PRESET" $CMAKE_ARGS
+      - name: "${{ matrix.preset_a }}: build"
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: cmake --build --preset "$PRESET"
+      - name: "${{ matrix.preset_a }}: test"
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: ctest --preset "$PRESET" -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-${{ matrix.name }}-$PRESET.xml"
+
+      - name: "${{ matrix.preset_b }}: configure"
+        if: ${{ matrix.preset_b != '' && !cancelled() }}
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_b }}
+        run: cmake --preset "$PRESET" $CMAKE_ARGS
+      - name: "${{ matrix.preset_b }}: build"
+        if: ${{ matrix.preset_b != '' && !cancelled() }}
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_b }}
+        run: cmake --build --preset "$PRESET"
+      - name: "${{ matrix.preset_b }}: test"
+        if: ${{ matrix.preset_b != '' && !cancelled() }}
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_b }}
+        run: ctest --preset "$PRESET" -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-${{ matrix.name }}-$PRESET.xml"
+
+      - name: Verify both architecture slices (macos-universal)
+        if: ${{ matrix.name == 'macos-universal' }}
+        run: |
+          for lib in build/macos-release/libpme_simd.a build/macos-release/_deps/highway-build/libhwy.a build/macos-release/engine/src/rtcheck/libpme_rtcheck.a; do
+            archs="$(lipo -archs "$lib")"
+            echo "$lib: $archs"
+            case "$archs" in
+              *arm64*x86_64* | *x86_64*arm64*) ;;
+              *) echo "::error::$lib is not a universal library ($archs)"; exit 1 ;;
+            esac
+          done
+
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: $PY tools/ci/junit_summary.py --title "ctest ${{ matrix.name }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-build-${{ matrix.name }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  python:
+    name: python (${{ matrix.system }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: linux
+            os: ubuntu-24.04
+          - system: macos
+            os: macos-15
+          - system: windows
+            os: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+      - name: pytest
+        shell: bash
+        run: |
+          mkdir -p reports
+          uv run pytest --junitxml="reports/pytest-${{ matrix.system }}.xml"
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: uv run python tools/ci/junit_summary.py --title "pytest ${{ matrix.system }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-python-${{ matrix.system }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: Install Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Configure (linux-coverage, GCC)
+        run: cmake --preset linux-coverage
+      - name: Build
+        run: cmake --build --preset linux-coverage
+      - name: Test
+        run: |
+          mkdir -p reports
+          ctest --preset linux-coverage -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-coverage.xml"
+      - name: Coverage report (gcovr 8.3, HTML and Cobertura)
+        # The measured set is engine/src without rtcheck and *_placeholder.cpp (docs/dev/ci.md).
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p coverage
+          uvx --from gcovr==8.3 gcovr --root . --object-directory build/linux-coverage \
+            --filter 'engine/src/' --exclude 'engine/src/rtcheck/' --exclude '.*_placeholder\.cpp' \
+            --exclude 'engine/src/sched/platform/' \
+            --html-details coverage/index.html --cobertura coverage/coverage.xml --print-summary
+      - name: Coverage gate (>= 90 % line coverage of engine/src)
+        run: python3 tools/ci/coverage_gate.py coverage/coverage.xml --threshold 90
+      - name: Job summary
+        if: ${{ always() }}
+        run: python3 tools/ci/junit_summary.py --title "ctest coverage" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+            reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  deps:
+    name: deps
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-all-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Configure with every dependency (proves every pin resolves)
+        run: cmake --preset linux-release -DPME_FETCH_ALL_DEPS=ON

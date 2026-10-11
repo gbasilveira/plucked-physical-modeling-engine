@@ -1,0 +1,175 @@
+# SPDX-License-Identifier: MIT
+# Release workflow (P0.2-R3, R6). Documented in docs/dev/ci.md.
+#
+# Builds the release preset on Windows (MSVC), macOS (universal) and Linux (GCC), runs the tests
+# and uploads per-system archives as workflow artifacts. It does NOT publish: no GitHub release,
+# no package registry, no contents: write, no secrets. Signing and publishing arrive with H1/H2.
+#
+# Triggers. A `tags` filter cannot be combined with a `paths` filter on one push event (a tag push
+# has no changed paths to match against), so there is no `paths` filter. The workflow instead
+# triggers on tag pushes and on every branch push, and the first job `plan` decides: a tag push
+# is a real run; a branch push is a dry run only when the push changed this file or tools/ci/;
+# any other push stops after `plan` (one small job). A dry run computes the version
+# 0.0.0-dryrun+<short sha> and otherwise behaves exactly like a tag run.
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+    branches:
+      - "**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      dry_run: ${{ steps.decide.outputs.dry_run }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Decide whether to run
+        id: decide
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -eu
+          if [ "$REF_TYPE" = tag ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            echo "tag push: real run"; exit 0
+          fi
+          if [ "$EVENT" = workflow_dispatch ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "manual dispatch: dry run"; exit 0
+          fi
+          # Branch push: judge by the files the push changed. A new branch (all-zero BEFORE) or an
+          # unreachable BEFORE is judged by its tip commit alone.
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            changed="$(git diff-tree --no-commit-id --name-only -r "$AFTER")"
+          else
+            changed="$(git diff --name-only "$BEFORE" "$AFTER")"
+          fi
+          echo "changed files:"; echo "$changed"
+          if echo "$changed" | grep -Eq '^(\.github/workflows/release\.yml|tools/ci/)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "release.yml or tools/ci changed: dry run"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"; echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "nothing to do for this push"
+          fi
+      - name: Version (tag against project(VERSION), or dry-run version)
+        id: version
+        if: ${{ steps.decide.outputs.run == 'true' }}
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          DRY_RUN: ${{ steps.decide.outputs.dry_run }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          if [ "$DRY_RUN" = true ]; then
+            out="$(python3 tools/ci/release_version.py --dry-run --sha "$SHA")"
+          else
+            out="$(python3 tools/ci/release_version.py --tag "$REF_NAME")"
+          fi
+          echo "$out"
+          echo "version=$(echo "$out" | sed -n 's/^VERSION=//p')" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: release (${{ matrix.name }})
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-msvc
+            os: windows-2025
+            system: windows
+            preset: windows-release
+            py: python
+          - name: macos-universal
+            os: macos-15
+            system: macos
+            preset: macos-release
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64;x86_64
+            py: python3
+          - name: linux-gcc
+            os: ubuntu-24.04
+            system: linux
+            preset: linux-release
+            py: python3
+    env:
+      PRESET: ${{ matrix.preset }}
+      CMAKE_ARGS: ${{ matrix.cmake_args }}
+      PY: ${{ matrix.py }}
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja (Linux)
+        if: matrix.system == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Configure
+        shell: bash
+        run: cmake --preset "$PRESET" $CMAKE_ARGS
+      - name: Build
+        shell: bash
+        run: cmake --build --preset "$PRESET"
+      - name: Test
+        shell: bash
+        run: |
+          mkdir -p reports
+          ctest --preset "$PRESET" -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-${{ matrix.name }}.xml"
+      - name: Stage and archive (nothing is published)
+        shell: bash
+        run: $PY tools/ci/stage_release.py --build-dir "build/$PRESET" --name "${{ matrix.name }}" --version "$VERSION" --out dist
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: $PY tools/ci/junit_summary.py --title "ctest ${{ matrix.name }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pme-${{ matrix.name }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-release-${{ matrix.name }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 90
