@@ -12,6 +12,9 @@
     "python (windows)",
     "coverage",
     "deps",
-    "traceability"
+    "traceability",
+    "plugin (linux)",
+    "plugin (macos)",
+    "plugin (windows)"
   ]
 }

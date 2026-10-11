@@ -186,3 +186,21 @@ must be green on that run.
 
 See [build.md](build.md) for the exact commands (format, tidy, Python, SPDX). Validate workflow
 files with `uvx --from actionlint-py==1.7.7.23 actionlint .github/workflows/*.yml`.
+
+<!-- ---- D1: plugin job ---- -->
+## D1: the `plugin` job
+
+`plugin (linux)`, `plugin (macos)` and `plugin (windows)` are the last job of `pr.yml`. On each
+system the job configures `<system>-rt-safety` with `-DPME_BUILD_PLUGINS=ON`, builds, and runs
+`ctest -R "^D1-"`: the controller-layer and CLAP-adapter tests (`unit` and `rt` labels, under the
+RT-safety trap) and `D1-T1`, which runs clap-validator on the built `pme.clap`. The job then runs
+clap-validator once more with its full output visible, and uploads JUnit as `junit-plugin-<system>`.
+On Linux the job builds with Clang and runs `tools/ci/run_clang_tidy.py` over the compile database
+of that build, because the `lint` job does not build plug-ins.
+
+clap-validator is pinned to release tag `0.3.2` (the newest release with binaries) and each archive
+is verified against a SHA-256 before it is unpacked. The release page lists no checksums; the
+values in `pr.yml` were computed from the downloaded assets (D1 report). To change the pin, update
+the tag, the three asset names and the three checksums together. `PME_CLAP_VALIDATOR` (environment
+or CMake cache variable) points `D1-T1` at a local validator; without it the test is skipped.
+<!-- ---- end D1 ---- -->

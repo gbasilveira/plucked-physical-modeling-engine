@@ -84,3 +84,9 @@ add_subdirectory(engine/tests/oracles)
 target_include_directories(pme_osc PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/osc/include")
 add_subdirectory(engine/tests/osc)
 # ---- end A1 ----
+
+# ---- D1: CLAP plug-in shell ----
+if(PME_BUILD_PLUGINS)
+  add_subdirectory(plugin)
+endif()
+# ---- end D1 ----

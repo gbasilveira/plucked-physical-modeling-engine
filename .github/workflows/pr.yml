@@ -391,6 +391,121 @@ jobs:
       - name: Configure with every dependency (proves every pin resolves)
         run: cmake --preset linux-release -DPME_FETCH_ALL_DEPS=ON
 
+  # ---- D1: CLAP plug-in shell ----
+  plugin:
+    name: plugin (${{ matrix.system }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: linux
+            os: ubuntu-24.04
+            preset: linux-rt-safety
+            validator_asset: clap-validator-0.3.2-ubuntu-18.04.tar.gz
+            validator_sha256: 1476ed68f5657e76050e0c4f19790c02d819ecc62c35fd465059d21f05169cb1
+            validator_exe: clap-validator
+            py: python3
+          - system: macos
+            os: macos-15
+            preset: macos-rt-safety
+            validator_asset: clap-validator-0.3.2-macos-universal.tar.gz
+            validator_sha256: 3750f3729adfd8489f2b29019f7f2ed65ba71bf9d5049735f6a2ca0fccb18ffd
+            validator_exe: binaries/clap-validator
+            py: python3
+          - system: windows
+            os: windows-2025
+            preset: windows-rt-safety
+            validator_asset: clap-validator-0.3.2-windows.zip
+            validator_sha256: 68cdbe51c05489542b5420a870b7159b4cb352b5ce5c486f9bd8a9b49b75bdda
+            validator_exe: clap-validator.exe
+            py: python
+    env:
+      PY: ${{ matrix.py }}
+      # clap-validator 0.3.2 (release tag 0.3.2, the newest release that ships binaries). The
+      # release page lists no checksums: the SHA-256 values above were computed from the
+      # downloaded release assets and are verified before the archive is unpacked (ADR-0003).
+      CLAP_VALIDATOR_TAG: "0.3.2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-plugin-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja and Clang with clang-tidy (Linux)
+        if: matrix.system == 'linux'
+        # Clang writes the compile database, so that clang-tidy sees the same resource headers.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build "clang-${CLANG_APT_MAJOR}" "clang-tidy-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev"
+          echo "CC=clang-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+          echo "CXX=clang++-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Create the report directory
+        shell: bash
+        run: mkdir -p reports
+
+      - name: Fetch clap-validator (pinned tag, SHA-256 verified)
+        shell: bash
+        env:
+          ASSET: ${{ matrix.validator_asset }}
+          SHA256: ${{ matrix.validator_sha256 }}
+          EXE: ${{ matrix.validator_exe }}
+        run: |
+          dest="$RUNNER_TEMP/clap-validator"
+          mkdir -p "$dest"
+          curl -fsSL -o "$dest/$ASSET" "https://github.com/free-audio/clap-validator/releases/download/$CLAP_VALIDATOR_TAG/$ASSET"
+          actual="$("$PY" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$dest/$ASSET")"
+          if [ "$actual" != "$SHA256" ]; then
+            echo "::error::SHA-256 mismatch for $ASSET: $actual"
+            exit 1
+          fi
+          echo "SHA-256 verified: $actual"
+          case "$ASSET" in
+            *.zip) "$PY" -m zipfile -e "$dest/$ASSET" "$dest" ;;
+            *) tar -xzf "$dest/$ASSET" -C "$dest" ;;
+          esac
+          chmod +x "$dest/$EXE" || true
+          echo "PME_CLAP_VALIDATOR=$dest/$EXE" >> "$GITHUB_ENV"
+          "$dest/$EXE" --version
+
+      - name: "${{ matrix.preset }} (plug-ins): configure"
+        shell: bash
+        run: cmake --preset "${{ matrix.preset }}" -DPME_BUILD_PLUGINS=ON
+      - name: "${{ matrix.preset }} (plug-ins): build"
+        shell: bash
+        run: cmake --build --preset "${{ matrix.preset }}"
+      - name: D1 tests (D1-T1 runs clap-validator on the built .clap)
+        shell: bash
+        run: ctest --preset "${{ matrix.preset }}" -R "^D1-" --no-tests=error --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-plugin-${{ matrix.system }}.xml"
+      - name: clap-validator (all tests) on the built .clap
+        shell: bash
+        run: '"$PME_CLAP_VALIDATOR" validate "build/${{ matrix.preset }}/plugin/clap/pme.clap"'
+      - name: clang-tidy (compile database of this build)
+        if: ${{ matrix.system == 'linux' && !cancelled() }}
+        run: python3 tools/ci/run_clang_tidy.py -p "build/${{ matrix.preset }}" --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
+
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: $PY tools/ci/junit_summary.py --title "ctest plugin (${{ matrix.system }})" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-plugin-${{ matrix.system }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+  # ---- end D1 ----
+
   # ---- V1: traceability ----
   # The traceability matrix (V1-R1 to V1-R4, docs/dev/traceability.md). It reads every junit-*
   # artifact of this run, publishes traceability.html and traceability.json as the artifact
@@ -402,7 +517,7 @@ jobs:
   # Covers: V1-R4, V1-T2
   traceability:
     name: traceability
-    needs: [lint, build, python, coverage, deps]
+    needs: [lint, build, python, coverage, deps, plugin]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 20

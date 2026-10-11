@@ -53,7 +53,9 @@ ctest --preset linux-debug          # no tests yet; exits 0
 
 Options: `PME_RTSAFETY` (default OFF), `PME_FETCH_ALL_DEPS` (default OFF, also fetches nanobind,
 CLAP, clap-wrapper, the VST 3 SDK and LV2 to prove every pin resolves), `PME_SANITIZER` (set by the
-presets). `CPM_SOURCE_CACHE` is honoured; set it to share downloads between build directories.
+presets), `PME_BUILD_PLUGINS` (default OFF; fetches CLAP and builds the plug-in shells under
+`plugin/`, D1+) and `PME_BUILD_PYTHON_BINDINGS` (default OFF; fetches nanobind for the Python
+modules, P0.5+). `CPM_SOURCE_CACHE` is honoured; set it to share downloads between build directories.
 
 ## Targets
 
