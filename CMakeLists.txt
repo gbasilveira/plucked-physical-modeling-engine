@@ -75,3 +75,7 @@ add_subdirectory(tools/bench)
 add_subdirectory(tools/params)
 add_subdirectory(engine/tests/interfaces)
 # ---- end P0.4 ----
+
+# ---- A1 (test-author): oracle tests ----
+add_subdirectory(engine/tests/oracles)
+# ---- end A1 (test-author) ----
