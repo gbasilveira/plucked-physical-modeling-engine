@@ -78,10 +78,22 @@ Flagged for owner review (orchestrator defaults under the proceed instruction, l
 | Gate | Name | Status | Report |
 | --- | --- | --- | --- |
 | G0 | Foundations | passed (2026-10-11, at 15a1a43 on `ccr-5ef35d73-oqb6fd`; tag push and merge to `main` pending the owner) | [G0.md](../gates/G0.md) |
-| G1 | Core numerics | not passed |  |
+| G1 | Core numerics | not passed (not yet checkable: 4 of 9 required phases complete; see G1 progress below) |  |
 | G2 | Piano engine | not passed |  |
 | G3 | Plug-in alpha | not passed |  |
 | G4 | Piano content | not passed |  |
 | G5 | Release candidate | not passed |  |
 | G6 | Plucked numerics | not passed |  |
 | G7 | Plucked instrument (one gate per instrument) | not passed |  |
+
+### G1 progress (2026-10-11; not a gate report)
+
+Evidence: pr.yml run [38176885514](https://github.com/gbasilveira/plucked-physical-modeling-engine/actions/runs/38176885514) at 8648745 and the oracle registry engine/tests/oracles.md. G1 cannot be checked until A4, A5, A6, A7 and A8 are complete; the planner writes docs/gates/G1.md then.
+
+| Requirement | State |
+| --- | --- |
+| Phases A1–A8, P0.5 complete | 4 of 9: A1, A2, A3, P0.5 complete; A4, A6 in progress; A5 (needs A4), A7 (needs A4), A8 (needs A4) not started. Critical path: A4 → A5, A7, A8. |
+| ORC-01 to 09, 11 to 13 and 19 pass | 6 of 13 implemented and passing in run 38176885514: ORC-01, ORC-02 (A1); ORC-03, ORC-04, ORC-05 (A2); ORC-08 rigid wall only (A3; the hammer-potential case is A5's). Not implemented: ORC-06, ORC-07 (A4, in progress); ORC-13 (A6, in progress); ORC-09, ORC-19 (A5); ORC-11, ORC-12 (A7). |
+| Every Track A test against P0.5 passes | 1 of 4: A2-T3 passed on all three systems. Pending: A4-T3 (A4), A5-T2 (A5), A7-T3 (A7). |
+| SIMD parity on every instruction set | Not started (A8). |
+| Coverage of engine/src at least 90% | The `coverage` job, which fails below 90% line coverage of engine/src (tools/ci/coverage_gate.py), is green in run 38176885514 for the code merged so far; re-check at the gate commit. |
