@@ -41,6 +41,7 @@ Non-blocking items from the ICR-0001 review (see [ICR-0001 "Application"](ICR-00
 - `docs/dev/interfaces.md` lists non-audio functions under "Real-time functions".
 - `engine/include/pme/nonlinear.hpp` says the SAV types are declared privately by A5; A3 declares them, in `engine/src/nonlinear/include/pme/nonlinear/sav.hpp` (A5 adds the hammer potential). Comment only.
 - SI-0010 (resolved 2026-10-11): add `double muteFeltSigma{20.0}` (σ\_felt, s⁻¹) to `Defaults` (compatible: new member with a default).
+- A4 (2026-10-11, candidate): `SegmentBridgeTerms` holds one `a`; the horizontal polarisation needs a\_n,h = ρA ω̂²\_h,n g\_n from `oscH`. A4 provides it through an internal function; a member `std::vector<float> aH` would make it part of the contract (compatible).
 - SI-0013 (resolved 2026-10-11): add `double moistureRef{0.12}` (MC\_ref, dimensionless fraction) to `PlateParams` (compatible: new member with a default), with the matching B1 schema field; until then compileBody uses MC\_ref = 0.12.
 
 ## Index
