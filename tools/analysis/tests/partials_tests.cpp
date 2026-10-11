@@ -62,7 +62,7 @@ void report(const char* what, const SignalCase& c, double fs, const Worst& w) {
 
 }  // namespace
 
-TEST_CASE("P0.3-T1 case A recovers a single partial at 27.5, 261.6 and 4186 Hz") {
+TEST_CASE("P0.3-T1 case A recovers a single partial at 27.5 and 261.6 and 4186 Hz") {
     for (const SignalCase& c : pme::analysis::testing::load_t1_cases()) {
         if (c.kind != "A") {
             continue;
@@ -90,7 +90,7 @@ TEST_CASE("P0.3-T1 case A by peak picking needs no frequency hint") {
     }
 }
 
-TEST_CASE("P0.3-T1 case B recovers 30 stiff-string partials at 44.1, 48 and 96 kHz") {
+TEST_CASE("P0.3-T1 case B recovers 30 stiff-string partials at 44.1 and 48 and 96 kHz") {
     for (const SignalCase& c : pme::analysis::testing::load_t1_cases()) {
         if (c.kind != "B") {
             continue;

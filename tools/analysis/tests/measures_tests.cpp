@@ -153,7 +153,7 @@ TEST_CASE("P0.3-R3 spectral envelope of a sinusoid peaks at half its amplitude w
     CHECK(peak > -22.0);
 }
 
-TEST_CASE("P0.3-R3 energy accounting reports drift, step change and monotonicity") {
+TEST_CASE("P0.3-R3 energy accounting reports drift and step change and monotonicity") {
     std::vector<double> h(1000, 2.0);
     EnergyReport flat = account_energy(h);
     CHECK(flat.max_relative_drift == 0.0);
