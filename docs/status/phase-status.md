@@ -9,7 +9,7 @@ Maintained by the orchestrator (Opus). Status values: not started, ready, in pro
 | P0.1 | Repository and build skeleton | 0 | complete | branch `ccr-5ef35d73-oqb6fd`; no PR (single session branch) |  | Head 312a62f. Code reviewer approved, no blocking findings. CI: bootstrap-build run https://github.com/gbasilveira/plucked-physical-modeling-engine/actions/runs/38140277814 green on all 21 jobs. ADR-0004 (no Windows tsan preset) Accepted by the orchestrator as the recommended default; owner may reverse. Carried to P0.2: delete bootstrap-build.yml, exact SPDX match, drop the phases.yaml exemption, clang-cl entry, Linux-Clang sanitizers. Carried to P0.3: ctest `--no-tests=error`. Carried to P0.4: buildable `pme_engine`. |
 | P0.2 | CI and quality gates | 0 | complete | branch `ccr-5ef35d73-oqb6fd`; no PR (single session branch) |  | Head 2daee85. Code reviewer approved, no blocking items. CI: pr.yml run https://github.com/gbasilveira/plucked-physical-modeling-engine/actions/runs/38144357509 green on all 12 jobs at 2daee85. P0.2-T2: run 38144566762 failed only at clang-format on the deliberately injected file (gate demonstrated). P0.2-T3: nightly run 38144943308 and release run 38144945130 at HEAD. Open risks: rtcheck intercepts only operator new and blockingCall on macOS/Windows (malloc/free and lock interposition Linux-only); setup-uv and apt clang-tidy-18 not pinned to exact versions. |
 | P0.3 | Test and analysis framework | 0 | ready |  |  | Depends on P0.1 (complete). Briefs: docs/agents/briefs/P0.3-implementer.md, P0.3-code-reviewer.md; no test-author (card tests no ORC rows). ADR-0005 (nlohmann/json). |
-| P0.4 | Interface skeleton | 0 | complete | branch `ccr-5ef35d73-oqb6fd`; no PR (single session branch) |  | Head 2daee85. Code reviewer approved, no blocking items. CI: pr.yml run 38144357509 green on all 12 jobs at 2daee85 (covers P0.4-T2 after P0.2). P0.4-R6: interfaces-v1 = 2daee85, tag push pending owner (tag created locally; this session may push only its branch). Interfaces are frozen at 2daee85; changes go through docs/icr/. Open risks: the P0.4-R3(a) allocation-count case is omitted under TSan builds (operator new not replaced under the TSan runtime); rtcheck coverage on macOS/Windows limited to operator new and blockingCall. SPEC gaps found in review filed as SI-0001 to SI-0007 (docs/spec-issues/): SI-0001, SI-0002 resolved in SPEC; SI-0003 to SI-0007 open. SI-0006 (instrument retirement) blocks briefing C1, C4 and C6; SI-0003 and SI-0004 should be settled before B1. |
+| P0.4 | Interface skeleton | 0 | complete | branch `ccr-5ef35d73-oqb6fd`; no PR (single session branch) |  | Head 2daee85. Code reviewer approved, no blocking items. CI: pr.yml run 38144357509 green on all 12 jobs at 2daee85 (covers P0.4-T2 after P0.2). P0.4-R6: interfaces-v1 = 2daee85, tag push pending owner (tag created locally; this session may push only its branch). Interfaces are frozen at 2daee85; changes go through docs/icr/. Open risks: the P0.4-R3(a) allocation-count case is omitted under TSan builds (operator new not replaced under the TSan runtime); rtcheck coverage on macOS/Windows limited to operator new and blockingCall. SPEC gaps found in review filed as SI-0001 to SI-0007 (docs/spec-issues/): SI-0001, SI-0002 resolved in SPEC; SI-0003 to SI-0007 accepted by the orchestrator on 2026-10-11 and routed through ICR-0001 (interfaces-v2, see Interface change requests below). |
 | P0.5 | Reference solver | 0 | not started |  |  |  |
 | A1 | Modal oscillator | A | not started |  |  |  |
 | A2 | Stiff string compiler | A | not started |  |  |  |
@@ -19,17 +19,17 @@ Maintained by the orchestrator (Opus). Status values: not started, ready, in pro
 | A6 | Dampers and pedals | A | not started |  |  |  |
 | A7 | Geometric nonlinearity and longitudinal waves | A | not started |  |  |  |
 | A8 | SIMD kernels | A | not started |  |  |  |
-| B1 | Instrument description schema and loader | B | not started |  |  |  |
+| B1 | Instrument description schema and loader | B | not started |  |  | Waits for ICR-0001 to be applied and interfaces-v2 tagged (B1-R1 mirrors the v2 description structs); also depends on G0. |
 | B2 | Plate and body FEM compiler | B | not started |  |  |  |
 | B3 | Radiation, mobility and local bridge builder | B | not started |  |  |  |
 | B4 | Modal data import | B | not started |  |  |  |
 | B5 | Parameter fitting toolkit | B | not started |  |  |  |
-| C1 | Note group runtime | C | not started |  |  |  |
+| C1 | Note group runtime | C | not started |  |  | Do not brief before ICR-0001 is applied and interfaces-v2 tagged (SI-0006 instrument lifetime, SI-0004 tuning ownership). Owns ORC-16. |
 | C2 | Global body engine | C | not started |  |  |  |
 | C3 | Sympathetic path and guard | C | not started |  |  |  |
-| C4 | Event and parameter system | C | not started |  |  |  |
+| C4 | Event and parameter system | C | not started |  |  | Do not brief before ICR-0001 is applied and interfaces-v2 tagged (SI-0006, SI-0005 Pluck semantics, SI-0007 registry). |
 | C5 | Scheduler and threading | C | not started |  |  |  |
-| C6 | Sleep, wake and state management | C | not started |  |  |  |
+| C6 | Sleep, wake and state management | C | not started |  |  | Do not brief before ICR-0001 is applied and interfaces-v2 tagged (SI-0006). |
 | C7 | Reference mode | C | not started |  |  |  |
 | C8 | Offline render CLI and Python bindings | C | not started |  |  |  |
 | P1 | Plucked exciters | P | not started |  |  |  |
@@ -64,6 +64,14 @@ Maintained by the orchestrator (Opus). Status values: not started, ready, in pro
 | H4 | Release pipeline | H | not started |  |  |  |
 | H5 | Public release 1.0 (pianos) | H | not started |  |  |  |
 | H6 | Plucked-instrument releases (1.x) | H | not started |  |  |  |
+
+## Interface change requests
+
+| ICR | Interfaces | Status | Briefs | Applied at | Tag | Waiting phases |
+| --- | --- | --- | --- | --- | --- | --- |
+| [ICR-0001](../icr/ICR-0001-interfaces-v2.md) | interfaces-v1 (2daee85) → interfaces-v2 | approved by the orchestrator 2026-10-11 (owner's proceed instruction); SPEC updated in c5cec38; not yet applied | docs/agents/briefs/ICR-0001-implementer.md, ICR-0001-code-reviewer.md | pending | interfaces-v2: pending (orchestrator tags the reviewed head; owner pushes; SHA recorded here and in the ICR) | B1, C1, C4, C6 (also P1, B2, B3, C8, D1, D6 start on v2). Apply after the in-flight CI fix in CMakeLists.txt, engine/tests/** and docs/dev/** lands. |
+
+Flagged for owner review (orchestrator defaults under the proceed instruction, listed in ICR-0001 "Decision"): plucked-exciter strength map (γ\_p = 1), finger structure, initial-displacement semantics, NoteOn launch of plucked exciters, event-time φ̄ evaluation (SI-0005); plate geometry inputs and f\_split = 2 kHz provisional (SI-0003); MIDI key numbering and f₁ computed by compileInstrument (SI-0004).
 
 ## Gates
 
