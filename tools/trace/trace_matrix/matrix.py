@@ -72,6 +72,7 @@ class IdStatus:
     systems_passed: list[str]
     systems_missing: list[str]
     jobs: list[str]
+    jobs_failed: list[str] = field(default_factory=list)
     evidence: list[Evidence] = field(default_factory=list)
 
 
@@ -214,7 +215,13 @@ class Evaluator:
         else:
             status = "not_run_all_systems"
         jobs = sorted({r.job for r in results} | {s.annotation.job for s in steps})
-        result = IdStatus(item_id, status, unverified, passed, missing_systems, jobs, evidence)
+        failed_jobs = sorted(
+            {r.job for r in results if r.outcome == "fail"}
+            | {s.annotation.job for s in steps if s.conclusion == "fail"}
+        )
+        result = IdStatus(
+            item_id, status, unverified, passed, missing_systems, jobs, failed_jobs, evidence
+        )
         self._cache[item_id] = result
         return result
 
@@ -257,6 +264,7 @@ def build_matrix(inputs: Inputs) -> dict[str, Any]:
             "systems_passed": status.systems_passed,
             "systems_missing": status.systems_missing,
             "jobs": status.jobs,
+            "jobs_failed": status.jobs_failed,
             "evidence": [
                 {
                     "kind": e.kind,
@@ -464,5 +472,5 @@ def _gap_detail(st: IdStatus) -> str:
     if st.status == "missing":
         return "no test or annotated step carries this ID"
     if st.status == "fail":
-        return "a carrying test or step failed (jobs: " + ", ".join(st.jobs) + ")"
+        return "a carrying test or step failed (jobs: " + ", ".join(st.jobs_failed) + ")"
     return "no passing result on: " + ", ".join(st.systems_missing)
