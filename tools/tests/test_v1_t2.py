@@ -88,4 +88,4 @@ def test_v1_t2_gate_owned_entries_are_evidenced_by_a_passed_gate_report() -> Non
         gate = owner.removeprefix("gate ").strip()
         assert gate_status.get(gate) == "passed", f"{entry.id}: gate {gate} has not passed"
         report = ROOT / "docs" / "gates" / f"{gate}.md"
-        assert entry["id"] in report.read_text(encoding="utf-8"), f"{entry.id} not in {report}"
+        assert entry.id in report.read_text(encoding="utf-8"), f"{entry.id} not in {report}"
