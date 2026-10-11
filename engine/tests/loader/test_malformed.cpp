@@ -6,11 +6,10 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "pme/loader/instrument_file.hpp"
 #include "test_support.hpp"
@@ -63,9 +62,8 @@ TEST_CASE("B1-R5 errors are all reported at once and sorted") {
     const auto file = std::filesystem::path(PME_B1_FIXTURES) / "malformed" / "three-errors.json";
     CHECK(pme::loader::loadInstrumentFile(file, true, out, errors) == pme::Status::InvalidArgument);
     REQUIRE(errors.size() == 3);
-    CHECK(std::is_sorted(errors.begin(), errors.end(), [](const auto& a, const auto& b) {
-        return a.path < b.path;
-    }));
+    CHECK(std::is_sorted(errors.begin(), errors.end(),
+                         [](const auto& a, const auto& b) { return a.path < b.path; }));
 }
 
 TEST_CASE("B1-R5 paths escape tilde and slash as JSON Pointer requires") {

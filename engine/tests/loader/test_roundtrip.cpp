@@ -8,12 +8,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <nlohmann/json.hpp>
 #include <sstream>
 #include <string>
 #include <variant>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "pme/loader/instrument_file.hpp"
 #include "test_support.hpp"
@@ -38,8 +37,12 @@ json expected(const pme::Point& p) { return {{"x", p.x}, {"y", p.y}, {"z", p.z}}
 
 const char* name(pme::Boundary v) { return v == pme::Boundary::Pinned ? "Pinned" : "Clamped"; }
 const char* name(pme::BridgeEnd v) { return v == pme::BridgeEnd::AtL ? "AtL" : "At0"; }
-const char* name(pme::FeltLaw v) { return v == pme::FeltLaw::HuntCrossley ? "HuntCrossley" : "Stulov"; }
-const char* name(pme::DamperMode v) { return v == pme::DamperMode::Diagonal ? "Diagonal" : "RankOne"; }
+const char* name(pme::FeltLaw v) {
+    return v == pme::FeltLaw::HuntCrossley ? "HuntCrossley" : "Stulov";
+}
+const char* name(pme::DamperMode v) {
+    return v == pme::DamperMode::Diagonal ? "Diagonal" : "RankOne";
+}
 const char* name(pme::BarrierKind v) {
     switch (v) {
         case pme::BarrierKind::Custom:
@@ -89,12 +92,18 @@ json expected(const pme::StringParams& s) {
 }
 
 json expected(const pme::HammerParams& h) {
-    return {{"mass", h.mass},         {"K", h.K},
-            {"p", h.p},               {"muHC", h.muHC},
-            {"width", h.width},       {"strikeRatio", h.strikeRatio},
-            {"law", name(h.law)},     {"stulovEps", h.stulovEps},
-            {"stulovTau", h.stulovTau}, {"vMin", h.vMin},
-            {"vMax", h.vMax},         {"gammaV", h.gammaV},
+    return {{"mass", h.mass},
+            {"K", h.K},
+            {"p", h.p},
+            {"muHC", h.muHC},
+            {"width", h.width},
+            {"strikeRatio", h.strikeRatio},
+            {"law", name(h.law)},
+            {"stulovEps", h.stulovEps},
+            {"stulovTau", h.stulovTau},
+            {"vMin", h.vMin},
+            {"vMax", h.vMax},
+            {"gammaV", h.gammaV},
             {"dCheck", h.dCheck}};
 }
 
@@ -108,8 +117,9 @@ json expected(const pme::UnaCordaParams& u) {
 }
 
 json expected(const pme::PluckPulse& p) {
-    return {{"duration", p.duration}, {"peakForceMax", p.peakForceMax}, {"position", p.position},
-            {"width", p.width},       {"angle", p.angle},               {"strengthGamma", p.strengthGamma}};
+    return {{"duration", p.duration}, {"peakForceMax", p.peakForceMax},
+            {"position", p.position}, {"width", p.width},
+            {"angle", p.angle},       {"strengthGamma", p.strengthGamma}};
 }
 
 json expected(const pme::Plectrum& p) {
@@ -167,21 +177,15 @@ json expected(const pme::ExciterParams& e) {
 }
 
 json expected(const pme::DamperParams& d) {
-    return {{"xRatio", d.xRatio},
-            {"width", d.width},
-            {"Kd", d.Kd},
-            {"Rd", d.Rd},
-            {"tau0", d.tau0},
-            {"kRelease", d.kRelease},
-            {"tauUp", d.tauUp},
-            {"etaD", d.etaD},
-            {"hasDamper", d.hasDamper},
+    return {{"xRatio", d.xRatio},  {"width", d.width}, {"Kd", d.Kd},
+            {"Rd", d.Rd},          {"tau0", d.tau0},   {"kRelease", d.kRelease},
+            {"tauUp", d.tauUp},    {"etaD", d.etaD},   {"hasDamper", d.hasDamper},
             {"mode", name(d.mode)}};
 }
 
 json expected(const pme::BarrierParams& b) {
-    return {{"kind", name(b.kind)}, {"x", b.x},       {"b", b.b},         {"w", b.w},
-            {"side", b.side},       {"K", b.K},       {"alpha", b.alpha}, {"muB", b.muB}};
+    return {{"kind", name(b.kind)}, {"x", b.x}, {"b", b.b},         {"w", b.w},
+            {"side", b.side},       {"K", b.K}, {"alpha", b.alpha}, {"muB", b.muB}};
 }
 
 json expected(const pme::SegmentDesc& s) {
@@ -217,7 +221,8 @@ json expected(const pme::NoteGroupDesc& g) {
 }
 
 json expected(const pme::BridgePointDesc& b) {
-    return {{"position", expected(b.position)}, {"thetaB", b.thetaB}, {"conductanceH", b.conductanceH}};
+    return {
+        {"position", expected(b.position)}, {"thetaB", b.thetaB}, {"conductanceH", b.conductanceH}};
 }
 
 json expected(const pme::RibDesc& r) {
@@ -238,13 +243,26 @@ json expected(const pme::BridgeBeamDesc& b) {
 }
 
 json expected(const pme::PlateParams& p) {
-    json j = {{"lengthX", p.lengthX}, {"lengthY", p.lengthY},       {"thickness", p.thickness},
-              {"grainAngle", p.grainAngle}, {"youngsL", p.youngsL}, {"youngsR", p.youngsR},
-              {"shearLR", p.shearLR},   {"poissonLR", p.poissonLR}, {"poissonRL", p.poissonRL},
-              {"density", p.density},   {"moisture", p.moisture},   {"dEdMcL", p.dEdMcL},
-              {"dEdMcR", p.dEdMcR},     {"dGdMc", p.dGdMc},         {"dRhodMc", p.dRhodMc},
-              {"lossFactor", p.lossFactor}, {"rimStiffness", p.rimStiffness}, {"fMax", p.fMax},
-              {"ribs", json::array()}, {"outline", json::array()}};
+    json j = {{"lengthX", p.lengthX},
+              {"lengthY", p.lengthY},
+              {"thickness", p.thickness},
+              {"grainAngle", p.grainAngle},
+              {"youngsL", p.youngsL},
+              {"youngsR", p.youngsR},
+              {"shearLR", p.shearLR},
+              {"poissonLR", p.poissonLR},
+              {"poissonRL", p.poissonRL},
+              {"density", p.density},
+              {"moisture", p.moisture},
+              {"dEdMcL", p.dEdMcL},
+              {"dEdMcR", p.dEdMcR},
+              {"dGdMc", p.dGdMc},
+              {"dRhodMc", p.dRhodMc},
+              {"lossFactor", p.lossFactor},
+              {"rimStiffness", p.rimStiffness},
+              {"fMax", p.fMax},
+              {"ribs", json::array()},
+              {"outline", json::array()}};
     for (const auto& r : p.ribs) {
         j["ribs"].push_back(expected(r));
     }
@@ -263,7 +281,9 @@ json expected(const pme::PlateParams& p) {
 }
 
 json expected(const pme::BodyParams& b) {
-    return {{"source", name(b.source)}, {"plate", expected(b.plate)}, {"modalTableHash", b.modalTableHash}};
+    return {{"source", name(b.source)},
+            {"plate", expected(b.plate)},
+            {"modalTableHash", b.modalTableHash}};
 }
 
 json expected(const pme::InstrumentDesc& d) {
@@ -279,7 +299,8 @@ json expected(const pme::InstrumentDesc& d) {
     for (const auto& c : d.channels) {
         j["channels"].push_back({{"name", c.name}, {"position", expected(c.position)}});
     }
-    j["tuning"] = {{"referencePitch", d.tuning.referencePitch}, {"stretchCents", d.tuning.stretchCents}};
+    j["tuning"] = {{"referencePitch", d.tuning.referencePitch},
+                   {"stretchCents", d.tuning.stretchCents}};
     j["defaults"] = {{"halfPedalP0", d.defaults.halfPedalP0},
                      {"halfPedalP1", d.defaults.halfPedalP1},
                      {"sympatheticGain", d.defaults.sympatheticGain},
@@ -305,8 +326,9 @@ TEST_CASE("B1-T1 every committed file reads back and writes byte-identical") {
         CAPTURE(file.string());
         InstrumentFile loaded;
         std::vector<LoadError> errors;
-        REQUIRE_MESSAGE(pme::loader::loadInstrumentFile(file, true, loaded, errors) == pme::Status::Ok,
-                        describeErrors(errors));
+        REQUIRE_MESSAGE(
+            pme::loader::loadInstrumentFile(file, true, loaded, errors) == pme::Status::Ok,
+            describeErrors(errors));
         CHECK(errors.empty());
         CHECK(loaded.sourceVersion == 1);
         std::string written;
@@ -356,8 +378,9 @@ TEST_CASE("B1-R6 the four example instruments load without errors") {
         InstrumentFile loaded;
         std::vector<LoadError> errors;
         const auto file = std::filesystem::path(PME_B1_EXAMPLES) / name / "instrument.json";
-        REQUIRE_MESSAGE(pme::loader::loadInstrumentFile(file, true, loaded, errors) == pme::Status::Ok,
-                        describeErrors(errors));
+        REQUIRE_MESSAGE(
+            pme::loader::loadInstrumentFile(file, true, loaded, errors) == pme::Status::Ok,
+            describeErrors(errors));
         CHECK(loaded.desc.name == name);
         CHECK(loaded.blobs.empty());
     }
@@ -382,9 +405,9 @@ TEST_CASE("B1-R6 generic-grand-88 has 88 groups with the stated string counts") 
 TEST_CASE("B1-R4 the canonical writer is stable under a second pass") {
     InstrumentFile loaded;
     std::vector<LoadError> errors;
-    REQUIRE(pme::loader::loadInstrumentFile(
-                std::filesystem::path(PME_B1_FIXTURES) / "all-fields.json", false, loaded, errors) ==
-            pme::Status::Ok);
+    REQUIRE(
+        pme::loader::loadInstrumentFile(std::filesystem::path(PME_B1_FIXTURES) / "all-fields.json",
+                                        false, loaded, errors) == pme::Status::Ok);
     std::string once;
     std::string twice;
     REQUIRE(pme::loader::writeInstrument(loaded, once) == pme::Status::Ok);

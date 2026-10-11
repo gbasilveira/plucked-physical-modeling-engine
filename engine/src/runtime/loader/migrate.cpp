@@ -36,9 +36,9 @@ bool requireSources(const Json& obj, const std::string& path, const char* what,
     if (missing.empty()) {
         return true;
     }
-    errors.add(LoadError{path, toString(Code::Migration),
-                         std::string("no version 0 source for ") + missing + " of a " + what +
-                             "; supply them"});
+    errors.add(LoadError{
+        path, toString(Code::Migration),
+        std::string("no version 0 source for ") + missing + " of a " + what + "; supply them"});
     return false;
 }
 

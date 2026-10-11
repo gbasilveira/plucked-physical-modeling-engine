@@ -8,13 +8,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "pme/loader/instrument_file.hpp"
 
@@ -122,8 +121,8 @@ public:
     void number(std::string_view key, double& out, bool required, const Bound& bound);
     void boolean(std::string_view key, bool& out, bool required);
     void text(std::string_view key, std::string& out, bool required, TextRule rule);
-    void numbers(std::string_view key, std::vector<double>& out, bool required, const Bound& element,
-                 std::size_t minItems);
+    void numbers(std::string_view key, std::vector<double>& out, bool required,
+                 const Bound& element, std::size_t minItems);
     /// A string member restricted to `values` (stored as text).
     void choice(std::string_view key, std::string& out, bool required,
                 const std::vector<std::string_view>& values);
@@ -217,7 +216,8 @@ public:
 private:
     [[nodiscard]] static std::string join(const char* const* names, std::size_t count);
     [[nodiscard]] const Json* member(std::string_view key, bool required);
-    [[nodiscard]] const Json* arrayMember(std::string_view key, bool required, std::size_t minItems);
+    [[nodiscard]] const Json* arrayMember(std::string_view key, bool required,
+                                          std::size_t minItems);
     [[nodiscard]] bool readInteger(std::string_view key, std::int64_t& out, bool required,
                                    const IntRule& rule);
     [[nodiscard]] static bool checkInteger(const Reader& c, std::int64_t& out, const IntRule& rule);

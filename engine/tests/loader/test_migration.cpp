@@ -6,11 +6,10 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "pme/loader/instrument_file.hpp"
 #include "test_support.hpp"
@@ -32,8 +31,8 @@ TEST_CASE("B1-T3 a version 0 piano migrates to the expected version 1 file") {
     CHECK(written == b1test::readFile(kV0 / "piano-v0.expected.json"));
 
     pme::loader::InstrumentFile current;
-    REQUIRE(pme::loader::loadInstrumentFile(kV0 / "piano-v0.expected.json", true, current, errors) ==
-            pme::Status::Ok);
+    REQUIRE(pme::loader::loadInstrumentFile(kV0 / "piano-v0.expected.json", true, current,
+                                            errors) == pme::Status::Ok);
     CHECK(current.sourceVersion == 1);
 }
 

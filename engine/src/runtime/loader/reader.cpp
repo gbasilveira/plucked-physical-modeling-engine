@@ -125,7 +125,8 @@ bool within(double v, const Bound& b) {
 std::string describe(const Bound& b) {
     std::string text = "expected a number";
     if (b.hasLo) {
-        text += std::string(b.loExclusive ? " greater than " : " of at least ") + formatDouble(b.lo);
+        text +=
+            std::string(b.loExclusive ? " greater than " : " of at least ") + formatDouble(b.lo);
     }
     if (b.hasHi) {
         text += std::string(b.hasLo ? " and" : "") +
@@ -138,9 +139,8 @@ bool isHash(const std::string& s) {
     if (s.size() != 71 || s.compare(0, 7, "sha256:") != 0) {
         return false;
     }
-    return std::all_of(s.begin() + 7, s.end(), [](char c) {
-        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
-    });
+    return std::all_of(s.begin() + 7, s.end(),
+                       [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); });
 }
 
 }  // namespace
@@ -331,7 +331,8 @@ bool ObjectScope::checkInteger(const Reader& c, std::int64_t& out, const IntRule
             text += " of at least " + std::to_string(rule.lo);
         }
         if (rule.hasHi) {
-            text += std::string(rule.hasLo ? " and" : "") + " of at most " + std::to_string(rule.hi);
+            text +=
+                std::string(rule.hasLo ? " and" : "") + " of at most " + std::to_string(rule.hi);
         }
         c.error(Code::Range, text);
         good = false;

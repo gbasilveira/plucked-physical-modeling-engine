@@ -33,28 +33,28 @@ struct LoadError {
 
 /// One array inside a blob file (B1-R3).
 struct BlobArray {
-    std::string name;                ///< Array name.
-    std::string dtype;               ///< `float32`, `float64`, `int32` or `uint32`.
-    std::string unit;                ///< Physical unit of the elements.
+    std::string name;                 ///< Array name.
+    std::string dtype;                ///< `float32`, `float64`, `int32` or `uint32`.
+    std::string unit;                 ///< Physical unit of the elements.
     std::vector<std::int64_t> shape;  ///< Positive extents.
-    std::int64_t offset{};           ///< Bytes from the start of the file, aligned to the dtype size.
+    std::int64_t offset{};  ///< Bytes from the start of the file, aligned to the dtype size.
 };
 
 /// One blob file of the manifest (B1-R3).
 struct BlobEntry {
-    std::string hash;  ///< `sha256:` followed by 64 lower-case hex digits of the whole file.
-    std::string path;  ///< Relative to the instrument file's directory, forward slashes.
-    std::string tool;  ///< Producing tool.
-    std::string toolVersion;         ///< Producing tool version.
-    std::vector<BlobArray> arrays;   ///< Arrays stored in the file.
+    std::string hash;         ///< `sha256:` followed by 64 lower-case hex digits of the whole file.
+    std::string path;         ///< Relative to the instrument file's directory, forward slashes.
+    std::string tool;         ///< Producing tool.
+    std::string toolVersion;  ///< Producing tool version.
+    std::vector<BlobArray> arrays;  ///< Arrays stored in the file.
 };
 
 /// A loaded instrument file. The manifest is not part of `InstrumentDesc` (frozen), so it is
 /// returned beside it.
 struct InstrumentFile {
-    InstrumentDesc desc;             ///< The instrument description.
-    std::vector<BlobEntry> blobs;    ///< The blob manifest.
-    int sourceVersion{};             ///< Schema version of the loaded text (before migration).
+    InstrumentDesc desc;           ///< The instrument description.
+    std::vector<BlobEntry> blobs;  ///< The blob manifest.
+    int sourceVersion{};           ///< Schema version of the loaded text (before migration).
 };
 
 /// Parse, migrate, validate and read an instrument document held in memory.

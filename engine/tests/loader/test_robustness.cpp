@@ -4,15 +4,14 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
-#include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <limits>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "pme/loader/instrument_file.hpp"
 #include "reader.hpp"
@@ -23,7 +22,8 @@ namespace {
 using pme::loader::InstrumentFile;
 using pme::loader::LoadError;
 
-bool hasCode(const std::vector<LoadError>& errors, const std::string& path, const std::string& code) {
+bool hasCode(const std::vector<LoadError>& errors, const std::string& path,
+             const std::string& code) {
     for (const auto& e : errors) {
         if (e.path == path && e.code == code) {
             return true;
@@ -68,7 +68,8 @@ TEST_CASE("B1-R4 a 10000-deep nested array returns a structure error") {
 }
 
 TEST_CASE("B1-R4 brackets inside strings do not count towards the nesting depth") {
-    std::string text = R"({"format": "pme-instrument", "schemaVersion": 1, "instrument": {}, "x": ")";
+    std::string text =
+        R"({"format": "pme-instrument", "schemaVersion": 1, "instrument": {}, "x": ")";
     text += std::string(500, '[') + R"(\"[[[")" + "}";
     InstrumentFile out;
     std::vector<LoadError> errors;

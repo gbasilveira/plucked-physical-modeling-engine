@@ -24,9 +24,7 @@ const std::vector<std::string_view>& dtypeNames() {
     return names;
 }
 
-std::size_t dtypeSize(const std::string& dtype) {
-    return dtype == "float64" ? 8U : 4U;
-}
+std::size_t dtypeSize(const std::string& dtype) { return dtype == "float64" ? 8U : 4U; }
 
 // A blob path is relative, uses forward slashes and has no empty, "." or ".." segment and no ':'.
 bool validBlobPath(const std::string& path) {
@@ -204,8 +202,8 @@ bool hashFile(const std::filesystem::path& file, std::string& hex) {
         in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const auto got = static_cast<std::size_t>(in.gcount());
         if (got > 0) {
-            sha.update(std::span<const std::byte>(reinterpret_cast<const std::byte*>(buffer.data()),
-                                                  got));
+            sha.update(
+                std::span<const std::byte>(reinterpret_cast<const std::byte*>(buffer.data()), got));
         }
     }
     if (in.bad()) {
@@ -246,9 +244,8 @@ void checkBlobFiles(const std::vector<BlobEntry>& blobs, const std::filesystem::
                 continue;
             }
             if (static_cast<std::uint64_t>(b.arrays[k].offset) + *bytes > length) {
-                fail(arrayPointer(i, k) + "/offset",
-                     "array extends past the end of the file (" + std::to_string(length) +
-                         " bytes)");
+                fail(arrayPointer(i, k) + "/offset", "array extends past the end of the file (" +
+                                                         std::to_string(length) + " bytes)");
             }
         }
         if (verify) {

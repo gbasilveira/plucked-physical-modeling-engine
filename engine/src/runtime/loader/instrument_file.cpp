@@ -88,9 +88,9 @@ bool readVersion(const Json& doc, int& version, ErrorList& errors) {
         return false;
     }
     if (v < 0.0 || v > static_cast<double>(kCurrentSchemaVersion)) {
-        errors.add(LoadError{"/schemaVersion", "version",
-                             "expected a schema version from 0 to " +
-                                 std::to_string(kCurrentSchemaVersion)});
+        errors.add(LoadError{
+            "/schemaVersion", "version",
+            "expected a schema version from 0 to " + std::to_string(kCurrentSchemaVersion)});
         return false;
     }
     version = static_cast<int>(v);
@@ -109,9 +109,9 @@ Status loadImpl(std::string_view text, const std::filesystem::path* directory, b
         return fail();
     }
     if (tooDeep(text)) {
-        list.add(LoadError{"", "structure",
-                           "nesting is deeper than " + std::to_string(detail::kMaxDepth) +
-                               " levels"});
+        list.add(
+            LoadError{"", "structure",
+                      "nesting is deeper than " + std::to_string(detail::kMaxDepth) + " levels"});
         return fail();
     }
     Json doc = Json::parse(text.begin(), text.end(), nullptr, false);
@@ -143,8 +143,8 @@ Status loadImpl(std::string_view text, const std::filesystem::path* directory, b
             s.choice("format", format, true, {"pme-instrument"});
             int ignored = 0;
             s.integer("schemaVersion", ignored, true,
-                      detail::IntRule{true, kCurrentSchemaVersion, true, kCurrentSchemaVersion,
-                                      {0, 0}, false});
+                      detail::IntRule{
+                          true, kCurrentSchemaVersion, true, kCurrentSchemaVersion, {0, 0}, false});
             s.object("instrument", file.desc, true);
             s.objects("blobs", file.blobs, false, 0);
             s.finish();
