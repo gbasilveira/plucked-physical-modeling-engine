@@ -287,3 +287,20 @@ TEST_CASE("A3-R2 several potentials add and share one psi; a dashpot with no con
     CHECK(seg.counters().solvesSkipped == 0U);
     CHECK(pme::nl::savEnergy(seg) < e0);
 }
+
+TEST_CASE("A3-T4 a negative psi above sqrt(2 eps0) in magnitude is reset and removes energy") {
+    SavSegment<double> seg;
+    REQUIRE(seg.configure(1, 0, 1, kFs) == pme::Status::Ok);
+    REQUIRE(seg.setLumped(0, 0.01) == pme::Status::Ok);
+    const WallPotential<double> wall(0, 10.0, 1.0, 1e5, 1.0);  // far: V = 0
+    const std::array<const Potential<double>*, 1> pots{&wall};
+    seg.q()[0] = 0.0;
+    seg.initialisePsi(pots);
+    const double psi0 = seg.psi();
+    seg.setPsi(-50.0 * psi0);
+    const double before = pme::nl::savEnergy(seg);
+    pme::nl::savStep<double>(seg, pots, {}, {});
+    CHECK(seg.counters().resets == 1U);
+    CHECK(seg.psi() == doctest::Approx(psi0));
+    CHECK(pme::nl::savEnergy(seg) < before);
+}
