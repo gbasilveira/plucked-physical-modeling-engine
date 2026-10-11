@@ -3,8 +3,10 @@
 // interface of the plug-in object.
 #include <doctest/doctest.h>
 
+#include <array>
 #include <cstring>
 #include <limits>
+#include <string_view>
 
 #include "clap_test_support.hpp"
 #include "pme/plugin/ids.hpp"

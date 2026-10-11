@@ -55,11 +55,12 @@ TEST_CASE("P0.4-R3 compile stubs return NotImplemented and leave outputs unchang
         CHECK(out.omegaHat2 == 2.5);
     }
     SUBCASE("compileString") {
+        // Implemented by A2: non-physical input (L = 0) is InvalidArgument and leaves out alone.
         pme::StringModes out;
         out.tension = 99.0;
         const std::array<double, 2> points{0.1, 0.2};
         CHECK(pme::compileString(pme::StringParams{}, 48000.0, 16000.0, points, out) ==
-              pme::Status::NotImplemented);
+              pme::Status::InvalidArgument);
         CHECK(out.tension == 99.0);
         CHECK(out.k.empty());
     }

@@ -7,6 +7,9 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <span>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include "fake_engine.hpp"

@@ -127,8 +127,9 @@ Without `--job-results`, annotated CI steps are unverified (covered, flagged).
 
 An entry (optional `kind` narrows it) hides one enforced gap while it is routed to its owner. It is
 for gaps that need a new test or a change outside V1's paths; a gap that is only a missing link is
-closed with a `Covers:` annotation instead. The list is **empty** when every complete phase is
-traced (V1-T2). Entries that match no gap are reported as stale and should be removed.
+closed with a `Covers:` annotation instead. V1-T2 requires no gaps for completed phases, except
+one-off demonstration tests that a passed gate report evidences, each listed with owner
+`gate G<n>` (today only P0.2-T3, gate G0). Every other entry is a gap to close. Entries that match no gap are reported as stale and should be removed.
 
 ## How a gate report uses the matrix
 

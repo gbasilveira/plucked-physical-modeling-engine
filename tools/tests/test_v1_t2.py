@@ -74,3 +74,18 @@ def test_v1_t2_the_allow_list_has_no_stale_entry() -> None:
     """V1-T2: every allow-list entry still matches a gap (a closed gap is removed from the list)."""
     matrix = real_matrix()
     assert matrix["stale_known_gaps"] == []
+
+
+def test_v1_t2_gate_owned_entries_are_evidenced_by_a_passed_gate_report() -> None:
+    """V1-T2: an entry owned by `gate G<n>` needs a passed gate G<n> whose report names the ID."""
+    _, gate_status = parse_phase_status(
+        (ROOT / "docs/status/phase-status.md").read_text(encoding="utf-8")
+    )
+    for entry in load_known_gaps(ROOT / "tools/trace/known-gaps.json"):
+        owner = entry.owner
+        if not owner.startswith("gate "):
+            continue
+        gate = owner.removeprefix("gate ").strip()
+        assert gate_status.get(gate) == "passed", f"{entry.id}: gate {gate} has not passed"
+        report = ROOT / "docs" / "gates" / f"{gate}.md"
+        assert entry.id in report.read_text(encoding="utf-8"), f"{entry.id} not in {report}"
