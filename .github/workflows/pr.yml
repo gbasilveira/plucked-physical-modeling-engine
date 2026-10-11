@@ -585,7 +585,7 @@ jobs:
   # Covers: V1-R4, V1-T2
   traceability:
     name: traceability
-    needs: [lint, build, python, coverage, deps, plugin, reference-python]
+    needs: [lint, build, python, coverage, deps, plugin, reference-python, lv2]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 20
