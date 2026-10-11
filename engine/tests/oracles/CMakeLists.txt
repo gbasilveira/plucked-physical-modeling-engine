@@ -3,3 +3,4 @@
 # oracle authors add one add_subdirectory line each.
 add_subdirectory(osc)
 add_subdirectory(string)
+add_subdirectory(nonlinear)
