@@ -112,3 +112,9 @@ add_subdirectory(tools/reference-cli)
 add_subdirectory(engine/src/runtime/loader)
 add_subdirectory(engine/tests/loader)
 # ---- end B1 ----
+
+# ---- A4: bridge coupling ----
+target_include_directories(pme_bridge PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/bridge/include")
+target_link_libraries(pme_bridge PUBLIC pme_string pme_osc)
+add_subdirectory(engine/tests/bridge)
+# ---- end A4 ----
