@@ -21,6 +21,7 @@ static_assert(
     noexcept(std::declval<pme::Engine&>().popDiagnostic(std::declval<pme::Diagnostic&>())));
 static_assert(noexcept(std::declval<pme::Engine&>().setInstrument(
     std::declval<std::shared_ptr<const pme::CompiledInstrument>>())));
+static_assert(noexcept(std::declval<pme::Engine&>().collectRetired()));
 static_assert(noexcept(pme::toString(pme::Status::Ok)));
 static_assert(noexcept(pme::paramRegistry()));
 static_assert(noexcept(pme::findParam(0)));
@@ -142,4 +143,32 @@ TEST_CASE("P0.4-R3 description types are default-constructible with SPEC-INST de
     const pme::DamperParams damper;
     CHECK(damper.mode == pme::DamperMode::Diagonal);
     CHECK_FALSE(pme::nonlinearApiDeclared);
+}
+
+TEST_CASE("ICR-0001 interfaces-v2 description defaults") {
+    CHECK(pme::SegmentDesc{}.unisonDetuneCents == 0.0);
+    const pme::PlateParams plate;
+    CHECK(plate.outline.empty());
+    CHECK(plate.thicknessGrid.empty());
+    CHECK(plate.bridges.empty());
+    CHECK(plate.thicknessNx == 0);
+    CHECK(plate.thicknessNy == 0);
+    CHECK(plate.rimRotationalStiffness == 0.0);
+    CHECK(pme::BridgeBeamDesc{}.path.empty());
+    CHECK(std::variant_size_v<decltype(pme::ExciterParams{}.e)> == 5);
+    CHECK(pme::PluckPulse{}.strengthGamma == 1.0);
+    CHECK(pme::Plectrum{}.strengthGamma == 1.0);
+    CHECK(pme::Finger{}.strengthGamma == 1.0);
+    CHECK(pme::InitialDisplacement{}.strengthGamma == 1.0);
+}
+
+TEST_CASE("ICR-0001 collectRetired is a non-audio no-op on any engine") {
+    pme::Engine unprepared;
+    unprepared.collectRetired();
+    pme::Engine prepared;
+    CHECK(prepared.prepare(validConfig()) == pme::Status::NotImplemented);
+    prepared.setInstrument(nullptr);
+    prepared.collectRetired();
+    pme::Diagnostic d;
+    CHECK_FALSE(prepared.popDiagnostic(d));
 }

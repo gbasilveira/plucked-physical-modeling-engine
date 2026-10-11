@@ -39,7 +39,7 @@ std::array<pme::Event, 7> mixedEvents() {
         {1, pme::NoteOff{60, 0.3f}},
         {2, pme::KeyDepth{61, 0.5f}},
         {3, pme::Pedal{pme::PedalKind::Sustain, 1.0f}},
-        {4, pme::Pluck{0, 0.1, 2.0, 0.0, pme::PluckKind::ForcePulse}},
+        {4, pme::Pluck{0, 0.1, 0.0, 1.0f}},
         {5, pme::Bend{0, 100.0}},
         {6, pme::Param{1001, 0.5}},
     }};
@@ -122,6 +122,10 @@ TEST_CASE("P0.4-T2 stub Engine processes silence in the rt-safety build without 
         pme::Diagnostic d;
         CHECK_FALSE(engine.popDiagnostic(d));
     }
+    // ICR-0001: setInstrument and collectRetired are non-audio calls; they stay outside the
+    // real-time scope.
+    engine.setInstrument(nullptr);
+    engine.collectRetired();
     CHECK(allZero);
 }
 #endif
@@ -145,6 +149,7 @@ TEST_CASE("P0.4-R3 stub Engine process makes no allocations") {
     pme::Diagnostic d;
     const bool popped = engine.popDiagnostic(d);
     engine.setInstrument(nullptr);
+    engine.collectRetired();
     const long allocations = pme_test::stopCountingAllocations();
     CHECK_FALSE(popped);
     CHECK(allocations == 0);

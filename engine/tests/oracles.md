@@ -20,8 +20,6 @@ columns, which are copied verbatim; if they drift, SPEC wins and this file is co
 - **Test location** is the source file and test-case name once the test exists; `-` before that.
 - The phase that implements an oracle updates its row (status and location) in the same pull request
   as the test. No agent edits the setup, expected or tolerance columns without a SPEC change.
-- ORC-16 has no owning phase on any card although gate G2 requires it. It is recorded as
-  `unassigned (G2)` for the planner to assign.
 
 | ID | Oracle | SPEC-ORC setup | Expected value | Tolerance | Owning phase | Gate | Status | Test location |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -40,7 +38,7 @@ columns, which are copied verbatim; if they drift, SPEC wins and this file is co
 | ORC-13 | Damper (diagonal) | e = 1, single mode | σ\_n + e R\_d φ̄² / (2ρA) | 0.1% | A6 | G1 | not implemented | - |
 | ORC-14 | Fretted pitch | Finger stop at fret k on a low-stiffness string | Open pitch × 2^(k/12) | 2 cents | P3 | G6 | not implemented | - |
 | ORC-15 | Collision passivity | String released onto a flat barrier | Energy constant without contact damping; non-increasing with it | 10⁻⁹ relative per step in float64 | P2 | G6 | not implemented | - |
-| ORC-16 | Sample-rate independence | Same instrument at 44.1, 48 and 96 kHz | Identical partial frequencies; matching decays | 0.01 cent; 0.5% | unassigned (G2) | G2 | not implemented | - |
+| ORC-16 | Sample-rate independence | Same instrument at 44.1, 48 and 96 kHz | Identical partial frequencies; matching decays | 0.01 cent; 0.5% | C1 | G2 | not implemented | - |
 | ORC-17 | Sympathetic approximation | Sustained chord with pedal, then release; engine vs reference mode | Per-partial levels; no energy growth | 1 dB over the first 2 s | C3 and C7 | G2 | not implemented | - |
 | ORC-18 | Determinism | 1, 2 and 8 threads | Bit-identical output | Exact | C5 | G2 | not implemented | - |
 | ORC-19 | Una corda aftersound | Trichord, s = 1 | Passive string's bridge force starts at zero and grows over time, as in Miranda Valiente et al. | Qualitative, plus regression against the first accepted run | A5 | G1 | not implemented | - |

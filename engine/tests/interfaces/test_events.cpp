@@ -21,15 +21,14 @@ static_assert(std::variant_size_v<decltype(pme::Event::payload)> == 7);
 TEST_CASE("P0.4-R5 events carry the SPEC-API fields and a sample offset") {
     pme::Event e;
     e.offset = 17;
-    e.payload = pme::Pluck{3, 0.12, 4.5, 0.5, pme::PluckKind::Plectrum};
+    e.payload = pme::Pluck{3, 0.12, 0.5, 0.75f};
     REQUIRE(std::holds_alternative<pme::Pluck>(e.payload));
     const auto& p = std::get<pme::Pluck>(e.payload);
     CHECK(e.offset == 17);
     CHECK(p.segment == 3);
     CHECK(p.position == doctest::Approx(0.12));
-    CHECK(p.force == doctest::Approx(4.5));
     CHECK(p.angle == doctest::Approx(0.5));
-    CHECK(p.kind == pme::PluckKind::Plectrum);
+    CHECK(p.strength == doctest::Approx(0.75f));
 
     e.payload = pme::NoteOn{60, 0.8f};
     CHECK(std::get<pme::NoteOn>(e.payload).key == 60);

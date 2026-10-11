@@ -47,9 +47,9 @@ TEST_CASE("P0.4-T3 findParam finds every entry and returns null for unused ids")
 }
 
 TEST_CASE("P0.4-T3 the registry holds the SPEC-API continuous parameters") {
-    // SPEC-API "Parameter classes": pedal values, una corda shift, kappa_s, output gains, damper
+    // SPEC-API "Parameter classes": pedal values (1003 also the una corda shift), kappa_s, output gains, damper
     // timing.
-    for (const pme::ParamId id : {1001u, 1002u, 1003u, 1010u, 2001u, 3001u, 4001u, 4002u, 4003u}) {
+    for (const pme::ParamId id : {1001u, 1002u, 1003u, 2001u, 3001u, 4001u, 4002u, 4003u}) {
         const pme::ParamInfo* p = pme::findParam(id);
         REQUIRE(p != nullptr);
         CHECK(p->cls == pme::ParamClass::Continuous);
@@ -60,4 +60,12 @@ TEST_CASE("P0.4-T3 the registry holds the SPEC-API continuous parameters") {
         REQUIRE(p != nullptr);
         CHECK(p->cls == pme::ParamClass::Structural);
     }
+}
+
+TEST_CASE("ICR-0001 retired id 1010 is not registered") {
+    // 1010 unaCorda.shift was retired by ICR-0001 (SI-0007); the id is reserved and never reused.
+    CHECK(pme::findParam(1010) == nullptr);
+    const pme::ParamInfo* soft = pme::findParam(1003);
+    REQUIRE(soft != nullptr);
+    CHECK(std::string_view(soft->name) == "pedal.soft");
 }
