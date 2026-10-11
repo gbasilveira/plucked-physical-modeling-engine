@@ -474,7 +474,7 @@ Track C assembles the numerical blocks into the real-time engine of SPEC-EXEC. C
   5. C1-R5 Small-body exact mode: when K ≤ 256 and bridge points ≤ 8, all bridge points couple to the full body every sample.
   6. C1-R6 An instrumented build records the step order for conformance testing.
 - **Outputs:** engine/src/runtime/note\_group\*, engine/src/runtime/compile\*, docs/dev/runtime.md.
-- **Tests:** C1-T1 a composed note group equals the composition of the Track A components sample for sample; C1-T2 against P0.5, a full note (hammer, three strings, mass–spring–damper bridge) matches partials within 0.05 cent, decays within 2% and attack force within 2%; C1-T3 processing in the rt-safety build allocates nothing; C1-T4 the instrumented build shows the SPEC-EXEC order.
+- **Tests:** ORC-16 at 44.1, 48 and 96 kHz on the C1-T2 note and on a hammer-struck note group in small-body exact mode (C1-R5); C1-T1 a composed note group equals the composition of the Track A components sample for sample; C1-T2 against P0.5, a full note (hammer, three strings, mass–spring–damper bridge) matches partials within 0.05 cent, decays within 2% and attack force within 2%; C1-T3 processing in the rt-safety build allocates nothing; C1-T4 the instrumented build shows the SPEC-EXEC order.
 - **References:** SPEC-EXEC, SPEC-GLANCE, SPEC-BRG, SPEC-BODY.
 
 ### C2 Global body engine
