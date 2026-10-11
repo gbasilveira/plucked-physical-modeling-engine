@@ -162,7 +162,8 @@ public:
 }  // namespace
 
 TEST_CASE(
-    "A3-T1 savStep equals a full N x N solve of the SPEC-NL step (3 modes, 1 lumped, 2 dashpots)") {
+    "A3-T1 savStep equals a full N x N solve of the SPEC-NL step with 4 coordinates and 2 "
+    "dashpots") {
     using namespace pme::nl;
     constexpr std::size_t N = RefQuartic::kN;
     constexpr double fs = 48000.0;
