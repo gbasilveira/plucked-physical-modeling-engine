@@ -28,8 +28,20 @@ The header diff (declarations only) and the SPEC-API text change, if any.
 Approved or rejected by the orchestrator, with the reason. Interfaces tag after applying: interfaces-v<n+1>.
 ```
 
+## Test names in an ICR
+
+P0.3-R1 requires every test name to begin with a requirement or test ID of a phase card. An ICR ID is not one. When an ICR adds or renames tests, its "Tests that must change" table names them with the ID of the phase that owns the interface, followed by the ICR ID, for example `P0.4-T3 ICR-0001 retired id 1010 is not registered` (interfaces from P0.4, as applied in 300b995) or `C4-R2 ICR-0003 …` (an interface owned by a later phase). Never start a test name with `ICR-`.
+
+## Carried to the next ICR
+
+Non-blocking items from the ICR-0001 review (see [ICR-0001 "Application"](ICR-0001-interfaces-v2.md#application)); the next ICR includes them as documentation-only items:
+
+- Stale "interfaces-v1" comments in `engine/include/pme/nonlinear.hpp` (lines 7, 16) and `engine/include/pme/pme.hpp` (line 5).
+- Redundant `pedal.soft` (1003) description.
+- `docs/dev/interfaces.md` lists non-audio functions under "Real-time functions".
+
 ## Index
 
 | ID | Title | Status | Interfaces | Spec issues |
 | --- | --- | --- | --- | --- |
-| [ICR-0001](ICR-0001-interfaces-v2.md) | interfaces-v2: instrument retirement, plucked exciters, tuning keys, body geometry, registry clean-up | approved | v1 → v2 | SI-0003 to SI-0007; SI-0001 and SI-0002 follow-ups |
+| [ICR-0001](ICR-0001-interfaces-v2.md) | interfaces-v2: instrument retirement, plucked exciters, tuning keys, body geometry, registry clean-up | applied (300b995; tag push pending owner) | v1 → v2 | SI-0003 to SI-0007; SI-0001 and SI-0002 follow-ups |

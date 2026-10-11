@@ -1,6 +1,6 @@
 # SI-0005 Plucked exciters: Pluck event versus ExciterParams, finger model, initial displacement
 
-Status: accepted · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: resolved · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-PLK "Exciters"; SPEC-API "Descriptions" (`ExciterParams`), "Events" (`Pluck`)
 
 ## Failing test
@@ -37,3 +37,5 @@ Accepted by the orchestrator on 2026-10-11 (owner's proceed instruction). Items 
 - Route: breaking header changes (`PluckKind` removed, `Pluck` fields, `Finger`, `InitialDisplacement`) in [ICR-0001](../icr/ICR-0001-interfaces-v2.md). Status becomes resolved when interfaces-v2 is tagged.
 
 Affected phases: P1, P5, P6, C4, B1, E4–E8.
+
+Resolved on 2026-10-11: ICR-0001 applied at 300b995 (interfaces-v2; tag created locally, push pending the owner). Code reviewer approved; pr.yml run 38149794842 green on 12/12 jobs.

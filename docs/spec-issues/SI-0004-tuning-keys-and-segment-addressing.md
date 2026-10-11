@@ -1,6 +1,6 @@
 # SI-0004 Tuning curve, key numbering, unison detune and segment addressing
 
-Status: accepted · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: resolved · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-STR "Tension for pitch"; SPEC-API "Descriptions" (`NoteGroupDesc`, `TuningCurve`), "Events" (`Pluck`, `Bend`)
 
 ## Failing test
@@ -38,3 +38,5 @@ Accepted by the orchestrator on 2026-10-11 (owner's proceed instruction). Accept
 - Route: `SegmentDesc::unisonDetuneCents` and the comment changes in [ICR-0001](../icr/ICR-0001-interfaces-v2.md). Status becomes resolved when interfaces-v2 is tagged.
 
 Affected phases: B1, C1, C4, P5, P6, E1–E8.
+
+Resolved on 2026-10-11: ICR-0001 applied at 300b995 (interfaces-v2; tag created locally, push pending the owner). Code reviewer approved; pr.yml run 38149794842 green on 12/12 jobs.

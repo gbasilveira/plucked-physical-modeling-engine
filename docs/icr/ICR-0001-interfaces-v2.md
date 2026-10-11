@@ -1,7 +1,7 @@
 # ICR-0001 interfaces-v2: instrument retirement, plucked exciters, tuning keys, body geometry, registry clean-up
 
-Status: approved · Raised by: P0.4, code-reviewer (via SI-0003 to SI-0007); filed by the planner · Date: 2026-10-11
-Interfaces: interfaces-v1 (2daee85) → interfaces-v2 · Major version: 1 → 2 (breaking)
+Status: applied · Raised by: P0.4, code-reviewer (via SI-0003 to SI-0007); filed by the planner · Date: 2026-10-11
+Interfaces: interfaces-v1 (2daee85) → interfaces-v2 (300b995) · Major version: 1 → 2 (breaking)
 
 ## Problem
 
@@ -403,3 +403,17 @@ No phase except P0.3 is in progress; nothing else needs rebasing.
 7. SI-0004: key numbering (MIDI, A4 = 69) and f₁ = f\_ref 2^((key−69)/12) 2^((stretch + d\_s)/1200) computed by compileInstrument.
 
 Interfaces tag after applying: **interfaces-v2**, created by the orchestrator on the head of the `ICR-0001:` commits and pushed by the owner. Tag SHA: _recorded here and in docs/status/phase-status.md once applied._
+
+## Application
+
+**Applied** on 2026-10-11 by the interface agent (implementer, Sonnet) in commits ad193d5 to 300b995 (`P0.4: ICR-0001 …`, items I1 to I12). The code reviewer approved with no blocking items. CI: pr.yml run 38149794842 green on all 12 jobs at 300b995.
+
+Interfaces tag: **interfaces-v2 = 300b995**, created locally; push pending the owner (as for interfaces-v1 = 2daee85). SI-0003 to SI-0007 are resolved by this application.
+
+Non-blocking review items, carried to the next ICR (documentation only; none changes a declaration):
+
+1. Stale "interfaces-v1" wording in comments: `engine/include/pme/nonlinear.hpp` lines 7 and 16, `engine/include/pme/pme.hpp` line 5.
+2. Registry entry 1003 `pedal.soft`: the appended description repeats the una corda clause; reduce it to one sentence.
+3. `docs/dev/interfaces.md` lists non-audio functions (`prepare`, `setInstrument`, `collectRetired`, `popDiagnostic`) under "Real-time functions"; split the section by thread.
+4. ICR test-name templates: the "Tests that must change" table above named new cases `ICR-0001 …`, which breaks the P0.3-R1 rule (test names begin with a requirement or test ID). The interface agent renamed them with a P0.4 prefix in 300b995. Future ICRs follow the naming rule in [README.md](README.md).
+

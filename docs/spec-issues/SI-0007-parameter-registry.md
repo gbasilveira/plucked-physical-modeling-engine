@@ -1,6 +1,6 @@
 # SI-0007 Parameter registry: provisional ranges and classes, soft-pedal duplication, output gains, f_max duplication
 
-Status: accepted · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: resolved · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-API "Parameter classes", "Events" (`Pedal`); SPEC-DMP "Lift fraction", "Timing"; SPEC-HAM "Una corda (grand)"; SPEC-INST "Piano defaults"
 
 ## Failing test
@@ -38,3 +38,5 @@ Accepted by the orchestrator on 2026-10-11, items 1 to 4. No physics or numerics
 - Route: registry and `params.json` edits and the `engine.hpp` comment in [ICR-0001](../icr/ICR-0001-interfaces-v2.md). Status becomes resolved when interfaces-v2 is tagged.
 
 Affected phases: C4, D1, D4, D6, V2.
+
+Resolved on 2026-10-11: ICR-0001 applied at 300b995 (interfaces-v2; tag created locally, push pending the owner). Code reviewer approved; pr.yml run 38149794842 green on 12/12 jobs.

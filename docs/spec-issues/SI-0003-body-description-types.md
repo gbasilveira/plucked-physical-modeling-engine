@@ -1,6 +1,6 @@
 # SI-0003 Body and bridge-point description types: coordinate frame, plate geometry, rim, f_split default
 
-Status: accepted · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: resolved · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-API "Descriptions" (`BodyParams`, `BridgePointDesc`, `ChannelDesc`, `Defaults`, `Point`); SPEC-BODY "Plate model", "Local bridge model", "Radiation weights"; SPEC-INST "Piano defaults"
 
 ## Failing test
@@ -38,3 +38,5 @@ Accepted by the orchestrator on 2026-10-11 (owner instructed the orchestrator to
 - Route: header changes in [ICR-0001](../icr/ICR-0001-interfaces-v2.md) (interfaces-v2). Status becomes resolved when ICR-0001 is applied and interfaces-v2 is tagged.
 
 Affected phases: B1, B2, B3, C1, C2, V3.
+
+Resolved on 2026-10-11: ICR-0001 applied at 300b995 (interfaces-v2; tag created locally, push pending the owner). Code reviewer approved; pr.yml run 38149794842 green on 12/12 jobs.
