@@ -75,3 +75,8 @@ add_subdirectory(tools/bench)
 add_subdirectory(tools/params)
 add_subdirectory(engine/tests/interfaces)
 # ---- end P0.4 ----
+
+# ---- A1: modal oscillator ----
+target_include_directories(pme_osc PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/osc/include")
+add_subdirectory(engine/tests/osc)
+# ---- end A1 ----
