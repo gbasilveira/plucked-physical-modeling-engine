@@ -47,6 +47,7 @@ A change merges into `main` only when **all** of the following checks of the pul
 | `python (linux)`, `python (macos)`, `python (windows)` | `uv sync --locked`, pytest |
 | `coverage` | `linux-coverage` (GCC); line coverage of `engine/src` at least 90 % |
 | `deps` | configure with `PME_FETCH_ALL_DEPS=ON` (every pin resolves) |
+| `traceability` | traceability matrix over every `junit-*` artifact of the run; fails when a phase marked `complete` has a gap not on `tools/trace/known-gaps.json` ([docs/dev/traceability.md](docs/dev/traceability.md)) |
 
 Each `build` check runs every unit, oracle, integration, golden and RT-safety test
 (`ctest -LE "perf|fuzz|soak"`). Sanitizers, performance, fuzz and soak run in the nightly workflow
