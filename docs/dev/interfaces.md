@@ -4,14 +4,16 @@ SPEC sections implemented: SPEC-API (declarations and stubs only); SPEC-EXEC (th
 documented on each function).
 
 Everything in `engine/include/pme/` is the public interface of the engine. Phase P0.4 declared it and
-stubbed every function; the orchestrator tags the merge commit `interfaces-v1`. From that tag on the
-headers are frozen: the files change only through an approved interface change request
+stubbed every function; the orchestrator tagged the merge commit `interfaces-v1`. ICR-0001
+(docs/icr/ICR-0001-interfaces-v2.md) amended them to `interfaces-v2` (SPEC-API, SPEC-EXEC "Instrument
+lifetime", SPEC-PLK, SPEC-BODY, SPEC-STR, SPEC-INST; spec issues SI-0003 to SI-0007). The headers are
+frozen at the current tag: the files change only through an approved interface change request
 (docs/icr/README.md).
 
-## Compatibility policy (interfaces-v1)
+## Compatibility policy (interfaces-v2, ICR-0001)
 
 **Source compatibility holds within a major version; ABI is not promised.** The major version is
-`pme::interfacesVersionMajor` in `version.hpp` (1).
+`pme::interfacesVersionMajor` in `version.hpp` (2).
 
 Breaking changes, which need an ICR and a new major version: removing or renaming a type, function,
 enumerator or member; changing a type, a parameter list, a return type or a default value;
@@ -29,8 +31,10 @@ the standalone app are built with the engine from the same sources.
 - Non-real-time functions that can fail return `[[nodiscard]] pme::Status` (`Ok`, `NotImplemented`,
   `InvalidArgument`, `Rejected`) and deliver their SPEC-API result through a final reference
   out-parameter. On any status other than `Ok` the out-parameter is left unchanged.
-- Real-time functions (`Engine::process`, `reset`, `popDiagnostic`, `setInstrument`) keep SPEC-API's
-  signatures, are `noexcept` and never fail. `Engine::prepare` runs off the audio thread and returns
+- Real-time functions (`Engine::process`, `reset`, `popDiagnostic`, `setInstrument`,
+  `collectRetired`) keep SPEC-API's signatures, are `noexcept` and never fail.
+  Threading (SPEC-EXEC): `process` and `reset` are audio-thread only; `prepare`, `setInstrument`,
+  `collectRetired` and `popDiagnostic` are non-audio only and serialised by the caller. `Engine::prepare` runs off the audio thread and returns
   a `Status`.
 - No public function throws, except that allocation failure in a non-real-time function may
   propagate as `std::bad_alloc`.
@@ -49,9 +53,9 @@ the standalone app are built with the engine from the same sources.
 | `osc.hpp` | `OscCoeffs`, `compileOscillator` | SPEC-OSC |
 | `string.hpp` | `Boundary`, `BridgeEnd`, `StringParams`, `StringModes`, `compileString` | SPEC-STR |
 | `bridge.hpp` | `SegmentBridgeTerms`, `BridgePointDesc`, `compileBridgeTerms` | SPEC-BRG |
-| `body.hpp` | `BodySource`, `RibDesc`, `PlateParams`, `BodyParams`, `BodyModes`, `LocalBridge`, `ChannelDesc`, `compileBody`, `buildLocalBridge` | SPEC-BODY |
-| `nonlinear.hpp` | nothing (documents that interfaces-v1 has no nonlinear API) | SPEC-NL |
-| `exciters.hpp` | `FeltLaw`, `HammerParams`, `UnaCordaParams`, `PluckPulse`, `Plectrum`, `Finger`, `ExciterParams` | SPEC-HAM, SPEC-PLK |
+| `body.hpp` | `BodySource`, `RibDesc`, `BridgeBeamDesc`, `PlateParams`, `BodyParams`, `BodyModes`, `LocalBridge`, `ChannelDesc`, `compileBody`, `buildLocalBridge` | SPEC-BODY |
+| `nonlinear.hpp` | nothing (documents that the interfaces have no nonlinear API) | SPEC-NL |
+| `exciters.hpp` | `FeltLaw`, `HammerParams`, `UnaCordaParams`, `PluckPulse`, `Plectrum`, `Finger`, `InitialDisplacement`, `ExciterParams` | SPEC-HAM, SPEC-PLK |
 | `dampers.hpp` | `DamperMode`, `DamperParams` | SPEC-DMP |
 | `barriers.hpp` | `BarrierKind`, `BarrierParams` | SPEC-PLK |
 | `instrument.hpp` | `SegmentDesc`, `NoteGroupDesc`, `TuningCurve`, `Defaults`, `InstrumentDesc`, `CompiledInstrument` (opaque), `compileInstrument` | SPEC-INST, SPEC-API |
@@ -63,7 +67,7 @@ the standalone app are built with the engine from the same sources.
 
 The contracts SPEC lists in module sections but not in SPEC-API (`bridgeForce`, `GlobalBody`,
 `savStep`, `Potential`, `launchHammer`, `updateDampers`, `longitudinalForce` ...) are internal to the
-engine; the phase that implements each declares it privately. They are not part of interfaces-v1.
+engine; the phase that implements each declares it privately. They are not part of the public interfaces.
 
 `SegmentDesc` fields beyond SPEC-API's list: none. `Engine` keeps its state behind a private pointer
 to an incomplete `Impl`; copy is deleted, move is allowed (a moved-from engine can be prepared
@@ -72,7 +76,12 @@ again). `CompiledInstrument` is declared and never defined in a public header.
 ## Events (P0.4-R5)
 
 One struct per row of the SPEC-API events table; `Event` is a sample offset (`std::int32_t`, within
-the host block, >= 0) plus a `std::variant` of the seven. `EventList` is `std::span<const Event>`,
+the host block, >= 0) plus a `std::variant` of the seven. `NoteOn`, `NoteOff` and `KeyDepth` address
+a group by MIDI note number (A4 = 69; SPEC-STR "Tension for pitch"). `Pluck` is
+`{segment, position, angle, strength}` (ICR-0001, SI-0005): `segment` is the flat segment index across
+groups in `InstrumentDesc` order and then in `segments` order (SI-0004, also used by `Bend`), the
+group's `ExciterParams` fixes the model (there is no `PluckKind`), `position` 0 means the
+description's x_p, and `strength` is the normalised nu of the SPEC-PLK strength map. `EventList` is `std::span<const Event>`,
 sorted by non-decreasing offset: a precondition of `Engine::process`. Every event type, and `Event`,
 is trivially copyable (checked by static assertions in `engine/tests/interfaces/test_events.cpp`) so
 events can cross lock-free single-producer single-consumer queues.
@@ -83,7 +92,7 @@ events can cross lock-free single-producer single-consumer queues.
 real-time safe. The registry holds instrument-wide parameters that can arrive as `Param` events:
 
 - every continuous parameter SPEC-API names: sustain, sostenuto and soft pedal values, una corda
-  shift, sympathetic gain kappa_s, output gain (dB), damper timing;
+  shift (`pedal.soft`, 1003, the only id for it), sympathetic gain kappa_s, output gain (dB), damper timing;
 - the instrument-wide structural parameters whose defaults SPEC-INST's piano table gives.
 
 Per-key and per-segment physical parameters (string geometry, hammer felt, damper pad, barriers,
@@ -105,12 +114,10 @@ the area, the hundreds digit the class within it (0 continuous, 1 structural):
 New parameters take the next free id in their block and class. A retired parameter's id is kept
 reserved in this file.
 
-**Provisional entries.** SPEC gives no range, or a default is a choice, for these entries; their
-description says "provisional": `output.gain` range; `sympathetic.lowPass` range; `damper.tauUp`,
-`damper.tau0`, `damper.kRelease` ranges; `damper.eta` range and class;
-`damper.halfPedalStart/End` class; `unaCorda.kappaUC`, `unaCorda.deltaP` ranges;
-`longitudinal.kappaL`, `longitudinal.modes` ranges; `strings.fMax` default (SPEC gives 12 to 20 kHz,
-not a default). The planner decides whether to confirm them.
+**Retired ids:** 1010 `unaCorda.shift` (ICR-0001; use 1003 `pedal.soft`).
+
+**Provisional entries.** The ranges and classes were confirmed by SI-0007 (ICR-0001). One default
+remains a choice: `strings.fMax` default 16 kHz (SPEC-INST; V2 may revise).
 
 **`params.json`.** The file at the repository root is generated by `pme_params_json`
 (`tools/params/`), deterministic: sorted by id, 12 significant digits, LF line endings. Regenerate
@@ -123,16 +130,18 @@ output.
 SPEC-API names these types without listing members. The members below come from the defining SPEC
 section and are marked **provisional** in the headers; the planner files the gaps as spec issues.
 
-- `Point` (frame of x, y, z), `AudioOut` (a span of per-channel pointers), `Diagnostic` (kind, group,
-  sample, value), `TuningCurve` (reference pitch, per-key stretch indexed by MIDI key), `Defaults`
-  (instrument-wide values of SPEC-INST's piano table plus `localBridgeFSplit`, which has no SPEC
-  default), `BridgePointDesc`, `ChannelDesc`.
+- `AudioOut` (a span of per-channel pointers), `Diagnostic` (kind, group, sample, value), `Defaults`
+  (instrument-wide values of SPEC-INST's piano table plus `localBridgeFSplit`, whose 2 kHz default is
+  provisional until B3-T2 and V3), `BridgePointDesc`, `ChannelDesc` (`gainDb` is a later compatible
+  ICR).
 - Compiled data: `OscCoeffs` (complete: SPEC-OSC Contract), `StringModes`, `SegmentBridgeTerms`,
   `BodyModes`, `LocalBridge` (oscillator coefficients are not stored because `buildLocalBridge` has
   no sample rate; `compileInstrument` derives them).
-- `BodyParams`: `PlateParams` (uniform thickness), `RibDesc`, `modalTableHash`.
-- `Finger` (driver speed and h_slip follow "as plectrum"), `Pluck` event units (position in metres,
-  `PluckKind` for "kind").
+- `BodyParams`: `RibDesc`, `modalTableHash`.
+
+Settled by ICR-0001 and no longer provisional: the `Point` body frame (SI-0003), `TuningCurve` and
+`NoteGroupDesc::key` (SI-0004), `Finger` and the `Pluck` units (SI-0005), `PlateParams` geometry
+(outline, thickness grid, `BridgeBeamDesc`, rim stiffness; SI-0003).
 
 Compiled-data types expose their members so tests written from the public headers can read them.
 
@@ -153,8 +162,9 @@ compile function returns `Status::NotImplemented` and leaves its out-parameter u
 `channels >= 1`, `threads >= 1` (`InvalidArgument`), else returns `NotImplemented`.
 `Engine::process` writes exact `0.0f` to `frames` samples of every channel (null channel pointers
 are skipped), reads and ignores the events, and does not allocate, lock or throw, also when
-`prepare` was never called or failed. `setInstrument` accepts and releases its argument and never
-swaps. `popDiagnostic` returns `false`. No performance baseline is needed: the stubs only zero
+`prepare` was never called or failed. `setInstrument` (non-audio only) accepts and releases its
+argument on the calling thread and never swaps; `collectRetired` is a no-op (the retire queue is C1's
+work, SPEC-EXEC "Instrument lifetime"). `popDiagnostic` returns `false`. No performance baseline is needed: the stubs only zero
 buffers.
 
 ## Tests
@@ -168,6 +178,7 @@ buffers.
 | `P0.4-R3` | compile stubs return `NotImplemented` and leave outputs unchanged; `prepare` checks; `toString`; allocation count of `process` (not in rt-safety builds); exact zeros. |
 | `P0.4-T3`, `P0.4-R4` | registry invariants; `params.json` equals the generator output. |
 | `P0.4-R5` | event fields; trivially-copyable static assertions. |
+| `ICR-0001 ...` | interfaces version is 2; retired id 1010 is not registered; v2 description defaults; `collectRetired` on prepared and unprepared engines. |
 
 Detail: `pme::toString(Status)` is found by argument-dependent lookup and shadows doctest's own
 `toString` in `CHECK(status == ...)`. The test executable defines `DOCTEST_CONFIG_DOUBLE_STRINGIFY`
