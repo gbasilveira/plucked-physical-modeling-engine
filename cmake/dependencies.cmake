@@ -19,6 +19,11 @@ if(NOT PME_CPM_ACTUAL_SHA256 STREQUAL PME_CPM_SHA256)
                       "see cmake/dependencies.cmake and ADR-0003.")
 endif()
 
+# Consumers of the optional dependencies. PME_FETCH_ALL_DEPS fetches everything (proves every pin
+# resolves); the two options below fetch only what their consumer needs.
+option(PME_BUILD_PLUGINS "Build the plug-in shells (D1+)" OFF)
+option(PME_BUILD_PYTHON_BINDINGS "Build the nanobind Python modules (P0.5+)" OFF)
+
 set(CPM_USE_LOCAL_PACKAGES OFF)
 include("${CMAKE_CURRENT_LIST_DIR}/CPM.cmake")
 
@@ -81,13 +86,13 @@ CPMAddPackage(
     "JSON_MultipleHeaders OFF"
 )
 
-if(PME_FETCH_ALL_DEPS)
+if(PME_FETCH_ALL_DEPS OR PME_BUILD_PYTHON_BINDINGS)
   # nanobind
   #   upstream : https://github.com/wjakob/nanobind
   #   release  : v3.1.0 (annotated tag; peeled commit below)
   #   licence  : BSD-3-Clause
   #   purpose  : Python bindings
-  #   first built: C8
+  #   first built: P0.5 (PME_BUILD_PYTHON_BINDINGS); bindings in C8
   CPMAddPackage(
     NAME nanobind
     GIT_REPOSITORY https://github.com/wjakob/nanobind
@@ -95,7 +100,9 @@ if(PME_FETCH_ALL_DEPS)
     VERSION 3.1.0
     DOWNLOAD_ONLY YES
   )
+endif()
 
+if(PME_FETCH_ALL_DEPS OR PME_BUILD_PLUGINS)
   # CLAP
   #   upstream : https://github.com/free-audio/clap
   #   release  : 1.2.10 (lightweight tag; commit below)
@@ -109,7 +116,9 @@ if(PME_FETCH_ALL_DEPS)
     VERSION 1.2.10
     DOWNLOAD_ONLY YES
   )
+endif()
 
+if(PME_FETCH_ALL_DEPS)
   # clap-wrapper
   #   upstream : https://github.com/free-audio/clap-wrapper
   #   release  : v0.16.0 (lightweight tag; commit below)
