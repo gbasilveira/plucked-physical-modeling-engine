@@ -7,9 +7,9 @@ Maintained by the orchestrator (Opus). Status values: not started, ready, in pro
 | Phase | Name | Track | Status | Branch / PR | Gate report | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | P0.1 | Repository and build skeleton | 0 | complete | branch `ccr-5ef35d73-oqb6fd`; no PR (single session branch) |  | Head 312a62f. Code reviewer approved, no blocking findings. CI: bootstrap-build run https://github.com/gbasilveira/plucked-physical-modeling-engine/actions/runs/38140277814 green on all 21 jobs. ADR-0004 (no Windows tsan preset) Accepted by the orchestrator as the recommended default; owner may reverse. Carried to P0.2: delete bootstrap-build.yml, exact SPDX match, drop the phases.yaml exemption, clang-cl entry, Linux-Clang sanitizers. Carried to P0.3: ctest `--no-tests=error`. Carried to P0.4: buildable `pme_engine`. |
-| P0.2 | CI and quality gates | 0 | ready |  |  | Depends on P0.1 (complete). |
-| P0.3 | Test and analysis framework | 0 | ready |  |  | Depends on P0.1 (complete). |
-| P0.4 | Interface skeleton | 0 | ready |  |  | Depends on P0.1 (complete). |
+| P0.2 | CI and quality gates | 0 | ready |  |  | Depends on P0.1 (complete). Briefs: docs/agents/briefs/P0.2-implementer.md, P0.2-code-reviewer.md. Runs concurrently with P0.3 and P0.4 (disjoint paths; merge order P0.2, P0.3, P0.4). |
+| P0.3 | Test and analysis framework | 0 | ready |  |  | Depends on P0.1 (complete). Briefs: docs/agents/briefs/P0.3-implementer.md, P0.3-code-reviewer.md; no test-author (card tests no ORC rows). ADR-0005 (nlohmann/json). |
+| P0.4 | Interface skeleton | 0 | ready |  |  | Depends on P0.1 (complete). Briefs: docs/agents/briefs/P0.4-implementer.md, P0.4-code-reviewer.md. ADR-0006 (Status returns). Tag interfaces-v1 created by the orchestrator on acceptance. P0.4-T2 runs only after P0.2 is merged. |
 | P0.5 | Reference solver | 0 | not started |  |  |  |
 | A1 | Modal oscillator | A | not started |  |  |  |
 | A2 | Stiff string compiler | A | not started |  |  |  |

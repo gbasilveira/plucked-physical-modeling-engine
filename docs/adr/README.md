@@ -14,5 +14,6 @@ Further records:
 
 - ADR-0004 — no ThreadSanitizer preset on Windows (Accepted; defers one cell of P0.1-R2 and P0.1-T1)
 - ADR-0005 — nlohmann/json for JSON in C++ tests and tools (Accepted; P0.3)
+- ADR-0006 — engine interface reports failure through a Status return (Accepted; P0.4)
 
 Phase H1 adds the licence ADR that records decision D-1.
