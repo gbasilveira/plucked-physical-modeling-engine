@@ -626,6 +626,9 @@ jobs:
   lv2:
     name: lv2 (linux)
     runs-on: ubuntu-24.04
+    env:
+      LV2LINT_URL: https://github.com/amsynth/lv2lint
+      LV2LINT_SHA: ec29cfed3193a89a8091a4c18e22bb36e6b43b24
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -642,25 +645,38 @@ jobs:
           sudo apt-get install -y ninja-build "clang-${CLANG_APT_MAJOR}" "clang-tidy-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev" liblilv-dev lilv-utils lv2-dev
           echo "CC=clang-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
           echo "CXX=clang++-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
-      - name: Install lv2lint
-        # UNRESOLVED (D3 report): lv2lint is not in the apt sources of ubuntu-24.04. The brief
-        # requires building it from its upstream repository at an exact commit SHA read by the
-        # implementer; upstream was unreachable from the D3 session. Until the orchestrator
-        # supplies a verified SHA, this step fails loudly instead of skipping D3-T1.
+      - name: Cache the lv2lint build
+        id: lv2lint-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/lv2lint-prefix
+          key: lv2lint-${{ runner.os }}-${{ env.LV2LINT_SHA }}
+      - name: Build lv2lint from source (pinned commit)
+        # lv2lint is not in the apt sources of ubuntu-24.04. Pinned to the commit of the GitHub
+        # mirror (Artistic-2.0); the checked-out SHA is verified. See docs/dev/lv2.md.
+        if: steps.lv2lint-cache.outputs.cache-hit != 'true'
         run: |
-          if ! sudo apt-get install -y lv2lint; then
-            echo "::error::lv2lint is not available from apt; build it from upstream at a pinned commit (see docs/dev/lv2.md)"
-            exit 1
-          fi
+          sudo apt-get install -y meson
+          src="$RUNNER_TEMP/lv2lint-src"
+          mkdir -p "$src"
+          git -C "$src" init -q
+          git -C "$src" fetch -q --depth 1 "$LV2LINT_URL" "$LV2LINT_SHA"
+          git -C "$src" checkout -q FETCH_HEAD
+          test "$(git -C "$src" rev-parse HEAD)" = "$LV2LINT_SHA"
+          meson setup "$RUNNER_TEMP/lv2lint-build" "$src" --prefix="$HOME/lv2lint-prefix" --buildtype=release
+          ninja -C "$RUNNER_TEMP/lv2lint-build" install
+      - name: Put lv2lint on PATH
+        run: echo "$HOME/lv2lint-prefix/bin" >> "$GITHUB_PATH"
       - name: Tool versions (lv2lint, lilv, LV2)
         run: |
-          dpkg-query -W lv2lint liblilv-dev lilv-utils lv2-dev
-          lv2lint --version || true
+          dpkg-query -W liblilv-dev lilv-utils lv2-dev
+          echo "lv2lint ${LV2LINT_SHA} ($LV2LINT_URL)"
+          lv2lint -v 2>&1 | head -3
       - name: Create the report directory
         run: mkdir -p reports
-      - name: linux-rt-safety (LV2): configure
+      - name: "linux-rt-safety (LV2): configure"
         run: cmake --preset linux-rt-safety -DPME_BUILD_PLUGINS=ON -DPME_REQUIRE_LV2_TOOLS=ON
-      - name: linux-rt-safety (LV2): build
+      - name: "linux-rt-safety (LV2): build"
         run: cmake --build --preset linux-rt-safety
       - name: D3 tests (D3-T1 lv2lint, D3-T2 headless lilv host)
         run: ctest --preset linux-rt-safety -R "^D3-" --no-tests=error --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-lv2-linux.xml"

@@ -28,19 +28,35 @@ of the pinned source (`<build>/_deps/lv2-src/lv2`), so the tests need no system 
 
 | Test | What | Tools |
 | --- | --- | --- |
-| D3-T1 `lv2lint passes` | `lv2lint -Mpack -I <bundle> <URI>` over the built bundle, exit status 0 (`plugin/lv2/run_lv2lint.cmake`) | `lv2lint` |
+| D3-T1 `lv2lint passes` | `lv2lint -Mpack <URI>` over the built bundle (found through `LV2_PATH`), exit status 0 (`plugin/lv2/run_lv2lint.cmake`) | `lv2lint` |
 | D3-T2 `a headless LV2 host loads the plug-in and renders a test scenario` | `plugin/lv2/tests/lv2_host.cpp`, a lilv host with a real worker thread (below) | `liblilv-dev` (pkg-config `lilv-0`), test-only, ISC, never shipped |
 | D3-R1, D3-R2 unit tests | `plugin/lv2/tests/test_lv2_*.cpp`: `run`, state, worker, notify, Turtle, with a recording engine and hand-built atom sequences (labels `unit`, `rt`) | none |
 
 `PME_REQUIRE_LV2_TOOLS` (default OFF): when `lv2lint` or `lilv-0` is missing the dependent test is
 skipped (`SKIP_REGULAR_EXPRESSION`); with the option ON, configuration fails. The `lv2` CI job sets it
-ON, so a skip cannot pass in CI. No lv2lint check is disabled (no `-d`/`-w` options).
+ON, so a skip cannot pass in CI. No lv2lint check is disabled and none is promoted to an error with
+`-E` (the default configuration fails on error-level findings only); `-Mpack` only skips checks
+meant for distribution packagers. Current non-fatal finding: `Plugin Author Email` (`foaf:mbox`
+missing from the maintainer); a real contact address awaits decision D-3, and none is invented.
+
+### lv2lint (pinned source build)
+
+| Item | Value |
+| --- | --- |
+| Source | GitHub mirror `https://github.com/amsynth/lv2lint` (upstream: `git.open-music-kontrollers.ch/~hp/lv2lint`, unreachable from the D3 sessions) |
+| Commit | `ec29cfed3193a89a8091a4c18e22bb36e6b43b24` (master of the mirror when read; the mirror has no tags); version string 0.17.71 |
+| Licence | Artistic-2.0 (SPDX header of `src/lv2lint.c`; `meson.build` and the README are CC0-1.0; the vendored subprojects `mapper.lv2` and `varchunk` carry their own `LICENSES/`). Test-only tool, never linked into or shipped with the plug-in |
+| Build | `meson setup --prefix=$HOME/lv2lint-prefix` and `ninja install`; online, ELF and X11 checks stay disabled (the defaults). The installed `lv2lint` wrapper script hard-codes its install prefix, so it must be run from where it was installed |
+| CLI | `-v` prints the version (`--version` is not an option), `-Mpack` as above, plug-in URIs as arguments; plug-ins are found via `LV2_PATH` (`-I <dir>` would add a second search directory and cause a duplicate-plug-in warning here) |
+
+CI verifies the checked-out SHA and caches the install keyed on it (docs/dev/ci.md). Moving the pin
+means re-reading the new commit, its licence and `-h` output.
 
 Run by hand:
 
 ```bash
 export LV2_PATH=build/linux-rt-safety/plugin/lv2/lv2path:build/linux-rt-safety/_deps/lv2-src/lv2
-lv2lint -Mpack -I build/linux-rt-safety/plugin/lv2/pme.lv2 https://pme.invalid/lv2/instrument
+lv2lint -Mpack https://pme.invalid/lv2/instrument
 build/linux-rt-safety/plugin/lv2/pme_lv2_host https://pme.invalid/lv2/instrument
 lv2info https://pme.invalid/lv2/instrument
 ```

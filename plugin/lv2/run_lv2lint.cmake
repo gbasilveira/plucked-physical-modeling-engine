@@ -13,12 +13,12 @@ if(NOT EXISTS "${BUNDLE}/manifest.ttl")
   message(FATAL_ERROR "bundle not built: ${BUNDLE}/manifest.ttl")
 endif()
 
-execute_process(COMMAND "${LV2LINT}" --version OUTPUT_VARIABLE version ERROR_VARIABLE version_err
+execute_process(COMMAND "${LV2LINT}" -v OUTPUT_VARIABLE version ERROR_VARIABLE version_err
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "lv2lint: ${version}${version_err}")
 set(ENV{LV2_PATH} "${LV2_PATH}")
 execute_process(
-  COMMAND "${LV2LINT}" -Mpack -I "${BUNDLE}" "${URI}"
+  COMMAND "${LV2LINT}" -Mpack "${URI}"
   RESULT_VARIABLE result)
 if(NOT result EQUAL 0)
   message(FATAL_ERROR "lv2lint failed (exit status ${result})")
