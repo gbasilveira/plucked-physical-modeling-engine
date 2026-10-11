@@ -27,7 +27,7 @@ using plugin::ParamModel;
 using plugin::RenderMode;
 
 constexpr std::array<int, 4> kPortConfigChannels{2, 4, 6, 8};  // D1-R1
-constexpr std::size_t kMaxStateBytes = 16U * 1024U * 1024U;
+constexpr std::size_t kMaxStateBytes = std::size_t{16} * 1024 * 1024;
 constexpr std::size_t kReadChunk = 4096;
 constexpr std::uint32_t kTimerPeriodMs = 100;
 

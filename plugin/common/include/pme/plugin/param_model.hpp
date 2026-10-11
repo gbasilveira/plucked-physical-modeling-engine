@@ -11,6 +11,7 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <vector>
 
 #include "pme/pme.hpp"
 
@@ -52,7 +53,7 @@ public:
 private:
     std::span<const ParamInfo> registry_;
     std::size_t count_{0};
-    std::unique_ptr<std::atomic<double>[]> values_;
+    std::vector<std::atomic<double>> values_;
 };
 
 }  // namespace pme::plugin

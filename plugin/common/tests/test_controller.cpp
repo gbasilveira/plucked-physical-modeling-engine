@@ -71,8 +71,8 @@ TEST_CASE("D1-R1 the stub engine's NotImplemented is an unavailable engine, not 
     REQUIRE((c.activate(48000.0, 256) == pme::Status::Ok));
     CHECK(c.active());
     CHECK_FALSE(c.engineAvailable());
-    std::array<float, 256> l;
-    std::array<float, 256> r;
+    std::array<float, 256> l{};
+    std::array<float, 256> r{};
     l.fill(1.0F);
     r.fill(1.0F);
     std::array<float*, 2> ch{l.data(), r.data()};
@@ -120,8 +120,8 @@ TEST_CASE("D1-R7 render mode is recorded and changes nothing the engine receives
         r.controller->setRenderMode(modes[m]);
         CHECK(r.controller->renderMode() == modes[m]);
         REQUIRE((r.controller->activate(48000.0, 64) == pme::Status::Ok));
-        std::array<float, 64> a;
-        std::array<float, 64> b;
+        std::array<float, 64> a{};
+        std::array<float, 64> b{};
         std::array<float*, 2> ch{a.data(), b.data()};
         block(*r.controller, 64, ch.data(), 2, input);
         block(*r.controller, 64, ch.data(), 2, input);
@@ -142,8 +142,8 @@ TEST_CASE("D1-R7 render mode is recorded and changes nothing the engine receives
 TEST_CASE("D1-R5 tail is infinite while a note is held or the sustain pedal is down") {
     Rig r;
     REQUIRE((r.controller->activate(48000.0, 64) == pme::Status::Ok));
-    std::array<float, 64> a;
-    std::array<float, 64> b;
+    std::array<float, 64> a{};
+    std::array<float, 64> b{};
     std::array<float*, 2> ch{a.data(), b.data()};
     constexpr std::uint32_t infinite = std::numeric_limits<std::uint32_t>::max();
     CHECK(r.controller->tailSamples() == 0);
@@ -166,8 +166,8 @@ TEST_CASE("D1-R5 tail is infinite while a note is held or the sustain pedal is d
 TEST_CASE("D1-R3 host parameter values are clamped, stored and delivered as Param events") {
     Rig r;
     REQUIRE((r.controller->activate(48000.0, 64) == pme::Status::Ok));
-    std::array<float, 64> a;
-    std::array<float, 64> b;
+    std::array<float, 64> a{};
+    std::array<float, 64> b{};
     std::array<float*, 2> ch{a.data(), b.data()};
     {
         const pme::rtcheck::ScopedRealtimeThread realtime;
@@ -193,8 +193,8 @@ TEST_CASE("D1-R4 applied state reaches the engine at the start of the next block
     CHECK(report.unknown == 1);
     CHECK(r.controller->instrumentReference() == "x.json");
     CHECK(r.controller->params().value(r.controller->params().indexOf(4001)) == 0.05);  // clamped
-    std::array<float, 64> a;
-    std::array<float, 64> b;
+    std::array<float, 64> a{};
+    std::array<float, 64> b{};
     std::array<float*, 2> ch{a.data(), b.data()};
     block(*r.controller, 64, ch.data(), 2);
     REQUIRE(r.engine->events.size() == 2);
@@ -210,8 +210,8 @@ TEST_CASE("D1-R4 applied state reaches the engine at the start of the next block
 TEST_CASE("D1-R1 a host block larger than the activated maximum is split with re-based offsets") {
     Rig r;
     REQUIRE((r.controller->activate(48000.0, 100) == pme::Status::Ok));
-    std::array<float, 250> a;
-    std::array<float, 250> b;
+    std::array<float, 250> a{};
+    std::array<float, 250> b{};
     std::array<float*, 2> ch{a.data(), b.data()};
     block(
         *r.controller, 250, ch.data(), 2,

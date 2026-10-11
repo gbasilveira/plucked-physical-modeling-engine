@@ -11,9 +11,7 @@
 namespace pme::plugin {
 
 ParamModel::ParamModel()
-    : registry_(paramRegistry()),
-      count_(registry_.size()),
-      values_(std::make_unique<std::atomic<double>[]>(registry_.size())) {
+    : registry_(paramRegistry()), count_(registry_.size()), values_(registry_.size()) {
     resetToDefaults();
 }
 
