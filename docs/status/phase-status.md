@@ -52,7 +52,7 @@ Maintained by the orchestrator (Opus). Status values: not started, ready, in pro
 | E6 | Tanpura | E | not started |  |  |  |
 | E7 | Sitar | E | not started |  |  |  |
 | E8 | Kantele, shamisen and tanbur | E | not started |  |  |  |
-| V1 | Traceability and oracle suite | V | not started |  |  |  |
+| V1 | Traceability and oracle suite | V | ready |  |  | Depends on P0.3 (complete); continuous. Briefs: docs/agents/briefs/V1-implementer.md, V1-code-reviewer.md; no test-author (no ORC rows). Also owns the six P0.3 follow-ups (ctest TIMEOUT default, timing-test flake, knee_s comparison, energy-tolerance documentation, WAV cross-language test, docstring). May start before ICR-0001 is merged (touches none of its paths). When merging D1 and P0.5, the orchestrator adds `plugin` and `reference-python` to the `needs` of V1's `traceability` job. |
 | V2 | Performance and real-time validation | V | not started |  |  |  |
 | V3 | Sympathetic approximation validation | V | not started |  |  |  |
 | V4 | Listening and playability tests | V | not started |  |  |  |

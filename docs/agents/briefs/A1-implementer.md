@@ -37,7 +37,7 @@ Four phases are implemented in separate git worktrees; the orchestrator merges t
 | `engine/tests/oracles/**` (new); in `engine/tests/oracles.md`: the status and test-location cells of rows ORC-01 and ORC-02 only | A1 test-author | read only |
 | `reference/**`, `tools/reference-cli/**`, `tools/tests/test_p0_5_*.py`, `docs/dev/reference-solver.md` | P0.5 | read only |
 | `pyproject.toml`, `uv.lock` | P0.5 | read only |
-| `tools/trace/**`, `tools/tests/test_v1_*.py`, `.github/workflows/nightly.yml`, `tools/ci/**` except `required_checks.json` | V1 | read only |
+| `tools/trace/**`, `tools/tests/test_v1_*.py`, `docs/dev/traceability.md`, `.github/workflows/nightly.yml`, `tools/ci/**` except `required_checks.json` | V1 | read only |
 | P0.3 follow-ups: `cmake/pme_testing.cmake`, `engine/tests/framework/**`, `engine/tests/rtcheck/CMakeLists.txt`, `tools/analysis/**`, `tools/bench/**`, `tools/tests/test_p0_3_*.py`, `docs/dev/testing.md`, `docs/dev/signal-analysis.md` | V1 | read only |
 | `# Covers:` / `// Covers:` comment lines added to test files of completed phases P0.1 to P0.3 (comments only) | V1 | read only |
 | `plugin/**` (`plugin/CMakeLists.txt`, `plugin/clap/`, `plugin/common/`), `docs/dev/clap-shell.md` | D1 | read only |
