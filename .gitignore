@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Build output
+/build/
+/out/
+CMakeUserPresets.json
+compile_commands.json
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/

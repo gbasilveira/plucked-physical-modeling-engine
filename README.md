@@ -17,6 +17,10 @@ Planning is complete; implementation has not started. Work proceeds phase by pha
 | [docs/plan/literature-survey.md](docs/plan/literature-survey.md) | Research survey |
 | [docs/status/phase-status.md](docs/status/phase-status.md) | Current progress |
 
+## Building
+
+CMake presets and the Python toolchain are described in [docs/dev/build.md](docs/dev/build.md); contribution rules are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Licence
 
 MIT — see [LICENSE](LICENSE).

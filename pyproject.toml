@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: MIT
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pme-compiler"
+version = "0.0.0"
+description = "Design compiler for the plucked physical modelling engine"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+]
+
+[project.optional-dependencies]
+# FEM toolchain for plate and body compilation (ADR-0002).
+fem = [
+    "scikit-fem>=10.0",
+    "gmsh>=4.13",
+    "meshio>=5.3",
+]
+# Parameter fitting (B5, E2).
+fit = [
+    "jax>=0.4.30",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["compiler/pme_compiler"]
+
+[tool.pytest.ini_options]
+testpaths = ["compiler/tests", "tools/tests"]
+pythonpath = ["tools"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["compiler", "tools"]
+# Planning documentation (docs/) is read-only for implementers and holds scratch verification scripts.
+extend-exclude = ["docs", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+files = ["compiler", "tools"]
+mypy_path = "tools:compiler"
+
+[[tool.mypy.overrides]]
+module = ["skfem.*", "gmsh.*", "meshio.*", "jax.*", "scipy.*"]
+ignore_missing_imports = true
