@@ -39,3 +39,4 @@ Decision, human reviewer (for physics or numerics), SPEC commit, affected phases
 | [SI-0005](SI-0005-plucked-exciter-interfaces.md) | Plucked exciters: Pluck event, finger, initial displacement | accepted; route ICR-0001 | P1 (until interfaces-v2) |
 | [SI-0006](SI-0006-compiled-instrument-retirement.md) | No retire mechanism for the previous CompiledInstrument | accepted; route ICR-0001 | C1, C4, C6 (until interfaces-v2) |
 | [SI-0007](SI-0007-parameter-registry.md) | Parameter registry ranges, soft-pedal duplication, output gains, f_max | accepted; route ICR-0001 | C4 (until interfaces-v2) |
+| [SI-0008](SI-0008-oscillator-coefficient-cancellation.md) | SPEC-OSC ω̂²Δt² formula loses digits at small ωΔt; exact sech form proposed | open (recommended: accept; needs human review) | A1 merge (A1-T1) |
