@@ -10,8 +10,8 @@
 // Formats: pcm16, pcm24, pcm32, float32, float64. Exit 0 on success, 2 on a usage or file error.
 
 #include <cstddef>
-#include <cstdio>
 #include <exception>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -93,10 +93,10 @@ int main(int argc, char** argv) {
         }
         if (argc == 3 && std::string_view(argv[1]) == "read") {
             const WavData wav = pme::analysis::read_wav(argv[2]);
-            std::printf("%s %u %.17g %zu\n", format_name(wav.format), wav.channels,
-                        wav.sample_rate_hz, wav.frames());
+            std::cout << std::setprecision(17) << format_name(wav.format) << ' ' << wav.channels
+                      << ' ' << wav.sample_rate_hz << ' ' << wav.frames() << '\n';
             for (const double s : wav.samples) {
-                std::printf("%.17g\n", s);
+                std::cout << s << '\n';
             }
             return 0;
         }

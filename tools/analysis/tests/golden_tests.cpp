@@ -154,18 +154,24 @@ TEST_CASE("P0.3-R4 per-partial tolerance overrides replace the default") {
 TEST_CASE("P0.3-R4 knee time is compared with the knee tolerance") {
     GoldenFeatures ref = make_reference();  // partial 2 has a second decay with knee 1.5 s
     GoldenFeatures cand = ref;
-    cand.partials[1].second_decay->knee_s = 1.5 * 1.10;
+    REQUIRE(cand.partials[1].second_decay.has_value());
+    const auto set_knee = [](GoldenFeatures& g, double knee_s) {
+        if (g.partials[1].second_decay) {
+            g.partials[1].second_decay->knee_s = knee_s;
+        }
+    };
+    set_knee(cand, 1.5 * 1.10);
     const auto r = compare_golden(ref, cand);
     CHECK_FALSE(r.pass);
     const FeatureResult* knee = find(r, "partial[2].knee_s");
     REQUIRE(knee != nullptr);
     CHECK_FALSE(knee->pass);
     CHECK(knee->tolerance == 0.05);
-    cand.partials[1].second_decay->knee_s = 1.5 * 1.02;
+    set_knee(cand, 1.5 * 1.02);
     CHECK(compare_golden(ref, cand).pass);
 
     // A per-partial override and a file-wide default both replace the 5% default.
-    cand.partials[1].second_decay->knee_s = 1.5 * 1.10;
+    set_knee(cand, 1.5 * 1.10);
     ref.tolerances.partials[2].knee_relative = 0.2;
     CHECK(compare_golden(ref, cand).pass);
     GoldenFeatures again = parse_golden(serialize_golden(ref));
