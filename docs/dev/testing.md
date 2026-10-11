@@ -73,6 +73,9 @@ labels in their own jobs. `pme_add_doctest` rejects a label outside this list at
    `pme_build_options`, `COMPILE_WARNING_AS_ERROR ON`, `doctest::doctest` and `pme_test_framework`,
    then registers **each `TEST_CASE` as its own CTest test** by running the executable with
    `--list-test-cases` after the build. `LABELS` is required; `RT` adds the `rt` label.
+   `TIMEOUT <seconds>` sets the CTest `TIMEOUT` property of every discovered test case; the default
+   is **300 s**, and the rtcheck death tests pass `TIMEOUT 120`. `ctest -N --show-only=json-v1`
+   lists the timeouts (a test run by a hung process fails instead of blocking the job).
 3. A directory that adds tests is added to the build by its parent `CMakeLists.txt`; engine module
    test directories are the owning phase's responsibility.
 
@@ -115,6 +118,14 @@ the test location. Statuses: `not implemented`, `implemented` (the test exists b
 passing or required), `passing` (registered with the `oracle` label and green in CI on all three
 systems). The phase that implements an oracle edits its row (status and test location) in the same
 pull request as the test and never edits the SPEC columns.
+
+### Oracle tests pass the SPEC-ORC tolerance explicitly
+
+The golden-file defaults (`docs/dev/signal-analysis.md`) are chosen for golden renders, not for
+oracles: for example `energy_absolute = 1e-9` is looser than ORC-02 (10^-12 relative in float64,
+10^-5 in float32) and ORC-09 (10^-10 relative). An oracle test passes the tolerance of its SPEC-ORC
+row explicitly to `account_energy`, `PME_CHECK_*` or the comparator and never relies on a golden
+default.
 
 ## Golden features
 
