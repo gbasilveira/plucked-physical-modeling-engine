@@ -17,7 +17,9 @@ namespace {
 
 // The observable store keeps the compiler from removing the allocation.
 int* volatile g_sink = nullptr;
-void* volatile g_rawSink = nullptr;
+#if !defined(_WIN32)
+void* volatile g_rawSink = nullptr;  // only the POSIX-only modes use it
+#endif
 
 void allocate() {
     g_sink = new int(7);
