@@ -154,7 +154,7 @@ Pins were resolved on 2026-10-11 with `git ls-remote`.
 | CLAP | https://github.com/free-audio/clap | 1.2.10 | 195b42a004144fab0b3cf95e9c067187d15365b7 | MIT | `PME_FETCH_ALL_DEPS` |
 | clap-wrapper | https://github.com/free-audio/clap-wrapper | v0.16.0 | 1cca996e96f29ab2be7ae9f8cfe532bbc92e1dd6 | MIT | `PME_FETCH_ALL_DEPS` |
 | VST 3 SDK | https://github.com/steinbergmedia/vst3sdk | v3.8.1_build_84 | 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96 | MIT | `PME_FETCH_ALL_DEPS` |
-| LV2 (GitHub mirror of gitlab.com/lv2/lv2) | https://github.com/lv2/lv2 | v1.18.10 | 0bcde338db1c63bbc503b4d1f6d7b55ed43154af | ISC (mixed; see `LICENSES/` upstream) | `PME_FETCH_ALL_DEPS` |
+| LV2 (GitHub mirror of gitlab.com/lv2/lv2) | https://github.com/lv2/lv2 | v1.18.10 | 0bcde338db1c63bbc503b4d1f6d7b55ed43154af | ISC (mixed; see `LICENSES/` upstream) | `PME_FETCH_ALL_DEPS`; `PME_BUILD_PLUGINS` on Linux (D3) |
 
 Vendored `cmake/CPM.cmake`: release asset of v0.43.2
 (`https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.43.2/CPM.cmake`), SHA-256

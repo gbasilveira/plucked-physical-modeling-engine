@@ -149,7 +149,9 @@ if(PME_FETCH_ALL_DEPS)
     VERSION 3.8.1
     DOWNLOAD_ONLY YES
   )
+endif()
 
+if(PME_FETCH_ALL_DEPS OR (PME_BUILD_PLUGINS AND CMAKE_SYSTEM_NAME STREQUAL "Linux"))
   # LV2 (GitHub mirror of https://gitlab.com/lv2/lv2)
   #   upstream : https://github.com/lv2/lv2
   #   release  : v1.18.10 (annotated tag; peeled commit below)
