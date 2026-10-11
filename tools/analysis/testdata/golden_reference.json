@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "scenario": "cli-fixture",
+  "sample_rate_hz": 48000.0,
+  "producer": {
+    "tool": "pme-fixtures",
+    "version": "0"
+  },
+  "partials": [
+    {
+      "index": 1,
+      "frequency_hz": 110.0,
+      "amplitude": 1.0,
+      "sigma_per_s": 0.75,
+      "t60_s": 9.210340371976184
+    },
+    {
+      "index": 2,
+      "frequency_hz": 220.0,
+      "amplitude": 0.5,
+      "sigma_per_s": 1.0,
+      "t60_s": 6.907755278982138
+    },
+    {
+      "index": 3,
+      "frequency_hz": 330.0,
+      "amplitude": 0.3333333333333333,
+      "sigma_per_s": 1.25,
+      "t60_s": 5.52620422318571
+    }
+  ],
+  "spectral_envelope": {
+    "frequencies_hz": [
+      100.0,
+      200.0,
+      400.0
+    ],
+    "magnitude_db": [
+      -20.0,
+      -25.0,
+      -40.0
+    ]
+  },
+  "contact_time_s": 0.0031,
+  "tolerances": {
+    "default": {
+      "decay_rate_relative": 0.005
+    }
+  }
+}

@@ -63,6 +63,13 @@ add_subdirectory(engine/src/rtcheck)
 add_subdirectory(engine/tests/rtcheck)
 # ---- end P0.2 ----
 
+# ---- P0.3: test and analysis framework ----
+include(pme_testing)
+add_subdirectory(engine/tests/framework)
+add_subdirectory(tools/analysis)
+add_subdirectory(tools/bench)
+# ---- end P0.3 ----
+
 # ---- P0.4: interface tests and parameter generator ----
 add_subdirectory(tools/params)
 add_subdirectory(engine/tests/interfaces)

@@ -40,7 +40,7 @@ packages = ["compiler/pme_compiler"]
 
 [tool.pytest.ini_options]
 testpaths = ["compiler/tests", "tools/tests"]
-pythonpath = ["tools"]
+pythonpath = ["tools", "tools/analysis"]
 
 [tool.ruff]
 target-version = "py312"
@@ -56,7 +56,7 @@ select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
 strict = true
 python_version = "3.12"
 files = ["compiler", "tools"]
-mypy_path = "tools:compiler"
+mypy_path = "tools:tools/analysis:compiler"
 
 [[tool.mypy.overrides]]
 module = ["skfem.*", "gmsh.*", "meshio.*", "jax.*", "scipy.*"]
