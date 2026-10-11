@@ -6,6 +6,7 @@
 
 #include "pme/version.hpp"
 
+// Covers: P0.4-R1, P0.4-R2
 TEST_CASE("P0.4-T1 every public header compiles on its own") {
     // The CMake glob generated one translation unit per header (each including it twice and
     // nothing else); they are part of this executable, so reaching this point means they compiled.
