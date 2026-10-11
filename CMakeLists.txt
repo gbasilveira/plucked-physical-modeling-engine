@@ -90,3 +90,9 @@ if(PME_BUILD_PLUGINS)
   add_subdirectory(plugin)
 endif()
 # ---- end D1 ----
+
+# ---- A2: stiff string compiler ----
+target_include_directories(pme_string PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/string/include")
+target_link_libraries(pme_string PUBLIC pme_osc)
+add_subdirectory(engine/tests/string)
+# ---- end A2 ----
