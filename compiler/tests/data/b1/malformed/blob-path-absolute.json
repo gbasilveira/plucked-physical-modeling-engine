@@ -1,0 +1,172 @@
+{
+  "format": "pme-instrument",
+  "schemaVersion": 1,
+  "instrument": {
+    "name": "test-monochord",
+    "groups": [
+      {
+        "key": 45,
+        "segments": [
+          {
+            "string": {
+              "L": 1.0,
+              "dCore": 0.001,
+              "rhoCore": 7850.0,
+              "ECore": 200000000000.0,
+              "dOuter": 0.001,
+              "rhoWind": 7850.0,
+              "packing": 1.0,
+              "epsWind": 0.0,
+              "f1Target": 110.0,
+              "b1": 0.5,
+              "b2": 0.0,
+              "b3": 2e-09,
+              "sigmaOverride": [],
+              "boundary": "Pinned",
+              "detuneH": 0.0,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": 0.0,
+            "barriers": [],
+            "muteRatio": 0.0,
+            "tensionModulation": false,
+            "longitudinalModes": 8,
+            "kappaL": 0.026,
+            "kappaT": 0.0,
+            "unisonDetuneCents": 0.0
+          }
+        ],
+        "exciter": {
+          "hammer": {
+            "mass": 0.008,
+            "K": 244023000.0,
+            "p": 2.5,
+            "muHC": 0.2,
+            "width": 0.01,
+            "strikeRatio": 0.125,
+            "law": "HuntCrossley",
+            "stulovEps": 0.0,
+            "stulovTau": 0.0,
+            "vMin": 0.3,
+            "vMax": 6.0,
+            "gammaV": 1.5,
+            "dCheck": 0.005
+          }
+        },
+        "unaCorda": {
+          "s0": 0.3,
+          "s1": 0.9,
+          "kappaUC": 0.6,
+          "deltaPUC": 0.0,
+          "rhoUpright": 0.3,
+          "leavingString": -1
+        }
+      }
+    ],
+    "bridgePoints": [
+      {
+        "position": {
+          "x": 0.3,
+          "y": 0.2,
+          "z": 0.0
+        },
+        "thetaB": 0.0,
+        "conductanceH": 0.001
+      }
+    ],
+    "body": {
+      "source": "ModalTable",
+      "plate": {
+        "lengthX": 0.6,
+        "lengthY": 0.4,
+        "thickness": 0.006,
+        "grainAngle": 0.0,
+        "youngsL": 11000000000.0,
+        "youngsR": 900000000.0,
+        "shearLR": 700000000.0,
+        "poissonLR": 0.37,
+        "poissonRL": 0.03,
+        "density": 420.0,
+        "moisture": 0.12,
+        "dEdMcL": 0.0,
+        "dEdMcR": 0.0,
+        "dGdMc": 0.0,
+        "dRhodMc": 0.0,
+        "lossFactor": 0.01,
+        "rimStiffness": 0.0,
+        "fMax": 3000.0,
+        "ribs": [],
+        "outline": [],
+        "thicknessNx": 0,
+        "thicknessNy": 0,
+        "thicknessGrid": [],
+        "bridges": [],
+        "rimRotationalStiffness": 0.0
+      },
+      "modalTableHash": "sha256:9904ef62b0fd276a5a6e92e307d59c1ba1e6db066fbf3dd30f27b5f0b2944f3a"
+    },
+    "channels": [
+      {
+        "name": "mono",
+        "position": {
+          "x": 0.3,
+          "y": 0.2,
+          "z": 1.0
+        }
+      }
+    ],
+    "tuning": {
+      "referencePitch": 440.0,
+      "stretchCents": []
+    },
+    "defaults": {
+      "halfPedalP0": 0.35,
+      "halfPedalP1": 0.65,
+      "sympatheticGain": 1.0,
+      "sympatheticLowPass": 5000.0,
+      "localBridgeModes": 64,
+      "localBridgeFSplit": 2000.0
+    }
+  },
+  "blobs": [
+    {
+      "hash": "sha256:9904ef62b0fd276a5a6e92e307d59c1ba1e6db066fbf3dd30f27b5f0b2944f3a",
+      "path": "/etc/passwd",
+      "producer": {
+        "tool": "pme-plate-compiler",
+        "version": "0.0.1"
+      },
+      "arrays": [
+        {
+          "name": "omega",
+          "dtype": "float64",
+          "shape": [
+            4,
+            3
+          ],
+          "unit": "rad",
+          "offset": 0
+        },
+        {
+          "name": "phi",
+          "dtype": "float32",
+          "shape": [
+            10
+          ],
+          "unit": "1",
+          "offset": 96
+        },
+        {
+          "name": "index",
+          "dtype": "uint32",
+          "shape": [
+            8
+          ],
+          "unit": "index",
+          "offset": 136
+        }
+      ]
+    }
+  ]
+}

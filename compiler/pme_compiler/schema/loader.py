@@ -85,7 +85,7 @@ def try_loads(
 def try_load(
     path: str | os.PathLike[str], verify_blobs: bool = True
 ) -> tuple[models.InstrumentFile | None, list[LoadError]]:
-    """Load from a file, also checking its blob files next to it (``verify_blobs``: recompute SHA-256)."""
+    """Load from a file and check its blob files (``verify_blobs``: recompute SHA-256)."""
     file = Path(path)
     try:
         raw = file.read_bytes()
@@ -120,7 +120,7 @@ def load(source: str | os.PathLike[str], verify_blobs: bool = True) -> models.In
 
 
 def dumps(file: models.InstrumentFile) -> str:
-    """The canonical text of an instrument file (docs/dev/instrument-format.md, "Canonical form")."""
+    """The canonical text of an instrument file (docs/dev/instrument-format.md)."""
     return dumps_document(file_to_json(file))
 
 

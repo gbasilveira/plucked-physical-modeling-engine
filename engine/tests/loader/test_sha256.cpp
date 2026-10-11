@@ -31,7 +31,7 @@ TEST_CASE("B1-R3 SHA-256 of the FIPS 180-4 two-block message") {
           "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
 }
 
-TEST_CASE("B1-R3 SHA-256 of one million letters a, fed in uneven pieces") {
+TEST_CASE("B1-R3 SHA-256 of one million letters a fed in uneven pieces") {
     pme::loader::Sha256 sha;
     const std::string chunk(997, 'a');
     std::size_t left = 1000000;
@@ -45,7 +45,7 @@ TEST_CASE("B1-R3 SHA-256 of one million letters a, fed in uneven pieces") {
           "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
 }
 
-TEST_CASE("B1-R3 SHA-256 padding boundaries at 55, 56, 63 and 64 bytes") {
+TEST_CASE("B1-R3 SHA-256 padding boundaries at 55 to 64 bytes") {
     // Reference digests computed with Python hashlib.
     CHECK(hashOf(std::string(55, 'x')) ==
           "d5e285683cd4efc02d021a5c62014694958901005d6f71e89e0989fac77e4072");

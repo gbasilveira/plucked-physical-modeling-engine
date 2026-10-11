@@ -8,6 +8,8 @@ or fitted. Experiments E1 and P6 replace them. Formulas cite SPEC-STR and SPEC-H
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
+from itertools import pairwise
 from pathlib import Path
 
 from pme_compiler.schema import models
@@ -23,7 +25,7 @@ def sig(x: float, digits: int = 10) -> float:
 
 def loglin(x: float, x0: float, y0: float, x1: float, y1: float) -> float:
     """Log-linear interpolation between (x0, y0) and (x1, y1)."""
-    return y0 * (y1 / y0) ** ((x - x0) / (x1 - x0))
+    return float(y0 * (y1 / y0) ** ((x - x0) / (x1 - x0)))
 
 
 def lin(x: float, x0: float, y0: float, x1: float, y1: float) -> float:
@@ -31,9 +33,9 @@ def lin(x: float, x0: float, y0: float, x1: float, y1: float) -> float:
     return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
 
 
-def anchored(x: float, anchors: list[tuple[float, float]]) -> float:
+def anchored(x: float, anchors: Sequence[tuple[float, float]]) -> float:
     """Log-linear interpolation through (x, y) anchors, in increasing x."""
-    for (x0, y0), (x1, y1) in zip(anchors, anchors[1:], strict=False):
+    for (x0, y0), (x1, y1) in pairwise(anchors):
         if x0 <= x <= x1:
             return loglin(x, x0, y0, x1, y1)
     raise ValueError(f"{x} is outside the anchors")
@@ -138,16 +140,20 @@ def plain_diameter_for_tension(
 
 def hammer_contact_time(mass: float, k: float, p: float, v: float) -> float:
     """Contact time t_c of a rigid felt contact K [delta]_+^p (SPEC-HAM Oracle), s."""
-    delta_m = ((p + 1.0) * mass * v * v / (2.0 * k)) ** (1.0 / (p + 1.0))
-    ratio = math.sqrt(math.pi) * math.gamma(1.0 + 1.0 / (p + 1.0)) / math.gamma(0.5 + 1.0 / (p + 1.0))
+    delta_m = float(((p + 1.0) * mass * v * v / (2.0 * k)) ** (1.0 / (p + 1.0)))
+    ratio = (
+        math.sqrt(math.pi) * math.gamma(1.0 + 1.0 / (p + 1.0)) / math.gamma(0.5 + 1.0 / (p + 1.0))
+    )
     return 2.0 * delta_m / v * ratio
 
 
 def hammer_stiffness_for_contact_time(mass: float, p: float, v: float, t_c: float) -> float:
     """Felt stiffness K for which the SPEC-HAM oracle contact time at speed v equals t_c, N/m^p."""
-    ratio = math.sqrt(math.pi) * math.gamma(1.0 + 1.0 / (p + 1.0)) / math.gamma(0.5 + 1.0 / (p + 1.0))
+    ratio = (
+        math.sqrt(math.pi) * math.gamma(1.0 + 1.0 / (p + 1.0)) / math.gamma(0.5 + 1.0 / (p + 1.0))
+    )
     delta_m = t_c * v / (2.0 * ratio)
-    return (p + 1.0) * mass * v * v / (2.0 * delta_m ** (p + 1.0))
+    return float((p + 1.0) * mass * v * v / (2.0 * delta_m ** (p + 1.0)))
 
 
 def spruce_plate(

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import math
+from itertools import pairwise
 from pathlib import Path
 
 from pme_compiler.examples import common
@@ -41,7 +42,7 @@ HAMMER_WIDTH = ((21, 0.015), (108, 0.005))  # m, linear
 STRIKE_RATIO = 1.0 / 8.0  # up to STRIKE_BREAK, then linear to STRIKE_RATIO_TOP at the last key
 STRIKE_BREAK, STRIKE_RATIO_TOP = 88, 1.0 / 12.0
 LAST_DAMPED_KEY = 88
-DAMPER = {"xRatio": 0.05, "width": 0.020, "Kd": 5000.0, "Rd": 5.0}
+DAMPER_X_RATIO, DAMPER_WIDTH, DAMPER_KD, DAMPER_RD = 0.05, 0.020, 5000.0, 5.0
 BRIDGE_CONDUCTANCE = 1.0e-3  # s/kg
 BASS_KEYS = range(21, 41)
 CHANNELS = (("L", (-0.5, 0.7, 1.0)), ("R", (2.0, 0.7, 1.0)))
@@ -73,9 +74,15 @@ def speaking_string(key: int) -> models.StringParams:
     length = common.sig(common.anchored(key, LENGTH_ANCHORS))
     f1 = common.equal_tempered(key)
     if key in WOUND_KEYS:
-        d_core = common.sig(common.loglin(key, CORE_D[0][0], CORE_D[0][1], CORE_D[1][0], CORE_D[1][1]))
+        d_core = common.sig(
+            common.loglin(key, CORE_D[0][0], CORE_D[0][1], CORE_D[1][0], CORE_D[1][1])
+        )
         target = common.lin(
-            key, TARGET_TENSION[0][0], TARGET_TENSION[0][1], TARGET_TENSION[1][0], TARGET_TENSION[1][1]
+            key,
+            TARGET_TENSION[0][0],
+            TARGET_TENSION[0][1],
+            TARGET_TENSION[1][0],
+            TARGET_TENSION[1][1],
         )
         d_outer = common.sig(
             common.wound_outer_diameter(
@@ -94,13 +101,11 @@ def speaking_string(key: int) -> models.StringParams:
 
 def hammer(key: int) -> models.HammerParams:
     """The Hunt-Crossley hammer of a key (SPEC-HAM)."""
-    mass = common.sig(
-        common.loglin(key, FIRST_KEY, HAMMER_MASS[0][1], LAST_KEY, HAMMER_MASS[1][1])
+    mass = common.sig(common.loglin(key, FIRST_KEY, HAMMER_MASS[0][1], LAST_KEY, HAMMER_MASS[1][1]))
+    t_c = common.loglin(
+        key, FIRST_KEY, HAMMER_CONTACT_TIME[0][1], LAST_KEY, HAMMER_CONTACT_TIME[1][1]
     )
-    t_c = common.loglin(key, FIRST_KEY, HAMMER_CONTACT_TIME[0][1], LAST_KEY, HAMMER_CONTACT_TIME[1][1])
-    k = common.sig(
-        common.hammer_stiffness_for_contact_time(mass, HAMMER_P, HAMMER_SPEED, t_c), 6
-    )
+    k = common.sig(common.hammer_stiffness_for_contact_time(mass, HAMMER_P, HAMMER_SPEED, t_c), 6)
     width = common.sig(common.lin(key, FIRST_KEY, HAMMER_WIDTH[0][1], LAST_KEY, HAMMER_WIDTH[1][1]))
     if key <= STRIKE_BREAK:
         ratio = STRIKE_RATIO
@@ -114,9 +119,10 @@ def hammer(key: int) -> models.HammerParams:
 
 def polyline_point(vertices: list[tuple[float, float]], fraction: float) -> tuple[float, float]:
     """The point at arc-length ``fraction`` (0 to 1) along a polyline."""
-    lengths = [math.dist(a, b) for a, b in zip(vertices, vertices[1:], strict=False)]
+    segments = list(pairwise(vertices))
+    lengths = [math.dist(a, b) for a, b in segments]
     target = fraction * sum(lengths)
-    for (a, b), length in zip(zip(vertices, vertices[1:], strict=False), lengths, strict=False):
+    for (a, b), length in zip(segments, lengths, strict=True):
         if target <= length or (a, b) == (vertices[-2], vertices[-1]):
             t = min(target / length, 1.0)
             return (a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]))
@@ -160,8 +166,11 @@ def ribs() -> list[models.RibDesc]:
             models.RibDesc(
                 start=models.Point(x=common.sig(start[0], 7), y=common.sig(start[1], 7), z=0.0),
                 end=models.Point(x=common.sig(end[0], 7), y=common.sig(end[1], 7), z=0.0),
-                width=RIB_WIDTH, height=RIB_HEIGHT, youngs=SPRUCE_YOUNGS, density=SPRUCE_DENSITY,
-            )  # fmt: skip
+                width=RIB_WIDTH,
+                height=RIB_HEIGHT,
+                youngs=SPRUCE_YOUNGS,
+                density=SPRUCE_DENSITY,
+            )
         )
     return out
 
@@ -184,7 +193,13 @@ def build() -> models.InstrumentFile:
     groups: list[models.NoteGroupDesc] = []
     for key in keys():
         n = string_count(key)
-        damper = models.DamperParams(hasDamper=key <= LAST_DAMPED_KEY, **DAMPER)
+        damper = models.DamperParams(
+            xRatio=DAMPER_X_RATIO,
+            width=DAMPER_WIDTH,
+            Kd=DAMPER_KD,
+            Rd=DAMPER_RD,
+            hasDamper=key <= LAST_DAMPED_KEY,
+        )
         segments = [
             models.SegmentDesc(
                 string=speaking_string(key),

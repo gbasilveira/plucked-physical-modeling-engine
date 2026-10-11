@@ -1,0 +1,292 @@
+{
+  "parse-error.json": [
+    [
+      "",
+      "parse"
+    ]
+  ],
+  "root-not-object.json": [
+    [
+      "",
+      "type"
+    ]
+  ],
+  "wrong-type-deep.json": [
+    [
+      "/instrument/groups/0/segments/0/string/L",
+      "type"
+    ]
+  ],
+  "bool-as-number.json": [
+    [
+      "/instrument/groups/0/segments/0/string/L",
+      "type"
+    ]
+  ],
+  "integer-given-float.json": [
+    [
+      "/instrument/groups/0/key",
+      "type"
+    ]
+  ],
+  "missing-member.json": [
+    [
+      "/instrument/groups/0/segments/0/string/dCore",
+      "missing"
+    ]
+  ],
+  "unknown-key.json": [
+    [
+      "/instrument/colour",
+      "unknown_key"
+    ]
+  ],
+  "range-packing.json": [
+    [
+      "/instrument/groups/0/segments/0/string/packing",
+      "range"
+    ]
+  ],
+  "range-key.json": [
+    [
+      "/instrument/groups/0/key",
+      "range"
+    ]
+  ],
+  "bad-enum.json": [
+    [
+      "/instrument/groups/0/segments/0/string/boundary",
+      "enum"
+    ]
+  ],
+  "bad-side.json": [
+    [
+      "/instrument/groups/0/segments/0/barriers/0/side",
+      "enum"
+    ]
+  ],
+  "duplicate-key.json": [
+    [
+      "/instrument/groups/1/key",
+      "duplicate"
+    ]
+  ],
+  "bridge-point-range.json": [
+    [
+      "/instrument/groups/0/segments/0/bridgePoint",
+      "reference"
+    ]
+  ],
+  "rear-segment-first.json": [
+    [
+      "/instrument/groups/0/segments/0/string/bridgeEnd",
+      "structure"
+    ]
+  ],
+  "outer-diameter-small.json": [
+    [
+      "/instrument/groups/0/segments/0/string/dOuter",
+      "range"
+    ]
+  ],
+  "barrier-lengths.json": [
+    [
+      "/instrument/groups/0/segments/0/barriers/0",
+      "structure"
+    ]
+  ],
+  "two-exciters.json": [
+    [
+      "/instrument/groups/0/exciter",
+      "structure"
+    ]
+  ],
+  "empty-exciter.json": [
+    [
+      "/instrument/groups/0/exciter",
+      "structure"
+    ]
+  ],
+  "plate-nonpositive.json": [
+    [
+      "/instrument/body/plate/youngsL",
+      "range"
+    ]
+  ],
+  "grid-size.json": [
+    [
+      "/instrument/body/plate/thicknessGrid",
+      "structure"
+    ]
+  ],
+  "bridge-beam-short.json": [
+    [
+      "/instrument/body/plate/bridges/0/path",
+      "structure"
+    ]
+  ],
+  "outline-two-vertices.json": [
+    [
+      "/instrument/body/plate/outline",
+      "structure"
+    ]
+  ],
+  "modal-hash-unresolved.json": [
+    [
+      "/instrument/body/modalTableHash",
+      "reference"
+    ]
+  ],
+  "modal-hash-malformed.json": [
+    [
+      "/instrument/body/modalTableHash",
+      "type"
+    ]
+  ],
+  "blob-hash-form.json": [
+    [
+      "/blobs/0/hash",
+      "type"
+    ]
+  ],
+  "blob-hash-wrong.json": [
+    [
+      "/blobs/0/hash",
+      "blob"
+    ]
+  ],
+  "blob-offset-past-end.json": [
+    [
+      "/blobs/0/arrays/1/offset",
+      "blob"
+    ]
+  ],
+  "blob-misaligned.json": [
+    [
+      "/blobs/0/arrays/0/offset",
+      "blob"
+    ],
+    [
+      "/blobs/0/arrays/1/offset",
+      "blob"
+    ]
+  ],
+  "blob-overlap.json": [
+    [
+      "/blobs/0/arrays/1/offset",
+      "blob"
+    ]
+  ],
+  "blob-path-parent.json": [
+    [
+      "/blobs/0/path",
+      "blob"
+    ]
+  ],
+  "blob-path-absolute.json": [
+    [
+      "/blobs/0/path",
+      "blob"
+    ]
+  ],
+  "blob-dtype.json": [
+    [
+      "/blobs/0/arrays/0/dtype",
+      "enum"
+    ]
+  ],
+  "blob-shape-zero.json": [
+    [
+      "/blobs/0/arrays/1/shape/0",
+      "range"
+    ]
+  ],
+  "blob-missing-file.json": [
+    [
+      "/blobs/0/path",
+      "blob"
+    ]
+  ],
+  "blob-duplicate.json": [
+    [
+      "/blobs/1/hash",
+      "duplicate"
+    ],
+    [
+      "/blobs/1/path",
+      "duplicate"
+    ]
+  ],
+  "blob-array-name-twice.json": [
+    [
+      "/blobs/0/arrays/1/name",
+      "duplicate"
+    ]
+  ],
+  "missing-version.json": [
+    [
+      "/schemaVersion",
+      "missing"
+    ]
+  ],
+  "version-future.json": [
+    [
+      "/schemaVersion",
+      "version"
+    ]
+  ],
+  "version-fractional.json": [
+    [
+      "/schemaVersion",
+      "version"
+    ]
+  ],
+  "version-text.json": [
+    [
+      "/schemaVersion",
+      "version"
+    ]
+  ],
+  "format-wrong.json": [
+    [
+      "/format",
+      "enum"
+    ]
+  ],
+  "three-errors.json": [
+    [
+      "/instrument/groups/0/key",
+      "range"
+    ],
+    [
+      "/instrument/groups/0/segments/0/string/boundary",
+      "enum"
+    ],
+    [
+      "/instrument/groups/0/segments/0/string/packing",
+      "range"
+    ]
+  ],
+  "cross-field-errors.json": [
+    [
+      "/instrument/groups/0/segments/0/bridgePoint",
+      "reference"
+    ],
+    [
+      "/instrument/groups/0/segments/0/string/bridgeEnd",
+      "structure"
+    ],
+    [
+      "/instrument/groups/1/key",
+      "duplicate"
+    ],
+    [
+      "/instrument/groups/1/segments/0/bridgePoint",
+      "reference"
+    ],
+    [
+      "/instrument/groups/1/segments/0/string/bridgeEnd",
+      "structure"
+    ]
+  ]
+}

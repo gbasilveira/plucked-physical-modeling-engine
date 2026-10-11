@@ -202,7 +202,11 @@ def _py_type(f: Field) -> str:
     if kind == "bool":
         return "bool"
     if kind in ("str", "strenum"):
-        return "str" if kind == "str" else "Literal[" + ", ".join(json.dumps(v) for v in f.values) + "]"
+        return (
+            "str"
+            if kind == "str"
+            else "Literal[" + ", ".join(json.dumps(v) for v in f.values) + "]"
+        )
     if kind == "enum":
         return f.ref
     if kind == "numarray":
@@ -369,12 +373,18 @@ def cpp_text() -> str:
     ]
     for name, values in ENUMS.items():
         names = ", ".join(json.dumps(v) for v in values)
-        out.append(f"inline constexpr std::array<const char*, {len(values)}> k{name}Names{{{names}}};")
-        out.append(f"[[nodiscard]] inline const char* name({name} v) {{ return k{name}Names[static_cast<std::size_t>(v)]; }}")
+        out.append(
+            f"inline constexpr std::array<const char*, {len(values)}> k{name}Names{{{names}}};"
+        )
+        out.append(
+            f"[[nodiscard]] inline const char* name({name} v) {{ return k{name}Names[static_cast<std::size_t>(v)]; }}"
+        )
     out.append("")
     out.append("// Member keys of the exciter alternatives.")
     for f in next(s for s in cpp if s.extra.get("variant")).fields:
-        out.append(f'[[nodiscard]] inline const char* keyOf(const {f.ref}& /*v*/) {{ return "{f.name}"; }}')
+        out.append(
+            f'[[nodiscard]] inline const char* keyOf(const {f.ref}& /*v*/) {{ return "{f.name}"; }}'
+        )
     out.append("")
     for s in cpp:
         out.append(f"void read(const Reader& r, {s.name}& o);")
@@ -439,7 +449,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"wrote {path.relative_to(REPO_ROOT)}")
     if stale:
         for path in stale:
-            print(f"stale: {path.relative_to(REPO_ROOT)} (run python -m pme_compiler.schema.generate)", file=sys.stderr)
+            print(
+                f"stale: {path.relative_to(REPO_ROOT)} (run python -m pme_compiler.schema.generate)",
+                file=sys.stderr,
+            )
         return 1
     return 0
 

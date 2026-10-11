@@ -13,7 +13,7 @@ import json
 import math
 from typing import Any
 
-# Layout thresholds of nlohmann/json's number formatting (format_buffer with min_exp -4, max_exp 15).
+# Layout thresholds of nlohmann/json's number formatting (format_buffer: min_exp -4, max_exp 15).
 _MIN_EXP = -4
 _MAX_EXP = 15
 
@@ -73,7 +73,10 @@ def dumps_value(value: Any, indent: int = 0) -> str:
     if isinstance(value, dict):
         if not value:
             return "{}"
-        items = [f"{pad}{json.dumps(k, ensure_ascii=False)}: {dumps_value(v, indent + 2)}" for k, v in value.items()]
+        items = [
+            f"{pad}{json.dumps(k, ensure_ascii=False)}: {dumps_value(v, indent + 2)}"
+            for k, v in value.items()
+        ]
         return "{\n" + ",\n".join(items) + "\n" + end + "}"
     if isinstance(value, list | tuple):
         if not value:

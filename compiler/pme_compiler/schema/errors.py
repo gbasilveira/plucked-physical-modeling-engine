@@ -16,7 +16,7 @@ CODES = (
 
 @dataclass(frozen=True, order=True)
 class LoadError:
-    """One validation error: a JSON Pointer (RFC 6901), a code and a message naming the expected value."""
+    """One error: a JSON Pointer (RFC 6901), a code and a message naming the expected value."""
 
     path: str
     code: str
@@ -27,7 +27,7 @@ class LoadError:
 
 
 class InstrumentError(Exception):
-    """Raised by ``load``/``loads`` when the document is invalid; ``errors`` lists every error found."""
+    """Raised by ``load``/``loads`` for an invalid document; ``errors`` lists every error found."""
 
     def __init__(self, errors: list[LoadError]) -> None:
         super().__init__("\n".join(str(e) for e in errors))

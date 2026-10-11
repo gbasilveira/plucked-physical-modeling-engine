@@ -14,6 +14,7 @@ import hashlib
 import json
 from collections.abc import Iterator
 from functools import lru_cache
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -119,7 +120,9 @@ def _check_segment(seg: models.SegmentDesc, path: str, bridge_points: int) -> li
         if not len(b.x) == len(b.b) == len(b.w):
             out.append(
                 LoadError(
-                    f"{path}/barriers/{k}", "structure", "expected x, b and w to have the same length"
+                    f"{path}/barriers/{k}",
+                    "structure",
+                    "expected x, b and w to have the same length",
                 )
             )
     return out
@@ -133,13 +136,17 @@ def _check_plate(body: models.BodyParams) -> list[LoadError]:
         if p.thicknessNx < 2:
             out.append(
                 LoadError(
-                    f"{path}/thicknessNx", "range", "expected at least 2 grid points when thicknessGrid is given"
+                    f"{path}/thicknessNx",
+                    "range",
+                    "expected at least 2 grid points when thicknessGrid is given",
                 )
             )
         if p.thicknessNy < 2:
             out.append(
                 LoadError(
-                    f"{path}/thicknessNy", "range", "expected at least 2 grid points when thicknessGrid is given"
+                    f"{path}/thicknessNy",
+                    "range",
+                    "expected at least 2 grid points when thicknessGrid is given",
                 )
             )
         if (
@@ -156,7 +163,9 @@ def _check_plate(body: models.BodyParams) -> list[LoadError]:
             )
     if len(p.outline) in (1, 2):
         out.append(
-            LoadError(f"{path}/outline", "structure", "expected no vertices (rectangle) or at least 3")
+            LoadError(
+                f"{path}/outline", "structure", "expected no vertices (rectangle) or at least 3"
+            )
         )
     if body.source != "PlateModel":
         return out
@@ -165,7 +174,9 @@ def _check_plate(body: models.BodyParams) -> list[LoadError]:
         if not value > 0.0:
             out.append(
                 LoadError(
-                    f"{path}/{key}", "range", "expected a value greater than 0 when source is PlateModel"
+                    f"{path}/{key}",
+                    "range",
+                    "expected a value greater than 0 when source is PlateModel",
                 )
             )
 
@@ -187,7 +198,9 @@ def _check_modal_hash(file: models.InstrumentFile) -> list[LoadError]:
     path = "/instrument/body/modalTableHash"
     if body.source == "PlateModel":
         if body.modalTableHash:
-            return [LoadError(path, "structure", "expected an empty hash when source is PlateModel")]
+            return [
+                LoadError(path, "structure", "expected an empty hash when source is PlateModel")
+            ]
         return []
     if not any(b.hash == body.modalTableHash for b in file.blobs):
         return [LoadError(path, "reference", "expected the hash of an entry of blobs")]
@@ -281,7 +294,7 @@ def manifest_errors(blobs: list[models.BlobEntry]) -> list[LoadError]:
                 continue
             spans.append((a.offset, a.offset + nbytes, k))
         spans.sort(key=lambda s: (s[0], s[2]))
-        for prev, cur in zip(spans, spans[1:], strict=False):
+        for prev, cur in pairwise(spans):
             if cur[0] < prev[1]:
                 out.append(
                     LoadError(
