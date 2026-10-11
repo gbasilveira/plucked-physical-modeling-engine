@@ -6,10 +6,10 @@ Maintained by the orchestrator (Opus). Status values: not started, ready, in pro
 
 | Phase | Name | Track | Status | Branch / PR | Gate report | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| P0.1 | Repository and build skeleton | 0 | in progress | branch `ccr-5ef35d73-oqb6fd` |  | Briefs: docs/agents/briefs/P0.1-implementer.md, P0.1-code-reviewer.md. Planning outputs written (docs/adr/TEMPLATE.md, ADR-0001 to ADR-0003). ADR-0004 (no Windows tsan preset) Proposed, awaiting orchestrator approval. T1 evidenced by temporary .github/workflows/bootstrap-build.yml, removed by P0.2. |
-| P0.2 | CI and quality gates | 0 | not started |  |  |  |
-| P0.3 | Test and analysis framework | 0 | not started |  |  |  |
-| P0.4 | Interface skeleton | 0 | not started |  |  |  |
+| P0.1 | Repository and build skeleton | 0 | complete | branch `ccr-5ef35d73-oqb6fd`; no PR (single session branch) |  | Head 312a62f. Code reviewer approved, no blocking findings. CI: bootstrap-build run https://github.com/gbasilveira/plucked-physical-modeling-engine/actions/runs/38140277814 green on all 21 jobs. ADR-0004 (no Windows tsan preset) Accepted by the orchestrator as the recommended default; owner may reverse. Carried to P0.2: delete bootstrap-build.yml, exact SPDX match, drop the phases.yaml exemption, clang-cl entry, Linux-Clang sanitizers. Carried to P0.3: ctest `--no-tests=error`. Carried to P0.4: buildable `pme_engine`. |
+| P0.2 | CI and quality gates | 0 | ready |  |  | Depends on P0.1 (complete). |
+| P0.3 | Test and analysis framework | 0 | ready |  |  | Depends on P0.1 (complete). |
+| P0.4 | Interface skeleton | 0 | ready |  |  | Depends on P0.1 (complete). |
 | P0.5 | Reference solver | 0 | not started |  |  |  |
 | A1 | Modal oscillator | A | not started |  |  |  |
 | A2 | Stiff string compiler | A | not started |  |  |  |

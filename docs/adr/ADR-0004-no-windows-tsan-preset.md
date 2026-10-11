@@ -1,8 +1,8 @@
 # ADR-0004: No ThreadSanitizer preset on Windows
 
-- **Status:** Proposed (needs the orchestrator's approval before P0.1 can be accepted with this deferral)
+- **Status:** Accepted (2026-10-11) — accepted by the orchestrator as the recommended default under the owner's instruction to proceed; the owner may reverse it. Originally proposed by the planner while briefing P0.1.
 - **Date:** 2026-10-11
-- **Deciders:** proposed by the planner (Opus) while briefing P0.1
+- **Deciders:** proposed by the planner (Opus) while briefing P0.1; accepted by the orchestrator (Opus)
 - **Phase:** P0.1; defers one cell of P0.1-R2 and P0.1-T1
 - **References:** phase card P0.1 (P0.1-R2, P0.1-T1); phasing plan, Software guidelines (Testing policy: "TSan on scheduler tests", Nightly); PLAN-STACK
 
@@ -19,7 +19,7 @@ The `tsan` preset exists for Linux and macOS only. Windows has no `tsan` preset.
 
 | Option | For | Against |
 | --- | --- | --- |
-| **Omit the Windows `tsan` preset** (proposed) | Honest; every preset that exists does what its name says. | Windows-only threading code (MMCSS registration) is not checked by TSan. |
+| **Omit the Windows `tsan` preset** (chosen) | Honest; every preset that exists does what its name says. | Windows-only threading code (MMCSS registration) is not checked by TSan. |
 | A Windows `tsan` preset that builds without the sanitizer | Satisfies the letter of P0.1-T1. | Misleading; a green check with no meaning. |
 | Run Windows threading checks under another tool | Covers Windows-specific code. | No equivalent tool fits a per-pull-request or nightly CI job today; can be revisited by C5. |
 

@@ -12,6 +12,6 @@ Template: [TEMPLATE.md](TEMPLATE.md).
 
 Further records:
 
-- ADR-0004 — no ThreadSanitizer preset on Windows (Proposed; defers one cell of P0.1-R2 and P0.1-T1)
+- ADR-0004 — no ThreadSanitizer preset on Windows (Accepted; defers one cell of P0.1-R2 and P0.1-T1)
 
 Phase H1 adds the licence ADR that records decision D-1.

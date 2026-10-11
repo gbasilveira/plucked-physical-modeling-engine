@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # Machine-readable phase graph for the implementation orchestrator.
 # Source of truth for dependencies is docs/plan/phasing-plan.md; this file mirrors it.
 # If the two ever disagree, the phase card in phasing-plan.md wins and this file must be fixed.
