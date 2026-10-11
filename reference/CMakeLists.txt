@@ -107,8 +107,10 @@ function(_pme_ref_real_target name out)
   set(${out} "${real}" PARENT_SCOPE)
 endfunction()
 
-function(_pme_check_reference_isolation)
-  foreach(root IN LISTS PME_REFERENCE_TARGETS)
+# Called at the end of the top-level directory (cmake_language DEFER), when every target exists. The
+# lists are passed as arguments, because variables of this directory are not visible there.
+function(_pme_check_reference_isolation targets forbidden)
+  foreach(root IN LISTS targets)
     if(NOT TARGET ${root})
       continue()
     endif()
@@ -135,7 +137,7 @@ function(_pme_check_reference_isolation)
           continue()
         endif()
         _pme_ref_real_target("${dep}" real)
-        if(real IN_LIST PME_REFERENCE_FORBIDDEN_MODULES)
+        if(real IN_LIST forbidden)
           message(FATAL_ERROR
             "Reference independence violated: ${root} reaches '${real}' (through ${current}). "
             "Reference targets may use engine/include description structs, pme_analysis, "
@@ -147,4 +149,7 @@ function(_pme_check_reference_isolation)
   endforeach()
 endfunction()
 
-cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL _pme_check_reference_isolation)
+# EVAL expands the lists now; a plain DEFER would expand the variables when the call runs.
+cmake_language(EVAL CODE "
+  cmake_language(DEFER DIRECTORY [[${CMAKE_SOURCE_DIR}]] CALL _pme_check_reference_isolation
+    [[${PME_REFERENCE_TARGETS}]] [[${PME_REFERENCE_FORBIDDEN_MODULES}]])")
