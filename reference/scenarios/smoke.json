@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "smoke",
+  "fs": 24000,
+  "oversampling": 1,
+  "duration": 0.25,
+  "strings": [
+    {
+      "params": {
+        "L": 0.65, "dCore": 0.0008, "rhoCore": 7850, "ECore": 2.0e11,
+        "f1Target": 196.0, "b1": 0.6, "b3": 2.0e-6
+      },
+      "grid": { "intervals": 64 },
+      "initial_displacement": { "amplitude": 0.002, "position": 0.1 }
+    }
+  ],
+  "observations": [
+    { "name": "y", "kind": "string_displacement", "string": 0, "x": 0.27 }
+  ]
+}

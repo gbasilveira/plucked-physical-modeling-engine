@@ -204,3 +204,17 @@ values in `pr.yml` were computed from the downloaded assets (D1 report). To chan
 the tag, the three asset names and the three checksums together. `PME_CLAP_VALIDATOR` (environment
 or CMake cache variable) points `D1-T1` at a local validator; without it the test is skipped.
 <!-- ---- end D1 ---- -->
+
+<!-- P0.5: reference-python -->
+## `reference-python` (P0.5-R7)
+
+One job per system (`reference-python (linux)`, `(macos)`, `(windows)`), part of the required
+checks. It configures the `<system>-release` preset with `-DPME_BUILD_PYTHON_BINDINGS=ON` and the
+`Python_EXECUTABLE` of the `uv sync --locked` environment (so the module matches the interpreter
+that runs pytest), builds the nanobind module `pme_reference` and `pme_reference_cli`, and runs
+`tools/tests/test_p0_5_*.py` with `PME_REFERENCE_PYDIR` pointing at `build/<system>-release/reference/python`.
+`PME_REFERENCE_REQUIRED=1` turns a missing module or CLI into a failure instead of a skip. JUnit
+is uploaded as `junit-reference-python-<system>`. The C++ tests of the reference solver
+(`ctest -R "P0.5"`) run in the `build` jobs like every other test; the default build leaves the
+Python module out.
+<!-- end P0.5 -->

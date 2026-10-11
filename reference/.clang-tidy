@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+# The reference solver is numerical code written for clarity against the formulas of SPEC and
+# Bilbao (2009). The relaxations below are what that needs; each has a reason. The root
+# .clang-tidy still applies to everything else.
+InheritParentConfig: true
+Checks: >
+  -bugprone-easily-swappable-parameters,
+  -modernize-loop-convert,
+  -modernize-avoid-c-arrays,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay
+# easily-swappable-parameters: finite-difference APIs take several doubles or ints in a documented
+#   order (grid sizes, k, theta, positions); wrapping each in a strong type would obscure the formulas.
+# loop-convert: indexed loops run over several parallel arrays and use the index in the stencil
+#   (node i couples to i - 1 and i + 1), so a range-based loop does not express them.
+# avoid-c-arrays, array-to-pointer-decay: two-element tables indexed by polarisation (v, h) and
+#   small constant tables in tests; std::array would only add noise.

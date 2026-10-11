@@ -15,6 +15,9 @@
     "traceability",
     "plugin (linux)",
     "plugin (macos)",
-    "plugin (windows)"
+    "plugin (windows)",
+    "reference-python (linux)",
+    "reference-python (macos)",
+    "reference-python (windows)"
   ]
 }

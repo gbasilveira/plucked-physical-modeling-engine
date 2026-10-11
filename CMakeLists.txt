@@ -102,3 +102,8 @@ target_include_directories(pme_nonlinear PUBLIC "${PROJECT_SOURCE_DIR}/engine/sr
 target_link_libraries(pme_nonlinear PUBLIC pme_osc)
 add_subdirectory(engine/tests/nonlinear)
 # ---- end A3 ----
+
+# ---- P0.5: reference solver ----
+add_subdirectory(reference)
+add_subdirectory(tools/reference-cli)
+# ---- end P0.5 ----

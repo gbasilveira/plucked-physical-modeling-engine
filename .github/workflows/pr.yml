@@ -506,6 +506,74 @@ jobs:
           retention-days: 14
   # ---- end D1 ----
 
+# ---- P0.5: reference solver Python bindings ----
+  reference-python:
+    name: reference-python (${{ matrix.system }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: linux
+            os: ubuntu-24.04
+          - system: macos
+            os: macos-15
+          - system: windows
+            os: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: Install Python tools from uv.lock
+        run: uv sync --locked --all-extras
+      - name: Install Ninja (Linux)
+        if: matrix.system == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Configure (release preset, Python bindings on)
+        shell: bash
+        run: |
+          py="$(uv run python -c 'import sys; print(sys.executable)')"
+          cmake --preset "${{ matrix.system }}-release" -DPME_BUILD_PYTHON_BINDINGS=ON -DPython_EXECUTABLE="$py"
+      - name: Build the module and the CLI
+        shell: bash
+        run: cmake --build --preset "${{ matrix.system }}-release" --target pme_reference pme_reference_cli
+      - name: pytest tools/tests/test_p0_5_*.py (a skip fails the job)
+        shell: bash
+        env:
+          PME_REFERENCE_PYDIR: ${{ github.workspace }}/build/${{ matrix.system }}-release/reference/python
+          PME_REFERENCE_REQUIRED: "1"
+        run: |
+          mkdir -p reports
+          uv run pytest tools/tests/test_p0_5_*.py -rs --junitxml="reports/pytest-reference-python-${{ matrix.system }}.xml"
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: uv run python tools/ci/junit_summary.py --title "pytest reference-python ${{ matrix.system }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-reference-python-${{ matrix.system }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+# ---- end P0.5 ----
+
   # ---- V1: traceability ----
   # The traceability matrix (V1-R1 to V1-R4, docs/dev/traceability.md). It reads every junit-*
   # artifact of this run, publishes traceability.html and traceability.json as the artifact
@@ -517,7 +585,7 @@ jobs:
   # Covers: V1-R4, V1-T2
   traceability:
     name: traceability
-    needs: [lint, build, python, coverage, deps, plugin]
+    needs: [lint, build, python, coverage, deps, plugin, reference-python]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 20

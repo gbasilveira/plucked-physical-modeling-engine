@@ -61,3 +61,9 @@ mypy_path = "tools:tools/analysis:compiler"
 [[tool.mypy.overrides]]
 module = ["skfem.*", "gmsh.*", "meshio.*", "jax.*", "scipy.*"]
 ignore_missing_imports = true
+
+# The reference solver's extension module (P0.5-R7) is built by CMake with
+# -DPME_BUILD_PYTHON_BINDINGS=ON and is not installed in the environment.
+[[tool.mypy.overrides]]
+module = ["pme_reference"]
+ignore_missing_imports = true

@@ -49,6 +49,7 @@ A change merges into `main` only when **all** of the following checks of the pul
 | `deps` | configure with `PME_FETCH_ALL_DEPS=ON` (every pin resolves) |
 | `traceability` | traceability matrix over every `junit-*` artifact of the run; fails when a phase marked `complete` has a gap not on `tools/trace/known-gaps.json` ([docs/dev/traceability.md](docs/dev/traceability.md)) |
 | `plugin (linux)`, `plugin (macos)`, `plugin (windows)` | `<system>-rt-safety` with `PME_BUILD_PLUGINS=ON`: the CLAP shell, its `D1-` tests and clap-validator on the built `.clap`; clang-tidy over `plugin/` on Linux |
+| `reference-python (linux)`, `reference-python (macos)`, `reference-python (windows)` | P0.5: release build with `PME_BUILD_PYTHON_BINDINGS=ON`, then `tools/tests/test_p0_5_*.py` against the `pme_reference` module (a skip fails the job) |
 
 Each `build` check runs every unit, oracle, integration, golden and RT-safety test
 (`ctest -LE "perf|fuzz|soak"`). Sanitizers, performance, fuzz and soak run in the nightly workflow
