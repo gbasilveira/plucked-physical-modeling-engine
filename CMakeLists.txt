@@ -75,3 +75,9 @@ add_subdirectory(tools/bench)
 add_subdirectory(tools/params)
 add_subdirectory(engine/tests/interfaces)
 # ---- end P0.4 ----
+
+# ---- D1: CLAP plug-in shell ----
+if(PME_BUILD_PLUGINS)
+  add_subdirectory(plugin)
+endif()
+# ---- end D1 ----
