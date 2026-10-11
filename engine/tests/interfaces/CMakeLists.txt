@@ -39,8 +39,10 @@ target_compile_definitions(pme_interface_tests PRIVATE
   PME_T1_GENERATED_TU_COUNT=${PME_T1_SOURCE_COUNT}
   "PME_INCLUDE_PME_DIR=\"${PROJECT_SOURCE_DIR}/engine/include/pme\"")
 
-# R3(a): count allocations with a test-local operator new, but only when rtcheck does not replace it.
-if(NOT PME_RTSAFETY)
+# R3(a): count allocations with a test-local operator new, but only when rtcheck does not replace it and
+# the TSan runtime (which defines operator new itself; static link with Clang) is not in use. The count
+# is still asserted by every other configuration.
+if(NOT PME_RTSAFETY AND NOT PME_SANITIZER STREQUAL "tsan")
   target_sources(pme_interface_tests PRIVATE alloc_counter.cpp)
   target_compile_definitions(pme_interface_tests PRIVATE PME_TEST_COUNT_ALLOCATIONS=1)
 endif()
