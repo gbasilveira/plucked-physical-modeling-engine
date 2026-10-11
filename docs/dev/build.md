@@ -4,8 +4,7 @@ SPEC sections implemented: none (build infrastructure).
 
 This note covers the CMake presets, compiler and floating-point flags, how to build and test, the
 dependency and licence table, and the Git LFS rules. CI for the three systems is described in
-the pull-request workflow (P0.2); until it lands, `.github/workflows/bootstrap-build.yml` builds
-every preset and runs the Python checks.
+[ci.md](ci.md); the RT-safety trap library is described in [rtcheck.md](rtcheck.md).
 
 ## Requirements
 
@@ -26,22 +25,25 @@ their own host system (`linux`: Linux, `macos`: Darwin, `windows`: Windows).
 | --- | --- | --- |
 | debug | Debug | |
 | release | Release | |
-| rt-safety | RelWithDebInfo | `PME_RTSAFETY=ON`, which defines `PME_RTSAFETY=1` on project targets. The trap library is P0.2-R5; here the option only exists. |
+| rt-safety | RelWithDebInfo | `PME_RTSAFETY=ON`, which defines `PME_RTSAFETY=1` on project targets and activates the trap library `pme_rtcheck` ([rtcheck.md](rtcheck.md)). Setting it together with a sanitizer is a CMake error. |
 | asan | Debug | GCC/Clang: `-fsanitize=address,undefined -fno-omit-frame-pointer`. MSVC: `/fsanitize=address`, `/RTC1` removed, `/Zi` kept, `/INCREMENTAL:NO`. |
 | tsan | Debug | `-fsanitize=thread -fno-omit-frame-pointer` (Linux and macOS only). |
 | coverage | Debug | GCC: `--coverage`. Clang/AppleClang: `-fprofile-instr-generate -fcoverage-mapping`. Windows (MSVC): Debug with full PDBs (`/Zi`, `/DEBUG:FULL`, `/INCREMENTAL:NO`) for an external coverage tool in P0.2. clang-cl source-based coverage is not used in P0.1. |
 
 There are 17 presets: `linux-*` and `macos-*` for all six configs, `windows-*` for five. **There is
-no `windows-tsan`** (ADR-0004, Proposed): ThreadSanitizer does not exist for Windows targets, and a
-preset that built without it would only be a mislabelled build. If ADR-0004 is rejected, the entry
-is easy to add: add a `windows-tsan` configure preset inheriting `base`, `os-windows`, `cfg-tsan`
-(with matching build and test presets), replace
-the `message(FATAL_ERROR ...)` for MSVC in `cmake/sanitizers.cmake`, and remove the `exclude` entry
-from `.github/workflows/bootstrap-build.yml`.
+no `windows-tsan`** (ADR-0004, Accepted): ThreadSanitizer does not exist for Windows targets, and a
+preset that built without it would only be a mislabelled build. If ADR-0004 is ever superseded,
+the entry is easy to add: add a `windows-tsan` configure preset inheriting `base`, `os-windows`,
+`cfg-tsan` (with matching build and test presets), replace the `message(FATAL_ERROR ...)` for MSVC
+in `cmake/sanitizers.cmake`, and add the entry to the sanitizer matrix of
+`.github/workflows/nightly.yml`.
 
 Compilers are not hard-coded. Choose with `CC`/`CXX`, for example
 `CC=clang CXX=clang++ cmake --preset linux-debug -B build/clang-debug`. macOS presets build the
-native architecture; the universal build is P0.2's.
+native architecture; the universal build is CI's `build (macos-universal)` entry, which passes
+`-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"` on the command line (`cmake --preset macos-release
+-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"`) and checks both slices with `lipo -archs`. clang-cl:
+`CC=clang-cl CXX=clang-cl cmake --preset windows-debug` from a Visual Studio developer shell.
 
 ```bash
 cmake --preset linux-debug
@@ -79,11 +81,27 @@ Applied to project targets only, through the interface target `pme_build_options
 
 ## Formatting and static analysis
 
+Pinned versions (the same ones CI uses, [ci.md](ci.md)): **clang-format 18.1.8** (PyPI wheel, run
+through `uvx`) and **clang-tidy 18** (Ubuntu package `clang-tidy-18`; 18.1.3 when written). The
+scripts cover every tracked `*.cpp`, `*.cc`, `*.hpp`, `*.h` under `engine/`, `tools/`,
+`reference/`, `plugin/`, `bindings/` and `compiler/`, never a list of files.
+
 - `.clang-format`: Google base style, 4-space indent, 100 columns, left pointer alignment.
-  Check: `clang-format --dry-run --Werror $(git ls-files 'engine/*.cpp' 'engine/*.h')`.
+  Check, the exact command the `lint` job runs:
+  `python3 tools/ci/check_format.py --clang-format "uvx clang-format==18.1.8"`.
+  Fix in place: `uvx clang-format==18.1.8 -i <files>`.
 - `.clang-tidy`: `bugprone-*`, `performance-*`, `modernize-*`, `cppcoreguidelines-*`, warnings as
-  errors, headers limited to `engine/`; each disabled check has a reason in the file. Run with the
-  `linux-debug` compile database: `clang-tidy -p build/linux-debug engine/src/*/*.cpp`.
+  errors, headers from every project directory; each disabled check has a reason in the file.
+  `engine/src/rtcheck/` and `engine/tests/rtcheck/` carry a nested `.clang-tidy` that relaxes a
+  few checks with reasons (low-level infrastructure). Run with Clang compile databases for the
+  debug and rt-safety builds, as the `lint` job does:
+
+  ```bash
+  CC=clang-18 CXX=clang++-18 cmake --preset linux-debug -B build/lint-debug
+  CC=clang-18 CXX=clang++-18 cmake --preset linux-rt-safety -B build/lint-rt
+  python3 tools/ci/run_clang_tidy.py -p build/lint-debug -p build/lint-rt --clang-tidy clang-tidy-18
+  ```
+
 
 ## Python
 
@@ -105,7 +123,7 @@ Extras: `fem` = scikit-fem, gmsh, meshio (ADR-0002); `fit` = jax. After changing
 ## SPDX header check
 
 `tools/check_spdx.py` lists tracked files (`git ls-files`) and requires
-`SPDX-License-Identifier: MIT` in the first five lines of C++, CMake, Python, shell, YAML, TOML and
+the line `SPDX-License-Identifier: MIT` (exactly: `MIT-0` or `MIT OR Apache-2.0` fail; trailing whitespace is allowed) in the first five lines of C++, CMake, Python, shell, YAML, TOML and
 comment-capable dotfiles. Exempt types and files, each with a reason, are listed in the script
 (Markdown, JSON, `LICENSE`, `uv.lock`, `.python-version`, empty files, binary files, `data/`).
 `cmake/CPM.cmake` is vendored and checked for its own MIT licence text instead. An unknown file

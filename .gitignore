@@ -14,3 +14,9 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 dist/
+
+# CI outputs
+/coverage/
+/reports/
+/dist/
+/.cpm-cache/
