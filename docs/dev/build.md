@@ -122,6 +122,7 @@ Pins were resolved on 2026-10-11 with `git ls-remote`.
 | CPM.cmake (vendored) | https://github.com/cpm-cmake/CPM.cmake | v0.43.2 | 01678cfe175eab53143640429fdaa57c3c621cc6 | MIT | vendored |
 | Highway | https://github.com/google/highway | 1.4.0 | 2607d3b5b0113992fe84d3848859eae13b3b52c1 | Apache-2.0 OR BSD-3-Clause | every preset |
 | doctest | https://github.com/doctest/doctest | v2.5.3 | 2d0a9359a60c51affe2a9bebb1be1dca47868151 | MIT | every preset |
+| nlohmann/json | https://github.com/nlohmann/json | v3.12.0 | 55f93686c01528224f448c19128836e7df245f72 | MIT | every preset |
 | nanobind | https://github.com/wjakob/nanobind | v3.1.0 | 68480a9e6883bb1bf65e1925423321e2a89d07f9 | BSD-3-Clause | `PME_FETCH_ALL_DEPS` |
 | CLAP | https://github.com/free-audio/clap | 1.2.10 | 195b42a004144fab0b3cf95e9c067187d15365b7 | MIT | `PME_FETCH_ALL_DEPS` |
 | clap-wrapper | https://github.com/free-audio/clap-wrapper | v0.16.0 | 1cca996e96f29ab2be7ae9f8cfe532bbc92e1dd6 | MIT | `PME_FETCH_ALL_DEPS` |

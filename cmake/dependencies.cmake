@@ -47,7 +47,7 @@ CPMAddPackage(
 #   release  : v2.5.3 (lightweight tag; commit below)
 #   licence  : MIT
 #   purpose  : C++ unit-test framework (header-only)
-#   first built: P0.3 (fetched, not yet used, in P0.1)
+#   first built: P0.3
 CPMAddPackage(
   NAME doctest
   GIT_REPOSITORY https://github.com/doctest/doctest
@@ -59,6 +59,26 @@ CPMAddPackage(
     "DOCTEST_WITH_TESTS OFF"
     "DOCTEST_WITH_MAIN_IN_STATIC_LIB OFF"
     "DOCTEST_NO_INSTALL ON"
+)
+
+# nlohmann/json (ADR-0005)
+#   upstream : https://github.com/nlohmann/json
+#   release  : v3.12.0 (annotated tag; peeled commit below)
+#   licence  : MIT
+#   purpose  : JSON in C++ tests and tools (golden features, benchmark output); never linked into
+#              the engine modules (checked at configure time in tools/analysis/CMakeLists.txt)
+#   first built: P0.3
+CPMAddPackage(
+  NAME nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json
+  GIT_TAG 55f93686c01528224f448c19128836e7df245f72
+  VERSION 3.12.0
+  SYSTEM YES
+  EXCLUDE_FROM_ALL YES
+  OPTIONS
+    "JSON_BuildTests OFF"
+    "JSON_Install OFF"
+    "JSON_MultipleHeaders OFF"
 )
 
 if(PME_FETCH_ALL_DEPS)
