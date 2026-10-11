@@ -22,20 +22,21 @@ namespace pme {
 /// Engine configuration (SPEC-API `EngineConfig`). Value-initialised: an all-zero config is
 /// invalid and `Engine::prepare` rejects it.
 struct EngineConfig {
-    double fs{};            ///< Sample rate fs in Hz; must be > 0 (SPEC-CONV).
-    int maxBlock{};         ///< Largest host block B in samples; must be >= 1.
-    int subBlock{};         ///< Sub-block length S in samples; must be 16 or 32 (SPEC-CONV).
-    int channels{};         ///< Number of output channels; must be >= 1.
-    int threads{};          ///< Audio worker threads, including the audio thread; must be >= 1.
-    double fMaxStrings{};   ///< Highest kept string frequency f_max in Hz (SPEC-INST: 12 to 20 kHz).
-    bool referenceMode{};   ///< Offline reference mode: every bridge point couples to all modes
-                            ///< every sample on one thread (SPEC-BODY "Reference mode").
+    double fs{};           ///< Sample rate fs in Hz; must be > 0 (SPEC-CONV).
+    int maxBlock{};        ///< Largest host block B in samples; must be >= 1.
+    int subBlock{};        ///< Sub-block length S in samples; must be 16 or 32 (SPEC-CONV).
+    int channels{};        ///< Number of output channels; must be >= 1.
+    int threads{};         ///< Audio worker threads, including the audio thread; must be >= 1.
+    double fMaxStrings{};  ///< Highest kept string frequency f_max in Hz (SPEC-INST: 12 to 20 kHz).
+    bool referenceMode{};  ///< Offline reference mode: every bridge point couples to all modes
+                           ///< every sample on one thread (SPEC-BODY "Reference mode").
 };
 
 /// Output buffers of one `process` call (SPEC-API `AudioOut`). Provisional layout: SPEC-API
 /// names the type only. Non-interleaved float32; the buffers are owned by the host.
 struct AudioOut {
-    std::span<float* const> channels;  ///< One pointer per output channel, each to >= frames floats.
+    std::span<float* const>
+        channels;  ///< One pointer per output channel, each to >= frames floats.
 };
 
 /// The synthesis engine (SPEC-API `Engine`). Holds its state behind a private pointer; the

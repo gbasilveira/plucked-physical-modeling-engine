@@ -23,54 +23,58 @@ struct EngineConfig;  // engine.hpp
 
 /// One string segment of a note group (SPEC-API `SegmentDesc`; SPEC-INST, SPEC-STR, SPEC-NL).
 struct SegmentDesc {
-    StringParams string;               ///< The string (SPEC-STR).
-    int bridgePoint{};                 ///< Index into InstrumentDesc::bridgePoints (SPEC-BRG).
-    double polarisationAngle{};        ///< Angle of the vertical polarisation axis (rad), SPEC-BRG.
+    StringParams string;         ///< The string (SPEC-STR).
+    int bridgePoint{};           ///< Index into InstrumentDesc::bridgePoints (SPEC-BRG).
+    double polarisationAngle{};  ///< Angle of the vertical polarisation axis (rad), SPEC-BRG.
     std::vector<BarrierParams> barriers;  ///< Barriers this segment collides with (SPEC-PLK).
     std::optional<DamperParams> damper;   ///< Damper, if any (SPEC-DMP).
-    double muteRatio{};                ///< Rear-segment mute m_d in [0, 1] (SPEC-STR "Duplex and rear segments").
-    bool tensionModulation{};          ///< Enable Kirchhoff-Carrier tension modulation (SPEC-NL, SPEC-GEO).
-    int longitudinalModes{8};          ///< Longitudinal modes M_L; default 8 (SPEC-INST piano defaults).
-    double kappaL{0.026};              ///< Longitudinal transmission kappa_L (dimensionless); about sin 1.5 deg (SPEC-GEO).
-    double kappaT{};                   ///< Tension-modulation transmission kappa_T (dimensionless) (SPEC-GEO).
+    double muteRatio{};  ///< Rear-segment mute m_d in [0, 1] (SPEC-STR "Duplex and rear segments").
+    bool tensionModulation{};  ///< Enable Kirchhoff-Carrier tension modulation (SPEC-NL, SPEC-GEO).
+    int longitudinalModes{8};  ///< Longitudinal modes M_L; default 8 (SPEC-INST piano defaults).
+    double kappaL{0.026};  ///< Longitudinal transmission kappa_L (dimensionless); about sin 1.5 deg
+                           ///< (SPEC-GEO).
+    double kappaT{};       ///< Tension-modulation transmission kappa_T (dimensionless) (SPEC-GEO).
 };
 
 /// One key's strings, exciter and una corda map (SPEC-API `NoteGroupDesc`).
 struct NoteGroupDesc {
     int key{};                          ///< Key number (see TuningCurve for the numbering).
     std::vector<SegmentDesc> segments;  ///< Speaking, rear and duplex segments.
-    std::optional<ExciterParams> exciter;  ///< Exciter; absent for sympathetic-only groups (SPEC-PLK).
-    UnaCordaParams unaCorda;            ///< Una corda and soft-pedal map (SPEC-HAM).
+    std::optional<ExciterParams>
+        exciter;              ///< Exciter; absent for sympathetic-only groups (SPEC-PLK).
+    UnaCordaParams unaCorda;  ///< Una corda and soft-pedal map (SPEC-HAM).
 };
 
 /// Pitch map (SPEC-STR "Tension for pitch": equal temperament plus per-key stretch plus unison
 /// detune). Provisional members: SPEC-API names the type only.
 struct TuningCurve {
-    double referencePitch{440.0};      ///< Frequency of MIDI key 69 (A4) in Hz; default 440 (SPEC-STR).
-    std::vector<double> stretchCents;  ///< Per-key stretch in cents, indexed by MIDI key number
-                                       ///< (key 0 first); keys beyond the vector have 0. Provisional.
+    double referencePitch{440.0};  ///< Frequency of MIDI key 69 (A4) in Hz; default 440 (SPEC-STR).
+    std::vector<double>
+        stretchCents;  ///< Per-key stretch in cents, indexed by MIDI key number
+                       ///< (key 0 first); keys beyond the vector have 0. Provisional.
 };
 
 /// Instrument-wide default values (SPEC-INST "Piano defaults"). Provisional composition:
 /// SPEC-API names the type only; members are the instrument-wide values the table gives.
 struct Defaults {
-    double halfPedalP0{0.35};      ///< Half-pedal region start P_0 (dimensionless) (SPEC-DMP).
-    double halfPedalP1{0.65};      ///< Half-pedal region end P_1 (dimensionless) (SPEC-DMP).
-    double sympatheticGain{1.0};   ///< kappa_s in [0, 1] (SPEC-BODY "Sympathetic path").
+    double halfPedalP0{0.35};           ///< Half-pedal region start P_0 (dimensionless) (SPEC-DMP).
+    double halfPedalP1{0.65};           ///< Half-pedal region end P_1 (dimensionless) (SPEC-DMP).
+    double sympatheticGain{1.0};        ///< kappa_s in [0, 1] (SPEC-BODY "Sympathetic path").
     double sympatheticLowPass{5000.0};  ///< f_symp (Hz) (SPEC-BODY).
-    int localBridgeModes{64};      ///< M_b (SPEC-BODY, SPEC-INST).
-    double localBridgeFSplit{2000.0};  ///< f_split (Hz) for buildLocalBridge. Provisional: no SPEC default.
+    int localBridgeModes{64};           ///< M_b (SPEC-BODY, SPEC-INST).
+    double localBridgeFSplit{
+        2000.0};  ///< f_split (Hz) for buildLocalBridge. Provisional: no SPEC default.
 };
 
 /// Complete instrument description (SPEC-API `InstrumentDesc`). Data, not code (SPEC-INST).
 struct InstrumentDesc {
-    std::string name;                         ///< Instrument name (no trademarks).
-    std::vector<NoteGroupDesc> groups;        ///< Note groups.
+    std::string name;                           ///< Instrument name (no trademarks).
+    std::vector<NoteGroupDesc> groups;          ///< Note groups.
     std::vector<BridgePointDesc> bridgePoints;  ///< Bridge points (SPEC-BRG).
-    BodyParams body;                          ///< Body (SPEC-BODY).
-    std::vector<ChannelDesc> channels;        ///< Radiation output channels (SPEC-BODY).
-    TuningCurve tuning;                       ///< Pitch map (SPEC-STR).
-    Defaults defaults;                        ///< Instrument-wide defaults (SPEC-INST).
+    BodyParams body;                            ///< Body (SPEC-BODY).
+    std::vector<ChannelDesc> channels;          ///< Radiation output channels (SPEC-BODY).
+    TuningCurve tuning;                         ///< Pitch map (SPEC-STR).
+    Defaults defaults;                          ///< Instrument-wide defaults (SPEC-INST).
 };
 
 /// Immutable compiled instrument (SPEC-API). Opaque: declared here, defined privately by the

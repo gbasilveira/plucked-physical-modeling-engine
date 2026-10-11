@@ -27,21 +27,24 @@ enum class BridgeEnd : std::uint8_t {
 
 /// Physical description of one string (SPEC-API, SPEC-STR). Sample-rate independent. SI units.
 struct StringParams {
-    double L{};        ///< Speaking length (m), SPEC-STR. A rear or duplex segment holds its own L_d.
-    double dCore{};    ///< Core diameter d_c (m), SPEC-STR "Wound strings".
+    double L{};      ///< Speaking length (m), SPEC-STR. A rear or duplex segment holds its own L_d.
+    double dCore{};  ///< Core diameter d_c (m), SPEC-STR "Wound strings".
     double rhoCore{};  ///< Core density rho_c (kg/m^3), SPEC-STR.
     double ECore{};    ///< Core Young's modulus E_c (Pa), SPEC-STR.
     double dOuter{};   ///< Outer (winding) diameter d_o (m), SPEC-STR.
     double rhoWind{};  ///< Winding density rho_w (kg/m^3), SPEC-STR.
     double packing{};  ///< Winding packing factor eta_w, 0.75 to 0.9 for round wire (SPEC-STR).
     double epsWind{};  ///< Winding stiffness fraction eps_w of the core's EI (SPEC-STR).
-    double f1Target{};  ///< Target first-partial frequency f_1 from the tuning curve (Hz), SPEC-STR.
-    double b1{};  ///< Intrinsic loss b_1 (1/s) in sigma_n = b_1 + b_2 sqrt(omega_n) + b_3 omega_n^2.
-    double b2{};  ///< Intrinsic loss b_2 (s^(-1/2)) (SPEC-STR "Losses").
-    double b3{};  ///< Intrinsic loss b_3 (s) (SPEC-STR "Losses").
+    double
+        f1Target{};  ///< Target first-partial frequency f_1 from the tuning curve (Hz), SPEC-STR.
+    double
+        b1{};  ///< Intrinsic loss b_1 (1/s) in sigma_n = b_1 + b_2 sqrt(omega_n) + b_3 omega_n^2.
+    double b2{};                        ///< Intrinsic loss b_2 (s^(-1/2)) (SPEC-STR "Losses").
+    double b3{};                        ///< Intrinsic loss b_3 (s) (SPEC-STR "Losses").
     std::vector<double> sigmaOverride;  ///< Optional per-partial sigma_n (1/s); empty = use b1..b3.
     Boundary boundary{Boundary::Pinned};  ///< End conditions (SPEC-STR "Modes").
-    double detuneH{};  ///< Horizontal-polarisation detune Delta_h in cents (SPEC-STR "Polarisations").
+    double
+        detuneH{};  ///< Horizontal-polarisation detune Delta_h in cents (SPEC-STR "Polarisations").
     BridgeEnd bridgeEnd{BridgeEnd::AtL};  ///< Which end moves with the bridge (SPEC-BRG).
 };
 

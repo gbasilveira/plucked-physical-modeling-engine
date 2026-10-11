@@ -70,8 +70,8 @@ struct Bend {
 
 /// Continuous parameter ramp, or recompile request for a structural one (SPEC-API "Events").
 struct Param {
-    ParamId id{};      ///< Registry id (params.hpp).
-    double value{};    ///< New value in the unit of the registry entry.
+    ParamId id{};    ///< Registry id (params.hpp).
+    double value{};  ///< New value in the unit of the registry entry.
 };
 
 /// One event with its sample offset inside the host block (SPEC-API "Events": each carries a

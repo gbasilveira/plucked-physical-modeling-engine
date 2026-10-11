@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Parameter registry (P0.4-R4). Ids are stable and never reused; see docs/dev/interfaces.md.
 // The table must stay sorted by id (checked at compile time below).
+#include "pme/params.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <iterator>
-
-#include "pme/params.hpp"
 
 namespace pme {
 namespace {

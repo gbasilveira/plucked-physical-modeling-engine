@@ -27,15 +27,16 @@ enum class ParamClass : std::uint8_t {
 
 /// One registry entry. String fields point to static storage.
 struct ParamInfo {
-    ParamId id{};                 ///< Stable id.
-    std::string_view name;        ///< Dotted machine name, for example "pedal.sustain".
-    std::string_view unit;        ///< SI symbol, "dB" for decibels, "1" for dimensionless.
-    double min{};                 ///< Smallest valid value.
-    double max{};                 ///< Largest valid value.
-    double defaultValue{};        ///< Default value, within [min, max].
+    ParamId id{};           ///< Stable id.
+    std::string_view name;  ///< Dotted machine name, for example "pedal.sustain".
+    std::string_view unit;  ///< SI symbol, "dB" for decibels, "1" for dimensionless.
+    double min{};           ///< Smallest valid value.
+    double max{};           ///< Largest valid value.
+    double defaultValue{};  ///< Default value, within [min, max].
     ParamClass cls{ParamClass::Continuous};  ///< Continuous or structural.
-    std::string_view specKey;     ///< SPEC key (and section) the entry comes from.
-    std::string_view description; ///< Short description; says "provisional" where the range is a choice.
+    std::string_view specKey;                ///< SPEC key (and section) the entry comes from.
+    std::string_view
+        description;  ///< Short description; says "provisional" where the range is a choice.
 };
 
 /// All registry entries sorted by ascending id.

@@ -24,9 +24,11 @@ struct SegmentBridgeTerms {
 /// A bridge point of an instrument (SPEC-BRG "Polarisation coupling", SPEC-BODY "Local bridge
 /// model", SPEC-INST). Provisional members: SPEC-API names the type only.
 struct BridgePointDesc {
-    Point position;  ///< Location on the body (m), SPEC-BODY. Frame: see `Point`.
-    double thetaB{};  ///< Bridge frame rotation theta_b against the string polarisations (rad), SPEC-BRG.
-    double conductanceH{};  ///< Horizontal-axis conductance G_h (s/kg), SPEC-BRG "Polarisation coupling".
+    Point position;   ///< Location on the body (m), SPEC-BODY. Frame: see `Point`.
+    double thetaB{};  ///< Bridge frame rotation theta_b against the string polarisations (rad),
+                      ///< SPEC-BRG.
+    double conductanceH{};  ///< Horizontal-axis conductance G_h (s/kg), SPEC-BRG "Polarisation
+                            ///< coupling".
 };
 
 /// Compile the bridge terms of one segment (SPEC-BRG "Contract", SPEC-API).

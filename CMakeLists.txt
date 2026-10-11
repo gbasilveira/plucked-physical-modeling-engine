@@ -49,6 +49,10 @@ target_sources(pme_engine INTERFACE
   FILE_SET HEADERS
   BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/engine/include"
   FILES ${PME_PUBLIC_HEADERS})
+# CMake generates a build target for an INTERFACE library only when it has its own (non-interface)
+# SOURCES; a header file set alone does not count. The headers are listed again as private sources
+# (they are not compiled, and consumers do not inherit them) so that `--target pme_engine` exists.
+target_sources(pme_engine PRIVATE ${PME_PUBLIC_HEADERS})
 foreach(module IN LISTS PME_MODULES)
   target_link_libraries(pme_engine INTERFACE pme_${module})
   add_dependencies(pme_engine pme_${module})

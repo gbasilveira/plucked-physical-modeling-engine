@@ -53,10 +53,10 @@ pme::EventList eventsFor(const std::array<pme::Event, 7>& events, int frames) {
 struct Buffers {
     std::vector<float> storage;
     std::array<float*, kChannels> pointers{};
-    explicit Buffers(int frames)
-        : storage(static_cast<std::size_t>(frames) * kChannels, 0.25f) {
+    explicit Buffers(int frames) : storage(static_cast<std::size_t>(frames) * kChannels, 0.25f) {
         for (int c = 0; c < kChannels; ++c) {
-            pointers[static_cast<std::size_t>(c)] = storage.data() + static_cast<std::size_t>(c) * frames;
+            pointers[static_cast<std::size_t>(c)] =
+                storage.data() + static_cast<std::size_t>(c) * static_cast<std::size_t>(frames);
         }
     }
     void fillNonZero() { std::fill(storage.begin(), storage.end(), 0.25f); }
@@ -150,9 +150,7 @@ TEST_CASE("P0.4-R3 stub Engine process makes no allocations") {
 }
 #endif
 
-TEST_CASE("P0.4-R3 stub Engine process writes exact zeros") {
-    CHECK(runBlocks());
-}
+TEST_CASE("P0.4-R3 stub Engine process writes exact zeros") { CHECK(runBlocks()); }
 
 TEST_CASE("P0.4-R3 stub Engine process zeroes the output even without a successful prepare") {
     pme::Engine unprepared;

@@ -13,10 +13,11 @@
 #include "pme/pme.hpp"
 
 // P0.4-R3 (e): real-time functions are noexcept (ADR-0006).
-static_assert(noexcept(std::declval<pme::Engine&>().process(
-    std::declval<const pme::EventList&>(), std::declval<pme::AudioOut&>(), 0)));
+static_assert(noexcept(std::declval<pme::Engine&>().process(std::declval<const pme::EventList&>(),
+                                                            std::declval<pme::AudioOut&>(), 0)));
 static_assert(noexcept(std::declval<pme::Engine&>().reset()));
-static_assert(noexcept(std::declval<pme::Engine&>().popDiagnostic(std::declval<pme::Diagnostic&>())));
+static_assert(
+    noexcept(std::declval<pme::Engine&>().popDiagnostic(std::declval<pme::Diagnostic&>())));
 static_assert(noexcept(std::declval<pme::Engine&>().setInstrument(
     std::declval<std::shared_ptr<const pme::CompiledInstrument>>())));
 static_assert(noexcept(pme::toString(pme::Status::Ok)));
@@ -111,7 +112,8 @@ TEST_CASE("P0.4-R3 Engine::prepare checks the configuration") {
 TEST_CASE("P0.4-R3 a moved-from Engine can be prepared again") {
     pme::Engine a;
     pme::Engine b(std::move(a));
-    CHECK(a.prepare(validConfig()) == pme::Status::NotImplemented);  // NOLINT(bugprone-use-after-move)
+    CHECK(a.prepare(validConfig()) ==
+          pme::Status::NotImplemented);  // NOLINT(bugprone-use-after-move)
     pme::Engine c;
     c = std::move(b);
     CHECK(c.prepare(validConfig()) == pme::Status::NotImplemented);
