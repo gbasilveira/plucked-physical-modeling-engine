@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gbasilveira/plucked-physical-modeling-engine/reference/scenario.schema.json",
+  "title": "Reference-solver scenario",
+  "description": "Input of pme_reference_cli and of pme_reference.render (P0.5-R7). SI units throughout. Field names of `params` objects are the members of the engine's description structs at interfaces-v2 (StringParams); the other objects use snake_case. Values the reference does not model are rejected at run time with an error naming the field (see reference/README.md, Limits).",
+  "type": "object",
+  "required": ["schema_version", "fs", "duration"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "fs": { "type": "number", "exclusiveMinimum": 0, "description": "Nominal sample rate (Hz). WAV output is written at this rate." },
+    "oversampling": { "type": "integer", "minimum": 1, "default": 1, "description": "The simulation runs at fs * oversampling." },
+    "duration": { "type": "number", "exclusiveMinimum": 0, "description": "Simulated time (s)." },
+    "theta": { "type": "number", "minimum": 0.25, "maximum": 1, "default": 0.25, "description": "theta of the implicit scheme; 1/4 and above is unconditionally stable." },
+    "feature_partials": { "type": "integer", "minimum": 1, "default": 12 },
+    "feature_threshold_db": { "type": "number", "exclusiveMinimum": 0, "default": 90, "description": "Peak picking of the golden features keeps peaks within this many dB of the largest." },
+    "strings": { "type": "array", "items": { "$ref": "#/$defs/string" } },
+    "hammers": { "type": "array", "items": { "$ref": "#/$defs/hammer" } },
+    "bridges": { "type": "array", "items": { "$ref": "#/$defs/bridge" } },
+    "plate": { "$ref": "#/$defs/plate" },
+    "barriers": { "type": "array", "items": { "$ref": "#/$defs/barrier" } },
+    "observations": { "type": "array", "items": { "$ref": "#/$defs/observation" } }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } }
+    },
+    "string": {
+      "type": "object",
+      "required": ["params"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "params": {
+          "type": "object",
+          "description": "StringParams (SPEC-STR). b2 must be 0; sigmaOverride must be empty; detuneH must be 0; bridgeEnd must be at_L.",
+          "required": ["L", "dCore", "rhoCore", "ECore", "f1Target"],
+          "additionalProperties": false,
+          "properties": {
+            "L": { "type": "number", "exclusiveMinimum": 0 },
+            "dCore": { "type": "number", "exclusiveMinimum": 0 },
+            "rhoCore": { "type": "number", "exclusiveMinimum": 0 },
+            "ECore": { "type": "number", "exclusiveMinimum": 0 },
+            "dOuter": { "type": "number", "minimum": 0, "default": 0, "description": "0 means a plain string (d_o = d_c)." },
+            "rhoWind": { "type": "number", "minimum": 0, "default": 0 },
+            "packing": { "type": "number", "minimum": 0, "default": 0 },
+            "epsWind": { "type": "number", "minimum": -1, "default": 0 },
+            "f1Target": { "type": "number", "exclusiveMinimum": 0 },
+            "b1": { "type": "number", "minimum": 0, "default": 0 },
+            "b2": { "const": 0, "default": 0 },
+            "b3": { "type": "number", "minimum": 0, "default": 0 },
+            "sigmaOverride": { "type": "array", "maxItems": 0 },
+            "boundary": { "enum": ["pinned", "clamped"], "default": "pinned", "description": "clamped is supported only without a bridge." },
+            "detuneH": { "const": 0, "default": 0 },
+            "bridgeEnd": { "const": "at_L", "default": "at_L" }
+          }
+        },
+        "grid": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "intervals": { "type": "integer", "minimum": 4, "default": 100 } }
+        },
+        "bridge": { "type": "integer", "minimum": 0, "description": "Index into `bridges`; absent = fixed end at x = L." },
+        "initial_displacement": {
+          "type": "object",
+          "required": ["amplitude", "position"],
+          "additionalProperties": false,
+          "properties": {
+            "amplitude": { "type": "number" },
+            "position": { "type": "number", "exclusiveMinimum": 0 },
+            "angle": { "type": "number", "default": 0, "description": "Polarisation angle (rad): vertical cos, horizontal sin." }
+          }
+        },
+        "geometric": {
+          "type": "object",
+          "description": "SPEC-GEO. Needs a single fixed-end string with an initial displacement and no hammer, barrier, bridge or plate. longitudinal requires tension_modulation.",
+          "additionalProperties": false,
+          "properties": {
+            "tension_modulation": { "type": "boolean", "default": false },
+            "longitudinal": { "type": "boolean", "default": false },
+            "longitudinal_b1": { "type": "number", "minimum": 0, "default": 0 },
+            "longitudinal_b3": { "type": "number", "minimum": 0, "default": 0 },
+            "longitudinal_initial": {
+              "type": "object",
+              "required": ["amplitude", "position"],
+              "additionalProperties": false,
+              "properties": { "amplitude": { "type": "number" }, "position": { "type": "number", "exclusiveMinimum": 0 } }
+            }
+          }
+        }
+      }
+    },
+    "hammer": {
+      "type": "object",
+      "required": ["mass", "K", "velocity"],
+      "additionalProperties": false,
+      "properties": {
+        "mass": { "type": "number", "exclusiveMinimum": 0 },
+        "K": { "type": "number", "exclusiveMinimum": 0 },
+        "p": { "type": "number", "exclusiveMinimum": 1, "default": 2.5 },
+        "mu": { "type": "number", "minimum": 0, "default": 0, "description": "Hunt-Crossley mu (s/m)." },
+        "width": { "type": "number", "minimum": 0, "default": 0, "description": "Raised-cosine contact window (m); 0 = point contact." },
+        "strike_x": { "type": "number", "minimum": 0 },
+        "velocity": { "type": "number" },
+        "gap": { "type": "number", "minimum": 0, "default": 0, "description": "0 = v * dt." },
+        "strings": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+        "wall": { "type": "boolean", "default": false, "description": "Strike a rigid felt contact instead of strings (SPEC-HAM Oracle)." }
+      }
+    },
+    "bridge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "position": { "$ref": "#/$defs/point" },
+        "theta_b": { "type": "number", "default": 0, "description": "Axis rotation (rad); not supported together with a plate." },
+        "conductance_h": { "type": "number", "minimum": 0, "default": 0, "description": "G_h of the perpendicular axis (SPEC-BRG); 0 = rigid." },
+        "model": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["type"],
+              "additionalProperties": false,
+              "properties": {
+                "type": { "const": "mass_spring_dashpot" },
+                "mass": { "type": "number", "minimum": 0, "default": 0 },
+                "stiffness": { "type": "number", "minimum": 0, "default": 0 },
+                "damping": { "type": "number", "minimum": 0, "default": 0 }
+              }
+            },
+            {
+              "type": "object",
+              "required": ["type", "G"],
+              "additionalProperties": false,
+              "properties": { "type": { "const": "conductance" }, "G": { "type": "number", "exclusiveMinimum": 0 } }
+            }
+          ]
+        }
+      }
+    },
+    "plate": {
+      "type": "object",
+      "description": "PlateParams (SPEC-BODY) on a rectangle with simply supported edges. Strings couple at bridge points; with a plate the bridge model is the plate.",
+      "required": ["length_x", "length_y", "thickness", "youngs_l", "youngs_r", "shear_lr", "poisson_lr", "poisson_rl", "density"],
+      "additionalProperties": false,
+      "properties": {
+        "length_x": { "type": "number", "exclusiveMinimum": 0 },
+        "length_y": { "type": "number", "exclusiveMinimum": 0 },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "grain_angle": { "const": 0, "default": 0 },
+        "youngs_l": { "type": "number", "exclusiveMinimum": 0 },
+        "youngs_r": { "type": "number", "exclusiveMinimum": 0 },
+        "shear_lr": { "type": "number", "exclusiveMinimum": 0 },
+        "poisson_lr": { "type": "number" },
+        "poisson_rl": { "type": "number" },
+        "density": { "type": "number", "exclusiveMinimum": 0 },
+        "moisture": { "type": "number", "default": 0 },
+        "d_e_d_mc_l": { "type": "number", "default": 0 },
+        "d_e_d_mc_r": { "type": "number", "default": 0 },
+        "d_g_d_mc": { "type": "number", "default": 0 },
+        "d_rho_d_mc": { "type": "number", "default": 0 },
+        "loss_factor": { "type": "number", "minimum": 0, "default": 0 },
+        "rim_stiffness": { "const": 0, "default": 0 },
+        "rim_rotational_stiffness": { "const": 0, "default": 0 },
+        "f_max": { "type": "number", "minimum": 0, "default": 0 },
+        "outline": { "type": "array", "maxItems": 0, "description": "Not modelled: must be empty." },
+        "thickness_grid": { "type": "null", "description": "Not modelled." },
+        "ribs": { "type": "array", "maxItems": 0, "description": "Not modelled: must be empty." },
+        "bridges": { "type": "array", "maxItems": 0, "description": "Not modelled: must be empty." },
+        "grid": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "nx": { "type": "integer", "minimum": 2, "default": 40 },
+            "ny": { "type": "integer", "minimum": 2, "default": 30 }
+          }
+        },
+        "loss": {
+          "type": "object",
+          "description": "Rayleigh loss sigma(omega) = b1 + b3 omega^2; with both 0 and loss_factor > 0, b3 is set so that sigma = eta omega / 2 at reference_hz.",
+          "additionalProperties": false,
+          "properties": {
+            "b1": { "type": "number", "minimum": 0, "default": 0 },
+            "b3": { "type": "number", "minimum": 0, "default": 0 },
+            "reference_hz": { "type": "number", "minimum": 0, "default": 0 }
+          }
+        },
+        "initial_displacement": {
+          "type": "object",
+          "required": ["x", "y", "amplitude"],
+          "additionalProperties": false,
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "amplitude": { "type": "number" } }
+        }
+      }
+    },
+    "barrier": {
+      "type": "object",
+      "required": ["K", "x", "b", "w"],
+      "additionalProperties": false,
+      "properties": {
+        "string": { "type": "integer", "minimum": 0, "default": 0 },
+        "side": { "enum": [1, -1], "default": 1 },
+        "K": { "type": "number", "exclusiveMinimum": 0 },
+        "alpha": { "type": "number", "exclusiveMinimum": 1, "default": 2 },
+        "mu": { "type": "number", "minimum": 0, "default": 0 },
+        "x": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+        "b": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+        "w": { "type": "array", "minItems": 1, "items": { "type": "number" } }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "string_displacement", "string_velocity", "bridge_force", "bridge_force_perp",
+            "bridge_displacement", "bridge_velocity", "hammer_force", "hammer_penetration",
+            "hammer_position", "barrier_force", "plate_displacement",
+            "longitudinal_bridge_force", "longitudinal_displacement"
+          ]
+        },
+        "string": { "type": "integer", "minimum": 0 },
+        "bridge": { "type": "integer", "minimum": 0 },
+        "hammer": { "type": "integer", "minimum": 0 },
+        "barrier": { "type": "integer", "minimum": 0 },
+        "x": { "type": "number", "minimum": 0, "description": "Position on the string (m)." },
+        "polarisation": { "enum": ["v", "h"], "default": "v" },
+        "point": { "$ref": "#/$defs/point" }
+      }
+    }
+  }
+}

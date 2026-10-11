@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "name": "hammer-two-strings-bridge",
+  "fs": 48000,
+  "oversampling": 2,
+  "duration": 0.5,
+  "strings": [
+    {
+      "name": "unison-1",
+      "params": {
+        "L": 1.0, "dCore": 0.00085, "rhoCore": 7850, "ECore": 2.0e11,
+        "f1Target": 110.0, "b1": 0.3, "b3": 1.0e-6
+      },
+      "grid": { "intervals": 100 },
+      "bridge": 0
+    },
+    {
+      "name": "unison-2",
+      "params": {
+        "L": 1.0, "dCore": 0.00085, "rhoCore": 7850, "ECore": 2.0e11,
+        "f1Target": 110.3, "b1": 0.3, "b3": 1.0e-6
+      },
+      "grid": { "intervals": 100 },
+      "bridge": 0
+    }
+  ],
+  "hammers": [
+    {
+      "mass": 0.008, "K": 4.5e9, "p": 2.5, "mu": 0.5, "width": 0.01,
+      "strike_x": 0.125, "velocity": 2.5, "strings": [0, 1]
+    }
+  ],
+  "bridges": [
+    {
+      "position": { "x": 0.3, "y": 0.2, "z": 0.0 },
+      "theta_b": 0.05,
+      "conductance_h": 0.5,
+      "model": { "type": "mass_spring_dashpot", "mass": 0.05, "stiffness": 2.0e5, "damping": 8.0 }
+    }
+  ],
+  "observations": [
+    { "name": "y1", "kind": "string_displacement", "string": 0, "x": 0.3 },
+    { "name": "force", "kind": "hammer_force", "hammer": 0 },
+    { "name": "penetration", "kind": "hammer_penetration", "hammer": 0 },
+    { "name": "bridge_force", "kind": "bridge_force", "bridge": 0 }
+  ],
+  "feature_partials": 8
+}

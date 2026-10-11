@@ -142,6 +142,8 @@ struct Scenario {
     std::vector<BarrierSpec> barriers;
     std::vector<ObservationSpec> observations;
     int feature_partials = 12;  // partials reported in the golden features
+    double feature_threshold_db =
+        90.0;  // peak picking: keep peaks within this many dB of the largest
 };
 
 // Parses a scenario from JSON text. Throws RefError naming the offending field for unknown keys,

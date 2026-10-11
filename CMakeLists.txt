@@ -78,4 +78,5 @@ add_subdirectory(engine/tests/interfaces)
 
 # ---- P0.5: reference solver ----
 add_subdirectory(reference)
+add_subdirectory(tools/reference-cli)
 # ---- end P0.5 ----

@@ -250,7 +250,8 @@ Scenario parse_scenario(std::string_view json_text) {
     const std::string ctx = "scenario";
     check_keys(doc,
                {"schema_version", "name", "fs", "oversampling", "duration", "theta", "strings",
-                "hammers", "bridges", "plate", "barriers", "observations", "feature_partials"},
+                "hammers", "bridges", "plate", "barriers", "observations", "feature_partials",
+                "feature_threshold_db"},
                ctx);
     Scenario sc;
     sc.schema_version = integer(doc, "schema_version", 0, ctx);
@@ -263,6 +264,7 @@ Scenario parse_scenario(std::string_view json_text) {
     sc.duration = req_num(doc, "duration", ctx);
     sc.theta = num(doc, "theta", 0.25, ctx);
     sc.feature_partials = integer(doc, "feature_partials", 12, ctx);
+    sc.feature_threshold_db = num(doc, "feature_threshold_db", 90.0, ctx);
 
     if (doc.contains("strings")) {
         std::size_t idx = 0;
