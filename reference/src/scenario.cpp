@@ -197,6 +197,14 @@ PlateSpec plate_spec(const json& j, const std::string& ctx) {
         s.nx = integer(j["grid"], "nx", s.nx, ctx + ".grid");
         s.ny = integer(j["grid"], "ny", s.ny, ctx + ".grid");
     }
+    if (j.contains("initial_displacement")) {
+        const auto& ji = j["initial_displacement"];
+        check_keys(ji, {"x", "y", "amplitude"}, ctx + ".initial_displacement");
+        s.has_initial = true;
+        s.initial_x = req_num(ji, "x", ctx + ".initial_displacement");
+        s.initial_y = req_num(ji, "y", ctx + ".initial_displacement");
+        s.initial_amplitude = req_num(ji, "amplitude", ctx + ".initial_displacement");
+    }
     if (j.contains("loss")) {
         check_keys(j["loss"], {"b1", "b3", "reference_hz"}, ctx + ".loss");
         s.loss_b1 = num(j["loss"], "b1", 0.0, ctx + ".loss");

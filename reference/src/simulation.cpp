@@ -1146,6 +1146,20 @@ void Sim::initial_states(SysState& cur, SysState& prev) {
             prev.u[j][i] = cur.u[j][i] - 0.5 * k_ * k_ * kx[i];
         }
     }
+    if (has_plate_ && sc_.plate->has_initial) {
+        for (const auto& [idx, wgt] :
+             bilinear_weights(plate_op_.grid, sc_.plate->initial_x, sc_.plate->initial_y)) {
+            cur.q[idx] = sc_.plate->initial_amplitude * wgt;
+        }
+        // Time-symmetric start at rest, as for the strings.
+        std::vector<double> kq;
+        kq_.multiply(cur.q, kq);
+        aq_.solve(kq);
+        prev.q = cur.q;
+        for (std::size_t i = 0; i < nq_; ++i) {
+            prev.q[i] -= 0.5 * k_ * k_ * kq[i];
+        }
+    }
     for (std::size_t h = 0; h < hammers_.size(); ++h) {
         cur.y[h] = -hammers_[h].gap;
         prev.y[h] = cur.y[h] - hammers_[h].velocity * k_;

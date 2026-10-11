@@ -85,6 +85,12 @@ struct PlateSpec {
     double loss_b1 = 0.0;
     double loss_b3 = 0.0;
     double loss_reference_hz = 0.0;
+    // Optional initial state: a displacement spike at (x, y) spread bilinearly over the four
+    // nearest nodes, released at rest.
+    bool has_initial = false;
+    double initial_x = 0.0;
+    double initial_y = 0.0;
+    double initial_amplitude = 0.0;
 };
 
 struct BarrierSpec {
