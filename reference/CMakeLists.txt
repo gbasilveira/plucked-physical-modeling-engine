@@ -38,6 +38,7 @@ pme_add_doctest(pme_reference_unit_tests
     tests/test_hammer.cpp
     tests/test_plate.cpp
     tests/test_bridge.cpp
+    tests/test_barrier.cpp
   LIBRARIES pme_reference nlohmann_json::nlohmann_json
   LABELS unit integration)
 target_compile_definitions(pme_reference_unit_tests PRIVATE ${PME_REFERENCE_OPTIMISED_DEFINE})
