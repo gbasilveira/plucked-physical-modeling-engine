@@ -6,7 +6,6 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <cstring>
 #include <limits>
 
 #include "fixtures.hpp"
@@ -17,12 +16,9 @@
 namespace {
 
 bool bitEqual(const pme::OscCoeffs& a, const pme::OscCoeffs& b) {
-    // Field-wise: the struct has padding bytes that memcmp would compare.
-    return std::memcmp(&a.beta, &b.beta, sizeof(float)) == 0 &&
-           std::memcmp(&a.kappa, &b.kappa, sizeof(float)) == 0 &&
-           std::memcmp(&a.gamma, &b.gamma, sizeof(float)) == 0 &&
-           std::memcmp(&a.omegaHat2, &b.omegaHat2, sizeof(double)) == 0 &&
-           std::memcmp(&a.sigmaHat, &b.sigmaHat, sizeof(double)) == 0;
+    // The mute recompile is deterministic: the same inputs give the same values.
+    return a.beta == b.beta && a.kappa == b.kappa && a.gamma == b.gamma &&
+           a.omegaHat2 == b.omegaHat2 && a.sigmaHat == b.sigmaHat;
 }
 
 }  // namespace
@@ -84,8 +80,7 @@ TEST_CASE("A2-R7 applyMute with m_d = 1 adds sigma_felt exactly and recompiles")
         pme::OscCoeffs v;
         pme::OscCoeffs h;
         REQUIRE(pme::compileOscillator(m.omega[i], m.sigma[i], 48000.0, v) == pme::Status::Ok);
-        REQUIRE(pme::compileOscillator(m.omega[i] * hs, m.sigma[i], 48000.0, h) ==
-                pme::Status::Ok);
+        REQUIRE(pme::compileOscillator(m.omega[i] * hs, m.sigma[i], 48000.0, h) == pme::Status::Ok);
         CHECK(bitEqual(m.oscV[i], v));
         CHECK(bitEqual(m.oscH[i], h));
     }

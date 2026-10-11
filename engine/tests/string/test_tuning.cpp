@@ -47,12 +47,12 @@ TEST_CASE("A2-R2 stretch is zero beyond the vector and for key minus one") {
 }
 
 TEST_CASE("A2-R2 tension for pitch and f1ForTension invert each other") {
-    for (const auto& p : {pme::string_test::treble(), pme::string_test::mid(),
-                          pme::string_test::bass()}) {
+    for (const auto& p :
+         {pme::string_test::treble(), pme::string_test::mid(), pme::string_test::bass()}) {
         const double rhoA = pme::string::linearDensity(p);
         const double EI = pme::string::bendingStiffness(p);
-        const double T = 4.0 * p.L * p.L * rhoA * p.f1Target * p.f1Target -
-                         kPi * kPi * EI / (p.L * p.L);
+        const double T =
+            4.0 * p.L * p.L * rhoA * p.f1Target * p.f1Target - kPi * kPi * EI / (p.L * p.L);
         PME_CHECK_REL(pme::string::tensionForPitch(p, p.f1Target), T, 1e-12);
         PME_CHECK_REL(pme::string::f1ForTension(p, T), p.f1Target, 1e-12);
         // The compiled table stores the same tension and B = pi^2 EI / (T L^2).

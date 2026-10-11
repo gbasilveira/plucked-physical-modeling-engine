@@ -7,6 +7,7 @@
 namespace pme::string_test {
 
 /// Plain steel string, d = 1.0 mm, rho = 7850 kg/m^3, E = 200 GPa (A2-T1 case a).
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): L, f1
 inline StringParams plainSteel(double L, double f1) {
     StringParams p;
     p.L = L;
@@ -22,6 +23,7 @@ inline StringParams plainSteel(double L, double f1) {
 }
 
 /// Wound bass string: core 1.6 mm, outer 4.7 mm, copper-like winding (A2-T1 case b).
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): L, f1
 inline StringParams woundBass(double L, double f1) {
     StringParams p;
     p.L = L;

@@ -25,6 +25,7 @@ struct WRef {
     double rect;
     double rc;
 };
+// NOLINTBEGIN(modernize-use-std-numbers): reference abscissae near pi, deliberately literal
 constexpr std::array<WRef, 26> kWRef{{
     {1e-12, 1.0, 1.0},
     {1e-08, 0.99999999999999998333, 0.99999999999999999347},
@@ -53,6 +54,7 @@ constexpr std::array<WRef, 26> kWRef{{
     {15.0, 0.043352522677141124389, -0.0019888972333336093547},
     {19.9, 0.043600206062395347351, -0.0011144049950391517772},
 }};
+// NOLINTEND(modernize-use-std-numbers)
 
 double relErr(double a, double e) { return std::fabs(a - e) / std::fabs(e); }
 
@@ -98,7 +100,7 @@ TEST_CASE("A2-R6 phiBar float32 values are the rounded float64 values") {
     REQUIRE(pme::compileString(p, 48000.0, 16000.0, pts, m) == pme::Status::Ok);
     const double amp = std::sqrt(2.0 / p.L);
     for (std::size_t i = 0; i < m.k.size(); ++i) {
-        const double n = static_cast<double>(i + 1);
+        const auto n = static_cast<double>(i + 1);
         const double phi = amp * std::sin(n * kPi * (x0 / p.L));  // float64 reference
         const auto expected = static_cast<float>(phi);
         // Away from a node the float32 value is the correctly rounded float64 value.

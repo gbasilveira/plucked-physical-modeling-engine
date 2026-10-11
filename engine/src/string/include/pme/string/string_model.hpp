@@ -44,8 +44,7 @@ inline constexpr int kMaxModes = 1 << 16;
 /// f1 = f_ref 2^((key - 69)/12) 2^((stretch[key] + d_s)/1200) (SPEC-STR "Tension for pitch",
 /// SI-0004). stretch[key] = 0 for a key outside the vector (including key < 0).
 /// compileInstrument calls this for groups with key >= 0. Thread: any. Allocates: no.
-[[nodiscard]] double tuningF1(const TuningCurve& curve, int key,
-                              double unisonDetuneCents) noexcept;
+[[nodiscard]] double tuningF1(const TuningCurve& curve, int key, double unisonDetuneCents) noexcept;
 
 /// Tension T = 4 L^2 rhoA f1^2 - pi^2 EI / L^2 for the given f1 (SPEC-STR "Tension for pitch").
 /// Requires valid parameters. Thread: any. Allocates: no.

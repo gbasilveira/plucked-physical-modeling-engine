@@ -63,6 +63,7 @@ double modeOmega(const Derived& d, double k) noexcept {
 }
 
 // SPEC-STR "Losses": sigma_n = b1 + b2 sqrt(omega_n) + b3 omega_n^2, or the override table.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): n, omega in SPEC-STR order
 double modeSigma(const StringParams& p, int n, double omega) noexcept {
     const auto idx = static_cast<std::size_t>(n - 1);
     if (idx < p.sigmaOverride.size()) {

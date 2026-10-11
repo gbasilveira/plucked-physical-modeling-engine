@@ -20,6 +20,7 @@ using pme::string_test::plainSteel;
 using pme::string_test::woundBass;
 
 // Hand-worked SPEC-STR "Wound strings" with the formula written out term by term.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): dc, rhoC, dow, rhoW, eta
 double handRhoA(double dc, double rhoC, double dow, double rhoW, double eta) {
     const double core = rhoC * dc * dc;                      // rho_c d_c^2
     const double wind = eta * rhoW * (dow * dow - dc * dc);  // eta_w rho_w (d_o^2 - d_c^2)
@@ -51,7 +52,7 @@ TEST_CASE("A2-T1 wound bass string mass and stiffness") {
     // Winding term worked numerically: d_o^2 - d_c^2 = 22.09e-6 - 2.56e-6 = 19.53e-6.
     PME_CHECK_REL(rhoA, kPi / 4.0 * (7850.0 * 2.56e-6 + 0.85 * 8960.0 * 19.53e-6), 1e-12);
 
-    p.epsWind = 0.1;  // case c
+    p.epsWind = 0.1;                                            // case c
     PME_CHECK_REL(pme::string::linearDensity(p), rhoA, 1e-12);  // eps_w does not change mass
     PME_CHECK_REL(pme::string::bendingStiffness(p), handEI(1.6e-3, 200.0e9, 0.1), 1e-12);
     PME_CHECK_REL(pme::string::bendingStiffness(p),
@@ -62,8 +63,8 @@ TEST_CASE("A2-T1 packing factors 0.75 and 0.9") {
     for (const double eta : {0.75, 0.9}) {
         auto p = woundBass(1.9, 27.5);
         p.packing = eta;
-        PME_CHECK_REL(pme::string::linearDensity(p),
-                      handRhoA(1.6e-3, 7850.0, 4.7e-3, 8960.0, eta), 1e-12);
+        PME_CHECK_REL(pme::string::linearDensity(p), handRhoA(1.6e-3, 7850.0, 4.7e-3, 8960.0, eta),
+                      1e-12);
     }
 }
 
@@ -131,8 +132,7 @@ TEST_CASE("A2-T1 invalid inputs return InvalidArgument and leave out unchanged")
     for (const double x0 : {-0.01, 1.91, nan}) {
         pme::StringModes out = sentinel;
         const std::array<double, 1> bad{x0};
-        CHECK(pme::compileString(base, 48000.0, 16000.0, bad, out) ==
-              pme::Status::InvalidArgument);
+        CHECK(pme::compileString(base, 48000.0, 16000.0, bad, out) == pme::Status::InvalidArgument);
         CHECK(out.tension == 99.0);
     }
 }

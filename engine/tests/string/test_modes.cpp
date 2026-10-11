@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <limits>
 #include <numbers>
+#include <string>
 
 #include "fixtures.hpp"
 #include "pme/osc.hpp"
@@ -26,16 +27,18 @@ using pme::string_test::treble;
 
 // Independent expected N: loop upward over the SPEC formulas in the n^2 w0^2 (1 + B n^2) form
 // (the implementation uses the T k^2 + EI k^4 form), stop at the first failure.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): fs, fMax
 int expectedN(const pme::StringParams& p, double fs, double fMax) {
     const double rhoA = pme::string::linearDensity(p);
     const double EI = pme::string::bendingStiffness(p);
-    const double T = 4.0 * p.L * p.L * rhoA * p.f1Target * p.f1Target - kPi * kPi * EI / (p.L * p.L);
+    const double T =
+        4.0 * p.L * p.L * rhoA * p.f1Target * p.f1Target - kPi * kPi * EI / (p.L * p.L);
     const double w0 = kPi / p.L * std::sqrt(T / rhoA);
     const double B = kPi * kPi * EI / (T * p.L * p.L);
     const double dt = 1.0 / fs;
     int n = 0;
     for (int m = 1; m < 100000; ++m) {
-        const double nn = static_cast<double>(m);
+        const auto nn = static_cast<double>(m);
         const double w = nn * w0 * std::sqrt(1.0 + B * nn * nn);
         const double sigma = p.b1 + p.b2 * std::sqrt(w) + p.b3 * w * w;
         bool ok = true;
@@ -62,8 +65,8 @@ int expectedN(const pme::StringParams& p, double fs, double fMax) {
 
 TEST_CASE("A2-T2 mode counts match the bandwidth rule at 44.1 48 and 96 kHz") {
     struct Named {
-        const char* name;
-        pme::StringParams p;
+        const char* name{};
+        pme::StringParams p{};
     };
     const std::array<Named, 3> strings{Named{"treble", treble()}, Named{"mid", mid()},
                                        Named{"bass", bass()}};
@@ -80,8 +83,8 @@ TEST_CASE("A2-T2 mode counts match the bandwidth rule at 44.1 48 and 96 kHz") {
                 CHECK(m.sigma.size() == m.k.size());
                 CHECK(m.oscV.size() == m.k.size());
                 CHECK(m.oscH.size() == m.k.size());
-                MESSAGE("N = " << expected << " (" << s.name << ", fs " << fs << ", fMax " << fMax
-                               << ")");
+                MESSAGE("N = " << expected << " (" << std::string(s.name) << ", fs " << fs
+                               << ", fMax " << fMax << ")");
             }
         }
     }
@@ -181,7 +184,7 @@ TEST_CASE("A2-R3 pinned frequencies follow n w0 sqrt(1 + B n^2)") {
         REQUIRE(pme::compileString(p, 48000.0, 16000.0, {}, m) == pme::Status::Ok);
         const double w0 = kPi / p.L * std::sqrt(m.tension / m.rhoA);
         for (std::size_t i = 0; i < m.k.size(); ++i) {
-            const double n = static_cast<double>(i + 1);
+            const auto n = static_cast<double>(i + 1);
             PME_CHECK_REL(m.k[i], n * kPi / p.L, 1e-15);
             PME_CHECK_REL(m.omega[i], n * w0 * std::sqrt(1.0 + m.inharmonicity * n * n), 1e-13);
         }
@@ -199,8 +202,7 @@ TEST_CASE("A2-R3 clamped frequencies equal the pinned ones times Fletcher's fact
         REQUIRE(pme::compileString(pinned, 48000.0, 16000.0, {}, a) == pme::Status::Ok);
         REQUIRE(pme::compileString(clamped, 48000.0, 16000.0, {}, c) == pme::Status::Ok);
         const double B = a.inharmonicity;
-        const double factor =
-            1.0 + 2.0 * std::sqrt(B) / kPi + 4.0 * B / (kPi * kPi);
+        const double factor = 1.0 + 2.0 * std::sqrt(B) / kPi + 4.0 * B / (kPi * kPi);
         CHECK(factor > 1.0);
         const std::size_t n = std::min(a.omega.size(), c.omega.size());
         REQUIRE(n >= 2);
