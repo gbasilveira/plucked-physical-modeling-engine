@@ -144,6 +144,31 @@ def test_p0_3_r4_per_partial_overrides_replace_default() -> None:
     assert again.tolerances.partials[2].frequency_cents is None
 
 
+def test_p0_3_r4_knee_time_is_compared_with_knee_tolerance() -> None:
+    """P0.3-R4: a second decay's knee_s is compared with knee_relative (default 5 %)."""
+    ref = make_reference()  # partial 2 has a second decay with knee 1.5 s
+    cand = copy.deepcopy(ref)
+    assert cand.partials[1].second_decay is not None
+    cand.partials[1].second_decay.knee_s = 1.5 * 1.10
+    result = compare_golden(ref, cand)
+    assert not result.passed
+    failing = [r for r in result.results if not r.passed]
+    assert [r.feature for r in failing] == ["partial[2].knee_s"]
+    assert failing[0].tolerance == 0.05
+    cand.partials[1].second_decay.knee_s = 1.5 * 1.02
+    assert compare_golden(ref, cand).passed
+
+    cand.partials[1].second_decay.knee_s = 1.5 * 1.10
+    ref.tolerances.partials[2] = PartialTolerance(knee_relative=0.2)
+    assert compare_golden(ref, cand).passed
+    assert parse_golden(serialize_golden(ref)).tolerances.partials[2].knee_relative == 0.2
+    ref.tolerances.partials.clear()
+    ref.tolerances.knee_relative = 0.2
+    again = parse_golden(serialize_golden(ref))
+    assert again.tolerances.knee_relative == 0.2
+    assert compare_golden(again, cand).passed
+
+
 def test_p0_3_r4_missing_features_and_grids_fail() -> None:
     """P0.3-R4: missing partials, features and mismatched grids fail; extra partials are noted."""
     ref = make_reference()

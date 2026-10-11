@@ -151,6 +151,32 @@ TEST_CASE("P0.3-R4 per-partial tolerance overrides replace the default") {
     CHECK_FALSE(again.tolerances.partials.at(2).frequency_cents.has_value());
 }
 
+TEST_CASE("P0.3-R4 knee time is compared with the knee tolerance") {
+    GoldenFeatures ref = make_reference();  // partial 2 has a second decay with knee 1.5 s
+    GoldenFeatures cand = ref;
+    cand.partials[1].second_decay->knee_s = 1.5 * 1.10;
+    const auto r = compare_golden(ref, cand);
+    CHECK_FALSE(r.pass);
+    const FeatureResult* knee = find(r, "partial[2].knee_s");
+    REQUIRE(knee != nullptr);
+    CHECK_FALSE(knee->pass);
+    CHECK(knee->tolerance == 0.05);
+    cand.partials[1].second_decay->knee_s = 1.5 * 1.02;
+    CHECK(compare_golden(ref, cand).pass);
+
+    // A per-partial override and a file-wide default both replace the 5% default.
+    cand.partials[1].second_decay->knee_s = 1.5 * 1.10;
+    ref.tolerances.partials[2].knee_relative = 0.2;
+    CHECK(compare_golden(ref, cand).pass);
+    GoldenFeatures again = parse_golden(serialize_golden(ref));
+    CHECK(again.tolerances.partials.at(2).knee_relative == 0.2);
+    ref.tolerances.partials.clear();
+    ref.tolerances.knee_relative = 0.2;
+    again = parse_golden(serialize_golden(ref));
+    CHECK(again.tolerances.knee_relative == 0.2);
+    CHECK(compare_golden(again, cand).pass);
+}
+
 TEST_CASE("P0.3-R4 missing features and mismatched grids fail") {
     const GoldenFeatures ref = make_reference();
     GoldenFeatures c = ref;

@@ -81,7 +81,8 @@
             "decay_rate_relative": { "type": "number", "minimum": 0, "default": 0.005 },
             "spectral_envelope_db": { "type": "number", "minimum": 0, "default": 1.0 },
             "contact_time_relative": { "type": "number", "minimum": 0, "default": 0.01 },
-            "energy_absolute": { "type": "number", "minimum": 0, "default": 1e-9 }
+            "energy_absolute": { "type": "number", "minimum": 0, "default": 1e-9 },
+            "knee_relative": { "type": "number", "minimum": 0, "default": 0.05 }
           }
         },
         "partials": {
@@ -94,7 +95,8 @@
               "properties": {
                 "frequency_cents": { "type": "number", "minimum": 0 },
                 "amplitude_db": { "type": "number", "minimum": 0 },
-                "decay_rate_relative": { "type": "number", "minimum": 0 }
+                "decay_rate_relative": { "type": "number", "minimum": 0 },
+                "knee_relative": { "type": "number", "minimum": 0 }
               }
             }
           },

@@ -49,11 +49,14 @@ struct PartialTolerance {
     std::optional<double> frequency_cents;
     std::optional<double> amplitude_db;
     std::optional<double> decay_rate_relative;
+    std::optional<double> knee_relative;
 };
 
 // Defaults: SPEC-ORC for frequency (0.01 cent, ORC-01/ORC-16), decay rate (0.5%, ORC-16), spectral
 // envelope (1 dB, ORC-17) and contact time (1%, ORC-08); the planner's choice for amplitude (0.1
-// dB) and energy values (1e-9 absolute, ORC-15's per-step float64 figure).
+// dB), energy values (1e-9 absolute, ORC-15's per-step float64 figure) and the knee time of a
+// two-slope decay (5% relative; a knee is poorly conditioned). Oracle tests never rely on these
+// defaults: they pass the SPEC-ORC tolerance explicitly (docs/dev/signal-analysis.md).
 struct GoldenTolerances {
     double frequency_cents = 0.01;
     double amplitude_db = 0.1;
@@ -61,6 +64,7 @@ struct GoldenTolerances {
     double spectral_envelope_db = 1.0;
     double contact_time_relative = 0.01;
     double energy_absolute = 1e-9;
+    double knee_relative = 0.05;
     std::map<int, PartialTolerance> partials;  // keyed by partial index
 };
 
