@@ -6,7 +6,7 @@ Maintained by the orchestrator (Opus). Status values: not started, ready, in pro
 
 | Phase | Name | Track | Status | Branch / PR | Gate report | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| P0.1 | Repository and build skeleton | 0 | ready |  |  |  |
+| P0.1 | Repository and build skeleton | 0 | in progress | branch `ccr-5ef35d73-oqb6fd` |  | Briefs: docs/agents/briefs/P0.1-implementer.md, P0.1-code-reviewer.md. Planning outputs written (docs/adr/TEMPLATE.md, ADR-0001 to ADR-0003). ADR-0004 (no Windows tsan preset) Proposed, awaiting orchestrator approval. T1 evidenced by temporary .github/workflows/bootstrap-build.yml, removed by P0.2. |
 | P0.2 | CI and quality gates | 0 | not started |  |  |  |
 | P0.3 | Test and analysis framework | 0 | not started |  |  |  |
 | P0.4 | Interface skeleton | 0 | not started |  |  |  |

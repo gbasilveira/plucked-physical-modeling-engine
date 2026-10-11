@@ -8,4 +8,10 @@ Phase P0.1 creates the ADR template and the first three records (planning output
 - ADR-0002 — scikit-fem as the plate FEM library
 - ADR-0003 — dependency pinning (CPM.cmake exact commits, Python lock file)
 
+Template: [TEMPLATE.md](TEMPLATE.md).
+
+Further records:
+
+- ADR-0004 — no ThreadSanitizer preset on Windows (Proposed; defers one cell of P0.1-R2 and P0.1-T1)
+
 Phase H1 adds the licence ADR that records decision D-1.
