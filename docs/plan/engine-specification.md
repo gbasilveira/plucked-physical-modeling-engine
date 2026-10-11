@@ -92,11 +92,13 @@ Every resonance in the engine (string mode, longitudinal mode, bridge mode, body
 \hat\sigma\Delta t = \tanh(\sigma\Delta t), \qquad \hat\omega^2\Delta t^2 = 2 - 2\,(1+\hat\sigma\Delta t)\,e^{-\sigma\Delta t}\cos(\omega_d\Delta t)
 ```
 
-With these values the discrete poles are exactly e^((−σ ± iω\_d)Δt), so free decay and frequency are exact. The compiler MUST evaluate ω̂²Δt² without cancellation, in float64:
+With these values the discrete poles are exactly e^((−σ ± iω\_d)Δt), so free decay and frequency are exact. The compiler MUST evaluate ω̂²Δt² without cancellation, in float64, using the equivalent form (since (1 + σ̂Δt)e^(−σΔt) = sech(σΔt)):
 
 ```math
-\hat\omega^2\Delta t^2 = 2\left[-\mathrm{expm1}(-\sigma\Delta t) + 2e^{-\sigma\Delta t}\sin^2\!\left(\tfrac{\omega_d\Delta t}{2}\right)\right] - 2\,\hat\sigma\Delta t\, e^{-\sigma\Delta t}\cos(\omega_d\Delta t)
+\hat\omega^2\Delta t^2 = \frac{4\left[\sinh^2\!\left(\tfrac{\sigma\Delta t}{2}\right) + \sin^2\!\left(\tfrac{\omega_d\Delta t}{2}\right)\right]}{\cosh(\sigma\Delta t)}, \qquad \omega_d\Delta t = \Delta t\,\sqrt{(\omega - \sigma)(\omega + \sigma)}
 ```
+
+The form 2[−expm1(−σΔt) + 2e^(−σΔt) sin²(ω\_dΔt/2)] − 2σ̂Δt e^(−σΔt) cos(ω\_dΔt) is algebraically equal but loses up to three digits when σΔt is small ([SI-0008](../spec-issues/SI-0008-oscillator-coefficient-cancellation.md)).
 
 **Difference form (normative state).** Each oscillator stores qⁿ and uⁿ = qⁿ − qⁿ⁻¹, never qⁿ⁻¹ itself:
 

@@ -1,6 +1,6 @@
 # SI-0008 SPEC-OSC's "cancellation-free" ω̂²Δt² formula loses up to three digits at small ωΔt
 
-Status: open (recommended: accept) · Raised by: planner, while briefing A1 · Date: 2026-10-11
+Status: resolved · Raised by: planner, while briefing A1 · Date: 2026-10-11
 SPEC section: SPEC-OSC "Discrete scheme"; phase card A1 (A1-R1, A1-T1)
 
 ## Failing test
@@ -39,6 +39,11 @@ In SPEC-OSC "Discrete scheme", replace the sentence "The compiler MUST evaluate 
 > The form 2[−expm1(−σΔt) + 2e^(−σΔt) sin²(ω\_dΔt/2)] − 2σ̂Δt e^(−σΔt) cos(ω\_dΔt) is algebraically equal but loses up to three digits when σΔt is small (SI-0008).
 
 ## Resolution
-Pending. This changes the numerics text of SPEC (not the scheme), so under the spec-issue protocol it needs a human reviewer. Recommended default: accept. A1's brief tells the implementer to use the proposed form and to keep a test showing both forms agree within 5 × 10⁻¹², so the A1 code is right under either outcome. If SI-0008 is rejected, A1-T1's 10⁻¹⁴ tolerance cannot be met with the SPEC formula and the card's tolerance must change instead. A1 must not be merged before SI-0008 is resolved.
+Resolved on 2026-10-11: accepted as proposed. Orchestrator default under owner's proceed instruction — flagged for owner review, numerics text change only, scheme and poles unchanged.
 
-Affected phases: A1 (A1-R1, A1-T1). Every later phase uses `compileOscillator` and is unaffected by the choice.
+- SPEC-OSC "Discrete scheme": the ω̂²Δt² evaluation sentence and formula are replaced by the proposed text above. The scheme, its poles, the difference form and every tolerance are unchanged.
+- A1-T1 keeps its 10⁻¹⁴ tolerance. The A1 brief already uses this form; the unit test comparing it with the old printed form stays as documentation.
+- SPEC commit: "PLAN: resolve SI-0008".
+- If the owner reverses this, SPEC-OSC reverts and A1-T1's tolerance must be relaxed instead (see the analysis above).
+
+Affected phases: A1 (A1-R1, A1-T1). Every later phase uses `compileOscillator` and is unaffected.

@@ -96,7 +96,7 @@ Your job: decide whether the A1 implementer's and test-author's work meets the A
 - [ ] Reviewer approval recorded on the pull request.
 - [ ] Handoff report submitted and consistent with CI results.
 
-For A1 the stored performance baseline waits for V2 and decision D-4; the benchmark itself must exist. A1 must not be accepted while SI-0008 is open: say in your verdict whether the code is correct under SI-0008's proposed text.
+For A1 the stored performance baseline waits for V2 and decision D-4; the benchmark itself must exist. SI-0008 is resolved; SPEC-OSC prints the form the code must use.
 
 ## Output
 
