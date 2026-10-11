@@ -39,7 +39,7 @@ This document defines how the engine computes sound: the physics, the discrete-t
 | K, p | Felt stiffness coefficient and exponent of the contact law | N/m^p; – |
 | ψ | Scalar auxiliary variable of a nonlinear potential | J^(1/2) |
 
-**Sign conventions.** Each polarisation has an axis; the vertical axis +y points from the soundboard towards the strings. F\_b is the force the strings exert on the bridge along +y. Every exciter has an approach sign s\_E ∈ {+1, −1} giving the direction it pushes the string, set per instrument.
+**Sign conventions.** Each polarisation has an axis; the vertical axis +y points from the soundboard towards the strings. F\_b is the force the strings exert on the bridge along +y. Every exciter has an approach sign s\_E ∈ {+1, −1} giving the direction it pushes the string, set per instrument. Complex amplitudes, admittances and radiation gains use the time convention e^(+iωt): a quantity x(t) = Re\[X e^(iωt)\], so d/dt ↦ iω, an outgoing wave is e^(i(ωt − kr)), a mass m has admittance Y = 1/(iωm) and a spring k has Y = iω/k ([SI-0012](../spec-issues/SI-0012-brg-admittance-time-convention.md)).
 
 **Precision.** All compile-time quantities (mode tables, coefficients, fits) MUST be computed in float64. Real-time states MAY be float32 only in the difference form of the modal oscillator; energy monitors MUST accumulate in float64.
 
@@ -248,7 +248,7 @@ w\_∥ comes from the soundboard bridge model. w\_⊥ comes from a horizontal mo
 \sigma_{n,\text{bridge}} \approx 2 f_0 Z_0\,\mathrm{Re}\,Y(\omega_n), \qquad \Delta\omega_n \approx -2 f_0 Z_0\,\mathrm{Im}\,Y(\omega_n)
 ```
 
-For a pure conductance G the exact value is σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\]. Two identical strings on one conductance: in-phase motion decays at 4 f₀ Z₀ G and anti-phase motion only at the intrinsic rate.
+Y is the bridge velocity per unit force under the e^(+iωt) convention of the notation section. Under it a mass-like bridge (Im Y < 0, e.g. Y = 1/(iωm)) raises the partials and a spring-like bridge (Im Y > 0, e.g. Y = iω/k) lowers them; with the opposite convention e^(−iωt) the sign of Im Y, and of the Δω formula, flips (SI-0012). For a pure conductance G the exact value is σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\]. Two identical strings on one conductance: in-phase motion decays at 4 f₀ Z₀ G and anti-phase motion only at the intrinsic rate.
 
 **Contract.** `SegmentBridgeTerms compileBridgeTerms(const StringModes&, BridgeEnd end)` returns g\_n, a\_n and T/L. `float bridgeForce(const SegmentBridgeTerms&, const float* q, float wb)` returns F\_b.
 
@@ -266,7 +266,13 @@ A body (piano soundboard, guitar top and cavity, sitar gourd) is a set of mass-n
 D_{11} = \frac{E_L h^3}{12(1-\nu_{LR}\nu_{RL})}, \quad D_{22} = \frac{E_R h^3}{12(1-\nu_{LR}\nu_{RL})}, \quad D_{12} = \nu_{RL} D_{11}, \quad D_{66} = \frac{G_{LR} h^3}{12}
 ```
 
-Moisture content MC changes E\_L, E\_R, G\_LR and density through linear coefficients supplied with the wood data. Crown and downbearing MAY be included as a static prestress (geometric stiffness) in the eigen-solve.
+Moisture content MC changes E\_L, E\_R, G\_LR and density through linear coefficients supplied with the wood data. The listed E\_L, E\_R, G\_LR and ρ are the values at a reference moisture content MC\_ref, and each coefficient is a slope per unit MC (a fraction, 0.12 = 12 %) applied to the difference from it (SI-0013; orchestrator default under the owner's proceed instruction, flagged for owner review):
+
+```math
+E_L(\mathrm{MC}) = E_L + \frac{dE_L}{d\mathrm{MC}}\,(\mathrm{MC} - \mathrm{MC}_{\mathrm{ref}}), \quad \text{and likewise for } E_R,\ G_{LR},\ \rho, \qquad \mathrm{MC}_{\mathrm{ref}} = 0.12 \text{ (default)}
+```
+
+MC\_ref is a field of the wood data (`PlateParams::moistureRef`, default 0.12, on the next-ICR list); until that ICR is applied, compileBody uses the constant 0.12. MC\_ref = 0.12 is the usual equilibrium moisture content at about 20 °C and 65 % relative humidity at which tonewood constants are tabulated. Crown and downbearing MAY be included as a static prestress (geometric stiffness) in the eigen-solve.
 
 *Body frame.* Points are given in the body frame: x and y span the plate's mid-surface in the instrument's case frame defined by the body outline; the grain (L axis) lies at angle θ\_g from +x; z is normal to the plate and points towards the strings, matching the +y polarisation axis. Bridge points, outline vertices, ribs and bridges use z = 0; radiation channels use the same frame. (SI-0003)
 
@@ -512,6 +518,8 @@ Typical κ\_L = sin 1.5° ≈ 0.026 for a piano; κ\_T is 0 for a piano and set 
 
 **Neglected in the default tier.** Back-coupling from longitudinal motion to the transverse modes, and spatially varying tension.
 
+*Energy balance of the default tier* (SI-0015). Because the coupling is one-way, the default tier does not conserve total energy: the longitudinal modes gain energy from the transverse motion and the transverse modes lose none. The transverse energy (modes, bridge and ψ, including V\_KC) obeys the usual balance; the longitudinal energy E\_L = Σ\_m ρA H\_m^L is extra and scales as the fourth power of the transverse amplitude (its ratio to the transverse energy as the square). In the P0.5 reference's large-amplitude test case it reached about 3 % of the transverse energy. Energy monitors therefore MUST check conservation and passivity on the transverse energy only and report E\_L separately; the sympathetic guard (SPEC-BODY "Sympathetic path") tests the transverse energy only, and sleep decisions use the transverse energy plus E\_L. The high-quality tier conserves the total energy and has no such allowance.
+
 **High-quality tier (MAY).** Replace both parts with the geometrically exact string, whose potential couples transverse and longitudinal motion fully, integrated with the same SAV framework. [Ducceschi, Bilbao and Webb](https://cris.unibo.it/handle/11585/883682) report running this below real time for typical struck piano strings in C++; [Ducceschi & Bilbao (2022)](https://www.research.ed.ac.uk/en/publications/simulation-of-the-geometrically-exact-nonlinear-string-via-energy/) give the energy-quadratised scheme.
 
 **Contracts.** `TensionModulationPotential : Potential`. `void longitudinalForce(const Segment&, span<float> fL)` computes f\_m^L by pair sums. `float longitudinalBridgeForce(const Segment&)` returns F\_L.
@@ -551,7 +559,21 @@ q_n(0) = \sqrt{2/L}\;\frac{A\,L\,\sin(k_n x_p)}{k_n^2\,x_p\,(L - x_p)}, \qquad u
 \eta_j = s_b\left(b(x_j) - \sum_n \phi_n(x_j)\,q_n\right), \qquad V_B = \sum_j \Delta x_j\,\frac{K_B}{\alpha+1}\,[\eta_j]_+^{\,\alpha+1}
 ```
 
-The J × N matrix φ\_n(x\_j) is compiled once; displacement at the points and the gradient are matrix–vector products, O(JN) per sample. V\_B joins the segment's single ψ. Contact damping lumps into one dashpot along ∇V\_B with R = μ\_B K\_B Σ\_j Δx\_j \[η\_j\]₊^α. For dry friction on the bridge, the explicit energy-stable scheme with damping and friction by [van Walstijn (2024)](https://www.qub.ac.uk/research-centres/sarc/news/210624collisionsinmusicalinstruments.html) SHOULD be used.
+The J × N matrix φ\_n(x\_j) is compiled once; displacement at the points and the gradient are matrix–vector products, O(JN) per sample. V\_B joins the segment's single ψ.
+
+*Contact damping* (SI-0014; orchestrator default under the owner's proceed instruction, flagged for owner review). The physical model is one Hunt–Crossley dashpot per contact point, acting on that point's penetration velocity:
+
+```math
+R_j = \Delta x_j\,K_B\,\mu_B\,[\eta_j]_+^{\,\alpha}, \qquad \mathbf c_j = \frac{\partial \eta_j}{\partial \mathbf z} = -s_b\,\boldsymbol\phi(x_j), \qquad P_{\text{diss}} = \sum_j R_j\,(\mathbf c_j^{\mathsf T}\dot{\mathbf z})^2
+```
+
+The engine lumps these into one dashpot of the Nonlinear framework (rank 1) along the unit vector ĉ = ∇V\_B / |∇V\_B| (Euclidean norm over the segment's coordinates), with the coefficient that dissipates the same power as the per-point dashpots for any velocity along ĉ:
+
+```math
+\mathbf c = \hat{\mathbf c}, \qquad R = \sum_j R_j\,(\mathbf c_j^{\mathsf T}\hat{\mathbf c})^2 \qquad (R = 0 \text{ when } \nabla V_B = 0)
+```
+
+R and ĉ are evaluated at step n, like the other dashpots, so the lumped dashpot only removes energy. With one point in contact it equals the per-point model exactly; with several, it damps only the velocity component along ĉ. The reference solver (P0.5) implements the per-point model, which is the yardstick for comparisons with contact damping. For dry friction on the bridge, the explicit energy-stable scheme with damping and friction by [van Walstijn (2024)](https://www.qub.ac.uk/research-centres/sarc/news/210624collisionsinmusicalinstruments.html) SHOULD be used.
 
 **Barrier geometries.**
 
