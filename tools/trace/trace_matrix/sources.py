@@ -82,17 +82,18 @@ def _covers_above(
 
     ``skip`` is an optional line prefix (Python decorators) passed over without ending the block.
     """
-    found: list[str] = []
+    block: list[str] = []
     i = index - 1
     while i >= 0:
         text = lines[i].strip()
         if text.startswith(markers):
-            for item in parse_covers(text):
-                if item not in found:
-                    found.append(item)
+            block.append(text)
         elif not (skip and text.startswith(skip)):
             break
         i -= 1
+    found: list[str] = []
+    for text in reversed(block):  # source order
+        _add_unique(found, parse_covers(text))
     return found
 
 
