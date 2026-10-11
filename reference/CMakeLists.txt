@@ -12,7 +12,8 @@ add_library(pme_reference STATIC
   src/plate.cpp
   src/scenario.cpp
   src/simulation.cpp
-  src/geometric.cpp)
+  src/geometric.cpp
+  src/string_ops.cpp)
 add_library(pme::reference ALIAS pme_reference)
 target_include_directories(pme_reference PUBLIC
   include
@@ -39,6 +40,7 @@ pme_add_doctest(pme_reference_unit_tests
     tests/test_plate.cpp
     tests/test_bridge.cpp
     tests/test_barrier.cpp
+    tests/test_geometric.cpp
   LIBRARIES pme_reference nlohmann_json::nlohmann_json
   LABELS unit integration)
 target_compile_definitions(pme_reference_unit_tests PRIVATE ${PME_REFERENCE_OPTIMISED_DEFINE})

@@ -228,6 +228,7 @@ ObservationKind observation_kind(const std::string& k, const std::string& ctx) {
         {"barrier_force", ObservationKind::BarrierForce},
         {"plate_displacement", ObservationKind::PlateDisplacement},
         {"longitudinal_bridge_force", ObservationKind::LongitudinalBridgeForce},
+        {"longitudinal_displacement", ObservationKind::LongitudinalDisplacement},
     };
     for (const auto& [name, kind] : table) {
         if (k == name) {
@@ -299,6 +300,16 @@ Scenario parse_scenario(std::string_view json_text) {
                 s.geometric.longitudinal = boolean(jg, "longitudinal", false, c + ".geometric");
                 s.geometric.longitudinal_b1 = num(jg, "longitudinal_b1", 0.0, c + ".geometric");
                 s.geometric.longitudinal_b3 = num(jg, "longitudinal_b3", 0.0, c + ".geometric");
+                if (jg.contains("longitudinal_initial")) {
+                    const auto& jl = jg["longitudinal_initial"];
+                    check_keys(jl, {"amplitude", "position"},
+                               c + ".geometric.longitudinal_initial");
+                    s.geometric.has_longitudinal_initial = true;
+                    s.geometric.longitudinal_initial_amplitude =
+                        req_num(jl, "amplitude", c + ".geometric.longitudinal_initial");
+                    s.geometric.longitudinal_initial_position =
+                        req_num(jl, "position", c + ".geometric.longitudinal_initial");
+                }
             }
             sc.strings.push_back(std::move(s));
         }
@@ -524,6 +535,7 @@ void validate_scenario(const Scenario& sc) {
             case ObservationKind::StringDisplacement:
             case ObservationKind::StringVelocity:
             case ObservationKind::LongitudinalBridgeForce:
+            case ObservationKind::LongitudinalDisplacement:
                 if (o.index < 0 || o.index >= ns) {
                     throw RefError(c + ".string: no such string");
                 }

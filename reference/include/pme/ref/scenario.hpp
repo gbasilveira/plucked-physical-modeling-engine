@@ -35,6 +35,11 @@ struct GeometricSpec {
     bool longitudinal = false;
     double longitudinal_b1 = 0.0;  // 1/s
     double longitudinal_b3 = 0.0;  // s
+    // Optional initial longitudinal state: a triangle of height `amplitude` (m) with its apex at
+    // `position` (m), released at rest. Used to isolate the free longitudinal modes.
+    bool has_longitudinal_initial = false;
+    double longitudinal_initial_amplitude = 0.0;
+    double longitudinal_initial_position = 0.0;
 };
 
 struct StringSpec {
@@ -110,7 +115,8 @@ enum class ObservationKind {
     HammerPosition,
     BarrierForce,  // total force of barrier `index`
     PlateDisplacement,
-    LongitudinalBridgeForce,  // F_L of SPEC-GEO
+    LongitudinalBridgeForce,   // F_L of SPEC-GEO
+    LongitudinalDisplacement,  // longitudinal displacement xi at position x
 };
 
 struct ObservationSpec {
