@@ -34,7 +34,7 @@ struct OverdampingReport {
     std::size_t worstMode{0};   ///< Zero-based mode index of `worstRatio`.
     double worstE{0.0};         ///< e at which it occurs.
     std::size_t rejectedMode{static_cast<std::size_t>(-1)};  ///< First rejected mode, or -1.
-    double rejectedE{0.0};      ///< e at which it was rejected.
+    double rejectedE{0.0};                                   ///< e at which it was rejected.
 };
 
 /// Diagonal damper of one string's vertical polarisation (SPEC-DMP "Diagonal").
@@ -105,7 +105,7 @@ private:
     double rhoA_{0.0};
     DamperParams params_{};
     std::vector<double> phiBar_, omega_, sigma_;
-    std::vector<double> dSigma_, dOmega2_;  // R_d phi^2 / (2 rhoA), K_d phi^2 / rhoA
+    std::vector<double> dSigma_, dOmega2_;   // R_d phi^2 / (2 rhoA), K_d phi^2 / rhoA
     std::vector<OscCoeffs> force_, target_;  // in force and planned (float32 coefficients)
     std::vector<double> omegaForce_, sigmaForce_, omegaTarget_, sigmaTarget_;
     double eForce_{0.0};

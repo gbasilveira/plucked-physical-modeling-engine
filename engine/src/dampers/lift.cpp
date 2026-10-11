@@ -15,9 +15,8 @@ Status validateHalfPedal(double p0, double p1) noexcept {
 
 Status validateParams(const DamperParams& p) noexcept {
     const bool finite = std::isfinite(p.xRatio) && std::isfinite(p.width) && std::isfinite(p.Kd) &&
-                        std::isfinite(p.Rd) && std::isfinite(p.tau0) &&
-                        std::isfinite(p.kRelease) && std::isfinite(p.tauUp) &&
-                        std::isfinite(p.etaD);
+                        std::isfinite(p.Rd) && std::isfinite(p.tau0) && std::isfinite(p.kRelease) &&
+                        std::isfinite(p.tauUp) && std::isfinite(p.etaD);
     if (!finite || p.xRatio < 0.0 || p.xRatio > 1.0 || p.width < 0.0 || p.Kd < 0.0 || p.Rd < 0.0 ||
         !(p.tau0 > 0.0) || !(p.tauUp > 0.0) || p.kRelease < 0.0 || !(p.etaD > 0.0)) {
         return Status::InvalidArgument;
@@ -25,6 +24,7 @@ Status validateParams(const DamperParams& p) noexcept {
     return Status::Ok;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): fs then initial e
 void EngagementFollower::configure(const DamperParams& params, double fs,
                                    double initialE) noexcept {
     params_ = params;
@@ -37,6 +37,7 @@ void EngagementFollower::configure(const DamperParams& params, double fs,
     decayDown_ = std::exp(-dt_ / tauDown_);
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): target then nu_rel
 void EngagementFollower::setTarget(double target, double nuRel) noexcept {
     target_ = target;
     tauDown_ = landingTau(params_.tau0, params_.kRelease, nuRel);  // SPEC-DMP timing

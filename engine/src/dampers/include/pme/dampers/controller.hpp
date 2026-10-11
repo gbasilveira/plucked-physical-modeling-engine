@@ -26,9 +26,9 @@ inline constexpr double kSostenutoLatchLift = 0.5;
 
 /// The lift state of one key after the last input (SPEC-DMP "Lift fraction", "Sostenuto").
 struct KeyLift {
-    double lKey{0.0};    ///< l_key in force: 1 while latched, else the key's own value.
-    double lPed{0.0};    ///< l_ped from the sustain pedal.
-    double l{0.0};       ///< l = max(l_key, l_ped); 1 for a key without a damper.
+    double lKey{0.0};     ///< l_key in force: 1 while latched, else the key's own value.
+    double lPed{0.0};     ///< l_ped from the sustain pedal.
+    double l{0.0};        ///< l = max(l_key, l_ped); 1 for a key without a damper.
     bool latched{false};  ///< Held up by the sostenuto latch.
 };
 
@@ -83,7 +83,9 @@ public:
     /// True if `key` has a damper.
     [[nodiscard]] bool hasDamper(int key) const noexcept;
     /// True while any engagement is moving.
-    [[nodiscard]] bool anyMoving() const noexcept { return (movingMask_[0] | movingMask_[1]) != 0U; }
+    [[nodiscard]] bool anyMoving() const noexcept {
+        return (movingMask_[0] | movingMask_[1]) != 0U;
+    }
     /// Sustain depth P, sostenuto depth and sostenuto state.
     [[nodiscard]] double sustainDepth() const noexcept { return sustain_; }
     [[nodiscard]] bool sostenutoDown() const noexcept { return sostenutoDown_; }

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <vector>
 
 #include "fixtures.hpp"
@@ -24,7 +25,7 @@ constexpr int kSubBlock = 16;
 constexpr int kWindow = 9600;      // 0.2 s
 constexpr int kEventSample = 960;  // 20 ms after the pluck (a sub-block boundary)
 
-enum class Model { None, Diagonal, RankOne };
+enum class Model : std::uint8_t { None, Diagonal, RankOne };
 
 struct Result {
     double maxStep{0.0};
@@ -32,7 +33,8 @@ struct Result {
 };
 
 // Run the sounding string for kWindow samples and return max |y^{n+1} - y^n| of the displacement
-// observed at 0.31 L, over the window from the engagement event (kEventSample) to the end. `landing`: e goes 0 -> 1 at kEventSample, else 1 -> 0.
+// observed at 0.31 L, over the window from the engagement event (kEventSample) to the end.
+// `landing`: e goes 0 -> 1 at kEventSample, else 1 -> 0.
 Result run(Model model, bool landing, double nuRel, const DamperParams& pad) {
     const StringModes m = pme::dmp_test::compile(pme::dmp_test::plainSteel(0.65, 262.0));
     const std::size_t N = m.omega.size();
@@ -133,9 +135,8 @@ TEST_CASE("A6-T4 engagement ramps produce no step above the undamped signal's") 
                 CAPTURE(nu);
                 const Result r = run(model, landing, nu, pad);
                 MESSAGE((model == Model::Diagonal ? "diagonal" : "rank-one")
-                        << (landing ? " landing" : " lifting") << " nu_rel " << nu
-                        << ": max step " << r.maxStep << ", undamped D " << d << ", ratio "
-                        << r.maxStep / d);
+                        << (landing ? " landing" : " lifting") << " nu_rel " << nu << ": max step "
+                        << r.maxStep << ", undamped D " << d << ", ratio " << r.maxStep / d);
                 CHECK(r.maxStep <= d);
             }
         }

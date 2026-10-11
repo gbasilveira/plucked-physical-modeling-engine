@@ -34,6 +34,7 @@ inline constexpr double kEngagementSnap = 1.0e-9;
 
 /// e_target = (1 - l)^eta_d (SPEC-DMP "Lift fraction"); l is clamped to [0, 1].
 /// Thread: any. Allocates: no.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): l then eta_d in SPEC order
 [[nodiscard]] inline double engagementTarget(double lift, double etaD) noexcept {
     const double l = lift < 0.0 ? 0.0 : (lift > 1.0 ? 1.0 : lift);
     return std::pow(1.0 - l, etaD);  // SPEC-DMP lift fraction

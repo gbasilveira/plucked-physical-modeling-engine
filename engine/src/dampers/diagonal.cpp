@@ -41,8 +41,8 @@ std::vector<double> padShape(const StringModes& modes, const DamperParams& param
     for (std::size_t i = 0; i < phi.size(); ++i) {
         // SPEC-STR forces and observations: phi-bar_n = phi_n(x_d) W(k_n), x_d = xRatio L
         const double shape = amp * sinPi(static_cast<double>(i + 1) * params.xRatio);
-        phi[i] = shape * string::windowFactor(string::WindowKind::RaisedCosine, modes.k[i],
-                                              params.width);
+        phi[i] = shape *
+                 string::windowFactor(string::WindowKind::RaisedCosine, modes.k[i], params.width);
     }
     return phi;
 }
@@ -160,6 +160,7 @@ Status DiagonalDamper::initialise(double e, osc::ModeBank& bank, std::size_t fir
     return Status::Ok;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): engagement then sub-block length
 bool DiagonalDamper::plan(double eEnd, int subBlock, std::span<osc::CoeffRamp> ramps) noexcept {
     planned_ = false;
     if (eEnd == eForce_ || ramps.size() < n_) {

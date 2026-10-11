@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include <array>
-#include <numbers>
 #include <cmath>
+#include <numbers>
 #include <vector>
 
 #include "fixtures.hpp"
@@ -38,10 +38,11 @@ TEST_CASE("A6-R1 sigma and omega squared follow the SPEC-DMP formulas") {
     double worstOmega = 0.0;
     for (double e : {0.0, 0.1, 0.5, 1.0}) {
         for (std::size_t i = 0; i < m.omega.size(); ++i) {
-            const double n = static_cast<double>(i + 1);
+            const auto n = static_cast<double>(i + 1);
             // Direct from SPEC-STR "Forces and observations" and SPEC-DMP "Diagonal".
-            const double phi = std::sqrt(2.0 / m.L) * std::sin(n * std::numbers::pi * p.xRatio) *
-                               string::windowFactor(string::WindowKind::RaisedCosine, m.k[i], p.width);
+            const double phi =
+                std::sqrt(2.0 / m.L) * std::sin(n * std::numbers::pi * p.xRatio) *
+                string::windowFactor(string::WindowKind::RaisedCosine, m.k[i], p.width);
             const double sigma = m.sigma[i] + e * p.Rd * phi * phi / (2.0 * m.rhoA);
             const double omega2 = m.omega[i] * m.omega[i] + e * p.Kd * phi * phi / m.rhoA;
             worstSigma = std::max(worstSigma, relErr(d.sigmaAt(i, e), sigma));

@@ -71,7 +71,8 @@ inline DamperParams examplePad() {
     return d;
 }
 
-/// Compile a string at kFs / kFMax; returns the tables (aborts the test via empty tables on failure).
+/// Compile a string at kFs / kFMax; returns the tables (aborts the test via empty tables on
+/// failure).
 inline StringModes compile(const StringParams& p, double fMax = kFMax) {
     StringModes m;
     static_cast<void>(compileString(p, kFs, fMax, {}, m));
@@ -84,7 +85,7 @@ inline std::vector<double> pluckModal(const StringModes& m, double xpRatio, doub
     std::vector<double> q(m.omega.size());
     const double xp = xpRatio * m.L;
     for (std::size_t i = 0; i < q.size(); ++i) {
-        const double n = static_cast<double>(i + 1);
+        const auto n = static_cast<double>(i + 1);
         const double b = 2.0 * h * m.L * m.L * std::sin(n * std::numbers::pi * xpRatio) /
                          (std::numbers::pi * std::numbers::pi * n * n * xp * (m.L - xp));
         q[i] = std::sqrt(m.L / 2.0) * b;

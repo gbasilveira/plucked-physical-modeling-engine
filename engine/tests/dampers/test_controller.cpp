@@ -5,6 +5,7 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
+#include <cstdint>
 #include <initializer_list>
 #include <optional>
 #include <vector>
@@ -18,7 +19,7 @@ namespace {
 using namespace pme;
 using namespace pme::dmp;
 
-enum class Op { On, Off, Depth, Sustain, Sostenuto };
+enum class Op : std::uint8_t { On, Off, Depth, Sustain, Sostenuto };
 
 struct Expect {
     int key;
@@ -30,8 +31,8 @@ struct Expect {
 
 struct Step {
     Op op;
-    int key;        // ignored for the pedals
-    double value;   // NoteOff: release velocity; Depth, Sustain, Sostenuto: depth
+    int key;       // ignored for the pedals
+    double value;  // NoteOff: release velocity; Depth, Sustain, Sostenuto: depth
     std::vector<Expect> expect;
 };
 
@@ -49,93 +50,106 @@ constexpr int kTop = 100;
 // with P0 = 0.35, P1 = 0.65.
 const std::vector<Sequence>& table() {
     static const std::vector<Sequence> t{
-        {"key alone", {},
+        {"key alone",
+         {},
          {{Op::On, kA, 0.0, {{kA, 1.0, 0.0, 1.0, false}, {kB, 0.0, 0.0, 0.0, false}}},
           {Op::Off, kA, 0.5, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"sustain alone", {},
+        {"sustain alone",
+         {},
          {{Op::Sustain, 0, 1.0, {{kA, 0.0, 1.0, 1.0, false}, {kB, 0.0, 1.0, 1.0, false}}},
           {Op::Sustain, 0, 0.0, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"half pedal at P = 0.35", {},
-         {{Op::Sustain, 0, 0.35, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"half pedal at P = 0.5", {},
-         {{Op::Sustain, 0, 0.5, {{kA, 0.0, 0.5, 0.5, false}}}}},
-        {"half pedal at P = 0.65", {},
-         {{Op::Sustain, 0, 0.65, {{kA, 0.0, 1.0, 1.0, false}}}}},
-        {"sostenuto with keys held then released", {},
+        {"half pedal at P = 0.35", {}, {{Op::Sustain, 0, 0.35, {{kA, 0.0, 0.0, 0.0, false}}}}},
+        {"half pedal at P = 0.5", {}, {{Op::Sustain, 0, 0.5, {{kA, 0.0, 0.5, 0.5, false}}}}},
+        {"half pedal at P = 0.65", {}, {{Op::Sustain, 0, 0.65, {{kA, 0.0, 1.0, 1.0, false}}}}},
+        {"sostenuto with keys held then released",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::On, kB, 0.0, {}},
           {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}, {kB, 1.0, 0.0, 1.0, true}}},
           {Op::Off, kA, 0.0, {{kA, 1.0, 0.0, 1.0, true}, {kB, 1.0, 0.0, 1.0, true}}},
-          {Op::Sostenuto, 0, 0.0,
-           {{kA, 0.0, 0.0, 0.0, false}, {kB, 1.0, 0.0, 1.0, false}}}}},
-        {"key pressed after sostenuto is not latched", {},
+          {Op::Sostenuto, 0, 0.0, {{kA, 0.0, 0.0, 0.0, false}, {kB, 1.0, 0.0, 1.0, false}}}}},
+        {"key pressed after sostenuto is not latched",
+         {},
          {{Op::Sostenuto, 0, 1.0, {{kA, 0.0, 0.0, 0.0, false}}},
           {Op::On, kA, 0.0, {{kA, 1.0, 0.0, 1.0, false}}},
           {Op::Off, kA, 0.0, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"NoteOff of a latched key keeps it lifted", {},
+        {"NoteOff of a latched key keeps it lifted",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Off, kA, 1.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Sostenuto, 0, 0.0, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"sostenuto released with the key still held", {},
+        {"sostenuto released with the key still held",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Sostenuto, 0, 0.0, {{kA, 1.0, 0.0, 1.0, false}}}}},
-        {"key without a damper is always lifted and never latched", {kTop},
+        {"key without a damper is always lifted and never latched",
+         {kTop},
          {{Op::Sustain, 0, 0.0, {{kTop, 1.0, 0.0, 1.0, false}}},
           {Op::On, kTop, 0.0, {{kTop, 1.0, 0.0, 1.0, false}}},
           {Op::Off, kTop, 0.0, {{kTop, 1.0, 0.0, 1.0, false}}},
           {Op::Sostenuto, 0, 1.0, {{kTop, 1.0, 0.0, 1.0, false}}},
           {Op::Sostenuto, 0, 0.0, {{kTop, 1.0, 0.0, 1.0, false}}}}},
-        {"half key control with KeyDepth", {},
+        {"half key control with KeyDepth",
+         {},
          {{Op::Depth, kA, 0.3, {{kA, 0.3, 0.0, 0.3, false}}},
           {Op::Sustain, 0, 0.5, {{kA, 0.3, 0.5, 0.5, false}}},
           {Op::Depth, kA, 0.8, {{kA, 0.8, 0.5, 0.8, false}}},
           {Op::Off, kA, 0.0, {{kA, 0.0, 0.5, 0.5, false}}}}},
-        {"sostenuto at depth 0.49 is not down", {},
+        {"sostenuto at depth 0.49 is not down",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::Sostenuto, 0, 0.49, {{kA, 1.0, 0.0, 1.0, false}}},
           {Op::Off, kA, 0.0, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"sostenuto at depth 0.5 is down", {},
+        {"sostenuto at depth 0.5 is down",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::Sostenuto, 0, 0.5, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Off, kA, 0.0, {{kA, 1.0, 0.0, 1.0, true}}}}},
-        {"key at depth 0.49 is not latched", {},
+        {"key at depth 0.49 is not latched",
+         {},
          {{Op::Depth, kA, 0.49, {{kA, 0.49, 0.0, 0.49, false}}},
           {Op::Sostenuto, 0, 1.0, {{kA, 0.49, 0.0, 0.49, false}}}}},
-        {"key at depth 0.5 is latched with l_key = 1", {},
+        {"key at depth 0.5 is latched with l_key = 1",
+         {},
          {{Op::Depth, kA, 0.5, {{kA, 0.5, 0.0, 0.5, false}}},
           {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Depth, kA, 0.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Sostenuto, 0, 0.0, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"sostenuto has no hysteresis", {},
+        {"sostenuto has no hysteresis",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::Sostenuto, 0, 0.6, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Off, kA, 0.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Sostenuto, 0, 0.5, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Sostenuto, 0, 0.49, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"sustain and sostenuto together", {},
+        {"sustain and sostenuto together",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Off, kA, 0.0, {}},
           {Op::Sustain, 0, 1.0, {{kA, 1.0, 1.0, 1.0, true}}},
           {Op::Sostenuto, 0, 0.0, {{kA, 0.0, 1.0, 1.0, false}}},
           {Op::Sustain, 0, 0.0, {{kA, 0.0, 0.0, 0.0, false}}}}},
-        {"latched key ignores KeyDepth", {},
+        {"latched key ignores KeyDepth",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Depth, kA, 0.1, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Sostenuto, 0, 0.0, {{kA, 0.1, 0.0, 0.1, false}}}}},
-        {"key retriggered while latched", {},
+        {"key retriggered while latched",
+         {},
          {{Op::On, kA, 0.0, {}},
           {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Off, kA, 0.0, {}},
           {Op::On, kA, 0.0, {{kA, 1.0, 0.0, 1.0, true}}},
           {Op::Sostenuto, 0, 0.0, {{kA, 1.0, 0.0, 1.0, false}}}}},
-        {"half pedal with a lower key depth", {},
-         {{Op::Sustain, 0, 0.5, {}},
-          {Op::Depth, kA, 0.2, {{kA, 0.2, 0.5, 0.5, false}}}}},
-        {"sustain below the half pedal region is ignored", {},
+        {"half pedal with a lower key depth",
+         {},
+         {{Op::Sustain, 0, 0.5, {}}, {Op::Depth, kA, 0.2, {{kA, 0.2, 0.5, 0.5, false}}}}},
+        {"sustain below the half pedal region is ignored",
+         {},
          {{Op::Sustain, 0, 0.2, {{kA, 0.0, 0.0, 0.0, false}}},
           {Op::Sustain, 0, 0.34, {{kA, 0.0, 0.0, 0.0, false}}}}},
     };
@@ -144,11 +158,21 @@ const std::vector<Sequence>& table() {
 
 void apply(DamperController& c, const Step& s) {
     switch (s.op) {
-        case Op::On: c.noteOn(s.key); break;
-        case Op::Off: c.noteOff(s.key, s.value); break;
-        case Op::Depth: c.keyDepth(s.key, s.value); break;
-        case Op::Sustain: c.setSustain(s.value); break;
-        case Op::Sostenuto: c.setSostenuto(s.value); break;
+        case Op::On:
+            c.noteOn(s.key);
+            break;
+        case Op::Off:
+            c.noteOff(s.key, s.value);
+            break;
+        case Op::Depth:
+            c.keyDepth(s.key, s.value);
+            break;
+        case Op::Sustain:
+            c.setSustain(s.value);
+            break;
+        case Op::Sostenuto:
+            c.setSostenuto(s.value);
+            break;
     }
 }
 
@@ -306,7 +330,8 @@ TEST_CASE("A6-R4 one-pole timing with tau_up and tau_down") {
     // tau_down shortens with the release velocity: tau_0 / (1 + k_r nu_rel).
     for (double nu : {0.0, 0.25, 0.5, 1.0}) {
         CAPTURE(nu);
-        CHECK(landingTau(0.012, 2.0, nu) == doctest::Approx(0.012 / (1.0 + 2.0 * nu)).epsilon(1e-15));
+        CHECK(landingTau(0.012, 2.0, nu) ==
+              doctest::Approx(0.012 / (1.0 + 2.0 * nu)).epsilon(1e-15));
         EngagementFollower g;
         g.configure(p, fs, 0.0);
         g.setTarget(1.0, nu);
@@ -372,5 +397,8 @@ TEST_CASE("A6-R4 parameter validation") {
     CHECK(bad([](DamperParams& q) { q.kRelease = -1.0; }) == Status::InvalidArgument);
     CHECK(bad([](DamperParams& q) { q.etaD = 0.0; }) == Status::InvalidArgument);
     CHECK(bad([](DamperParams& q) { q.Rd = std::nan(""); }) == Status::InvalidArgument);
-    CHECK(bad([](DamperParams& q) { q.Kd = 0.0; q.Rd = 0.0; }) == Status::Ok);
+    CHECK(bad([](DamperParams& q) {
+              q.Kd = 0.0;
+              q.Rd = 0.0;
+          }) == Status::Ok);
 }

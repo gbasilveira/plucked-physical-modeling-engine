@@ -95,7 +95,8 @@ TEST_CASE("A6-R2 Dashpot plus explicit force equals SPEC's low-rank pair") {
             h[i] = gamma[i] * e * cvec[i] / m.rhoA;
             w[i] = cvec[i] * (p.Kd / 2.0 + p.Rd / (2.0 * dt));
             // The y^{n-1} part of the SPEC force: -e c (K_d / 2 - R_d / (2 dt)) y^{n-1}.
-            a[i] = free - gamma[i] * e * cvec[i] / m.rhoA * (p.Kd / 2.0 - p.Rd / (2.0 * dt)) * yPrev;
+            a[i] =
+                free - gamma[i] * e * cvec[i] / m.rhoA * (p.Kd / 2.0 - p.Rd / (2.0 * dt)) * yPrev;
         }
         const double* hp = h.data();
         const double* wp = w.data();
@@ -212,7 +213,8 @@ TEST_CASE("A6-T1 rank-one damper makes the energy decrease monotonically") {
             previous = energy;
         }
         MESSAGE("e " << e << ": E(0) " << first << " J, E(2 s) " << previous << " J, decay "
-                     << first / previous << ", worst E^{n+1/2}/E^{n-1/2} - 1 = " << (worstRatio - 1.0));
+                     << first / previous
+                     << ", worst E^{n+1/2}/E^{n-1/2} - 1 = " << (worstRatio - 1.0));
         CHECK(first > 0.0);
         CHECK(previous < first / 10.0);
     }

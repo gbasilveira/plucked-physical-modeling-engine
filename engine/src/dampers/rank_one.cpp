@@ -54,14 +54,15 @@ void RankOneDamper<S>::addSpringForce(double e, const nl::SavSegment<S>& seg,
     const S* u = seg.u();
     double yPrev = 0.0;
     for (std::size_t i = 0; i < c_.size(); ++i) {
-        yPrev += static_cast<double>(c_[i]) * (static_cast<double>(q[i]) - static_cast<double>(u[i]));
+        yPrev +=
+            static_cast<double>(c_[i]) * (static_cast<double>(q[i]) - static_cast<double>(u[i]));
     }
     // SPEC-DMP rank-one: e K_d mu_t. y = e K_d dt delta_t. y + e K_d y^{n-1}; the second term is
     // explicit and enters the force as -e K_d c y^{n-1}.
     const double scale = -e * kd_ * yPrev;
     for (std::size_t i = 0; i < c_.size(); ++i) {
-        force[i] = static_cast<S>(static_cast<double>(force[i]) +
-                                  scale * static_cast<double>(c_[i]));
+        force[i] =
+            static_cast<S>(static_cast<double>(force[i]) + scale * static_cast<double>(c_[i]));
     }
 }
 

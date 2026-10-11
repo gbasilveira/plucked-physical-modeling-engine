@@ -83,6 +83,7 @@ void DamperController::noteOn(int key) noexcept {
     retarget(key);
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): key then release velocity
 void DamperController::noteOff(int key, double releaseVelocity) noexcept {
     if (!validKey(key)) {
         return;
