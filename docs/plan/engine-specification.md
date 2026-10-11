@@ -160,13 +160,15 @@ T = 4L^2\rho A\, f_1^2 - \frac{\pi^2 EI}{L^2}
 
 The tuning curve supplies f₁ per string as equal temperament (A4 = 440 Hz by default) plus a per-key stretch in cents plus the string's unison detune in cents. Tension MUST be recomputed whenever any of these, or the geometry, changes.
 
-Keys are MIDI note numbers (0 to 127, A4 = 69). For every segment of a note group with key ≥ 0, compileInstrument computes
+Keys are MIDI note numbers (0 to 127, A4 = 69). For every speaking segment (`bridgeEnd = AtL`) of a note group with key ≥ 0, compileInstrument computes
 
 ```math
 f_1 = f_{\text{ref}}\; 2^{(\text{key} - 69)/12}\; 2^{(\text{stretch}[\text{key}] + d_s)/1200}
 ```
 
 with f\_ref the tuning curve's reference pitch, stretch\[key\] its per-key stretch in cents (0 for keys beyond its length) and d\_s the segment's unison detune in cents, and uses this value in place of the description's f₁. For a group with key = −1 (plucked strings addressed by segment, sympathetic strings) the description's f₁ is used as given. A change to the tuning curve or to a detune is a structural change and recompiles the affected strings. (SI-0004; orchestrator default under the owner's proceed instruction, flagged for owner review.)
+
+Rear and duplex segments (`bridgeEnd = At0`) do not use the tuning rule. Each continues the nearest speaking segment that precedes it in the group's `segments` order and takes that segment's compiled T (for a key = −1 group, the T computed from the preceding speaking segment's given f₁); compileInstrument sets the rear segment's f₁ to the value for which the closed-form tension above equals T on length L\_d, f₁ = √((T + π²EI/L\_d²) / (4 L\_d² ρA)). A group whose first segment is At0 is invalid. (SI-0010 item 1.)
 
 **Losses.** Intrinsic string losses (internal friction, air, viscoelasticity) are:
 
@@ -192,7 +194,7 @@ W(k) = \frac{\sin(kb/2)}{kb/2}\cdot\frac{\pi^2}{\pi^2 - (kb/2)^2}
 
 **Polarisations.** Vertical (v) and horizontal (h) polarisations share the mode table; h MAY carry a small detune Δ\_h (cents) for termination anisotropy. They interact only through the bridge admittance and the nonlinear terms. An exciter acts along its own direction; the hammer is vertical with an optional horizontal fraction ε\_H.
 
-**Duplex and rear segments.** The segment between bridge and hitch pin is a separate short string with its own L\_d and the same T, ρA and EI. Its moving end is at x = 0, so its lifting function is 1 − x/L\_d. It has no exciter, feeds force into the bridge, and carries a mute parameter m\_d ∈ \[0, 1\] that adds damping σ\_mute = m\_d · σ\_felt.
+**Duplex and rear segments.** The segment between bridge and hitch pin is a separate short string with its own L\_d and the same T, ρA and EI. Its moving end is at x = 0, so its lifting function is 1 − x/L\_d. It has no exciter, feeds force into the bridge, and carries a mute parameter m\_d ∈ \[0, 1\] that adds damping σ\_mute = m\_d · σ\_felt to every σ\_n. σ\_felt is the decay rate (s⁻¹) that a fully muted (m\_d = 1) rear segment adds to every mode; it is one instrument-wide value (Piano defaults; `Defaults::muteFeltSigma` from the next ICR, until then the default 20 s⁻¹). Its tension and f₁ follow "Tension for pitch" (SI-0010).
 
 **Truncation.** Keep n = 1 … N with N the largest index whose ω\_d,n satisfies the oscillator bandwidth rule.
 
@@ -355,10 +357,10 @@ All contacts of one segment share one ψ (their potentials add), so SAV always c
 
 **Skipping.** When Vⁿ = 0 and every dashpot has Rⁿ = 0, the update is the free oscillator update and the solve MUST be skipped.
 
-**Drift control.** ψ can drift away from √(2(V + ε₀)); a drift above that value acts as extra stiffness at the next contact. Two rules apply:
+**Drift control.** ψ is a linear state and may be negative (it changes sign when it is driven through zero, for example at separation); only its magnitude |ψ| is tied to the potential. |ψ| can drift away from √(2(V + ε₀)); a drift above that value acts as extra stiffness at the next contact. Both rules act on |ψ| and keep the sign of ψ (SI-0011):
 
-1. **Reset at separation (MUST).** When Vⁿ = Vⁿ⁻¹ = 0, set ψ ← √(2ε₀). This can only remove energy.
-2. **Persistent contact (SHOULD).** For contacts that last longer than 50 ms (jawari, stopped strings, dampers), apply a published drift regulation such as power-balanced regulation, or at least relax ψ towards √(2(V + ε₀)) with time constant 10 ms only when ψ is above it.
+1. **Reset at separation (MUST).** When Vⁿ = Vⁿ⁻¹ = 0, set ψ ← sign(ψ)·√(2ε₀) (sign(0) = +1). The magnitude is reset and the sign kept; this can only remove energy.
+2. **Persistent contact (SHOULD).** For contacts that last longer than 50 ms (jawari, stopped strings, dampers), apply a published drift regulation such as power-balanced regulation, or at least relax |ψ| towards √(2(V + ε₀)) with time constant 10 ms, keeping the sign of ψ, only when |ψ| is above it. Relaxation therefore only removes energy.
 
 **Contracts.** `struct Potential { double value(const State&); void gradient(const State&, span<float> g); }`. `void savStep(Segment&, span<const Potential*>, span<const Dashpot>, span<const float> explicitForce)` performs one sample of the update above, including the ψ update, the reset rule and the skip rule.
 
@@ -598,6 +600,7 @@ An instrument is data, not code: a list of segments, exciters, barriers, dampers
 | Local bridge modes M\_b | ≤ 64 | Default |
 | Local bridge split f\_split | 2 kHz, provisional: B3-T2 measures the local-model mobility error against it and V3 confirms or changes it before G5 | Default (SI-0003; orchestrator default, flagged for owner review) |
 | Sympathetic gain κ\_s, low-pass f\_symp | 1, 5 kHz | Default |
+| Rear-segment felt damping σ\_felt | 20 s⁻¹ (T60 ≈ 0.35 s at m\_d = 1), provisional; E1 and E3 fit it | Default (SI-0010; orchestrator default, flagged for owner review) |
 | String f\_max | 12–20 kHz; default 16 kHz, which V2 may change after measuring cost | Compute budget (SI-0007) |
 | Soundboard modal basis | From the offline plate compiler or [MAESSTRO](https://hal-ensta-paris.archives-ouvertes.fr/hal-03409789) | Offline |
 
