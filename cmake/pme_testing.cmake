@@ -25,7 +25,7 @@ function(_pme_doctest_discover)
   if(NOT result EQUAL 0)
     message(FATAL_ERROR "Error running '${TEST_EXECUTABLE}' (result ${result}):\n${output}")
   endif()
-  string(REPLACE "|" ";" labels "${TEST_LABELS}")
+  string(REPLACE "," ";" labels "${TEST_LABELS}")
   string(REPLACE "\n" ";" lines "${output}")
   set(script "")
   set(names "")
@@ -80,7 +80,8 @@ function(pme_add_doctest target)
     CXX_EXTENSIONS OFF
     COMPILE_WARNING_AS_ERROR ON)
 
-  string(REPLACE ";" "|" label_arg "${labels}")
+  # A comma, not a pipe: cmd.exe (the Ninja generator on Windows) treats an unquoted-looking | as a pipe.
+  string(REPLACE ";" "," label_arg "${labels}")
   set(tests_file "${CMAKE_CURRENT_BINARY_DIR}/${target}_tests.cmake")
   set(include_file "${CMAKE_CURRENT_BINARY_DIR}/${target}_include.cmake")
   add_custom_command(TARGET ${target} POST_BUILD
