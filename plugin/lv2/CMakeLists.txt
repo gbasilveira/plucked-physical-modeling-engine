@@ -11,8 +11,9 @@ option(PME_REQUIRE_LV2_TOOLS
 # The identifiers are provisional (decision D-3) and live in ids.hpp only; read them from there.
 set(PME_IDS_HEADER "${PROJECT_SOURCE_DIR}/plugin/common/include/pme/plugin/ids.hpp")
 function(_pme_lv2_id variable name)
-  file(STRINGS "${PME_IDS_HEADER}" _line REGEX "${name} = \"[^\"]+\";")
-  if(NOT _line MATCHES "${name} = \"([^\"]+)\";")
+  # The semicolon at the end of the declaration is not matched: it would split the CMake list.
+  file(STRINGS "${PME_IDS_HEADER}" _line REGEX "${name} = \"[^\"]+\"")
+  if(NOT _line MATCHES "${name} = \"([^\"]+)\"")
     message(FATAL_ERROR "plugin/lv2: ${name} not found in ${PME_IDS_HEADER}")
   endif()
   set(${variable} "${CMAKE_MATCH_1}" PARENT_SCOPE)
@@ -77,7 +78,12 @@ add_custom_target(pme_lv2_bundle ALL DEPENDS pme_lv2 ${PME_LV2_GENERATED})
 # ---- tools -------------------------------------------------------------------------------------
 # The LV2 specification bundles come from the pinned LV2 source (ADR-0003), so the tests need no
 # system lv2-dev; the host test additionally needs lilv (pkg-config lilv-0), test-only.
-set(PME_LV2_PATH "${CMAKE_CURRENT_BINARY_DIR}:${lv2_SOURCE_DIR}/lv2")
+# Hosts scan every directory of LV2_PATH for bundles, so the search directory holds only a link to
+# the bundle (the build directory also holds libraries and CMake files).
+set(PME_LV2_SEARCH_DIR "${CMAKE_CURRENT_BINARY_DIR}/lv2path")
+file(MAKE_DIRECTORY "${PME_LV2_SEARCH_DIR}")
+file(CREATE_LINK "${PME_LV2_BUNDLE}" "${PME_LV2_SEARCH_DIR}/${PME_LV2_BUNDLE_DIR}" SYMBOLIC)
+set(PME_LV2_PATH "${PME_LV2_SEARCH_DIR}:${lv2_SOURCE_DIR}/lv2")
 
 find_program(PME_LV2LINT lv2lint)
 find_package(PkgConfig QUIET)
@@ -106,6 +112,7 @@ set_tests_properties("D3-T1 lv2lint passes" PROPERTIES
 
 # D3-T2: the headless lilv host.
 if(PME_LILV_FOUND)
+  find_package(Threads REQUIRED)
   add_executable(pme_lv2_host tests/lv2_host.cpp)
   target_link_libraries(pme_lv2_host PRIVATE PkgConfig::PME_LILV Threads::Threads pme_build_options)
   target_include_directories(pme_lv2_host SYSTEM PRIVATE "${lv2_SOURCE_DIR}/include")

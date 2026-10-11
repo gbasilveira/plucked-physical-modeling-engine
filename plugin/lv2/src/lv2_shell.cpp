@@ -89,6 +89,10 @@ Plugin::Plugin(std::unique_ptr<plugin::EngineAdapter> engine, double sampleRate,
     }
     lv2_atom_forge_init(&forge_, map_);
     lastBits_.fill(0U);
+    for (std::size_t i = 0; i < kControlPortCount; ++i) {
+        const ParamInfo* info = findParam(kControlPortParams[i]);
+        controlDefaults_[i] = info != nullptr ? info->defaultValue : 0.0;
+    }
     controls_.fill(nullptr);
 }
 
@@ -312,7 +316,13 @@ void Plugin::sendControlPorts() noexcept {
         const auto bits = std::bit_cast<std::uint32_t>(value);
         if (resendAll_ || bits != lastBits_[i]) {
             lastBits_[i] = bits;
-            controller_.paramEvent(0, kControlPortParams[i], static_cast<double>(value));
+            // A port is a float: when it holds the float nearest the registry default, send the
+            // exact default, so that float rounding never makes a parameter look "changed" in the
+            // state (captureState stores values that differ from the default).
+            const double exact = controlDefaults_[i];
+            controller_.paramEvent(0, kControlPortParams[i],
+                                   value == static_cast<float>(exact) ? exact
+                                                                      : static_cast<double>(value));
         }
     }
     resendAll_ = false;

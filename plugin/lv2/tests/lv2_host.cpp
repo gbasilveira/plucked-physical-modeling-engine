@@ -508,6 +508,9 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
         HostInstance second(plugin, urids);
         check(second.instance != nullptr, "second instantiate");
         if (second.instance != nullptr) {
+            // A host keeps control-port values itself (they are not in the plug-in state): the
+            // second instance gets the values the first one ended with.
+            second.controls = host.controls;
             second.connectAll();
             check(second.stateIface->restore(lilv_instance_get_handle(second.instance),
                                              retrieveCallback, &saved, 0, nullptr) == LV2_STATE_SUCCESS,
@@ -521,9 +524,17 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
                   "second save");
         }
     }
-    check(!saved.empty() && saved.size() == saved2.size() &&
-              saved.begin()->second.bytes == saved2.begin()->second.bytes,
-          "state strings are byte-identical after save, restore, save");
+    const bool identical = !saved.empty() && saved.size() == saved2.size() &&
+                           saved.begin()->second.bytes == saved2.begin()->second.bytes;
+    check(identical, "state strings are byte-identical after save, restore, save");
+    if (!identical) {
+        for (const StateMap* m : {&saved, &saved2}) {
+            if (!m->empty()) {
+                std::fprintf(stderr, "  state: %s\n",
+                             reinterpret_cast<const char*>(m->begin()->second.bytes.data()));
+            }
+        }
+    }
 
     if (g_failures == 0) {
         std::printf("D3-T2 passed: %d blocks, %d instrument job(s), %d tick(s)\n", block,

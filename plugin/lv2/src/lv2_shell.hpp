@@ -179,6 +179,7 @@ private:
 
     // audio-thread state
     std::array<std::uint32_t, kControlPortCount> lastBits_{};
+    std::array<double, kControlPortCount> controlDefaults_{};
     bool resendAll_{true};
     bool notifyAll_{false};
     bool notifyInstrumentPending_{false};

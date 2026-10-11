@@ -18,17 +18,17 @@ namespace pme::lv2 {
 namespace {
 
 std::string number(double v) {
-    // Shortest decimal text that reads back as the same double; always a Turtle decimal or double
-    // (never an integer literal), so hosts read a float.
+    // Shortest plain decimal text (no exponent) that reads back as the same double; always a
+    // Turtle decimal (never an integer literal), so hosts read a float.
     std::array<char, 64> buf{};
-    for (int precision = 1; precision <= 17; ++precision) {
-        std::snprintf(buf.data(), buf.size(), "%.*g", precision, v);
+    for (int precision = 0; precision <= 17; ++precision) {
+        std::snprintf(buf.data(), buf.size(), "%.*f", precision, v);
         if (std::strtod(buf.data(), nullptr) == v) {
             break;
         }
     }
     std::string s = buf.data();
-    if (s.find_first_of(".eE") == std::string::npos) {
+    if (s.find('.') == std::string::npos) {
         s += ".0";
     }
     return s;
