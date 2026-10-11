@@ -38,6 +38,7 @@ def _hessian(x: float, y: float) -> np.ndarray:
 
 
 def test_b2_r3_a_rib_adds_its_bending_stiffness_and_mass() -> None:
+    """B2-R3: a rib adds its bending stiffness and mass."""
     p0, p1 = (0.1, 0.05), (0.5, 0.35)
     rib = _rib(p0, p1)
     plate = p05_plate(ribs=[rib], rimStiffness=1.0e3)
@@ -65,6 +66,7 @@ def test_b2_r3_a_rib_adds_its_bending_stiffness_and_mass() -> None:
 
 
 def test_b2_r3_total_mass_is_plate_plus_beams() -> None:
+    """B2-R3: total mass is plate plus beams."""
     rib = _rib((0.1, 0.1), (0.5, 0.1))
     bridge = models.BridgeBeamDesc(
         path=[point(0.05, 0.3), point(0.3, 0.3), point(0.55, 0.35)],
@@ -95,6 +97,7 @@ def _ss_mn(p: models.PlateParams, m: int, n: int) -> float:
 def test_b2_r3_rib_on_the_centre_line_leaves_the_antisymmetric_modes_unchanged() -> None:
     # A stiff, heavy rib along y = Ly / 2 does not move modes (m, 2n), whose shape is zero there,
     # but raises the symmetric modes such as (1, 1).
+    """B2-R3: rib on the centre line leaves the antisymmetric modes unchanged."""
     rib = _rib((0.0, 0.2), (0.6, 0.2), width=0.02, height=0.03, youngs=20.0e9, density=900.0)
     bare = p05_plate(fMax=380.0)
     c = plate_compile.compile_plate(
@@ -113,6 +116,7 @@ def test_b2_r3_rib_on_the_centre_line_leaves_the_antisymmetric_modes_unchanged()
 
 
 def test_b2_r3_refined_mesh_changes_a_ribbed_plate_by_less_than_one_percent() -> None:
+    """B2-R3: refined mesh changes a ribbed plate by less than one percent."""
     rib = _rib((0.0, 0.2), (0.6, 0.2))
     plate = p05_plate(fMax=300.0, ribs=[rib])
     freqs = []
@@ -125,6 +129,7 @@ def test_b2_r3_refined_mesh_changes_a_ribbed_plate_by_less_than_one_percent() ->
 
 
 def test_b2_r3_elastic_rim_tends_to_simply_supported_and_clamped() -> None:
+    """B2-R3: elastic rim tends to simply supported and clamped."""
     kw = dict(mesh_size=0.05, grid_order=0)
     base = p05_plate(fMax=250.0)
     ss = plate_compile.compile_plate(

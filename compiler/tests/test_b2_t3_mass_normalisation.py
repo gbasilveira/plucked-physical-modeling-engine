@@ -49,6 +49,7 @@ def _check(c: plate_compile.Compiled) -> None:
 
 
 def test_b2_t3_mass_normalisation_of_the_uniform_plate() -> None:
+    """B2-T3: mass normalisation of the uniform plate."""
     c = plate_compile.compile_plate(
         p05_plate(fMax=420.0),
         [point(0.3, 0.2)],
@@ -61,6 +62,7 @@ def test_b2_t3_mass_normalisation_of_the_uniform_plate() -> None:
 
 
 def test_b2_t3_mass_normalisation_of_a_ribbed_plate_with_a_thickness_grid() -> None:
+    """B2-T3: mass normalisation of a ribbed plate with a thickness grid."""
     c = plate_compile.compile_plate(
         _ribbed_plate_with_thickness_grid(), [point(0.3, 0.2)], mesh_size=0.04, grid_order=0
     )
@@ -69,6 +71,7 @@ def test_b2_t3_mass_normalisation_of_a_ribbed_plate_with_a_thickness_grid() -> N
 
 
 def test_b2_t3_bridge_point_values_equal_the_assembled_field() -> None:
+    """B2-T3: bridge point values equal the assembled field."""
     plate = _ribbed_plate_with_thickness_grid()
     pts = [point(0.3, 0.2), point(0.21, 0.13), point(0.45, 0.33), point(0.05, 0.05)]
     c = plate_compile.compile_plate(plate, pts, mesh_size=0.04, grid_order=0)

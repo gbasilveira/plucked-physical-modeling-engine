@@ -19,6 +19,7 @@ MESHES = (0.06, 0.04)  # element size in m; Argyris (quintic) elements
 def test_b2_t1_simply_supported_first_20_frequencies_within_half_percent(
     mesh_size: float,
 ) -> None:
+    """B2-T1: simply supported first 20 frequencies within half percent."""
     plate = p05_plate(fMax=F_MAX)
     c = plate_compile.compile_plate(
         plate, [point(0.3, 0.2)], boundary="simply_supported", mesh_size=mesh_size, grid_order=0
@@ -34,6 +35,7 @@ def test_b2_t1_simply_supported_first_20_frequencies_within_half_percent(
 
 
 def test_b2_t1_simply_supported_error_converges_with_the_mesh() -> None:
+    """B2-T1: simply supported error converges with the mesh."""
     plate = p05_plate(fMax=F_MAX)
     ref = ss_orthotropic_frequencies(plate, 20)
     worst = []

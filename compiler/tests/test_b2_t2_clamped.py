@@ -22,6 +22,7 @@ LEISSA_CCCC_SQUARE = (35.99, 73.41, 73.41, 108.27, 131.64, 132.24)
 
 
 def test_b2_t2_clamped_square_matches_published_frequency_parameters() -> None:
+    """B2-T2: clamped square matches published frequency parameters."""
     e, nu, rho, h, a = 70.0e9, 0.3, 2700.0, 0.01, 1.0
     plate = isotropic_plate(e=e, nu=nu, rho=rho, h=h, lx=a, ly=a, f_max=2000.0)
     d = e * h**3 / (12.0 * (1.0 - nu**2))

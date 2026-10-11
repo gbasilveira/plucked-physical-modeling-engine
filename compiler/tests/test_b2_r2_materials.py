@@ -13,6 +13,7 @@ from pme_compiler.materials import library
 
 
 def test_b2_r2_every_entry_has_a_complete_source() -> None:
+    """B2-R2: every entry has a complete source."""
     doc = library.load_raw()
     assert doc["materials"], "the library must not be empty"
     for entry in doc["materials"]:
@@ -25,6 +26,7 @@ def test_b2_r2_every_entry_has_a_complete_source() -> None:
 
 
 def test_b2_r2_entry_without_a_source_or_derivation_is_rejected() -> None:
+    """B2-R2: entry without a source or derivation is rejected."""
     entry = copy.deepcopy(library.load_raw()["materials"][0])
     del entry["source"]
     assert any("no source" in p for p in library.validate_entry(entry))
@@ -40,6 +42,7 @@ def test_b2_r2_entry_without_a_source_or_derivation_is_rejected() -> None:
 
 
 def test_b2_r2_entries_load_into_plate_params_and_compile_geometry() -> None:
+    """B2-R2: entries load into plate params and compile geometry."""
     lib = library.load_library()
     assert lib
     base = p05_plate()
@@ -54,6 +57,7 @@ def test_b2_r2_entries_load_into_plate_params_and_compile_geometry() -> None:
 
 
 def test_b2_r2_reference_entry_matches_the_p0_5_plate() -> None:
+    """B2-R2: reference entry matches the p0 5 plate."""
     ref = library.load_library()["p0_5_reference_plate"]
     plate = library.apply(ref, p05_plate(youngsL=1.0))
     p = p05_plate()
@@ -62,11 +66,13 @@ def test_b2_r2_reference_entry_matches_the_p0_5_plate() -> None:
 
 
 def test_b2_r2_omissions_are_listed_and_the_reference_moisture_agrees() -> None:
+    """B2-R2: omissions are listed and the reference moisture agrees."""
     assert library.omissions()
     assert library.load_raw()["mcRef"] == geometry.MC_REF == 0.12
 
 
 def test_b2_r2_loss_factor_table_is_interpolated_in_log_frequency() -> None:
+    """B2-R2: loss factor table is interpolated in log frequency."""
     ref = library.load_library()["p0_5_reference_plate"]
     import dataclasses
 

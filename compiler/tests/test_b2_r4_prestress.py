@@ -29,6 +29,7 @@ def _compile(n: Prestress | None, plate_kw: dict[str, float] | None = None) -> n
 @pytest.mark.parametrize("n_tension", [2000.0, 8000.0])
 def test_b2_r4_uniform_tension_matches_the_analytic_frequencies(n_tension: float) -> None:
     # omega_mn^2 = [D (k_m^2 + k_n^2)^2 + N (k_m^2 + k_n^2)] / (rho h)
+    """B2-R4: uniform tension matches the analytic frequencies."""
     plate = isotropic_plate(lx=0.6, ly=0.4, f_max=800.0)
     ref = ss_orthotropic_frequencies(plate, 10, prestress=n_tension)
     f = _compile(Prestress(nx=n_tension, ny=n_tension))
@@ -41,6 +42,7 @@ def test_b2_r4_uniform_tension_matches_the_analytic_frequencies(n_tension: float
 
 
 def test_b2_r4_compression_lowers_the_frequencies() -> None:
+    """B2-R4: compression lowers the frequencies."""
     f0 = _compile(None)
     f = _compile(Prestress(nx=-1500.0, ny=-1500.0))
     assert np.all(f[:6] < f0[:6])
@@ -48,7 +50,7 @@ def test_b2_r4_compression_lowers_the_frequencies() -> None:
 
 def test_b2_r4_unequal_resultants_weight_the_two_directions() -> None:
     # omega^2 = [D k^4 + N_x k_m^2 + N_y k_n^2] / (rho h) for a simply supported rectangle
-    plate = isotropic_plate(lx=0.6, ly=0.4, f_max=800.0)
+    """B2-R4: unequal resultants weight the two directions."""
     nx, ny = 6000.0, 500.0
     d = 70.0e9 * 0.002**3 / (12.0 * (1.0 - 0.09))
     rho_h = 2700.0 * 0.002
@@ -67,9 +69,9 @@ def test_b2_r4_unequal_resultants_weight_the_two_directions() -> None:
     )[:8]
     f = _compile(Prestress(nx=nx, ny=ny))
     assert np.max(np.abs(f[:8] / np.array(ref) - 1.0)) < 0.005
-    del plate
 
 
 def test_b2_r4_buckled_compression_is_rejected() -> None:
+    """B2-R4: buckled compression is rejected."""
     with pytest.raises(ValueError, match="negative eigenvalue"):
         _compile(Prestress(nx=-1.0e6, ny=-1.0e6))

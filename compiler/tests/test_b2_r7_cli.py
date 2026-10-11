@@ -23,6 +23,7 @@ def _compile(name: str, out: Path, *extra: str) -> int:
 
 
 def test_b2_r7_compiled_test_monochord_loads_and_round_trips(tmp_path: Path) -> None:
+    """B2-R7: compiled test monochord loads and round trips."""
     out = tmp_path / "mono"
     assert _compile("test-monochord", out, "--f-max", "400", "--mesh-size", "0.04") == 0
     compiled = load(out / "instrument.json", verify_blobs=True)
@@ -61,6 +62,7 @@ def test_b2_r7_compiled_test_monochord_loads_and_round_trips(tmp_path: Path) -> 
 
 
 def test_b2_r7_compiled_test_guitar_6_has_one_row_per_bridge_point(tmp_path: Path) -> None:
+    """B2-R7: compiled test guitar 6 has one row per bridge point."""
     out = tmp_path / "guitar"
     assert _compile("test-guitar-6", out, "--f-max", "500", "--mesh-size", "0.02") == 0
     compiled = load(out / "instrument.json", verify_blobs=True)
@@ -76,6 +78,7 @@ def test_b2_r7_compiled_test_guitar_6_has_one_row_per_bridge_point(tmp_path: Pat
 
 
 def test_b2_r7_compilation_is_deterministic(tmp_path: Path) -> None:
+    """B2-R7: compilation is deterministic."""
     args = ("--f-max", "300", "--mesh-size", "0.05", "--grid-order", "0")
     assert _compile("test-monochord", tmp_path / "a", *args) == 0
     assert _compile("test-monochord", tmp_path / "b", *args) == 0
@@ -85,6 +88,7 @@ def test_b2_r7_compilation_is_deterministic(tmp_path: Path) -> None:
 
 
 def test_b2_r7_grid_order_zero_omits_the_radiation_grid(tmp_path: Path) -> None:
+    """B2-R7: grid order zero omits the radiation grid."""
     out = tmp_path / "nogrid"
     assert _compile("test-monochord", out, "--f-max", "300", "--grid-order", "0") == 0
     names = {a.name for a in load(out / "instrument.json").blobs[0].arrays}
@@ -94,6 +98,7 @@ def test_b2_r7_grid_order_zero_omits_the_radiation_grid(tmp_path: Path) -> None:
 def test_b2_r7_a_compiled_instrument_needs_force_to_recompile(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """B2-R7: a compiled instrument needs force to recompile."""
     first = tmp_path / "first"
     assert _compile("test-monochord", first, "--f-max", "300", "--grid-order", "0") == 0
     capsys.readouterr()
@@ -108,6 +113,7 @@ def test_b2_r7_a_compiled_instrument_needs_force_to_recompile(
 def test_b2_r7_invalid_input_exits_with_an_error(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """B2-R7: invalid input exits with an error."""
     bad = tmp_path / "bad.json"
     bad.write_text("{}", encoding="utf-8")
     assert cli.main([str(bad), "-o", str(tmp_path / "o")]) == 2
@@ -115,6 +121,7 @@ def test_b2_r7_invalid_input_exits_with_an_error(
 
 
 def test_b2_r7_python_dash_m_entry_point_runs(tmp_path: Path) -> None:
+    """B2-R7: python dash m entry point runs."""
     out = tmp_path / "m"
     res = subprocess.run(
         [

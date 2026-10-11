@@ -78,12 +78,14 @@ def _bridge(**over: object) -> models.BridgeBeamDesc:
 def test_b2_r1_invalid_geometry_is_rejected_naming_the_field(
     over: dict[str, object], field: str
 ) -> None:
+    """B2-R1: invalid geometry is rejected naming the field."""
     plate = p05_plate(**over)
     with pytest.raises(ValueError, match=r"^" + field.replace("[", r"\[").replace("]", r"\]")):
         geometry.from_plate(plate)
 
 
 def test_b2_r1_bridge_point_outside_the_outline_is_rejected() -> None:
+    """B2-R1: bridge point outside the outline is rejected."""
     with pytest.raises(ValueError, match=r"^bridgePoints\[1\]"):
         plate_compile.compile_plate(
             p05_plate(), [point(0.3, 0.2), point(0.7, 0.2)], boundary="simply_supported"
@@ -91,17 +93,20 @@ def test_b2_r1_bridge_point_outside_the_outline_is_rejected() -> None:
 
 
 def test_b2_r1_unknown_boundary_option_is_rejected() -> None:
+    """B2-R1: unknown boundary option is rejected."""
     with pytest.raises(ValueError, match="boundary"):
         plate_compile.compile_plate(p05_plate(), [point(0.3, 0.2)], boundary="free")
 
 
 def test_b2_r1_empty_outline_is_the_lx_by_ly_rectangle() -> None:
+    """B2-R1: empty outline is the lx by ly rectangle."""
     g = geometry.from_plate(p05_plate())
     assert g.outline.tolist() == [[0.0, 0.0], [0.6, 0.0], [0.6, 0.4], [0.0, 0.4]]
     assert g.area == pytest.approx(0.24)
 
 
 def test_b2_r1_thickness_grid_is_bilinear_and_row_major() -> None:
+    """B2-R1: thickness grid is bilinear and row major."""
     nx, ny = 4, 3
     x0, y0, x1, y1 = 0.0, 0.0, 0.6, 0.4
     xs = np.linspace(x0, x1, nx)
@@ -123,6 +128,7 @@ def test_b2_r1_thickness_grid_is_bilinear_and_row_major() -> None:
 
 
 def test_b2_r1_uniform_thickness_grid_equals_a_uniform_plate() -> None:
+    """B2-R1: uniform thickness grid equals a uniform plate."""
     kw = dict(boundary="simply_supported", mesh_size=0.06, grid_order=0)
     a = plate_compile.compile_plate(p05_plate(fMax=300.0), [point(0.3, 0.2)], **kw)  # type: ignore[arg-type]
     gridded = p05_plate(fMax=300.0, thicknessNx=3, thicknessNy=2, thicknessGrid=[0.003] * 6)
@@ -132,6 +138,7 @@ def test_b2_r1_uniform_thickness_grid_equals_a_uniform_plate() -> None:
 
 def test_b2_r1_thicker_plate_is_stiffer_by_the_expected_factor() -> None:
     # omega ~ h for a uniform plate: doubling h doubles every frequency
+    """B2-R1: thicker plate is stiffer by the expected factor."""
     kw = dict(boundary="simply_supported", mesh_size=0.06, grid_order=0)
     a = plate_compile.compile_plate(p05_plate(fMax=200.0), [point(0.3, 0.2)], **kw)  # type: ignore[arg-type]
     b = plate_compile.compile_plate(
@@ -144,6 +151,7 @@ def test_b2_r1_thicker_plate_is_stiffer_by_the_expected_factor() -> None:
 
 
 def test_b2_r1_grain_angle_90_degrees_swaps_the_roles_of_e_l_and_e_r() -> None:
+    """B2-R1: grain angle 90 degrees swaps the roles of e l and e r."""
     kw = dict(boundary="simply_supported", mesh_size=0.06, grid_order=0)
     rotated = p05_plate(fMax=400.0, grainAngle=math.pi / 2)
     swapped = p05_plate(
@@ -160,6 +168,7 @@ def test_b2_r1_grain_angle_90_degrees_swaps_the_roles_of_e_l_and_e_r() -> None:
 
 
 def test_b2_r1_isotropic_plate_is_independent_of_the_grain_angle() -> None:
+    """B2-R1: isotropic plate is independent of the grain angle."""
     kw = dict(boundary="simply_supported", mesh_size=0.07, grid_order=0)
     a = plate_compile.compile_plate(isotropic_plate(), [point(0.25, 0.25)], **kw)  # type: ignore[arg-type]
     b = plate_compile.compile_plate(
@@ -173,6 +182,7 @@ def test_b2_r1_isotropic_plate_is_independent_of_the_grain_angle() -> None:
 
 def test_b2_r1_polygon_outline_is_meshed_and_integrates_to_its_area() -> None:
     # an L-shaped soundboard outline (area 0.18 - 0.06 = 0.12 m^2 for the 0.6 x 0.3 minus 0.2 x 0.3)
+    """B2-R1: polygon outline is meshed and integrates to its area."""
     outline = [
         point(0.0, 0.0),
         point(0.6, 0.0),

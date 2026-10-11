@@ -43,6 +43,7 @@ def _table(k: int = 5, p: int = 2, g: int = 7, c: int = 2, full: bool = True) ->
 
 @pytest.mark.parametrize("full", [True, False])
 def test_b2_r7_blob_round_trip_bit_identical(tmp_path: Path, full: bool) -> None:
+    """B2-R7: blob round trip bit identical."""
     t = _table(full=full)
     assert modal_blob.validate(t) == []
     entry = modal_blob.write(t, tmp_path, modal_blob.DEFAULT_RELPATH, "pme_compiler.body")
@@ -59,6 +60,7 @@ def test_b2_r7_blob_round_trip_bit_identical(tmp_path: Path, full: bool) -> None
 
 
 def test_b2_r7_blob_validate_reports_problems() -> None:
+    """B2-R7: blob validate reports problems."""
     t = _table(full=False)
     bad_order = dataclasses.replace(t, omega=t.omega[::-1].copy())
     assert any("sorted" in m for m in modal_blob.validate(bad_order))
@@ -77,6 +79,7 @@ def test_b2_r7_blob_validate_reports_problems() -> None:
 
 
 def test_b2_r7_blob_attach_and_load_verify(tmp_path: Path) -> None:
+    """B2-R7: blob attach and load verify."""
     src = load(EXAMPLES / "test-monochord" / "instrument.json")
     pt = src.desc.bridgePoints[0].position
     t = dataclasses.replace(_table(p=1, full=False), points=np.array([[pt.x, pt.y, pt.z]]))

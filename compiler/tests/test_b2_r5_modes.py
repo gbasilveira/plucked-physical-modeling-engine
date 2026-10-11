@@ -16,6 +16,7 @@ from pme_compiler.body import eigen
 
 def test_b2_r5_free_plate_drops_exactly_three_rigid_body_modes() -> None:
     # rimStiffness = 0 and rimRotationalStiffness = 0: a free plate (heave and two tilts)
+    """B2-R5: free plate drops exactly three rigid body modes."""
     c = plate_compile.compile_plate(
         p05_plate(fMax=300.0), [point(0.3, 0.2)], mesh_size=0.05, grid_order=0
     )
@@ -26,6 +27,7 @@ def test_b2_r5_free_plate_drops_exactly_three_rigid_body_modes() -> None:
 
 
 def test_b2_r5_supported_plate_has_no_rigid_body_modes() -> None:
+    """B2-R5: supported plate has no rigid body modes."""
     c = plate_compile.compile_plate(
         p05_plate(fMax=300.0),
         [point(0.3, 0.2)],
@@ -39,6 +41,7 @@ def test_b2_r5_supported_plate_has_no_rigid_body_modes() -> None:
 @pytest.mark.parametrize("nev", [6, 12, 40])
 def test_b2_r5_windowed_solve_equals_the_dense_solve_including_repeated_modes(nev: int) -> None:
     # a square isotropic plate has repeated eigenvalues (m, n)/(n, m); small windows cut them
+    """B2-R5: windowed solve equals the dense solve including repeated modes."""
     plate = isotropic_plate(lx=0.5, ly=0.5, f_max=900.0)
     common = dict(boundary="simply_supported", mesh_size=0.06, grid_order=0)
     dense = plate_compile.compile_plate(
@@ -64,6 +67,7 @@ def test_b2_r5_windowed_solve_equals_the_dense_solve_including_repeated_modes(ne
 
 
 def test_b2_r5_solve_is_deterministic() -> None:
+    """B2-R5: solve is deterministic."""
     kw = dict(mesh_size=0.05, grid_order=2, dense_threshold=0)
     a = plate_compile.compile_plate(p05_plate(fMax=300.0), [point(0.3, 0.2)], **kw)  # type: ignore[arg-type]
     b = plate_compile.compile_plate(p05_plate(fMax=300.0), [point(0.3, 0.2)], **kw)  # type: ignore[arg-type]
@@ -74,6 +78,7 @@ def test_b2_r5_solve_is_deterministic() -> None:
 
 
 def test_b2_r5_mass_normalise_repairs_a_non_orthogonal_pair() -> None:
+    """B2-R5: mass normalise repairs a non orthogonal pair."""
     m = sp.identity(3, format="csc") * 2.0
     v = np.array([[1.0, 1.0], [0.0, 0.1], [0.0, 0.0]])
     out = eigen.mass_normalise(v, m)
@@ -82,6 +87,7 @@ def test_b2_r5_mass_normalise_repairs_a_non_orthogonal_pair() -> None:
 
 def test_b2_r5_radiation_grid_integrates_the_modes_and_the_area() -> None:
     # grid_order = 10 integrates the product of two quintic mode shapes exactly on each triangle
+    """B2-R5: radiation grid integrates the modes and the area."""
     plate = p05_plate(fMax=250.0)
     c = plate_compile.compile_plate(
         plate,
@@ -102,6 +108,7 @@ def test_b2_r5_radiation_grid_integrates_the_modes_and_the_area() -> None:
 
 
 def test_b2_r5_default_radiation_grid_covers_the_plate_area() -> None:
+    """B2-R5: default radiation grid covers the plate area."""
     c = plate_compile.compile_plate(p05_plate(fMax=250.0), [point(0.3, 0.2)], mesh_size=0.06)
     t = c.table
     assert t.grid_weights is not None and t.grid_points is not None
@@ -114,6 +121,7 @@ def test_b2_r5_default_radiation_grid_covers_the_plate_area() -> None:
 
 
 def test_b2_r6_decay_rate_is_half_eta_omega() -> None:
+    """B2-R6: decay rate is half eta omega."""
     c = plate_compile.compile_plate(
         p05_plate(fMax=250.0, lossFactor=0.02),
         [point(0.3, 0.2)],
@@ -126,6 +134,8 @@ def test_b2_r6_decay_rate_is_half_eta_omega() -> None:
 
 
 def test_b2_r6_loss_factor_function_of_frequency_is_used() -> None:
+    """B2-R6: loss factor function of frequency is used."""
+
     def eta(f_hz: float) -> float:
         return 0.01 + 1e-5 * f_hz
 

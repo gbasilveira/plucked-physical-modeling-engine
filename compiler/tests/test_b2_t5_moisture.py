@@ -48,11 +48,13 @@ def _freqs(mc: float, count: int) -> np.ndarray:
 
 
 def test_b2_t5_reference_moisture_is_0_12() -> None:
+    """B2-T5: reference moisture is 0 12."""
     assert MC_REF == 0.12
 
 
 @pytest.mark.parametrize("mc_to", [0.16, 0.08])
 def test_b2_t5_moisture_shift_matches_the_si_0013_prediction(mc_to: float) -> None:
+    """B2-T5: moisture shift matches the si 0013 prediction."""
     f_ref = _freqs(MC_REF, 10)
     f_new = _freqs(mc_to, 10)
     # prediction from the SI-0013 law applied to the closed-form simply supported frequencies
@@ -70,7 +72,7 @@ def test_b2_t5_moisture_shift_matches_the_si_0013_prediction(mc_to: float) -> No
 
 
 def test_b2_t5_zero_slopes_leave_the_frequencies_unchanged() -> None:
-
+    """B2-T5: zero slopes leave the frequencies unchanged."""
     base = p05_plate(fMax=300.0)
     a = plate_compile.compile_plate(
         base, [point(0.3, 0.2)], boundary="simply_supported", mesh_size=0.06, grid_order=0
