@@ -13,7 +13,7 @@
 #include "pme/osc/ramp.hpp"
 #include "pme/rtcheck/rtcheck.hpp"
 
-TEST_CASE("A1-R3 the update, derived quantities, energy and ramps allocate nothing") {
+TEST_CASE("A1-R3 the update with derived quantities and energy and ramps allocate nothing") {
     constexpr std::size_t n = 64;
     constexpr double fs = 48000.0;
     pme::osc::ModeBank bank;

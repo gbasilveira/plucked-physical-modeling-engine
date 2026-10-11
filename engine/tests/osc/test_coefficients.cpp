@@ -213,7 +213,7 @@ double highestAcceptedOmega(double fs) {
 
 }  // namespace
 
-TEST_CASE("A1-T2 bandwidth rejections at 44.1, 48 and 96 kHz") {
+TEST_CASE("A1-T2 bandwidth rejections at 44.1 and 48 and 96 kHz") {
     const double inf = std::numeric_limits<double>::infinity();
     for (const double fs : {44100.0, 48000.0, 96000.0}) {
         CAPTURE(fs);

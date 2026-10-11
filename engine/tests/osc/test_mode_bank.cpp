@@ -195,7 +195,7 @@ TEST_CASE("A1-R4 derived quantities match their finite-difference definitions") 
     }
 }
 
-TEST_CASE("A1-R5 discrete energy balance holds for a damped, forced mode") {
+TEST_CASE("A1-R5 discrete energy balance holds for a damped and forced mode") {
     const ForcedRun r = runForced(4000);
     const double dt = r.dt;
     double worstRel = 0.0;
