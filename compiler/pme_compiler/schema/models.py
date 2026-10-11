@@ -167,7 +167,7 @@ class SegmentDesc:
     bridgePoint: int
     polarisationAngle: float
     barriers: list[BarrierParams]
-    damper: DamperParams | None
+    damper: DamperParams | None = None
     muteRatio: float
     tensionModulation: bool
     longitudinalModes: int = 8
@@ -181,7 +181,7 @@ class NoteGroupDesc:
 
     key: int
     segments: list[SegmentDesc]
-    exciter: ExciterParams | None
+    exciter: ExciterParams | None = None
     unaCorda: UnaCordaParams = field(default_factory=UnaCordaParams)
 
 @dataclass(frozen=True, kw_only=True)

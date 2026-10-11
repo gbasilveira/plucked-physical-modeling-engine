@@ -861,7 +861,6 @@
         "bridgePoint",
         "polarisationAngle",
         "barriers",
-        "damper",
         "muteRatio",
         "tensionModulation",
         "kappaT",
@@ -898,8 +897,7 @@
       },
       "required": [
         "key",
-        "segments",
-        "exciter"
+        "segments"
       ],
       "additionalProperties": false
     },

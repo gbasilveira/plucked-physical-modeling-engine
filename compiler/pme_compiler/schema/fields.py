@@ -271,7 +271,7 @@ STRUCTS: tuple[Struct, ...] = (
             integer("bridgePoint", "index", "Index into instrument.bridgePoints", "SPEC-BRG", lo=0.0),
             num("polarisationAngle", "rad", "Angle of the vertical polarisation axis", "SPEC-BRG"),
             Field("barriers", "objarray", ref="BarrierParams", desc="Barriers this segment collides with", spec="SPEC-PLK"),
-            Field("damper", "optobj", ref="DamperParams", desc="Damper, if any", spec="SPEC-DMP"),
+            Field("damper", "optobj", ref="DamperParams", desc="Damper, if any", spec="SPEC-DMP", default=None),
             num("muteRatio", "1", "Rear-segment mute m_d", "SPEC-STR Duplex and rear segments", **UNIT),
             Field("tensionModulation", "bool", desc="Enable Kirchhoff-Carrier tension modulation", spec="SPEC-NL"),
             integer("longitudinalModes", "index", "Longitudinal modes M_L", "SPEC-INST Piano defaults", default=8, lo=0.0),
@@ -286,7 +286,7 @@ STRUCTS: tuple[Struct, ...] = (
         (
             integer("key", "index", "MIDI note number 0..127 (A4 = 69), or -1", "SPEC-API Event addressing, SI-0004", lo=-1.0, hi=127.0),
             Field("segments", "objarray", ref="SegmentDesc", desc="Speaking, rear and duplex segments", spec="SPEC-STR"),
-            Field("exciter", "optobj", ref="ExciterParams", desc="Exciter; absent for sympathetic-only groups", spec="SPEC-PLK"),
+            Field("exciter", "optobj", ref="ExciterParams", desc="Exciter; absent for sympathetic-only groups", spec="SPEC-PLK", default=None),
             Field("unaCorda", "obj", ref="UnaCordaParams", desc="Una corda and soft-pedal map", spec="SPEC-HAM", default=FACTORY),
         ),
     ),

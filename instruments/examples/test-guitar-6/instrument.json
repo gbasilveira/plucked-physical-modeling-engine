@@ -1,0 +1,461 @@
+{
+  "format": "pme-instrument",
+  "schemaVersion": 1,
+  "instrument": {
+    "name": "test-guitar-6",
+    "groups": [
+      {
+        "key": -1,
+        "segments": [
+          {
+            "string": {
+              "L": 0.65,
+              "dCore": 0.0005,
+              "rhoCore": 1140.0,
+              "ECore": 4000000000.0,
+              "dOuter": 0.00111007595,
+              "rhoWind": 8960.0,
+              "packing": 0.85,
+              "epsWind": 0.0,
+              "f1Target": 82.407,
+              "b1": 1.0,
+              "b2": 0.0,
+              "b3": 5e-09,
+              "sigmaOverride": [],
+              "boundary": "Pinned",
+              "detuneH": 0.0,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": 0.0,
+            "barriers": [],
+            "muteRatio": 0.0,
+            "tensionModulation": false,
+            "longitudinalModes": 8,
+            "kappaL": 0.026,
+            "kappaT": 0.0,
+            "unisonDetuneCents": 0.0
+          }
+        ],
+        "exciter": {
+          "finger": {
+            "tipMass": 0.002,
+            "driverStiffness": 2000.0,
+            "driverSpeedMax": 1.0,
+            "slipHeight": 0.002,
+            "contactK": 100000.0,
+            "contactAlpha": 1.5,
+            "muFlesh": 0.5,
+            "width": 0.01,
+            "position": 0.53,
+            "angle": 0.0,
+            "strengthGamma": 1.0
+          }
+        },
+        "unaCorda": {
+          "s0": 0.3,
+          "s1": 0.9,
+          "kappaUC": 0.6,
+          "deltaPUC": 0.0,
+          "rhoUpright": 0.3,
+          "leavingString": -1
+        }
+      },
+      {
+        "key": -1,
+        "segments": [
+          {
+            "string": {
+              "L": 0.65,
+              "dCore": 0.0005,
+              "rhoCore": 1140.0,
+              "ECore": 4000000000.0,
+              "dOuter": 0.0008859243135,
+              "rhoWind": 8960.0,
+              "packing": 0.85,
+              "epsWind": 0.0,
+              "f1Target": 110.0,
+              "b1": 1.0,
+              "b2": 0.0,
+              "b3": 5e-09,
+              "sigmaOverride": [],
+              "boundary": "Pinned",
+              "detuneH": 0.0,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 1,
+            "polarisationAngle": 0.0,
+            "barriers": [],
+            "muteRatio": 0.0,
+            "tensionModulation": false,
+            "longitudinalModes": 8,
+            "kappaL": 0.026,
+            "kappaT": 0.0,
+            "unisonDetuneCents": 0.0
+          }
+        ],
+        "exciter": {
+          "finger": {
+            "tipMass": 0.002,
+            "driverStiffness": 2000.0,
+            "driverSpeedMax": 1.0,
+            "slipHeight": 0.002,
+            "contactK": 100000.0,
+            "contactAlpha": 1.5,
+            "muFlesh": 0.5,
+            "width": 0.01,
+            "position": 0.53,
+            "angle": 0.0,
+            "strengthGamma": 1.0
+          }
+        },
+        "unaCorda": {
+          "s0": 0.3,
+          "s1": 0.9,
+          "kappaUC": 0.6,
+          "deltaPUC": 0.0,
+          "rhoUpright": 0.3,
+          "leavingString": -1
+        }
+      },
+      {
+        "key": -1,
+        "segments": [
+          {
+            "string": {
+              "L": 0.65,
+              "dCore": 0.0005,
+              "rhoCore": 1140.0,
+              "ECore": 4000000000.0,
+              "dOuter": 0.0007305911962,
+              "rhoWind": 8960.0,
+              "packing": 0.85,
+              "epsWind": 0.0,
+              "f1Target": 146.832,
+              "b1": 1.0,
+              "b2": 0.0,
+              "b3": 5e-09,
+              "sigmaOverride": [],
+              "boundary": "Pinned",
+              "detuneH": 0.0,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 2,
+            "polarisationAngle": 0.0,
+            "barriers": [],
+            "muteRatio": 0.0,
+            "tensionModulation": false,
+            "longitudinalModes": 8,
+            "kappaL": 0.026,
+            "kappaT": 0.0,
+            "unisonDetuneCents": 0.0
+          }
+        ],
+        "exciter": {
+          "finger": {
+            "tipMass": 0.002,
+            "driverStiffness": 2000.0,
+            "driverSpeedMax": 1.0,
+            "slipHeight": 0.002,
+            "contactK": 100000.0,
+            "contactAlpha": 1.5,
+            "muFlesh": 0.5,
+            "width": 0.01,
+            "position": 0.53,
+            "angle": 0.0,
+            "strengthGamma": 1.0
+          }
+        },
+        "unaCorda": {
+          "s0": 0.3,
+          "s1": 0.9,
+          "kappaUC": 0.6,
+          "deltaPUC": 0.0,
+          "rhoUpright": 0.3,
+          "leavingString": -1
+        }
+      },
+      {
+        "key": -1,
+        "segments": [
+          {
+            "string": {
+              "L": 0.65,
+              "dCore": 0.001097431189,
+              "rhoCore": 1140.0,
+              "ECore": 4000000000.0,
+              "dOuter": 0.001097431189,
+              "rhoWind": 1140.0,
+              "packing": 1.0,
+              "epsWind": 0.0,
+              "f1Target": 195.998,
+              "b1": 1.0,
+              "b2": 0.0,
+              "b3": 5e-09,
+              "sigmaOverride": [],
+              "boundary": "Pinned",
+              "detuneH": 0.0,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 3,
+            "polarisationAngle": 0.0,
+            "barriers": [],
+            "muteRatio": 0.0,
+            "tensionModulation": false,
+            "longitudinalModes": 8,
+            "kappaL": 0.026,
+            "kappaT": 0.0,
+            "unisonDetuneCents": 0.0
+          }
+        ],
+        "exciter": {
+          "finger": {
+            "tipMass": 0.002,
+            "driverStiffness": 2000.0,
+            "driverSpeedMax": 1.0,
+            "slipHeight": 0.002,
+            "contactK": 100000.0,
+            "contactAlpha": 1.5,
+            "muFlesh": 0.5,
+            "width": 0.01,
+            "position": 0.53,
+            "angle": 0.0,
+            "strengthGamma": 1.0
+          }
+        },
+        "unaCorda": {
+          "s0": 0.3,
+          "s1": 0.9,
+          "kappaUC": 0.6,
+          "deltaPUC": 0.0,
+          "rhoUpright": 0.3,
+          "leavingString": -1
+        }
+      },
+      {
+        "key": -1,
+        "segments": [
+          {
+            "string": {
+              "L": 0.65,
+              "dCore": 0.0008710067673,
+              "rhoCore": 1140.0,
+              "ECore": 4000000000.0,
+              "dOuter": 0.0008710067673,
+              "rhoWind": 1140.0,
+              "packing": 1.0,
+              "epsWind": 0.0,
+              "f1Target": 246.942,
+              "b1": 1.0,
+              "b2": 0.0,
+              "b3": 5e-09,
+              "sigmaOverride": [],
+              "boundary": "Pinned",
+              "detuneH": 0.0,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 4,
+            "polarisationAngle": 0.0,
+            "barriers": [],
+            "muteRatio": 0.0,
+            "tensionModulation": false,
+            "longitudinalModes": 8,
+            "kappaL": 0.026,
+            "kappaT": 0.0,
+            "unisonDetuneCents": 0.0
+          }
+        ],
+        "exciter": {
+          "finger": {
+            "tipMass": 0.002,
+            "driverStiffness": 2000.0,
+            "driverSpeedMax": 1.0,
+            "slipHeight": 0.002,
+            "contactK": 100000.0,
+            "contactAlpha": 1.5,
+            "muFlesh": 0.5,
+            "width": 0.01,
+            "position": 0.53,
+            "angle": 0.0,
+            "strengthGamma": 1.0
+          }
+        },
+        "unaCorda": {
+          "s0": 0.3,
+          "s1": 0.9,
+          "kappaUC": 0.6,
+          "deltaPUC": 0.0,
+          "rhoUpright": 0.3,
+          "leavingString": -1
+        }
+      },
+      {
+        "key": -1,
+        "segments": [
+          {
+            "string": {
+              "L": 0.65,
+              "dCore": 0.0006525094192,
+              "rhoCore": 1140.0,
+              "ECore": 4000000000.0,
+              "dOuter": 0.0006525094192,
+              "rhoWind": 1140.0,
+              "packing": 1.0,
+              "epsWind": 0.0,
+              "f1Target": 329.628,
+              "b1": 1.0,
+              "b2": 0.0,
+              "b3": 5e-09,
+              "sigmaOverride": [],
+              "boundary": "Pinned",
+              "detuneH": 0.0,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 5,
+            "polarisationAngle": 0.0,
+            "barriers": [],
+            "muteRatio": 0.0,
+            "tensionModulation": false,
+            "longitudinalModes": 8,
+            "kappaL": 0.026,
+            "kappaT": 0.0,
+            "unisonDetuneCents": 0.0
+          }
+        ],
+        "exciter": {
+          "finger": {
+            "tipMass": 0.002,
+            "driverStiffness": 2000.0,
+            "driverSpeedMax": 1.0,
+            "slipHeight": 0.002,
+            "contactK": 100000.0,
+            "contactAlpha": 1.5,
+            "muFlesh": 0.5,
+            "width": 0.01,
+            "position": 0.53,
+            "angle": 0.0,
+            "strengthGamma": 1.0
+          }
+        },
+        "unaCorda": {
+          "s0": 0.3,
+          "s1": 0.9,
+          "kappaUC": 0.6,
+          "deltaPUC": 0.0,
+          "rhoUpright": 0.3,
+          "leavingString": -1
+        }
+      }
+    ],
+    "bridgePoints": [
+      {
+        "position": {
+          "x": 0.12,
+          "y": 0.15,
+          "z": 0.0
+        },
+        "thetaB": 0.0,
+        "conductanceH": 0.001
+      },
+      {
+        "position": {
+          "x": 0.12,
+          "y": 0.162,
+          "z": 0.0
+        },
+        "thetaB": 0.0,
+        "conductanceH": 0.001
+      },
+      {
+        "position": {
+          "x": 0.12,
+          "y": 0.174,
+          "z": 0.0
+        },
+        "thetaB": 0.0,
+        "conductanceH": 0.001
+      },
+      {
+        "position": {
+          "x": 0.12,
+          "y": 0.186,
+          "z": 0.0
+        },
+        "thetaB": 0.0,
+        "conductanceH": 0.001
+      },
+      {
+        "position": {
+          "x": 0.12,
+          "y": 0.198,
+          "z": 0.0
+        },
+        "thetaB": 0.0,
+        "conductanceH": 0.001
+      },
+      {
+        "position": {
+          "x": 0.12,
+          "y": 0.21,
+          "z": 0.0
+        },
+        "thetaB": 0.0,
+        "conductanceH": 0.001
+      }
+    ],
+    "body": {
+      "source": "PlateModel",
+      "plate": {
+        "lengthX": 0.48,
+        "lengthY": 0.36,
+        "thickness": 0.0025,
+        "grainAngle": 0.0,
+        "youngsL": 11000000000.0,
+        "youngsR": 900000000.0,
+        "shearLR": 700000000.0,
+        "poissonLR": 0.37,
+        "poissonRL": 0.03,
+        "density": 420.0,
+        "moisture": 0.12,
+        "dEdMcL": 0.0,
+        "dEdMcR": 0.0,
+        "dGdMc": 0.0,
+        "dRhodMc": 0.0,
+        "lossFactor": 0.01,
+        "rimStiffness": 0.0,
+        "fMax": 3000.0,
+        "ribs": [],
+        "outline": [],
+        "thicknessNx": 0,
+        "thicknessNy": 0,
+        "thicknessGrid": [],
+        "bridges": [],
+        "rimRotationalStiffness": 0.0
+      },
+      "modalTableHash": ""
+    },
+    "channels": [
+      {
+        "name": "mono",
+        "position": {
+          "x": 0.24,
+          "y": 0.18,
+          "z": 1.0
+        }
+      }
+    ],
+    "tuning": {
+      "referencePitch": 440.0,
+      "stretchCents": []
+    },
+    "defaults": {
+      "halfPedalP0": 0.35,
+      "halfPedalP1": 0.65,
+      "sympatheticGain": 1.0,
+      "sympatheticLowPass": 5000.0,
+      "localBridgeModes": 64,
+      "localBridgeFSplit": 2000.0
+    }
+  },
+  "blobs": []
+}

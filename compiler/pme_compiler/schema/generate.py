@@ -121,7 +121,7 @@ def _property(f: Field, cpp: bool) -> dict[str, Any]:
         prop["enum"] = list(f.values)
     else:
         raise ValueError(f"unknown kind {kind}")
-    if f.default is not REQUIRED and f.default is not FACTORY:
+    if f.default is not REQUIRED and f.default is not FACTORY and f.default is not None:
         prop["default"] = _clean(f.default) if isinstance(f.default, float) else f.default
     prop["description"] = _description(f)
     return prop
@@ -219,6 +219,8 @@ def _py_type(f: Field) -> str:
 
 
 def _py_default(f: Field) -> str:
+    if f.kind == "optobj":
+        return " = None"
     if f.default is REQUIRED:
         return ""
     if f.default is FACTORY:
