@@ -232,7 +232,8 @@ jobs:
   # ---- V1: traceability ----
   # The nightly traceability matrix (V1-R4): the same script as the pull-request job over the
   # junit-* artifacts of this run. It reports gaps (job summary, artifact) but never fails the
-  # nightly run; the pull-request job is the enforcing one.
+  # nightly run; the pull-request job is the enforcing one. The nightly JUnit files are Linux-only,
+  # so a test needs to pass on linux alone (--systems linux).
   # Covers: V1-R4
   traceability:
     name: traceability
@@ -257,7 +258,7 @@ jobs:
         run: |
           python3 tools/trace/build_matrix.py --junit junit --job-results job-results.json \
             --job-results-workflow nightly.yml --known-gaps tools/trace/known-gaps.json \
-            --out traceability
+            --systems linux --out traceability
       - name: Job summary
         if: ${{ always() }}
         run: |

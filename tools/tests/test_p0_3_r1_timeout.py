@@ -80,7 +80,7 @@ def test_p0_3_r1_discovery_writes_the_timeout(tmp_path: Path) -> None:
 
 @needs_cmake
 def test_p0_3_r1_ctest_lists_the_timeouts_of_a_built_tree() -> None:
-    """P0.3-R1: `ctest -N --show-only=json-v1` lists a TIMEOUT for every doctest case.
+    """P0.3-R1: `ctest -N --show-only=json-v1` lists a positive TIMEOUT for every doctest case.
 
     Runs against the build tree named by PME_BUILD_DIR (default build/linux-debug); skipped when
     that tree has not been built.
@@ -104,6 +104,10 @@ def test_p0_3_r1_ctest_lists_the_timeouts_of_a_built_tree() -> None:
             continue  # only pme_add_doctest executables; benchmarks and CLI tests set their own
         checked += 1
         assert "TIMEOUT" in props, f"{test['name']} has no TIMEOUT"
-        expected = 120.0 if exe.startswith("pme_rtcheck") else 300.0
-        assert props["TIMEOUT"] == expected, f"{test['name']}: TIMEOUT {props['TIMEOUT']}"
+        timeout = float(props["TIMEOUT"])
+        assert timeout > 0, f"{test['name']}: TIMEOUT {timeout} is not positive"
+        if exe.startswith("pme_rtcheck"):
+            assert timeout == 120.0, f"{test['name']}: TIMEOUT {timeout}"
+        # Every other target gets the helper default (300 s) or an explicit per-target override
+        # (for example A2-T3 passes TIMEOUT 600), so only presence and positivity are checked.
     assert checked > 0, "no doctest cases listed"
