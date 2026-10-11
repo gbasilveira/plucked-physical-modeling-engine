@@ -111,3 +111,42 @@ TEST_CASE("A2-R7 applyMute rejects bad arguments and overdamping and leaves the 
     CHECK(m.k.size() == before.k.size());
     CHECK(m.oscV.size() == before.oscV.size());
 }
+
+// The longest-passing-prefix branch of applyMute is reachable: a per-partial override (or a
+// large b3) can leave a high mode close to overdamping while mode 1 is far from it, so a
+// constant extra damping overdamps that mode first.
+TEST_CASE("A2-R7 applyMute truncates to the longest passing prefix when a high mode overdamps") {
+    const auto base = pme::string_test::mid();
+    const std::array<double, 2> pts{0.1, 0.4};
+    pme::StringModes ref;
+    REQUIRE(pme::compileString(base, 48000.0, 16000.0, pts, ref) == pme::Status::Ok);
+    REQUIRE(ref.k.size() > 10);
+
+    // Mode 5 (index 4) is 50 1/s short of critical damping; modes 1 to 4 keep the formula.
+    auto p = base;
+    p.sigmaOverride.assign(ref.sigma.begin(), ref.sigma.begin() + 4);
+    p.sigmaOverride.push_back(ref.omega[4] - 50.0);
+    pme::StringModes m;
+    REQUIRE(pme::compileString(p, 48000.0, 16000.0, pts, m) == pme::Status::Ok);
+    const pme::StringModes before = m;
+    const std::size_t total = before.k.size();
+    REQUIRE(total == ref.k.size());
+
+    const double felt = 100.0;  // mode 5: sigma + felt > omega; modes 1 to 4 have gaps > 1000
+    CHECK(pme::string::applyMute(m, 1.0, felt, 0.0) == pme::Status::Ok);
+    constexpr std::size_t kExpected = 4;
+    REQUIRE(m.k.size() == kExpected);
+    CHECK(m.omega.size() == kExpected);
+    CHECK(m.sigma.size() == kExpected);
+    CHECK(m.oscV.size() == kExpected);
+    CHECK(m.oscH.size() == kExpected);
+    REQUIRE(m.phiBar.size() == 2);
+    for (const auto& row : m.phiBar) {
+        CHECK(row.size() == kExpected);
+    }
+    for (std::size_t i = 0; i < kExpected; ++i) {
+        CHECK(m.sigma[i] == before.sigma[i] + felt);
+        CHECK(m.omega[i] == before.omega[i]);
+        CHECK(m.phiBar[0][i] == before.phiBar[0][i]);
+    }
+}
