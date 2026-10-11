@@ -11,6 +11,9 @@
     "python (macos)",
     "python (windows)",
     "coverage",
-    "deps"
+    "deps",
+    "reference-python (linux)",
+    "reference-python (macos)",
+    "reference-python (windows)"
   ]
 }

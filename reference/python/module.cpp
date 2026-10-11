@@ -8,6 +8,7 @@
 // dict that the CLI writes to its --features file (the same text, parsed).
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <nanobind/stl/string.h>
 
 #include <cstddef>
 #include <cstring>

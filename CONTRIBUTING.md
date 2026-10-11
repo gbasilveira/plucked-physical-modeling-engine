@@ -47,6 +47,7 @@ A change merges into `main` only when **all** of the following checks of the pul
 | `python (linux)`, `python (macos)`, `python (windows)` | `uv sync --locked`, pytest |
 | `coverage` | `linux-coverage` (GCC); line coverage of `engine/src` at least 90 % |
 | `deps` | configure with `PME_FETCH_ALL_DEPS=ON` (every pin resolves) |
+| `reference-python (linux)`, `reference-python (macos)`, `reference-python (windows)` | P0.5: release build with `PME_BUILD_PYTHON_BINDINGS=ON`, then `tools/tests/test_p0_5_*.py` against the `pme_reference` module (a skip fails the job) |
 
 Each `build` check runs every unit, oracle, integration, golden and RT-safety test
 (`ctest -LE "perf|fuzz|soak"`). Sanitizers, performance, fuzz and soak run in the nightly workflow

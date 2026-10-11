@@ -86,7 +86,8 @@ TEST_CASE("P0.5-R3 flexible string on a pure conductance decays at the ORC-06 ra
     }
 }
 
-TEST_CASE("P0.5-R3 two strings on one conductance: in-phase decays fast, anti-phase not at all") {
+TEST_CASE(
+    "P0.5-R3 two strings on one conductance: in-phase decays fast and anti-phase does not decay") {
     const StringParams p = flexible_string(1.0, 110.0);
     const StringPhysics ph = derive_string(p);
     const double z0 = std::sqrt(ph.tension * ph.rho_a);
