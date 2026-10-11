@@ -11,4 +11,4 @@ set_target_properties(pme_test_framework PROPERTIES
   CXX_EXTENSIONS OFF
   COMPILE_WARNING_AS_ERROR ON)
 
-pme_add_doctest(pme_framework_tests SOURCES framework_tests.cpp LABELS unit RT)
+pme_add_doctest(pme_framework_tests SOURCES framework_tests.cpp LABELS unit)
