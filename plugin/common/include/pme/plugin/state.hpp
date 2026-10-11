@@ -29,8 +29,8 @@ struct StateData {
     int schemaVersion{kStateSchemaVersion};
     std::string pluginVersion;
     int interfacesVersion{interfacesVersionMajor};
-    std::string instrument;                           ///< Instrument reference; empty until B1.
-    std::vector<std::pair<ParamId, double>> params;   ///< Ascending id.
+    std::string instrument;                          ///< Instrument reference; empty until B1.
+    std::vector<std::pair<ParamId, double>> params;  ///< Ascending id.
 };
 
 /// Outcome of `parseState`.

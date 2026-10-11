@@ -2,6 +2,8 @@
 // CLAP plug-in object and extensions (D1-R1 .. D1-R7). Translates CLAP structures to and from the
 // format-independent controller (plugin/common). SPEC sections used: SPEC-API (events, parameter
 // classes, real-time interface), SPEC-EXEC (threading contract, instrument lifetime).
+#include <clap/clap.h>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -11,8 +13,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-
-#include <clap/clap.h>
 
 #include "clap_shell.hpp"
 #include "pme/plugin/ids.hpp"
@@ -70,13 +70,10 @@ struct Shell {
     const clap_host_timer_support_t* hostTimer{nullptr};
     clap_id timerId{CLAP_INVALID_ID};
 
-    explicit Shell(std::unique_ptr<plugin::EngineAdapter> engine)
-        : controller(std::move(engine)) {}
+    explicit Shell(std::unique_ptr<plugin::EngineAdapter> engine) : controller(std::move(engine)) {}
 };
 
-Shell& shellOf(const clap_plugin_t* p) noexcept {
-    return *static_cast<Shell*>(p->plugin_data);
-}
+Shell& shellOf(const clap_plugin_t* p) noexcept { return *static_cast<Shell*>(p->plugin_data); }
 
 void logHost(const Shell& s, clap_log_severity severity, const char* msg) noexcept {
     if (s.hostLog != nullptr && s.hostLog->log != nullptr) {
@@ -111,7 +108,8 @@ uint32_t configCount(const clap_plugin_t* /*p*/) noexcept {
     return static_cast<uint32_t>(kPortConfigChannels.size());
 }
 
-bool configGet(const clap_plugin_t* /*p*/, uint32_t index, clap_audio_ports_config_t* config) noexcept {
+bool configGet(const clap_plugin_t* /*p*/, uint32_t index,
+               clap_audio_ports_config_t* config) noexcept {
     if (index >= kPortConfigChannels.size() || config == nullptr) {
         return false;
     }
@@ -540,15 +538,9 @@ const std::array<const char*, 4> kFeatures{CLAP_PLUGIN_FEATURE_INSTRUMENT,
                                            CLAP_PLUGIN_FEATURE_SYNTHESIZER, nullptr};
 
 const clap_plugin_descriptor_t kDescriptor{
-    CLAP_VERSION,
-    plugin::kPluginId,
-    plugin::kPluginName,
-    plugin::kPluginVendor,
-    plugin::kPluginUrl,
-    plugin::kPluginUrl,
-    plugin::kPluginUrl,
-    plugin::kPluginVersion,
-    plugin::kPluginDescription,
+    CLAP_VERSION,          plugin::kPluginId,      plugin::kPluginName,
+    plugin::kPluginVendor, plugin::kPluginUrl,     plugin::kPluginUrl,
+    plugin::kPluginUrl,    plugin::kPluginVersion, plugin::kPluginDescription,
     kFeatures.data(),
 };
 
@@ -587,9 +579,10 @@ const clap_plugin_t* createPlugin(const clap_host_t* host,
     auto shell = std::make_unique<Shell>(std::move(engine));
     shell->host = host;
     shell->plugin = clap_plugin_t{
-        &kDescriptor,       shell.get(),         pluginInit,  pluginDestroy,
-        pluginActivate,     pluginDeactivate,    pluginStartProcessing, pluginStopProcessing,
-        pluginReset,        pluginProcess,       pluginGetExtension,    pluginOnMainThread,
+        &kDescriptor,          shell.get(),          pluginInit,
+        pluginDestroy,         pluginActivate,       pluginDeactivate,
+        pluginStartProcessing, pluginStopProcessing, pluginReset,
+        pluginProcess,         pluginGetExtension,   pluginOnMainThread,
     };
     return &shell.release()->plugin;
 }

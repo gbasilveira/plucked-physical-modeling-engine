@@ -29,10 +29,29 @@ set_target_properties(pme_clap PROPERTIES
   CXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN ON)
 if(APPLE)
+  # Minimal Info.plist; CMake substitutes the ${MACOSX_BUNDLE_*} placeholders below.
+  set(PME_CLAP_PLIST_TEMPLATE "${CMAKE_CURRENT_BINARY_DIR}/Info.plist.in")
+  file(WRITE "${PME_CLAP_PLIST_TEMPLATE}" [=[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key><string>English</string>
+  <key>CFBundleExecutable</key><string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
+  <key>CFBundleIdentifier</key><string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>CFBundleName</key><string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
+  <key>CFBundlePackageType</key><string>BNDL</string>
+  <key>CFBundleShortVersionString</key><string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
+  <key>CFBundleSignature</key><string>????</string>
+  <key>CFBundleVersion</key><string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+  <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>
+]=])
   set_target_properties(pme_clap PROPERTIES
     BUNDLE TRUE
     BUNDLE_EXTENSION clap
-    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
+    MACOSX_BUNDLE_INFO_PLIST "${PME_CLAP_PLIST_TEMPLATE}"
     MACOSX_BUNDLE_BUNDLE_NAME "pme"
     MACOSX_BUNDLE_GUI_IDENTIFIER "org.pme.clap"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"

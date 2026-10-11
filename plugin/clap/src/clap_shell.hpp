@@ -5,9 +5,9 @@
 /// The CLAP adapter's private interface: the factory and a constructor that tests use to build a
 /// plug-in around a fake engine. The `.clap` module exports only `clap_entry` (entry.cpp).
 
-#include <memory>
-
 #include <clap/clap.h>
+
+#include <memory>
 
 #include "pme/plugin/controller.hpp"
 #include "pme/plugin/engine_adapter.hpp"

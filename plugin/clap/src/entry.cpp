@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // CLAP entry point (D1-R1): the only symbol the module exports.
-#include <cstring>
-
 #include <clap/clap.h>
+
+#include <cstring>
 
 #include "clap_shell.hpp"
 

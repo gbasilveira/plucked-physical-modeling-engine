@@ -47,6 +47,7 @@ A change merges into `main` only when **all** of the following checks of the pul
 | `python (linux)`, `python (macos)`, `python (windows)` | `uv sync --locked`, pytest |
 | `coverage` | `linux-coverage` (GCC); line coverage of `engine/src` at least 90 % |
 | `deps` | configure with `PME_FETCH_ALL_DEPS=ON` (every pin resolves) |
+| `plugin (linux)`, `plugin (macos)`, `plugin (windows)` | `<system>-rt-safety` with `PME_BUILD_PLUGINS=ON`: the CLAP shell, its `D1-` tests and clap-validator on the built `.clap`; clang-tidy over `plugin/` on Linux |
 
 Each `build` check runs every unit, oracle, integration, golden and RT-safety test
 (`ctest -LE "perf|fuzz|soak"`). Sanitizers, performance, fuzz and soak run in the nightly workflow

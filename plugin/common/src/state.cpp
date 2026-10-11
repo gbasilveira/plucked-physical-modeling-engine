@@ -5,7 +5,6 @@
 #include <charconv>
 #include <cmath>
 #include <map>
-
 #include <nlohmann/json.hpp>
 
 namespace pme::plugin {

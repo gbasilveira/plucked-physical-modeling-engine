@@ -38,7 +38,8 @@ void block(Controller& c, std::uint32_t frames, float* const* channels, std::siz
         if (const auto* on = std::get_if<pme::NoteOn>(&e.payload)) {
             c.events().noteOn(static_cast<std::uint32_t>(e.offset), on->key, on->velocity);
         } else if (const auto* off = std::get_if<pme::NoteOff>(&e.payload)) {
-            c.events().noteOff(static_cast<std::uint32_t>(e.offset), off->key, off->releaseVelocity);
+            c.events().noteOff(static_cast<std::uint32_t>(e.offset), off->key,
+                               off->releaseVelocity);
         } else if (const auto* p = std::get_if<pme::Pedal>(&e.payload)) {
             c.events().midi(static_cast<std::uint32_t>(e.offset), 0xB0, 64,
                             static_cast<std::uint8_t>(p->value * 127.0F));
@@ -171,8 +172,8 @@ TEST_CASE("D1-R3 host parameter values are clamped, stored and delivered as Para
     {
         const pme::rtcheck::ScopedRealtimeThread realtime;
         r.controller->beginBlock(64);
-        r.controller->paramEvent(3, 2001, 1000.0);   // clamped to 24 dB
-        r.controller->paramEvent(4, 424242, 1.0);    // unknown id: ignored
+        r.controller->paramEvent(3, 2001, 1000.0);  // clamped to 24 dB
+        r.controller->paramEvent(4, 424242, 1.0);   // unknown id: ignored
         r.controller->render(64, ch);
     }
     REQUIRE(r.engine->events.size() == 1);
@@ -212,8 +213,9 @@ TEST_CASE("D1-R1 a host block larger than the activated maximum is split with re
     std::array<float, 250> a;
     std::array<float, 250> b;
     std::array<float*, 2> ch{a.data(), b.data()};
-    block(*r.controller, 250, ch.data(), 2,
-          {{5, pme::NoteOn{60, 1.0F}}, {105, pme::NoteOn{61, 1.0F}}, {249, pme::NoteOff{60, 0.0F}}});
+    block(
+        *r.controller, 250, ch.data(), 2,
+        {{5, pme::NoteOn{60, 1.0F}}, {105, pme::NoteOn{61, 1.0F}}, {249, pme::NoteOff{60, 0.0F}}});
     REQUIRE(r.engine->calls.size() == 3);
     CHECK(r.engine->calls[0].frames == 100);
     CHECK(r.engine->calls[1].frames == 100);

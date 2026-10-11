@@ -88,7 +88,8 @@ bool ParamModel::textToValue(const ParamInfo& /*info*/, const char* text, double
 std::string ParamModel::modulePath(const ParamInfo& info) {
     const std::string_view name = info.name;
     const std::size_t dot = name.rfind('.');
-    std::string module = dot == std::string_view::npos ? std::string() : std::string(name.substr(0, dot));
+    std::string module =
+        dot == std::string_view::npos ? std::string() : std::string(name.substr(0, dot));
     std::replace(module.begin(), module.end(), '.', '/');
     if (info.cls == ParamClass::Structural) {
         module = module.empty() ? "structural" : "structural/" + module;

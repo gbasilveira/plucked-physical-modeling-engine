@@ -4,6 +4,8 @@
 // Test support for the CLAP adapter: a fake host, input event lists and in-memory streams. The
 // event list and the process call never allocate once built, so they can run under the RT trap.
 
+#include <clap/clap.h>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -11,8 +13,6 @@
 #include <string>
 #include <variant>
 #include <vector>
-
-#include <clap/clap.h>
 
 #include "clap_shell.hpp"
 #include "fake_engine.hpp"
@@ -219,15 +219,16 @@ struct MemoryOut {
     clap_ostream_t stream{};
 };
 
-/// In-memory input stream; reads at most `chunk` bytes per call (a small prime, like the validator).
+/// In-memory input stream; reads at most `chunk` bytes per call (a small prime, like the
+/// validator).
 struct MemoryIn {
     explicit MemoryIn(std::string bytes, std::size_t chunkSize = 7)
         : data(std::move(bytes)), chunk(chunkSize) {
         stream.ctx = this;
         stream.read = [](const clap_istream_t* s, void* buffer, uint64_t size) -> int64_t {
             auto& self = *static_cast<MemoryIn*>(s->ctx);
-            const std::size_t n = std::min({static_cast<std::size_t>(size), self.chunk,
-                                            self.data.size() - self.position});
+            const std::size_t n = std::min(
+                {static_cast<std::size_t>(size), self.chunk, self.data.size() - self.position});
             std::memcpy(buffer, self.data.data() + self.position, n);
             self.position += n;
             return static_cast<int64_t>(n);

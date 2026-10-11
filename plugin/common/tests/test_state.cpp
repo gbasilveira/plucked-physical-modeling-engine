@@ -50,8 +50,8 @@ TEST_CASE("D1-R4 state rejects malformed input and newer schema versions") {
 
 TEST_CASE("D1-R4 state keeps unknown ids for the controller to ignore") {
     StateData out;
-    REQUIRE(pme::plugin::parseState(R"({"state_schema_version":1,"params":{"999999":1.5}})",
-                                    out) == StateParse::Ok);
+    REQUIRE(pme::plugin::parseState(R"({"state_schema_version":1,"params":{"999999":1.5}})", out) ==
+            StateParse::Ok);
     REQUIRE(out.params.size() == 1);
     CHECK(out.params[0].first == 999999);
 }

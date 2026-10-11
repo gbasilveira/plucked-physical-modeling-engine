@@ -15,23 +15,23 @@ using namespace pme::clap::test;
 namespace {
 
 std::string saveState(const clap_plugin_t* p, std::size_t chunk = 0) {
-    const auto* state = static_cast<const clap_plugin_state_t*>(
-        p->get_extension(p, CLAP_EXT_STATE));
+    const auto* state =
+        static_cast<const clap_plugin_state_t*>(p->get_extension(p, CLAP_EXT_STATE));
     MemoryOut out(chunk);
     REQUIRE(state->save(p, &out.stream));
     return out.data;
 }
 
 bool loadState(const clap_plugin_t* p, const std::string& bytes) {
-    const auto* state = static_cast<const clap_plugin_state_t*>(
-        p->get_extension(p, CLAP_EXT_STATE));
+    const auto* state =
+        static_cast<const clap_plugin_state_t*>(p->get_extension(p, CLAP_EXT_STATE));
     MemoryIn in(bytes);
     return state->load(p, &in.stream);
 }
 
 double paramValue(const clap_plugin_t* p, clap_id id) {
-    const auto* params = static_cast<const clap_plugin_params_t*>(
-        p->get_extension(p, CLAP_EXT_PARAMS));
+    const auto* params =
+        static_cast<const clap_plugin_params_t*>(p->get_extension(p, CLAP_EXT_PARAMS));
     double v = 0.0;
     REQUIRE(params->get_value(p, id, &v));
     return v;
@@ -82,10 +82,9 @@ TEST_CASE("D1-T2 state save and load round-trips exactly") {
     for (std::size_t i = 0; i < registry.size(); ++i) {
         CHECK(paramValue(b.plugin, registry[i].id) == paramValue(a.plugin, registry[i].id));
     }
-    CHECK(pme::clap::controllerOf(b.plugin).instrumentReference() ==
-          "instruments/steinway-d.json");
+    CHECK(pme::clap::controllerOf(b.plugin).instrumentReference() == "instruments/steinway-d.json");
     const std::string second = saveState(b.plugin, /*chunk=*/5);  // partial writes
-    CHECK(first == second);  // identical byte streams
+    CHECK(first == second);                                       // identical byte streams
 }
 
 TEST_CASE("D1-T2 state carries the schema, plug-in and interface versions") {
@@ -130,8 +129,7 @@ TEST_CASE("D1-T2 an empty or malformed state is refused") {
 TEST_CASE("D1-R4 loaded state reaches the engine while the plug-in is active") {
     Instance a;
     REQUIRE(a.plugin->activate(a.plugin, 48000.0, 1, 64));
-    REQUIRE(loadState(a.plugin,
-                      R"({"state_schema_version":1,"params":{"2001":-3.0}})"));
+    REQUIRE(loadState(a.plugin, R"({"state_schema_version":1,"params":{"2001":-3.0}})"));
     OutBuffers out(64);
     process(a.plugin, 64, out, InEvents());
     REQUIRE(a.engine->events.size() == 1);

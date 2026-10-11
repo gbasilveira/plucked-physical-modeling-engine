@@ -43,18 +43,14 @@ Spec midi(uint32_t offset, uint8_t status, uint8_t d1, uint8_t d2) {
 /// The block of the test: sorted by offset as CLAP hosts deliver it.
 std::vector<Spec> scenario() {
     return {
-        param(0, 2001, -6.0),          // continuous parameters at 0, 1, 255 (twice), 511
-        param(1, 3001, 0.5),
-        midi(50, 0xB0, 64, 127),       // CC64 down
-        noteOn(100, 60, 0.75),
-        midi(150, 0xB0, 66, 100),      // CC66
-        midi(160, 0xB0, 67, 64),       // CC67
-        midi(200, 0xB0, 64, 64),       // half pedal
-        param(255, 2001, -12.0),
-        param(255, 4001, 0.01),        // the same offset as the previous event
-        noteOff(300, 60, 0.5),
-        midi(400, 0x90, 62, 100),      // MIDI note on
-        midi(450, 0x80, 62, 0),        // MIDI note off
+        param(0, 2001, -6.0),  // continuous parameters at 0, 1, 255 (twice), 511
+        param(1, 3001, 0.5),     midi(50, 0xB0, 64, 127),   // CC64 down
+        noteOn(100, 60, 0.75),   midi(150, 0xB0, 66, 100),  // CC66
+        midi(160, 0xB0, 67, 64),                            // CC67
+        midi(200, 0xB0, 64, 64),                            // half pedal
+        param(255, 2001, -12.0), param(255, 4001, 0.01),    // the same offset as the previous event
+        noteOff(300, 60, 0.5),   midi(400, 0x90, 62, 100),  // MIDI note on
+        midi(450, 0x80, 62, 0),                             // MIDI note off
         param(511, 2001, 3.0),
     };
 }

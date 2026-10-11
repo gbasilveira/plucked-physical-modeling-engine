@@ -14,9 +14,9 @@
 namespace pme::plugin {
 
 namespace {
-constexpr ParamId kParamSustain = 1001;   // pedal.sustain
-constexpr ParamId kParamFMax = 6003;      // strings.fMax
-constexpr int kSubBlock = 32;             // SPEC-CONV: 16 or 32
+constexpr ParamId kParamSustain = 1001;  // pedal.sustain
+constexpr ParamId kParamFMax = 6003;     // strings.fMax
+constexpr int kSubBlock = 32;            // SPEC-CONV: 16 or 32
 constexpr int kDiagnosticsPerTick = 64;
 }  // namespace
 
@@ -131,7 +131,7 @@ void Controller::mainThreadTick() noexcept {
 
 std::uint32_t Controller::tailSamples() const noexcept {
     return sounding_.load(std::memory_order_relaxed) ? std::numeric_limits<std::uint32_t>::max()
-                                                      : 0U;
+                                                     : 0U;
 }
 
 void Controller::beginBlock(std::uint32_t frames) noexcept {
