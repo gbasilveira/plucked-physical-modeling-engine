@@ -41,10 +41,11 @@ PME_REFERENCE_PYDIR=build/linux-release/reference/python uv run pytest tools/tes
 
 ```python
 import pme_reference
-result = pme_reference.render(scenario)      # scenario: dict or JSON text
-result["signals"]["y"]                       # NumPy float64 array, one value per simulation step
-result["energy"]["total"]                    # energy of the state pairs, steps + 1 values
-result["features"]                           # the dict the CLI writes with --features
+
+result = pme_reference.render(scenario)  # scenario: dict or JSON text
+result["signals"]["y"]  # NumPy float64 array, one value per simulation step
+result["energy"]["total"]  # energy of the state pairs, steps + 1 values
+result["features"]  # the dict the CLI writes with --features
 ```
 
 Errors for scenarios the reference does not model are `pme_reference.RefError` (a `ValueError`).
