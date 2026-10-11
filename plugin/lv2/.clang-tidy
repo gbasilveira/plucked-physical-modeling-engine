@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MIT
+# The LV2 adapter sits on a C ABI; each disabled check has a reason.
+InheritParentConfig: true
+Checks: >
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-union-access,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-type-cstyle-cast,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-special-member-functions,
+  -hicpp-special-member-functions,
+  -modernize-use-nodiscard,
+  -modernize-use-auto,
+  -cppcoreguidelines-prefer-member-initializer,
+  -modernize-loop-convert,
+  -performance-enum-size,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -misc-non-private-member-variables-in-classes
+# reinterpret-cast, union-access, pointer-arithmetic, cstyle-cast: LV2 atoms are byte buffers
+#   reinterpreted as typed atoms, atom bodies are unions, and LV2_ATOM_SEQUENCE_FOREACH and
+#   LV2_ATOM_OBJECT_FOREACH are macros of the LV2 headers.
+# owning-memory: the LV2 handle is a void* created in instantiate and deleted in cleanup.
+# special-member-functions, use-nodiscard, use-auto, prefer-member-initializer, loop-convert,
+#   enum-size, global failure counter, public counters: style only, in the single-use test fakes
+#   and the lilv host.

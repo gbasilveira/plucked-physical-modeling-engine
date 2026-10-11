@@ -18,6 +18,7 @@
     "plugin (windows)",
     "reference-python (linux)",
     "reference-python (macos)",
-    "reference-python (windows)"
+    "reference-python (windows)",
+    "lv2 (linux)"
   ]
 }
