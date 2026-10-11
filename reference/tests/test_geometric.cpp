@@ -174,3 +174,62 @@ TEST_CASE("P0.5-R6 geometric scenarios outside the supported set are rejected") 
     sc.hammers.push_back(h);
     CHECK_THROWS_WITH_AS(simulate(sc), doctest::Contains("single fixed-end string"), RefError);
 }
+
+// Reviewer test. Quasi-static limit of SPEC-GEO's longitudinal equation, an independent check of
+// the forcing's sign and scale: when the transverse motion is slow compared with the longitudinal
+// modes, EA xi_xx = -(EA - T)/2 (y_x^2)_x with xi = 0 at both ends gives
+// EA xi_x = -(EA - T)/2 (y_x^2 - <y_x^2>), hence F_L = EA xi_x(L) + (EA - T)/2 y_x(L)^2
+// = (EA - T)/2 <y_x^2> = (EA - T) S / (2 L) = Delta T, the Kirchhoff-Carrier tension rise. The
+// right-hand side is computed from the energy trace alone: V_KC = (EA - T) S^2 / (8 L) is the
+// "contact" part of the energy, so S = sqrt(8 L V / (EA - T)). Averaging F_L over one period of
+// the first longitudinal mode removes the free longitudinal oscillation (all its modes have
+// frequencies that are multiples of the first).
+TEST_CASE(
+    "P0.5-R6 reviewer: the window-averaged longitudinal bridge force equals the tension rise") {
+    const StringParams p = steel_string(1.0, 55.0, 1e-4);
+    Scenario sc = string_scenario(p, 100, 48000.0, 0.03, 0.3, 0.37);
+    sc.oversampling = 4;
+    sc.strings[0].initial.amplitude = 4e-3;
+    sc.strings[0].geometric.tension_modulation = true;
+    sc.strings[0].geometric.longitudinal = true;
+    ObservationSpec fl;
+    fl.name = "fl";
+    fl.kind = ObservationKind::LongitudinalBridgeForce;
+    sc.observations.push_back(fl);
+    const Results r = simulate(sc);
+    const StringPhysics ph = derive_string(p);
+    const double gamma = ph.ea - ph.tension;
+    const double c = std::sqrt(ph.ea / ph.rho_a);
+    const double period = 2.0 * ph.length / c;  // first longitudinal mode
+    const auto w = static_cast<std::size_t>(std::llround(period * r.sim_rate));
+    const auto& f = r.signal("fl");
+    REQUIRE(f.size() > 8 * w);
+    double worst = 0.0;
+    double biggest = 0.0;
+    double sum_avg = 0.0;
+    double sum_rise = 0.0;
+    // Skip the first two windows (start-up of the longitudinal motion).
+    for (std::size_t centre = 2 * w; centre + w < f.size(); centre += w / 2) {
+        double avg = 0.0;
+        double v_avg = 0.0;
+        for (std::size_t i = centre - w / 2; i < centre + w / 2; ++i) {
+            avg += f[i];
+            v_avg += 0.5 * (r.energy.contact[i + 1] + r.energy.contact[i]);
+        }
+        avg /= static_cast<double>(w);
+        v_avg /= static_cast<double>(w);
+        const double dt_rise = 0.5 * gamma / ph.length * std::sqrt(8.0 * ph.length * v_avg / gamma);
+        biggest = std::max(biggest, dt_rise);
+        worst = std::max(worst, std::fabs(avg - dt_rise));
+        sum_avg += avg;
+        sum_rise += dt_rise;
+    }
+    INFO("worst |<F_L> - Delta T| = " << worst << " N, largest Delta T = " << biggest << " N");
+    CHECK(biggest > 0.0);
+    // Scale and sign: the mean over the run agrees to 6% (3.6% observed; a wrong factor or sign
+    // would be off by 100% or more). The residual is physical: the moving corners of the triangular
+    // release vary faster than the longitudinal period, so the response is not exactly
+    // quasi-static, and individual windows follow S(t) less tightly still.
+    CHECK(std::fabs(sum_avg / sum_rise - 1.0) < 0.06);
+    CHECK(worst / biggest < 0.2);
+}

@@ -150,3 +150,85 @@ TEST_CASE("P0.5-R1 b2 loss and unmodelled fields are rejected with a clear error
     p.sigmaOverride = {1.0};
     CHECK_THROWS_WITH_AS(derive_string(p), doctest::Contains("sigmaOverride"), RefError);
 }
+
+// Reviewer test (independent of the implementer's cases): a third string, B = 1e-3, L = 0.5 m, f1 =
+// 220 Hz, with clamped ends. The reference values are the roots of the exact clamped-clamped
+// beam-under-tension characteristic equation (not the pinned formula, not Fletcher's expansion):
+//   2 a b (1 - cosh(aL) cos(bL)) + (a^2 - b^2) sinh(aL) sin(bL) = 0,
+//   a^2, b^2 = (sqrt(T^2 + 4 EI rhoA w^2) +- T) / (2 EI).
+namespace {
+
+double clamped_det(const StringPhysics& ph, double w) {
+    const double s = std::sqrt(ph.tension * ph.tension + 4.0 * ph.ei * ph.rho_a * w * w);
+    const double a = std::sqrt((s + ph.tension) / (2.0 * ph.ei));
+    const double b = std::sqrt((s - ph.tension) / (2.0 * ph.ei));
+    return 2.0 * a * b * (1.0 - std::cosh(a * ph.length) * std::cos(b * ph.length)) +
+           (a * a - b * b) * std::sinh(a * ph.length) * std::sin(b * ph.length);
+}
+
+// n-th root in Hz, bracketed around the pinned value (the clamped value is higher by a few %).
+double clamped_frequency_hz(const StringPhysics& ph, int n) {
+    const double fp = stiff_string_frequency_hz(ph, n);
+    double lo = 2.0 * kPi * fp * 0.995;
+    double hi = 2.0 * kPi * fp * 1.06;
+    const double flo = clamped_det(ph, lo);
+    REQUIRE(flo * clamped_det(ph, hi) < 0.0);
+    for (int i = 0; i < 200; ++i) {
+        const double mid = 0.5 * (lo + hi);
+        (clamped_det(ph, mid) * flo > 0.0 ? lo : hi) = mid;
+    }
+    return 0.5 * (lo + hi) / (2.0 * kPi);
+}
+
+}  // namespace
+
+TEST_CASE("P0.5-T1 reviewer: third string (B 1e-3, L 0.5 m, clamped) converges at second order") {
+    StringParams params = steel_string(0.5, 220.0, 1e-3);
+    params.boundary = pme::Boundary::Clamped;
+    const StringPhysics ph = derive_string(params);
+    const int partials = 5;
+    std::vector<double> analytic;
+    for (int n = 1; n <= partials; ++n) {
+        analytic.push_back(clamped_frequency_hz(ph, n));
+    }
+    const double bb = kPi * kPi * ph.ei / (ph.tension * ph.length * ph.length);
+    const double fletcher = 1.0 + 2.0 * std::sqrt(bb) / kPi + 4.0 * bb / (kPi * kPi);
+    // Self-check of the characteristic equation against Fletcher's factor (partial 1).
+    CHECK(analytic[0] / stiff_string_frequency_hz(ph, 1) ==
+          doctest::Approx(fletcher).epsilon(1e-4));
+    const int grids[] = {32, 64, 128, 256};
+    std::vector<std::vector<double>> err(4);
+    for (int gi = 0; gi < 4; ++gi) {
+        const int n_int = grids[gi];
+        const double fs = 16000.0 * n_int / 32.0;
+        Scenario sc = string_scenario(params, n_int, fs, 0.5, 0.31, 0.27);
+        SimulationOptions so;
+        so.record_energy = false;
+        const Results r = simulate(sc, so);
+        // Start of the fit: the pinned scheme's discrete frequency scaled by the clamped/pinned
+        // ratio of the exact values (only the start; the error is measured against `analytic`).
+        std::vector<double> start;
+        for (int n = 1; n <= partials; ++n) {
+            const auto idx = static_cast<std::size_t>(n - 1);
+            start.push_back(string_scheme_frequency_hz(ph, n_int, n, 1.0 / fs, sc.theta) *
+                            analytic[idx] / stiff_string_frequency_hz(ph, n));
+        }
+        const auto f = measure_partials(r.signal("y"), fs, start);
+        for (int n = 1; n <= partials; ++n) {
+            const auto idx = static_cast<std::size_t>(n - 1);
+            err[static_cast<std::size_t>(gi)].push_back(std::fabs(f[idx] / analytic[idx] - 1.0));
+        }
+    }
+    for (int n = 0; n < partials; ++n) {
+        const auto idx = static_cast<std::size_t>(n);
+        for (std::size_t gi = 1; gi < 4; ++gi) {
+            INFO("partial " << n + 1 << " grid " << grids[gi] << " err " << err[gi][idx]
+                            << " previous " << err[gi - 1][idx]);
+            CHECK(err[gi][idx] < err[gi - 1][idx]);
+        }
+        const double order = std::log2(err[2][idx] / err[3][idx]);
+        INFO("partial " << n + 1 << " observed order " << order);
+        CHECK(order > 1.8);
+        CHECK(order < 2.2);
+    }
+}
