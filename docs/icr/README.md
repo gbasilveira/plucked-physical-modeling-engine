@@ -39,6 +39,8 @@ Non-blocking items from the ICR-0001 review (see [ICR-0001 "Application"](ICR-00
 - Stale "interfaces-v1" comments in `engine/include/pme/nonlinear.hpp` (lines 7, 16) and `engine/include/pme/pme.hpp` (line 5).
 - Redundant `pedal.soft` (1003) description.
 - `docs/dev/interfaces.md` lists non-audio functions under "Real-time functions".
+- `engine/include/pme/nonlinear.hpp` says the SAV types are declared privately by A5; A3 declares them (A5 adds the hammer potential). Comment only.
+- If SI-0010 is accepted: add `double muteFeltSigma{20.0}` to `Defaults` (compatible: new member with a default).
 
 ## Index
 
