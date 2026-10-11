@@ -88,8 +88,9 @@ TEST_CASE("D3-R2 a newer schema or unparsable text is rejected and leaves the pl
     const auto key = rig.plugin->urids().stateKey;
     const auto string = rig.plugin->urids().atomString;
     StateStore newer;
-    newer.put(key, string,
-              R"({"instrument":"","interfaces_version":2,"params":{"2001":-9},"plugin_version":"0","state_schema_version":99})");
+    newer.put(
+        key, string,
+        R"({"instrument":"","interfaces_version":2,"params":{"2001":-9},"plugin_version":"0","state_schema_version":99})");
     CHECK(rig.plugin->restore(StateStore::retrieve, &newer) != LV2_STATE_SUCCESS);
     StateStore garbage;
     garbage.put(key, string, "not json");
@@ -99,18 +100,19 @@ TEST_CASE("D3-R2 a newer schema or unparsable text is rejected and leaves the pl
     CHECK(rig.plugin->restore(StateStore::retrieve, &wrongType) == LV2_STATE_ERR_BAD_TYPE);
     StateStore empty;
     CHECK(rig.plugin->restore(StateStore::retrieve, &empty) == LV2_STATE_ERR_NO_PROPERTY);
-    CHECK(rig.plugin->controller().params().value(rig.plugin->controller().params().indexOf(2001)) ==
-          doctest::Approx(-3.0));
+    CHECK(rig.plugin->controller().params().value(
+              rig.plugin->controller().params().indexOf(2001)) == doctest::Approx(-3.0));
 }
 
 TEST_CASE("D3-R2 an unknown parameter id in the state is ignored") {
     Rig rig;
     StateStore store;
-    store.put(rig.plugin->urids().stateKey, rig.plugin->urids().atomString,
-              R"({"instrument":"","interfaces_version":2,"params":{"2001":-9,"999999":1},"plugin_version":"0","state_schema_version":1})");
+    store.put(
+        rig.plugin->urids().stateKey, rig.plugin->urids().atomString,
+        R"({"instrument":"","interfaces_version":2,"params":{"2001":-9,"999999":1},"plugin_version":"0","state_schema_version":1})");
     CHECK(rig.plugin->restore(StateStore::retrieve, &store) == LV2_STATE_SUCCESS);
-    CHECK(rig.plugin->controller().params().value(rig.plugin->controller().params().indexOf(2001)) ==
-          doctest::Approx(-9.0));
+    CHECK(rig.plugin->controller().params().value(
+              rig.plugin->controller().params().indexOf(2001)) == doctest::Approx(-9.0));
 }
 
 TEST_CASE("D3-R2 the worker job is trivially copyable and run never calls a main-thread function") {
@@ -197,7 +199,9 @@ TEST_CASE("D3-R2 an over-long instrument path is rejected and counted") {
     CHECK(rig.plugin->droppedInstrumentJobs() == 1);
 }
 
-TEST_CASE("D3-R2 without work:schedule instrument changes are ignored and ticks run in deactivate and save") {
+TEST_CASE(
+    "D3-R2 without work:schedule instrument changes are ignored and ticks run in deactivate and "
+    "save") {
     Rig rig(false);
     REQUIRE(rig.plugin->activate());
     CHECK_FALSE(rig.plugin->hasWorker());
@@ -217,7 +221,8 @@ TEST_CASE("D3-R2 without work:schedule instrument changes are ignored and ticks 
 TEST_CASE("D3-R2 patch:Get answers with patch:Set and restore reports the restored properties") {
     Rig rig;
     REQUIRE(rig.plugin->activate());
-    rig.plugin->controller().params().setValue(rig.plugin->controller().params().indexOf(5001), 0.5);
+    rig.plugin->controller().params().setValue(rig.plugin->controller().params().indexOf(5001),
+                                               0.5);
     rig.emptyInput();
     rig.run();
 
@@ -241,8 +246,9 @@ TEST_CASE("D3-R2 patch:Get answers with patch:Set and restore reports the restor
 
     // After a restore the next run reports everything without being asked.
     StateStore store;
-    store.put(rig.plugin->urids().stateKey, rig.plugin->urids().atomString,
-              R"({"instrument":"/r.json","interfaces_version":2,"params":{"5001":0.25},"plugin_version":"0","state_schema_version":1})");
+    store.put(
+        rig.plugin->urids().stateKey, rig.plugin->urids().atomString,
+        R"({"instrument":"/r.json","interfaces_version":2,"params":{"5001":0.25},"plugin_version":"0","state_schema_version":1})");
     REQUIRE(rig.plugin->restore(StateStore::retrieve, &store) == LV2_STATE_SUCCESS);
     rig.emptyInput();
     rig.run();
@@ -252,8 +258,8 @@ TEST_CASE("D3-R2 patch:Get answers with patch:Set and restore reports the restor
     bool structuralValue = false;
     for (const Reply& r : replies) {
         instrument = instrument || (r.property == rig.instrumentUrid() && r.path == "/r.json");
-        structuralValue = structuralValue ||
-                          (r.property == rig.structuralUrid(5001) && r.number == doctest::Approx(0.25));
+        structuralValue = structuralValue || (r.property == rig.structuralUrid(5001) &&
+                                              r.number == doctest::Approx(0.25));
     }
     CHECK(instrument);
     CHECK(structuralValue);

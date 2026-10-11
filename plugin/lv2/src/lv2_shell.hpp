@@ -46,7 +46,7 @@ inline constexpr std::uint32_t kDefaultMaxBlock = 4096;
 inline constexpr double kTickSeconds = 0.1;
 
 /// What the worker thread is asked to do.
-enum class JobKind : std::uint32_t { Instrument = 1, Tick = 2 };
+enum class JobKind : std::uint8_t { Instrument = 1, Tick = 2 };
 
 /// Worker job: fixed-size, trivially copyable, no pointers (the host copies it to the worker).
 struct Job {
@@ -92,9 +92,8 @@ class Plugin {
 public:
     /// Non-audio thread. Allocates. `map` is required. `schedule` and `log` may be null.
     /// `maxBlock` 0 means "not given by the host" (kDefaultMaxBlock).
-    Plugin(std::unique_ptr<plugin::EngineAdapter> engine, double sampleRate,
-           LV2_URID_Map* map, const LV2_Worker_Schedule* schedule, const LV2_Log_Log* log,
-           std::uint32_t maxBlock);
+    Plugin(std::unique_ptr<plugin::EngineAdapter> engine, double sampleRate, LV2_URID_Map* map,
+           const LV2_Worker_Schedule* schedule, const LV2_Log_Log* log, std::uint32_t maxBlock);
 
     Plugin(const Plugin&) = delete;
     Plugin& operator=(const Plugin&) = delete;

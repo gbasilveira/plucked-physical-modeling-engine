@@ -134,6 +134,6 @@ const LV2_Descriptor kDescriptor{pme::plugin::kLv2PluginUri,
 
 }  // namespace
 
-extern "C" LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor(std::uint32_t index) {
+LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor(std::uint32_t index) {
     return index == 0 ? &kDescriptor : nullptr;
 }

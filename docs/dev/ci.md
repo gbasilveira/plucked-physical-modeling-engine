@@ -218,3 +218,19 @@ is uploaded as `junit-reference-python-<system>`. The C++ tests of the reference
 (`ctest -R "P0.5"`) run in the `build` jobs like every other test; the default build leaves the
 Python module out.
 <!-- end P0.5 -->
+
+<!-- ---- D3: lv2 job ---- -->
+## D3: the `lv2` job
+
+`lv2 (linux)` is the last job of `pr.yml` (Linux only: the LV2 plug-in is built for Linux hosts).
+It installs Ninja, Clang with clang-tidy, `liblilv-dev`, `lilv-utils`, `lv2-dev` and `lv2lint`,
+prints their versions with `dpkg-query -W`, configures `linux-rt-safety` with
+`-DPME_BUILD_PLUGINS=ON -DPME_REQUIRE_LV2_TOOLS=ON` (a missing tool then fails the configuration
+instead of skipping `D3-T1` or `D3-T2`), builds, runs `ctest -R "^D3-"`, runs clang-tidy over the
+compile database of that build and uploads JUnit as `junit-lv2-linux`. The orchestrator adds `lv2`
+to the `needs` of the `traceability` job when it merges D3.
+
+lv2lint is not in the apt sources of `ubuntu-24.04`; the install step fails loudly until a verified
+upstream commit is pinned (open item of the D3 report). The LV2 specification bundles used by the
+tests come from the pinned LV2 source (`cmake/dependencies.cmake`, ADR-0003), not from `lv2-dev`.
+<!-- ---- end D3 ---- -->

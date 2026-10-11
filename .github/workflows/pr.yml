@@ -621,3 +621,60 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   # ---- end V1 ----
+
+  # ---- D3: LV2 plug-in ----
+  lv2:
+    name: lv2 (linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-lv2-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja, Clang with clang-tidy, lilv and the LV2 headers
+        # Clang writes the compile database, so that clang-tidy sees the same resource headers.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build "clang-${CLANG_APT_MAJOR}" "clang-tidy-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev" liblilv-dev lilv-utils lv2-dev
+          echo "CC=clang-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+          echo "CXX=clang++-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+      - name: Install lv2lint
+        # UNRESOLVED (D3 report): lv2lint is not in the apt sources of ubuntu-24.04. The brief
+        # requires building it from its upstream repository at an exact commit SHA read by the
+        # implementer; upstream was unreachable from the D3 session. Until the orchestrator
+        # supplies a verified SHA, this step fails loudly instead of skipping D3-T1.
+        run: |
+          if ! sudo apt-get install -y lv2lint; then
+            echo "::error::lv2lint is not available from apt; build it from upstream at a pinned commit (see docs/dev/lv2.md)"
+            exit 1
+          fi
+      - name: Tool versions (lv2lint, lilv, LV2)
+        run: |
+          dpkg-query -W lv2lint liblilv-dev lilv-utils lv2-dev
+          lv2lint --version || true
+      - name: Create the report directory
+        run: mkdir -p reports
+      - name: linux-rt-safety (LV2): configure
+        run: cmake --preset linux-rt-safety -DPME_BUILD_PLUGINS=ON -DPME_REQUIRE_LV2_TOOLS=ON
+      - name: linux-rt-safety (LV2): build
+        run: cmake --build --preset linux-rt-safety
+      - name: D3 tests (D3-T1 lv2lint, D3-T2 headless lilv host)
+        run: ctest --preset linux-rt-safety -R "^D3-" --no-tests=error --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-lv2-linux.xml"
+      - name: clang-tidy over plugin/lv2 (compile database of this build)
+        if: ${{ !cancelled() }}
+        run: python3 tools/ci/run_clang_tidy.py -p build/linux-rt-safety --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
+      - name: Job summary
+        if: ${{ always() }}
+        run: python3 tools/ci/junit_summary.py --title "ctest lv2 (linux)" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-lv2-linux
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+  # ---- end D3 ----

@@ -130,7 +130,8 @@ public:
     /// Wait until every scheduled job has run (bounded).
     bool waitIdle() {
         std::unique_lock lock(mutex_);
-        return cv_.wait_for(lock, std::chrono::seconds(5), [this] { return jobs_.empty() && !busy_; });
+        return cv_.wait_for(lock, std::chrono::seconds(5),
+                            [this] { return jobs_.empty() && !busy_; });
     }
 
     std::thread::id workerThread() const { return thread_.get_id(); }
@@ -312,7 +313,6 @@ struct Event {
     std::uint8_t midi[3];
 };
 
-
 int execute(LilvWorld* world, const LilvPlugin* plugin) {
     // ---- the descriptor as lilv reads it: port count, symbols, ranges, patch:writable ----------
     check(lilv_plugin_get_num_ports(plugin) == pme::lv2::kPortCount, "port count");
@@ -333,7 +333,8 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
         lilv_port_get_range(plugin, port, &def, &min, &max);
         check(def != nullptr && min != nullptr && max != nullptr, "control port range");
         if (def != nullptr && min != nullptr && max != nullptr) {
-            check(static_cast<double>(lilv_node_as_float(def)) == static_cast<float>(info.defaultValue),
+            check(static_cast<double>(lilv_node_as_float(def)) ==
+                      static_cast<float>(info.defaultValue),
                   "control port default");
             check(static_cast<double>(lilv_node_as_float(min)) == static_cast<float>(info.min),
                   "control port minimum");
@@ -351,7 +352,8 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
         for (const pme::ParamInfo& info : pme::paramRegistry()) {
             structural += info.cls == pme::ParamClass::Structural ? 1U : 0U;
         }
-        check(lilv_nodes_size(nodes) == structural + 1, "patch:writable count (structural + instrument)");
+        check(lilv_nodes_size(nodes) == structural + 1,
+              "patch:writable count (structural + instrument)");
         lilv_nodes_free(nodes);
         lilv_node_free(writable);
     }
@@ -382,19 +384,20 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
     lv2_atom_forge_init(&forge, urids.map());
 
     for (std::size_t i = 0; i < pme::lv2::kControlPortCount; ++i) {
-        host.controls[i] = static_cast<float>(pme::findParam(pme::lv2::kControlPortParams[i])->defaultValue);
+        host.controls[i] =
+            static_cast<float>(pme::findParam(pme::lv2::kControlPortParams[i])->defaultValue);
     }
     host.connectAll();
     lilv_instance_activate(host.instance);
 
     // The scenario of the brief (absolute frames).
     const std::array<Event, 6> scenario{{
-        {100, Event::Kind::Midi, {0x90, 60, 100}},                        // note on, key 60, vel 100
-        {1000, Event::Kind::Midi, {0xB0, 64, 127}},                       // CC64 127
-        {2000, Event::Kind::SetStructural, {0, 0, 0}},                    // patch:Set structural
-        {3000, Event::Kind::SetInstrument, {0, 0, 0}},                    // patch:Set instrument
-        {24000, Event::Kind::Midi, {0x80, 60, 0}},                        // note off
-        {30000, Event::Kind::Midi, {0xB0, 64, 0}},                        // CC64 0
+        {100, Event::Kind::Midi, {0x90, 60, 100}},      // note on, key 60, vel 100
+        {1000, Event::Kind::Midi, {0xB0, 64, 127}},     // CC64 127
+        {2000, Event::Kind::SetStructural, {0, 0, 0}},  // patch:Set structural
+        {3000, Event::Kind::SetInstrument, {0, 0, 0}},  // patch:Set instrument
+        {24000, Event::Kind::Midi, {0x80, 60, 0}},      // note off
+        {30000, Event::Kind::Midi, {0xB0, 64, 0}},      // CC64 0
     }};
     const std::size_t outputGainIndex = 3;  // output.gain is the fourth control port (2001)
     bool allFinite = true;
@@ -409,7 +412,8 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
         lv2_atom_forge_set_buffer(&forge, host.in.bytes(), kAtomBufferBytes);
         LV2_Atom_Forge_Frame seq;
         lv2_atom_forge_sequence_head(&forge, &seq, 0);
-        while (useScenario && nextEvent < scenario.size() && scenario[nextEvent].frame < frame + frames) {
+        while (useScenario && nextEvent < scenario.size() &&
+               scenario[nextEvent].frame < frame + frames) {
             const Event& e = scenario[nextEvent++];
             lv2_atom_forge_frame_time(&forge, e.frame - frame);
             switch (e.kind) {
@@ -444,7 +448,8 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
             host.controls[outputGainIndex] = -6.0F;  // a control-port change in block 3
         }
         host.notify.sequence()->atom.type = atomChunk;
-        host.notify.sequence()->atom.size = static_cast<std::uint32_t>(kAtomBufferBytes - sizeof(LV2_Atom));
+        host.notify.sequence()->atom.size =
+            static_cast<std::uint32_t>(kAtomBufferBytes - sizeof(LV2_Atom));
         host.left.fill(1.0F);
         host.right.fill(1.0F);
         lilv_instance_run(host.instance, frames);
@@ -460,7 +465,8 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
                 }
                 LV2_ATOM_OBJECT_FOREACH(obj, prop) {
                     if (prop->key == patchProperty &&
-                        reinterpret_cast<const LV2_Atom_URID*>(&prop->value)->body == instrumentProp) {
+                        reinterpret_cast<const LV2_Atom_URID*>(&prop->value)->body ==
+                            instrumentProp) {
                         ++notifyInstrumentReplies;
                     }
                 }
@@ -492,7 +498,8 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
     // ---- state: save -> restore into a second instance -> save is byte identical ----------------
     StateMap saved;
     check(host.stateIface->save(lilv_instance_get_handle(host.instance), storeCallback, &saved,
-                                LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE, nullptr) == LV2_STATE_SUCCESS,
+                                LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE,
+                                nullptr) == LV2_STATE_SUCCESS,
           "save");
     check(saved.size() == 1, "one state property");
     if (!saved.empty()) {
@@ -513,7 +520,8 @@ int execute(LilvWorld* world, const LilvPlugin* plugin) {
             second.controls = host.controls;
             second.connectAll();
             check(second.stateIface->restore(lilv_instance_get_handle(second.instance),
-                                             retrieveCallback, &saved, 0, nullptr) == LV2_STATE_SUCCESS,
+                                             retrieveCallback, &saved, 0,
+                                             nullptr) == LV2_STATE_SUCCESS,
                   "restore");
             lilv_instance_activate(second.instance);
             lilv_instance_run(second.instance, kBlock);

@@ -70,7 +70,8 @@ TEST_CASE("D3-R2 the generated Turtle names every continuous entry once as a con
     CHECK(occurrences(ttl, "a lv2:InputPort, lv2:ControlPort") == kControlPortCount);
 }
 
-TEST_CASE("D3-R2 the generated Turtle names every structural entry once as a patch:writable parameter") {
+TEST_CASE(
+    "D3-R2 the generated Turtle names every structural entry once as a patch:writable parameter") {
     const std::string ttl = plugin();
     std::size_t structural = 0;
     for (const pme::ParamInfo& info : pme::paramRegistry()) {

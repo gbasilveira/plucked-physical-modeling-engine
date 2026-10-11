@@ -40,12 +40,12 @@ TEST_CASE("D3-R1 MIDI and patch:Set events arrive once with exact offsets, value
 
     const pme::ParamInfo& s0 = *pme::findParam(5001);  // structural
     rig.begin()
-        .midi(100, 0x90, 60, 100)                  // note on, key 60, velocity 100
-        .midi(200, 0xB0, 64, 127)                  // CC64: sustain
+        .midi(100, 0x90, 60, 100)  // note on, key 60, velocity 100
+        .midi(200, 0xB0, 64, 127)  // CC64: sustain
         .setDouble(300, rig.structuralUrid(5001), 0.75)
-        .midi(400, 0x80, 60, 64)                   // note off
-        .midi(450, 0x90, 62, 0)                    // note on with velocity 0 = note off
-        .midi(500, 0xB0, 66, 100)                  // CC66 sostenuto
+        .midi(400, 0x80, 60, 64)   // note off
+        .midi(450, 0x90, 62, 0)    // note on with velocity 0 = note off
+        .midi(500, 0xB0, 66, 100)  // CC66 sostenuto
         .end();
     rig.run();
 
@@ -147,8 +147,9 @@ TEST_CASE("D3-R1 every port value is re-sent after activate and after restore") 
 
     // After restore the next run re-sends every port value: the port values win over the JSON.
     StateStore store;
-    store.put(rig.plugin->urids().stateKey, rig.plugin->urids().atomString,
-              R"({"instrument":"","interfaces_version":2,"params":{"2001":-12.5},"plugin_version":"0","state_schema_version":1})");
+    store.put(
+        rig.plugin->urids().stateKey, rig.plugin->urids().atomString,
+        R"({"instrument":"","interfaces_version":2,"params":{"2001":-12.5},"plugin_version":"0","state_schema_version":1})");
     REQUIRE(rig.plugin->restore(StateStore::retrieve, &store) == LV2_STATE_SUCCESS);
     rig.engine->clearRecording();
     rig.emptyInput();
@@ -225,7 +226,7 @@ TEST_CASE("D3-R1 activation passes the host sample rate and maximum block length
 TEST_CASE("D3-R1 a block larger than the maximum is rendered in chunks with re-based offsets") {
     Rig rig;
     REQUIRE(rig.plugin->activate());
-    std::vector<float> big(kRigBlock * 2, 1.0F);
+    std::vector<float> big(std::size_t{kRigBlock} * 2, 1.0F);
     rig.plugin->connectPort(kPortOutLeft, big.data());
     rig.plugin->connectPort(kPortOutRight, big.data());
     rig.begin().midi(700, 0x90, 60, 100).end();

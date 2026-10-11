@@ -165,7 +165,7 @@ struct AtomBuffer {
 /// Builds an input sequence (frame time unit) with the forge.
 class SequenceBuilder {
 public:
-    SequenceBuilder(AtomBuffer& buffer, UridMap& urids) : urids_(urids) {
+    SequenceBuilder(AtomBuffer& buffer, UridMap& urids) {
         lv2_atom_forge_init(&forge_, urids.map());
         lv2_atom_forge_set_buffer(&forge_, buffer.bytes(), buffer.size());
         lv2_atom_forge_sequence_head(&forge_, &frame_, 0);
@@ -220,7 +220,6 @@ public:
     void end() { lv2_atom_forge_pop(&forge_, &frame_); }
 
 private:
-    UridMap& urids_;
     LV2_Atom_Forge forge_{};
     LV2_Atom_Forge_Frame frame_{};
     LV2_URID midi_{};
@@ -315,13 +314,12 @@ struct StateStore {
 constexpr std::uint32_t kRigBlock = 512;
 
 struct Rig {
-    explicit Rig(bool withWorker = true, Status prepare = Status::Ok)
-        : in(), notify(8192) {
+    explicit Rig(bool withWorker = true, Status prepare = Status::Ok) : in(), notify(8192) {
         auto engineOwned = std::make_unique<RecEngine>(prepare);
         engine = engineOwned.get();
-        plugin = std::make_unique<Plugin>(std::move(engineOwned), 48000.0, urids.map(),
-                                          withWorker ? &scheduler.feature : nullptr, nullptr,
-                                          kRigBlock);
+        plugin =
+            std::make_unique<Plugin>(std::move(engineOwned), 48000.0, urids.map(),
+                                     withWorker ? &scheduler.feature : nullptr, nullptr, kRigBlock);
         left.assign(kRigBlock, 1.0F);
         right.assign(kRigBlock, 1.0F);
         for (std::size_t i = 0; i < kControlPortCount; ++i) {
@@ -341,7 +339,7 @@ struct Rig {
     /// A fresh, empty input sequence; fill it with the returned builder, then call `end()`.
     SequenceBuilder begin() {
         std::memset(in.bytes(), 0, in.size());
-        return SequenceBuilder(in, urids);
+        return {in, urids};
     }
     /// An empty input sequence.
     void emptyInput() { begin().end(); }

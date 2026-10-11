@@ -49,9 +49,8 @@ bool atomToDouble(const Urids& u, const LV2_Atom* atom, double& out) noexcept {
 
 }  // namespace
 
-Plugin::Plugin(std::unique_ptr<plugin::EngineAdapter> engine, double sampleRate,
-               LV2_URID_Map* map, const LV2_Worker_Schedule* schedule, const LV2_Log_Log* log,
-               std::uint32_t maxBlock)
+Plugin::Plugin(std::unique_ptr<plugin::EngineAdapter> engine, double sampleRate, LV2_URID_Map* map,
+               const LV2_Worker_Schedule* schedule, const LV2_Log_Log* log, std::uint32_t maxBlock)
     : controller_(std::move(engine)),
       map_(map),
       schedule_(schedule),
@@ -320,9 +319,9 @@ void Plugin::sendControlPorts() noexcept {
             // exact default, so that float rounding never makes a parameter look "changed" in the
             // state (captureState stores values that differ from the default).
             const double exact = controlDefaults_[i];
-            controller_.paramEvent(0, kControlPortParams[i],
-                                   value == static_cast<float>(exact) ? exact
-                                                                      : static_cast<double>(value));
+            controller_.paramEvent(
+                0, kControlPortParams[i],
+                value == static_cast<float>(exact) ? exact : static_cast<double>(value));
         }
     }
     resendAll_ = false;
