@@ -32,8 +32,10 @@ set_target_properties(pme_interface_tests PROPERTIES
   COMPILE_WARNING_AS_ERROR ON)
 # pme::toString(Status) is found by ADL and would hijack doctest's unqualified toString(); doctest's
 # DOUBLE_STRINGIFY option makes doctest convert its result (a const char*) again.
+# USE_STD_HEADERS: MSVC needs a complete std::ostream when doctest probes operator<< for string_view.
 target_compile_definitions(pme_interface_tests PRIVATE
   DOCTEST_CONFIG_DOUBLE_STRINGIFY
+  DOCTEST_CONFIG_USE_STD_HEADERS
   PME_T1_GENERATED_TU_COUNT=${PME_T1_SOURCE_COUNT}
   "PME_INCLUDE_PME_DIR=\"${PROJECT_SOURCE_DIR}/engine/include/pme\"")
 
