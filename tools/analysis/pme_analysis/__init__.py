@@ -3,7 +3,7 @@
 
 Python mirror of the C++ library ``pme_analysis`` (tools/analysis/include/pme/analysis); same
 function set, same results within the P0.3-T1 tolerances. NumPy and SciPy only; never used by the
-engine. See docs/dev/analysis.md.
+engine. See docs/dev/signal-analysis.md.
 """
 
 from __future__ import annotations

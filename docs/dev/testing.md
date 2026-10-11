@@ -6,7 +6,7 @@ Background: PLAN-VAL. The framework implements no engine behaviour.
 This note describes the conventions every test follows, how to add and run a test, how oracle tests
 update the registry, the golden-feature and benchmark workflows, and the isolation rule that keeps
 test code out of the engine. The signal-analysis library is described in
-[analysis.md](analysis.md).
+[signal-analysis.md](signal-analysis.md).
 
 ## Naming
 
@@ -119,7 +119,7 @@ pull request as the test and never edits the SPEC columns.
 ## Golden features
 
 Golden references are JSON feature files, not audio. Format, tolerances and the comparison tools are
-in [analysis.md](analysis.md). A golden-feature test measures the features of an offline render with
+in [signal-analysis.md](signal-analysis.md). A golden-feature test measures the features of an offline render with
 `pme_analysis`, then compares them with the committed reference using `pme_golden_compare` or the
 library function `compare_golden`, and carries the label `golden`.
 
@@ -163,5 +163,5 @@ error naming the offender otherwise (P0.3-R5, ADR-0005).
 | --- | --- |
 | P0.3-R1 | `cmake/pme_testing.cmake`, `engine/tests/framework/`, `tools/tests/test_p0_3_r1.py` |
 | P0.3-R2 | `engine/tests/oracles.md` |
-| P0.3-R3, R4, R5 | `tools/analysis/` ([analysis.md](analysis.md)) |
+| P0.3-R3, R4, R5 | `tools/analysis/` ([signal-analysis.md](signal-analysis.md)) |
 | P0.3-R6 | `tools/bench/`, `cmake/pme_testing.cmake` (`pme_add_benchmark`) |

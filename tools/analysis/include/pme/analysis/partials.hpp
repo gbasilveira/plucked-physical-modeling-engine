@@ -2,7 +2,7 @@
 // Partial tracking (P0.3-R3): frequency, decay rate, amplitude and phase of the damped sinusoids in
 // a signal, plus their amplitude envelopes over time. Serves SPEC-ORC rows ORC-01 (oscillator
 // accuracy), ORC-16 (sample-rate independence) and ORC-07 (unison coupling) and the golden-feature
-// files (P0.3-R4). float64 throughout; method in docs/dev/analysis.md.
+// files (P0.3-R4). float64 throughout; method in docs/dev/signal-analysis.md.
 #pragma once
 
 #include <cstddef>

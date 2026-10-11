@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Scalar measurements used by validation tests and golden features (P0.3-R3): decay rate and T60,
 // double-decay fit, inharmonicity, contact time, spectral envelope and energy accounting. float64
-// throughout; methods in docs/dev/analysis.md.
+// throughout; methods in docs/dev/signal-analysis.md.
 #pragma once
 
 #include <cstddef>

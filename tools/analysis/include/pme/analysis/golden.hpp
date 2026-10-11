@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Golden-feature files (P0.3-R4): the features of a render (partial frequencies, decay rates,
 // spectral envelope, ...) stored as JSON and compared within per-feature tolerances. The format is
-// described by tools/analysis/golden-features.schema.json and docs/dev/analysis.md. Serves the
+// described by tools/analysis/golden-features.schema.json and docs/dev/signal-analysis.md. Serves the
 // golden-feature tests of the Testing policy and SPEC-ORC rows ORC-01, ORC-08, ORC-16 and ORC-17.
 #pragma once
 
