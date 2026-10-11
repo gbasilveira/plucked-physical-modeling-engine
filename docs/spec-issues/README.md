@@ -40,3 +40,4 @@ Decision, human reviewer (for physics or numerics), SPEC commit, affected phases
 | [SI-0006](SI-0006-compiled-instrument-retirement.md) | No retire mechanism for the previous CompiledInstrument | accepted; route ICR-0001 | C1, C4, C6 (until interfaces-v2) |
 | [SI-0007](SI-0007-parameter-registry.md) | Parameter registry ranges, soft-pedal duplication, output gains, f_max | accepted; route ICR-0001 | C4 (until interfaces-v2) |
 | [SI-0008](SI-0008-oscillator-coefficient-cancellation.md) | SPEC-OSC ω̂²Δt² formula loses digits at small ωΔt; exact sech form proposed | resolved (orchestrator default; flagged for owner review) | |
+| [SI-0009](SI-0009-orc02-float32-energy-tolerance.md) | ORC-02 float32 energy tolerance 10⁻⁵ is below float32 round-off; 24 u√N / (1 − ω̂²Δt²/4) at named frequencies | resolved (orchestrator default; flagged for owner review) | |

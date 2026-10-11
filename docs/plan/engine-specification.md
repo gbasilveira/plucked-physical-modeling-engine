@@ -779,7 +779,7 @@ Each block has an analytic or reference answer that the code MUST reproduce befo
 | Test | Setup | Expected | Tolerance |
 | --- | --- | --- | --- |
 | Oscillator accuracy ✓ | One mode at 27.5 Hz, 261.6 Hz, 4186 Hz; T60 = 20 s; 48 kHz; float32 difference form | Frequency ω\_d/2π and decay e^(−σt) | 0.01 cent; T60 within 0.5% (run: under 0.001 cent) |
-| Oscillator energy | Lossless mode, 10 s | H^(n+½) constant | 10⁻¹² relative in float64; 10⁻⁵ in float32 |
+| Oscillator energy | Lossless mode, 10 s; float32 at 48 kHz (N = 480 000) for 27.5 Hz, 4186 Hz and ω\_dΔt = 0.9π, none within 1% of fs/6, fs/4 or fs/3 | H^(n+½) constant (float32: bounded round-off drift) | 10⁻¹² relative in float64; in float32 24 u√N / (1 − ω̂²Δt²/4), u = 2⁻²⁴: 9.9 × 10⁻⁴ at 27.5 Hz, 1.07 × 10⁻³ at 4186 Hz, 4.05 × 10⁻² at 0.9π ([SI-0009](../spec-issues/SI-0009-orc02-float32-energy-tolerance.md)) |
 | Stiff-string frequencies | Compiled table vs n f₀ √(1 + B n²) | Exact formula | 10⁻⁹ relative |
 | Tension for pitch ✓ | Closed-form T, then first partial | f₁ target | 10⁻⁹ relative |
 | Window shape ✓ | Raised-cosine W(k) vs quadrature, n up to 60 | Same value | 10⁻⁹ relative |
