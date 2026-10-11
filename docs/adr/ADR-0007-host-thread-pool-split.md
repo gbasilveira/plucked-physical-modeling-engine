@@ -1,6 +1,6 @@
 # ADR-0007: CLAP host thread pool — shell side in D1, engine routing in D6
 
-- **Status:** Proposed (needs the orchestrator's approval; it defers part of D1-R6)
+- **Status:** Accepted (2026-10-11; accepted by the orchestrator as the recommended default under the owner's proceed instruction; the owner may reverse it)
 - **Date:** 2026-10-11
 - **Deciders:** the planner (Opus), while briefing D1, under the Software guidelines rule "Every decision not fixed by SPEC or PLAN gets an ADR" and the definition of done ("explicitly deferred by an approved ADR")
 - **Phase:** D1 (D1-R6)
@@ -29,7 +29,7 @@ D1 implements the shell half of D1-R6: it detects the host's `clap.thread-pool` 
 
 - D1 reports D1-R6 as `deferred` (engine routing) with this ADR, and lists the shell-side part as delivered in `notes`. The shell's task-runner interface is documented in docs/dev/clap-shell.md so that C5-R5 can implement the engine side against it.
 - C5's brief must reference this ADR: C5-R5 defines the engine-side adapter and raises the ICR that exposes it; C5-T3 uses a mock host.
-- D6's brief must include connecting the runner to the engine and a test that the CLAP host pool executes the engine's tasks with bit-identical output for any thread count (SPEC-EXEC).
+- The D6 card's description records the inherited routing clause. D6's brief must include connecting the runner to the engine and a test that the CLAP host pool executes the engine's tasks with bit-identical output for any thread count (SPEC-EXEC).
 - G3 requires D1–D6 complete, so the deferral is closed before G3.
 
 ## Verification

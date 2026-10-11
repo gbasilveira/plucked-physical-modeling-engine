@@ -90,7 +90,7 @@ Your job: decide whether the D1 implementer's work meets the D1 card, SPEC-API, 
 - [ ] Reviewer approval recorded on the pull request.
 - [ ] Handoff report submitted and consistent with CI results.
 
-For D1: nothing under engine/src (coverage gate and baselines do not apply). D1-R6's deferral needs ADR-0007 Accepted before D1 is marked complete. There is no pull request; the orchestrator records your verdict.
+For D1: nothing under engine/src (coverage gate and baselines do not apply). D1-R6's deferral is covered by ADR-0007 (Accepted). There is no pull request; the orchestrator records your verdict.
 
 ## Output
 

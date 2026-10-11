@@ -731,7 +731,7 @@ Track D wraps the engine as CLAP, VST3, AUv2 and LV2 plug-ins and a standalone a
 ### D6 Real-engine integration
 
 - **Mode:** sequential after G2 and D1–D5. **Depends on:** G2, D1, D2, D3, D4, D5.
-- **Description:** replaces the stub with the real engine in every format and proves the plug-ins behave in hosts.
+- **Description:** replaces the stub with the real engine in every format and proves the plug-ins behave in hosts. It inherits the engine-routing half of D1-R6 (ADR-0007): D6-R1 connects the D1 shell's task runner to the engine-side host-pool adapter from C5-R5, and D6-T2 covers the CLAP host pool with bit-identical output for any thread count (SPEC-EXEC).
 - **Requirements:**
   1. D6-R1 Real engine in all formats, using the host thread pool where available.
   2. D6-R2 CPU meter and diagnostics wired to the GUI.
