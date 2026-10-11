@@ -38,8 +38,8 @@ Maintained by the orchestrator (Opus). Status values: not started, ready, in pro
 | P4 | Jawari, thread and sawari | P | not started |  |  |  |
 | P5 | Bending and time-varying tension | P | not started |  |  |  |
 | P6 | Plucked-instrument integration | P | not started |  |  |  |
-| D1 | CLAP plug-in shell | D | not started |  |  |  |
-| D2 | VST3, AUv2 and standalone | D | not started |  |  |  |
+| D1 | CLAP plug-in shell | D | ready |  |  | Depends on G0 (passed). Briefs: docs/agents/briefs/D1-implementer.md, D1-code-reviewer.md; no test-author. Start from a commit containing the ICR-0001 application (interfaces-v2). D1's first commit (cmake/dependencies.cmake: PME_BUILD_PLUGINS, PME_BUILD_PYTHON_BINDINGS) should be merged early; P0.5's Python job needs it. D1-R6 engine routing deferred to D6 by ADR-0007 (Proposed; orchestrator approval needed before D1 completes). Plug-in identifiers provisional until D-3. |
+| D2 | VST3, AUv2 and standalone | D | not started |  |  | Waits for D1 and decision D-3 (product name and plug-in identifiers; open). |
 | D3 | LV2 plug-in | D | not started |  |  |  |
 | D4 | GUI | D | not started |  |  |  |
 | D5 | Instrument and preset management | D | not started |  |  |  |
