@@ -65,6 +65,22 @@
       "enum"
     ]
   ],
+  "bad-side-huge.json": [
+    [
+      "/instrument/groups/0/segments/0/barriers/0/side",
+      "enum"
+    ],
+    [
+      "/instrument/groups/0/segments/0/barriers/0/side",
+      "range"
+    ]
+  ],
+  "lone-surrogate.json": [
+    [
+      "",
+      "parse"
+    ]
+  ],
   "duplicate-key.json": [
     [
       "/instrument/groups/1/key",

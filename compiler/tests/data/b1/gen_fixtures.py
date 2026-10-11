@@ -341,6 +341,18 @@ def malformed() -> dict[str, tuple[str, list[tuple[str, str]]]]:
         mutated(lambda d: _segment(d).update(barriers=[_barrier(side=0)])),
         [(f"{seg}/barriers/0/side", "enum")],
     )
+    add(
+        "bad-side-huge",
+        mutated(lambda d: _segment(d).update(barriers=[_barrier(side=2**63)])),
+        [(f"{seg}/barriers/0/side", "enum"), (f"{seg}/barriers/0/side", "range")],
+    )
+    add(
+        "lone-surrogate",
+        json.dumps(base_document(), indent=2).replace(
+            '"name": "test-monochord"', '"name": "\\ud800"'
+        ),
+        [("", "parse")],
+    )
 
     def dup(d: dict[str, Any]) -> None:
         d["instrument"]["groups"].append(copy.deepcopy(d["instrument"]["groups"][0]))

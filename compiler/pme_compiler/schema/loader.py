@@ -21,6 +21,8 @@ from pme_compiler.schema.errors import InstrumentError, LoadError
 from pme_compiler.schema.fields import MAX_DEPTH
 from pme_compiler.schema.validate import process_document
 
+BOM = "\N{ZERO WIDTH NO-BREAK SPACE}"
+
 
 def _too_deep(text: str) -> bool:
     """True if arrays and objects nest deeper than MAX_DEPTH (strings and escapes are skipped)."""
@@ -46,6 +48,21 @@ def _too_deep(text: str) -> bool:
     return False
 
 
+def _has_lone_surrogate(node: Any) -> bool:
+    """True if a key or string value holds an unpaired surrogate (not encodable as UTF-8)."""
+    if isinstance(node, str):
+        try:
+            node.encode("utf-8")
+        except UnicodeEncodeError:
+            return True
+        return False
+    if isinstance(node, dict):
+        return any(_has_lone_surrogate(k) or _has_lone_surrogate(v) for k, v in node.items())
+    if isinstance(node, list):
+        return any(_has_lone_surrogate(v) for v in node)
+    return False
+
+
 def _parse_float(text: str) -> float:
     value = float(text)
     if not math.isfinite(value):
@@ -59,17 +76,18 @@ def _reject_constant(name: str) -> Any:
 
 def parse_text(text: str) -> tuple[Any, list[LoadError]]:
     """Parse JSON text; errors are ``parse`` or ``structure`` at the document root."""
-    if text.startswith("﻿"):
+    if text.startswith(BOM):
         return None, [LoadError("", "parse", "a byte order mark is not allowed")]
     if _too_deep(text):
         return None, [LoadError("", "structure", f"nesting is deeper than {MAX_DEPTH} levels")]
     try:
-        return (
-            json.loads(text, parse_float=_parse_float, parse_constant=_reject_constant),
-            [],
-        )
+        document = json.loads(text, parse_float=_parse_float, parse_constant=_reject_constant)
     except (ValueError, RecursionError):
         return None, [LoadError("", "parse", "the text is not valid JSON")]
+    if _has_lone_surrogate(document):
+        # Python accepts an unpaired \uD800-style escape; the C++ parser (and UTF-8) does not.
+        return None, [LoadError("", "parse", "the text is not valid JSON")]
+    return document, []
 
 
 def try_loads(

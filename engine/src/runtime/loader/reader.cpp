@@ -135,6 +135,17 @@ std::string describe(const Bound& b) {
     return text;
 }
 
+// An integer that does not fit in 64 bits violates every bound; JSON Schema also reports `enum`
+// for it when the member has an enumeration, so this does too.
+bool rejectOutOfRange(const Reader& c, const IntRule& rule) {
+    c.error(Code::Range, "integer out of range");
+    if (rule.hasOneOf) {
+        c.error(Code::Enum, "expected one of: " + std::to_string(rule.oneOf[0]) + ", " +
+                                std::to_string(rule.oneOf[1]));
+    }
+    return false;
+}
+
 bool isHash(const std::string& s) {
     if (s.size() != 71 || s.compare(0, 7, "sha256:") != 0) {
         return false;
@@ -303,8 +314,7 @@ bool ObjectScope::checkInteger(const Reader& c, std::int64_t& out, const IntRule
     if (n.is_number_unsigned()) {
         const auto u = n.get<std::uint64_t>();
         if (u > static_cast<std::uint64_t>(kInt64Max)) {
-            c.error(Code::Range, "integer out of range");
-            return false;
+            return rejectOutOfRange(c, rule);
         }
         v = static_cast<std::int64_t>(u);
     } else if (n.is_number_integer()) {
@@ -316,8 +326,7 @@ bool ObjectScope::checkInteger(const Reader& c, std::int64_t& out, const IntRule
             return false;
         }
         if (d < -9.0e18 || d > 9.0e18) {
-            c.error(Code::Range, "integer out of range");
-            return false;
+            return rejectOutOfRange(c, rule);
         }
         v = static_cast<std::int64_t>(d);
     } else {
