@@ -462,7 +462,7 @@ P ∈ \[0, 1\] is sustain pedal depth; P₀ and P₁ bound the half-pedal region
 
 **Timing.** e follows e\_target with a one-pole time constant: τ\_up = 4 ms when lifting, τ\_down when landing. Faster key release lands faster: τ\_down = τ₀ / (1 + k\_r ν\_rel) with release velocity ν\_rel ∈ \[0, 1\], defaults τ₀ = 12 ms and k\_r = 2.
 
-**Sostenuto.** When the sostenuto pedal goes down, every key whose damper is lifted by its key at that instant is latched with l\_key = 1 until the pedal is released. Keys pressed later behave normally.
+**Sostenuto.** When the sostenuto pedal goes down, every key whose damper is lifted by its key at that instant is latched with l\_key = 1 until the pedal is released. Keys pressed later behave normally. The pedal is down while its depth is ≥ 0.5 and released when it falls below 0.5 (no hysteresis); at the sample where it goes down, a key is latched when its l\_key ≥ 0.5 (a held key has l\_key = 1), and latched keys keep l\_key = 1 until the pedal is released, whatever their key events. Keys without a damper are not affected ([SI-0016](../spec-issues/SI-0016-sostenuto-thresholds.md)).
 
 **Undamped notes.** Each key has a hasDamper flag; the top of a piano keyboard (typically the highest 18–20 keys) has none and always behaves as l = 1.
 
