@@ -36,13 +36,13 @@ Your job: decide whether the V1 implementer's work meets the V1 card, the Softwa
 
 1. V1-R1 A script extracts requirement and test IDs from this plan, the code and test results, and builds a traceability matrix.
 2. V1-R2 The matrix shows, per phase, requirements without tests and tests that fail or are missing.
-3. V1-R3 Every ORC row is implemented and passing by the gate that needs it (ORC-01 to 13 and 16 to 19 by G2; ORC-14 and 15 by G6).
+3. V1-R3 Every ORC row is implemented and passing by the gate that needs it, as the Gates table and engine/tests/oracles.md assign them (ORC-01 to 09, 11 to 13 and 19 by G1; ORC-16 to 18 by G2; ORC-10, 14 and 15 by G6).
 4. V1-R4 The matrix is published as a CI artifact on every pull request and nightly.
 
 ## Tests that must pass
 
 - **V1-T1** a deliberately removed test shows up as a gap;
-- **V1-T2** the matrix for the main branch has no gaps for completed phases.
+- **V1-T2** the matrix for the main branch has no gaps for completed phases, except one-off demonstration tests that a passed gate report evidences, each listed in tools/trace/known-gaps.json with owner `gate G<n>` and a reason citing that report (the allow-list holds no other entry).
 
 ## Review checklist for V1
 
