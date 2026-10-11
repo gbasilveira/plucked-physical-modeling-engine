@@ -27,6 +27,7 @@ env:
   CLANG_APT_MAJOR: "18"
 
 jobs:
+  # Covers: P0.1-R2, P0.2-R2
   sanitizers:
     name: sanitizers (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
@@ -131,6 +132,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  # Covers: P0.1-R2
   coverage-build:
     # Compile check of the coverage presets on macOS and Windows; nothing is run or measured.
     name: coverage-build (${{ matrix.system }})
@@ -171,6 +173,7 @@ jobs:
           PRESET: ${{ matrix.preset }}
         run: cmake --build --preset "$PRESET"
 
+  # Covers: P0.2-R2
   # The three jobs below are present and green but initially empty: each runs the CTest tests
   # carrying its label, and succeeds with a message while no such test exists. Later phases add
   # tests with the labels perf (V2), fuzz (C4, C6) and soak (V2).

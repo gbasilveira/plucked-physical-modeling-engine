@@ -34,6 +34,7 @@ env:
   PME_CLANG_FORMAT: "uvx clang-format==18.1.8"
 
 jobs:
+  # Covers: P0.1-R3, P0.2-R4
   lint:
     name: lint
     runs-on: ubuntu-24.04
@@ -93,6 +94,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: python3 tools/ci/run_clang_tidy.py -p build/lint-debug -p build/lint-rt --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
 
+  # Covers: P0.1-R1, P0.1-R2, P0.1-T1, P0.2-R1
   build:
     name: build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
@@ -277,6 +279,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # Covers: P0.1-R3
   python:
     name: python (${{ matrix.system }})
     runs-on: ${{ matrix.os }}
@@ -316,6 +319,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # Covers: P0.1-R2
   coverage:
     name: coverage
     runs-on: ubuntu-24.04
@@ -367,6 +371,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # Covers: P0.1-R4
   deps:
     name: deps
     runs-on: ubuntu-24.04

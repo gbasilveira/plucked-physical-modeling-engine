@@ -25,6 +25,7 @@ def row(matrix: dict[str, object], orc: str) -> dict[str, object]:
     return next(r for r in rows if r["id"] == orc)
 
 
+# Covers: P0.3-R2
 def test_v1_r3_the_real_registry_has_nineteen_rows() -> None:
     """V1-R3: engine/tests/oracles.md parses into ORC-01 to ORC-19 with owner, gate and status."""
     rows = parse_oracle_registry((ROOT / REGISTRY).read_text(encoding="utf-8"))

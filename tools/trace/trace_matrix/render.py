@@ -231,6 +231,10 @@ def render_markdown(matrix: dict[str, Any]) -> str:
     if enforced:
         lines += ["", "Enforced gaps (these fail the `traceability` job):", ""]
         lines += [f"- `{g['id']}` ({g['phase']}, {g['kind']}): {g['detail']}" for g in enforced]
+    known = [g for g in matrix["gaps"] if g["known"]]
+    if known:
+        lines += ["", "Allow-listed gaps (tools/trace/known-gaps.json):", ""]
+        lines += [f"- `{g['id']}` ({g['phase']}, {g['kind']})" for g in known]
     stale = matrix["stale_known_gaps"]
     if stale:
         lines += [

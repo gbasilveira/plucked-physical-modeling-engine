@@ -112,6 +112,7 @@ def test_v1_r1_python_test_names_map_to_ids() -> None:
     assert name_id("P0.4-T3 parameter IDs are unique") == "P0.4-T3"
     assert name_id("ORC-17 sympathetic") == "ORC-17"
     assert name_id("pme_bench_smoke") is None
+    assert name_id("P0.4-R4_params_json_matches_registry") == "P0.4-R4"
     assert name_id("A1-T10x") is None  # the ID must be followed by a space
     assert detect_system("junit-build-macos-arm64", None) == "macos"
     assert detect_system("junit-sanitizers-windows-asan", None) == "windows"

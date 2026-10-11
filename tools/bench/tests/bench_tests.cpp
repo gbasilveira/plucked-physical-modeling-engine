@@ -36,6 +36,7 @@ TEST_CASE("P0.3-T3 harness reports median and minimum and IQR per call") {
     CHECK(r.iqr_ns >= 0.0);
 }
 
+// Covers: P0.3-R6
 TEST_CASE("P0.3-T3 harness JSON has schema_version 1 and machine and build and results") {
     pme::bench::Options opt;
     opt.repetitions = 10;

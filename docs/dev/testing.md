@@ -25,6 +25,15 @@ Every test name begins with a requirement, test or oracle ID.
 - **Python (pytest).** The function is `test_<id>_<what>` with the ID lower-cased and `.` and `-`
   replaced by `_` (`test_p0_2_t2_misformatted_file_fails`, `test_orc_01_oscillator_accuracy`), and its
   docstring begins with the ID (`"""P0.2-T2: a misformatted file fails."""`).
+- **CMake-registered tests** (`add_test(NAME ...)`) follow the same rule; the ID may be followed by
+  a space or an underscore (`P0.4-R4_params_json_matches_registry`).
+- **Covers annotations (V1).** A requirement is covered by a test whose name begins with its ID. A
+  test or CI step that verifies other IDs too carries a `Covers:` comment on the line(s) directly
+  above it: `// Covers: P0.2-R4, P0.2-R5` above a `TEST_CASE`, `# Covers: P0.3-R6` above a
+  `def test_` (or its decorators) or an `add_test`, `# Covers: P0.2-R4` above a workflow
+  `- name:` step, or above a job key to cover the job (its result is the job's conclusion). Annotate
+  only what the test or step genuinely checks. The traceability matrix reads these comments
+  ([traceability.md](traceability.md)).
 - **Enforcement.** `tools/tests/test_p0_3_r1.py::test_p0_3_r1_test_names_carry_ids` scans every C++
   test source under `engine/`, `tools/` and `reference/` and every Python test under
   `compiler/tests/` and `tools/tests/` (tracked files plus untracked files that are not ignored) and

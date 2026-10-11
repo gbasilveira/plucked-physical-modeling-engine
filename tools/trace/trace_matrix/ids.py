@@ -8,8 +8,9 @@ import re
 # Requirement (-R), test (-T) and oracle (ORC-xx) IDs; the rule of docs/dev/testing.md, "Naming".
 ID_PATTERN = r"(?:(?:P0\.[1-5]|[ABCPDEVH][0-9]+)-[RT][0-9]+|ORC-[0-9]{2})"
 ID_RE = re.compile(ID_PATTERN)
-# A C++/ctest test name: the ID, then a space (or the end of the name).
-NAME_ID_RE = re.compile(rf"^({ID_PATTERN})(?=\s|$)")
+# A C++/ctest test name: the ID, then a space (or an underscore, as in the CMake test
+# P0.4-R4_params_json_matches_registry, or the end of the name).
+NAME_ID_RE = re.compile(rf"^({ID_PATTERN})(?=[\s_]|$)")
 # A Python docstring: the ID at the start.
 DOC_ID_RE = re.compile(rf"^({ID_PATTERN})\b")
 # A Python test function name: test_<id lower-cased, '.' and '-' replaced by '_'>_<what>.

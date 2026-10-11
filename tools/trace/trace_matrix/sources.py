@@ -35,7 +35,7 @@ SKIP_DIRS = frozenset(
 CPP_SUFFIXES = frozenset({".cpp", ".cc", ".cxx", ".hpp", ".h", ".inl"})
 
 _TEST_CASE_RE = re.compile(r'\bTEST_CASE\s*\(\s*"((?:[^"\\]|\\.)*)"')
-_ADD_TEST_RE = re.compile(r'\badd_test\s*\(\s*NAME\s+"([^"]+)"', re.IGNORECASE)
+_ADD_TEST_RE = re.compile(r'\badd_test\s*\(\s*NAME\s+(?:"([^"]+)"|([^\s")]+))', re.IGNORECASE)
 _COVERS_RE = re.compile(r"\bCovers:\s*(.*)$")
 
 
@@ -126,7 +126,7 @@ def scan_cmake(text: str, rel: str) -> list[SourceTest]:
     tests: list[SourceTest] = []
     for match in _ADD_TEST_RE.finditer(text):
         line_no = text.count("\n", 0, match.start())
-        name = match.group(1)
+        name = match.group(1) or match.group(2)
         covers = _covers_above(lines, line_no, ("#",))
         ids: list[str] = []
         found = name_id(name)

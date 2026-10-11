@@ -32,9 +32,45 @@ class Repo:
     def __init__(self, path: Path) -> None:
         self.root = path / "repo"
         shutil.copytree(FIXTURE, self.root)
+        self.write_junit()
         self.out = path / "out"
         self.known: Path | None = None
         self.job_results: Path | None = None
+
+    def write_junit(self) -> None:
+        """Write the JUnit XML files of junit.json (ctest and pytest style) under junit/."""
+        spec = json.loads((self.root / "junit.json").read_text(encoding="utf-8"))
+        for artifact in spec["ctest_artifacts"]:
+            rows = "".join(
+                f'\t<testcase name="{name}" classname="{name}" time="0.001" status="run">\n'
+                f'\t\t<properties>\n\t\t\t<property name="cmake_labels" value="{labels}"/>\n'
+                f"\t\t</properties>\n\t</testcase>\n"
+                for name, labels in spec["ctest_cases"]
+            )
+            count = len(spec["ctest_cases"])
+            self.put(
+                f"junit/{artifact}/ctest-debug.xml",
+                '<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="(empty)"\n'
+                f'\ttests="{count}"\n\tfailures="0"\n\tdisabled="0"\n\tskipped="0"\n\t>\n'
+                f"{rows}</testsuite>\n",
+            )
+        classname = spec["pytest_classname"]
+        for artifact in spec["pytest_artifacts"]:
+            cases = "".join(
+                f'<testcase classname="{classname}" name="{name}" time="0.000" />'
+                for name in spec["pytest_cases"]
+            )
+            self.put(
+                f"junit/{artifact}/pytest.xml",
+                '<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests">'
+                f'<testsuite name="pytest" errors="0" failures="0" skipped="0">{cases}'
+                "</testsuite></testsuites>\n",
+            )
+
+    def put(self, rel: str, text: str) -> None:
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
 
     def edit(self, rel: str, old: str, new: str) -> None:
         path = self.root / rel
