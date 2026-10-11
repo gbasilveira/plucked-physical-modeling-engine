@@ -1,0 +1,46 @@
+# Verification oracle registry
+
+Registry of the SPEC-ORC rows (docs/plan/engine-specification.md, "Verification oracles"), one row
+per oracle, in SPEC order. Created by P0.3-R2. SPEC governs the setup, expected value and tolerance
+columns, which are copied verbatim; if they drift, SPEC wins and this file is corrected.
+
+## How this file is maintained
+
+- **ID.** `ORC-01` to `ORC-19`, the SPEC row order. An oracle test is a doctest `TEST_CASE` (or, for
+  Python-side oracles, a pytest function) whose name begins with its ID, for example
+  `TEST_CASE("ORC-01 oscillator accuracy at 27.5 Hz")`; it carries the CTest label `oracle`
+  (see docs/dev/testing.md).
+- **Status** is one of:
+  - `not implemented`: no test exists yet.
+  - `implemented`: the test exists and is registered, but does not pass yet or is not required to.
+  - `passing`: the test exists, is registered with the `oracle` label and passes in CI on all three
+    systems.
+- **Owning phase** is the phase whose card implements the test (phases.yaml and the Gates section of
+  docs/plan/phasing-plan.md). **Gate** is the gate that requires it to pass.
+- **Test location** is the source file and test-case name once the test exists; `-` before that.
+- The phase that implements an oracle updates its row (status and location) in the same pull request
+  as the test. No agent edits the setup, expected or tolerance columns without a SPEC change.
+- ORC-16 has no owning phase on any card although gate G2 requires it. It is recorded as
+  `unassigned (G2)` for the planner to assign.
+
+| ID | Oracle | SPEC-ORC setup | Expected value | Tolerance | Owning phase | Gate | Status | Test location |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ORC-01 | Oscillator accuracy | One mode at 27.5 Hz, 261.6 Hz, 4186 Hz; T60 = 20 s; 48 kHz; float32 difference form | Frequency ω\_d/2π and decay e^(−σt) | 0.01 cent; T60 within 0.5% (run: under 0.001 cent) | A1 | G1 | not implemented | - |
+| ORC-02 | Oscillator energy | Lossless mode, 10 s | H^(n+½) constant | 10⁻¹² relative in float64; 10⁻⁵ in float32 | A1 | G1 | not implemented | - |
+| ORC-03 | Stiff-string frequencies | Compiled table vs n f₀ √(1 + B n²) | Exact formula | 10⁻⁹ relative | A2 | G1 | not implemented | - |
+| ORC-04 | Tension for pitch | Closed-form T, then first partial | f₁ target | 10⁻⁹ relative | A2 | G1 | not implemented | - |
+| ORC-05 | Window shape | Raised-cosine W(k) vs quadrature, n up to 60 | Same value | 10⁻⁹ relative | A2 | G1 | not implemented | - |
+| ORC-06 | Bridge damping | Flexible string on a pure conductance G, every kept mode | σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\] | 0.1% (run: 10⁻⁴) | A4 | G1 | not implemented | - |
+| ORC-07 | Unison coupling | Two identical strings, one conductance | In-phase 4 f₀ Z₀ G; anti-phase intrinsic | 0.1% | A4 | G1 | not implemented | - |
+| ORC-08 | Impact time | Mass 8 g at 3 m/s on rigid felt contact, p = 2.5 | t\_c from the hammer oracle; rebound −v | max(1%, 1 sample); rebound 0.1% (run: 0.4%, exact rebound) | A3 | G1 | not implemented | - |
+| ORC-09 | Hammer–string energy | Lossless string and felt, float64 | Total energy including ½ψ² constant | 10⁻¹⁰ relative (run: 7 × 10⁻¹⁴) | A5 | G1 | not implemented | - |
+| ORC-10 | Triangle pluck | q\_n(0) formula vs quadrature | Same value | 10⁻⁹ relative | P1 | G6 | not implemented | - |
+| ORC-11 | Longitudinal forcing | Pair sum vs quadrature of −(EA − T)/(2ρA) ∫ y\_x² χ\_m' dx | Same value | 10⁻⁹ relative | A7 | G1 | not implemented | - |
+| ORC-12 | Tension modulation | Σ k\_n² q\_n² vs ∫ y\_x² dx | Same value | 10⁻¹² relative | A7 | G1 | not implemented | - |
+| ORC-13 | Damper (diagonal) | e = 1, single mode | σ\_n + e R\_d φ̄² / (2ρA) | 0.1% | A6 | G1 | not implemented | - |
+| ORC-14 | Fretted pitch | Finger stop at fret k on a low-stiffness string | Open pitch × 2^(k/12) | 2 cents | P3 | G6 | not implemented | - |
+| ORC-15 | Collision passivity | String released onto a flat barrier | Energy constant without contact damping; non-increasing with it | 10⁻⁹ relative per step in float64 | P2 | G6 | not implemented | - |
+| ORC-16 | Sample-rate independence | Same instrument at 44.1, 48 and 96 kHz | Identical partial frequencies; matching decays | 0.01 cent; 0.5% | unassigned (G2) | G2 | not implemented | - |
+| ORC-17 | Sympathetic approximation | Sustained chord with pedal, then release; engine vs reference mode | Per-partial levels; no energy growth | 1 dB over the first 2 s | C3 and C7 | G2 | not implemented | - |
+| ORC-18 | Determinism | 1, 2 and 8 threads | Bit-identical output | Exact | C5 | G2 | not implemented | - |
+| ORC-19 | Una corda aftersound | Trichord, s = 1 | Passive string's bridge force starts at zero and grows over time, as in Miranda Valiente et al. | Qualitative, plus regression against the first accepted run | A5 | G1 | not implemented | - |
