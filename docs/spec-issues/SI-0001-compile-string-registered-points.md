@@ -30,6 +30,6 @@ The formula for φ̄ and the float64 rule are unchanged, so this is not a physic
 ## Resolution
 Resolved by the planner on 2026-10-11 in SPEC-STR "Contract" (commit "PLAN: file spec issues SI-0001 to SI-0007"). No human review needed: no formula, tolerance or behaviour changes.
 
-Follow-up (documentation-only ICR, interface agent): change the `StringModes::phiBar` comment in `string.hpp` and the `compileString` parameter comment from "window-averaged" to "point shape values φ\_n(x₀), W = 1". The signature and layout stay. Bundle with the SI-0002 follow-up.
+Follow-up (routed through [ICR-0001](../icr/ICR-0001-interfaces-v2.md); documentation-only, interface agent): change the `StringModes::phiBar` comment in `string.hpp` and the `compileString` parameter comment from "window-averaged" to "point shape values φ\_n(x₀), W = 1". The signature and layout stay. Bundle with the SI-0002 follow-up.
 
 Affected phases: A2 (compileString), C1 (compileInstrument applies W), A5, A6, P1, P2 (consumers of windowed shapes).

@@ -1,6 +1,6 @@
 # SI-0004 Tuning curve, key numbering, unison detune and segment addressing
 
-Status: open · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: accepted · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-STR "Tension for pitch"; SPEC-API "Descriptions" (`NoteGroupDesc`, `TuningCurve`), "Events" (`Pluck`, `Bend`)
 
 ## Failing test
@@ -30,6 +30,11 @@ Compatible ICR: add `double unisonDetuneCents{}` at the end of `SegmentDesc`. Do
 Accept as proposed. Apply the ICR before B1 starts (B1-R1 mirrors `SegmentDesc`).
 
 ## Resolution
-Open. Orchestrator acceptance needed; no physics or numerics change, so no human reviewer.
+Accepted by the orchestrator on 2026-10-11 (owner's proceed instruction). Accepted as proposed.
+
+- SPEC-STR "Tension for pitch" (MIDI keys, A4 = 69, f₁ formula computed by compileInstrument, key = −1 rule) and SPEC-API "Event addressing" (flat segment index), plus `unisonDetuneCents` in the SPEC-API `SegmentDesc` declaration.
+- Key numbering and the f₁ ownership rule: Orchestrator default under the owner's proceed instruction — flagged for owner review.
+- SPEC commit: "PLAN: ICR-0001 interfaces-v2 and SPEC for SI-0003 to SI-0007".
+- Route: `SegmentDesc::unisonDetuneCents` and the comment changes in [ICR-0001](../icr/ICR-0001-interfaces-v2.md). Status becomes resolved when interfaces-v2 is tagged.
 
 Affected phases: B1, C1, C4, P5, P6, E1–E8.

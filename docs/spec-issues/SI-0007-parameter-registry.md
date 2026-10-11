@@ -1,6 +1,6 @@
 # SI-0007 Parameter registry: provisional ranges and classes, soft-pedal duplication, output gains, f_max duplication
 
-Status: open · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: accepted · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-API "Parameter classes", "Events" (`Pedal`); SPEC-DMP "Lift fraction", "Timing"; SPEC-HAM "Una corda (grand)"; SPEC-INST "Piano defaults"
 
 ## Failing test
@@ -30,6 +30,11 @@ None of these changes physics or numerics; the f\_max default (item 1) is a cost
 Accept items 1 to 4. The planner updates SPEC-API once accepted; registry edits ride on the interfaces-v2 ICR.
 
 ## Resolution
-Open. Orchestrator acceptance needed; no human reviewer.
+Accepted by the orchestrator on 2026-10-11, items 1 to 4. No physics or numerics change; no human reviewer. The f\_max default of 16 kHz is a cost choice that V2 revisits.
+
+- SPEC-API "Parameter classes" (soft pedal is one quantity, one master output gain, f\_max precedence, registry ranges are UI bounds); SPEC-INST "Piano defaults" (f\_max default 16 kHz) and "Instrument file" (no f\_max).
+- Item 2: id 1010 `unaCorda.shift` is retired within the interfaces-v2 ICR; the id stays reserved.
+- SPEC commit: "PLAN: ICR-0001 interfaces-v2 and SPEC for SI-0003 to SI-0007".
+- Route: registry and `params.json` edits and the `engine.hpp` comment in [ICR-0001](../icr/ICR-0001-interfaces-v2.md). Status becomes resolved when interfaces-v2 is tagged.
 
 Affected phases: C4, D1, D4, D6, V2.

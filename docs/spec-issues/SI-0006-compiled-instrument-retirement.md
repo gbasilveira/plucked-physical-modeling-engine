@@ -1,6 +1,6 @@
 # SI-0006 No retire mechanism for the previous CompiledInstrument
 
-Status: open · Priority: must be resolved before C1, C4 and C6 start · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: accepted · Priority: must be resolved before C1, C4 and C6 start · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-EXEC "Host block" step 1, "Threading contract"; SPEC-API "Real-time interface" (`setInstrument`)
 
 ## Failing test
@@ -29,6 +29,10 @@ ICR, breaking under the interfaces-v1 compatibility policy (a threading guarante
 Accept as proposed. Planner updates SPEC-EXEC and SPEC-API; one interface agent applies the ICR and tags interfaces-v2 before C1 starts. Until then C1, C4 and C6 must not be briefed.
 
 ## Resolution
-Open. Orchestrator decision needed.
+Accepted by the orchestrator on 2026-10-11 as proposed: `setInstrument` becomes non-audio-thread only, plus `Engine::collectRetired()`. Execution-contract change; no human reviewer needed.
+
+- SPEC-EXEC "Host block" step 1 and new "Instrument lifetime" paragraph; SPEC-API "Real-time interface".
+- SPEC commit: "PLAN: ICR-0001 interfaces-v2 and SPEC for SI-0003 to SI-0007".
+- Route: [ICR-0001](../icr/ICR-0001-interfaces-v2.md) (interfaces-v2). C1, C4 and C6 are briefed only after interfaces-v2 is tagged. Status becomes resolved then.
 
 Affected phases: C1, C4, C6, C8, D1, D6.

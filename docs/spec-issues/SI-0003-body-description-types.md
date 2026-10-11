@@ -1,6 +1,6 @@
 # SI-0003 Body and bridge-point description types: coordinate frame, plate geometry, rim, f_split default
 
-Status: open · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: accepted · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-API "Descriptions" (`BodyParams`, `BridgePointDesc`, `ChannelDesc`, `Defaults`, `Point`); SPEC-BODY "Plate model", "Local bridge model", "Radiation weights"; SPEC-INST "Piano defaults"
 
 ## Failing test
@@ -30,6 +30,11 @@ Item 1 is a documentation-only ICR (comment in `types.hpp`). Items 2 and 3 need 
 Accept items 1 to 3. Apply the ICR before B1 starts, because B1-R1 mirrors these structs in the instrument schema; B2 then implements the full geometry.
 
 ## Resolution
-Open. Needs the orchestrator's acceptance and a human reviewer for items 2 and 3 (physics input and a numerics default).
+Accepted by the orchestrator on 2026-10-11 (owner instructed the orchestrator to proceed to full implementation, applying recommended defaults and flagging them). Items 1 to 3 accepted as recommended.
+
+- Item 1 (frame): SPEC-BODY "Plate model", new "Body frame" paragraph. Documentation only.
+- Item 2 (plate geometry inputs) and item 3 (f\_split = 2 kHz provisional; B3-T2 measures, V3 confirms before G5): SPEC-BODY "Geometry inputs" and SPEC-INST "Piano defaults". Orchestrator default under the owner's proceed instruction — flagged for owner review; no human reviewer has seen them yet.
+- SPEC commit: "PLAN: ICR-0001 interfaces-v2 and SPEC for SI-0003 to SI-0007".
+- Route: header changes in [ICR-0001](../icr/ICR-0001-interfaces-v2.md) (interfaces-v2). Status becomes resolved when ICR-0001 is applied and interfaces-v2 is tagged.
 
 Affected phases: B1, B2, B3, C1, C2, V3.

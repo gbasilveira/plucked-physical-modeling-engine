@@ -29,6 +29,6 @@ None of these changes behaviour; they record the layout P0.4 chose and close two
 ## Resolution
 Resolved by the planner on 2026-10-11 in SPEC-API (new "Compiled-data and I/O types" paragraph and table, EngineConfig.threads) and SPEC-BODY "Contracts" (commit "PLAN: file spec issues SI-0001 to SI-0007"). No human review needed.
 
-Follow-up (documentation-only ICR, interface agent, bundled with SI-0001): in `diagnostics.hpp`, change "Note group (key) index" to "Index into InstrumentDesc::groups". No member, type or signature changes.
+Follow-up (routed through [ICR-0001](../icr/ICR-0001-interfaces-v2.md); documentation-only, interface agent, bundled with SI-0001): in `diagnostics.hpp`, change "Note group (key) index" to "Index into InstrumentDesc::groups". No member, type or signature changes.
 
 Affected phases: A2, A4, B2, B3, C1, C2, C4, C5 (no rework; they read the clarified text).

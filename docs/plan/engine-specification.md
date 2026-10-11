@@ -158,6 +158,14 @@ T = 4L^2\rho A\, f_1^2 - \frac{\pi^2 EI}{L^2}
 
 The tuning curve supplies f₁ per string as equal temperament (A4 = 440 Hz by default) plus a per-key stretch in cents plus the string's unison detune in cents. Tension MUST be recomputed whenever any of these, or the geometry, changes.
 
+Keys are MIDI note numbers (0 to 127, A4 = 69). For every segment of a note group with key ≥ 0, compileInstrument computes
+
+```math
+f_1 = f_{\text{ref}}\; 2^{(\text{key} - 69)/12}\; 2^{(\text{stretch}[\text{key}] + d_s)/1200}
+```
+
+with f\_ref the tuning curve's reference pitch, stretch\[key\] its per-key stretch in cents (0 for keys beyond its length) and d\_s the segment's unison detune in cents, and uses this value in place of the description's f₁. For a group with key = −1 (plucked strings addressed by segment, sympathetic strings) the description's f₁ is used as given. A change to the tuning curve or to a detune is a structural change and recompiles the affected strings. (SI-0004; orchestrator default under the owner's proceed instruction, flagged for owner review.)
+
 **Losses.** Intrinsic string losses (internal friction, air, viscoelasticity) are:
 
 ```math
@@ -255,6 +263,16 @@ D_{11} = \frac{E_L h^3}{12(1-\nu_{LR}\nu_{RL})}, \quad D_{22} = \frac{E_R h^3}{1
 ```
 
 Moisture content MC changes E\_L, E\_R, G\_LR and density through linear coefficients supplied with the wood data. Crown and downbearing MAY be included as a static prestress (geometric stiffness) in the eigen-solve.
+
+*Body frame.* Points are given in the body frame: x and y span the plate's mid-surface in the instrument's case frame defined by the body outline; the grain (L axis) lies at angle θ\_g from +x; z is normal to the plate and points towards the strings, matching the +y polarisation axis. Bridge points, outline vertices, ribs and bridges use z = 0; radiation channels use the same frame. (SI-0003)
+
+*Geometry inputs.* (SI-0003; orchestrator default under the owner's proceed instruction, flagged for owner review.)
+
+- Outline: a polygon in the body frame; when absent, the rectangle with corners (0, 0) and (L\_x, L\_y).
+- Thickness h(x, y): given on a regular N\_x × N\_y grid (N\_x, N\_y ≥ 2) over the outline's bounding box and bilinearly interpolated; uniform h when no grid is given.
+- Ribs: straight beams with a rectangular section (width, height), Young's modulus along the beam and density.
+- Bridges: polylines with a rectangular section, Young's modulus along the bridge and density.
+- Rim support: a translational stiffness per unit rim length k\_rim (N/m²); a rotational stiffness per unit length k\_rim,θ (N·m/rad per m) MAY be added (0 means none).
 
 **Modal data (offline output).** K modes up to the body's f\_max, each with Ω\_k, Φ\_k at every bridge point, and a decay rate built from the wood loss factor η(ω) and the radiation damping σ\_k,rad obtained from the radiation integral below:
 
@@ -504,8 +522,18 @@ Plucked instruments add exciters that hold and release the string, and barriers 
 | --- | --- | --- | --- |
 | Force pulse (generic pluck) | Explicit raised-cosine force of duration t\_p and peak F\_p over a window at x\_p; split into polarisations by angle θ\_p | Ends at t\_p | t\_p (0.5–5 ms), F\_p, x\_p, b\_p, θ\_p |
 | Plectrum (pick, quill, mizrab, bachi) | Tip mass m\_p on a spring K\_p to a driver moving at v\_d along the pluck direction; tip–string contact is a one-sided power law | Contact removed (ramped over 0.2 ms) once driver position minus string displacement at the tip exceeds h\_slip | m\_p, K\_p, v\_d, h\_slip, contact K and α |
-| Finger | As plectrum, with a wide soft contact (b\_f ≈ 10 mm) and Hunt–Crossley flesh damping | Same rule; h\_slip larger | m\_f, K\_f, α\_f, μ\_f, b\_f |
+| Finger | As plectrum, with a wide soft contact (b\_f ≈ 10 mm) and Hunt–Crossley flesh damping | Same rule; h\_slip larger | m\_f, K\_f (driver spring), v\_d, h\_slip,f, K\_c,f, α\_f, μ\_f, b\_f (SI-0005) |
 | Initial displacement (oracle and presets) | String released from a triangle of height A at x\_p | At t = 0 | A, x\_p |
+
+**Exciter parameters and events.** (SI-0005; items marked † are orchestrator defaults under the owner's proceed instruction, flagged for owner review.)
+
+- *Model from the description.* A note group's `ExciterParams` fixes the exciter model and its parameters. A `Pluck` event chooses only the segment, position, polarisation angle and strength; it starts the group's exciter on that segment. A Pluck addressing a segment whose group has no exciter, or a hammer, is ignored.
+- *Strength map* †. Strength ν ∈ (0, 1\] (a Pluck event's strength, or NoteOn velocity) sets the drive: force pulse F\_p = F\_p,max ν^γ\_p; plectrum and finger v\_d = v\_d,max ν^γ\_p; initial displacement A = A\_max ν^γ\_p. F\_p,max, v\_d,max, A\_max and γ\_p (default 1) are exciter parameters. ν ≤ 0 ignores the event; ν > 1 is treated as 1.
+- *Position.* x\_p is in metres on the segment's own x axis, the axis of compileString's registered points (for a speaking segment x = 0 is the static end, the nut on a fretted string). A Pluck position of 0 means the description's x\_p; a position outside \[0, L) ignores the event. A position other than the description's is evaluated at the event: φ\_n(x\_p) W(k\_n) is computed in float64 from L, k\_n and x\_p into a buffer preallocated at compile time, then used as float32; the cost is O(N) once per event †.
+- *Angle.* A Pluck event's θ\_p replaces the description's; the description's θ\_p applies to NoteOn launches.
+- *NoteOn on a plucked group* † (harpsichord jack). NoteOn on a group whose exciter is a force pulse, plectrum, finger or initial displacement starts it with ν = velocity at the description's x\_p and θ\_p on every speaking segment (BridgeEnd AtL) of the group.
+- *Finger structure* †. The finger has the plectrum's structure: tip mass m\_f on a driver spring K\_f to a driver moving at v\_d; flesh contact with stiffness K\_c,f and exponent α\_f, a Hunt–Crossley dashpot R = K\_c,f μ\_f \[δ\]₊^α\_f, spread over a raised-cosine window of width b\_f; release threshold h\_slip,f. Its parameters are therefore m\_f, K\_f, v\_d,max, h\_slip,f, K\_c,f, α\_f, μ\_f, b\_f.
+- *Initial displacement* †. At the event's sample the segment's modal state is replaced by the closed-form triangle below (q\_n at both stored time levels, so the string starts at rest), split into the polarisations by θ\_p: vertical A cos θ\_p, horizontal A sin θ\_p.
 
 The triangle start is closed-form (checked against quadrature for this spec):
 
@@ -566,11 +594,12 @@ An instrument is data, not code: a list of segments, exciters, barriers, dampers
 | Longitudinal transmission κ\_L | ≈ 0.026 (sin 1.5°) | Downbearing geometry |
 | Longitudinal modes M\_L | 8 | Default |
 | Local bridge modes M\_b | ≤ 64 | Default |
+| Local bridge split f\_split | 2 kHz, provisional: B3-T2 measures the local-model mobility error against it and V3 confirms or changes it before G5 | Default (SI-0003; orchestrator default, flagged for owner review) |
 | Sympathetic gain κ\_s, low-pass f\_symp | 1, 5 kHz | Default |
-| String f\_max | 12–20 kHz | Compute budget |
+| String f\_max | 12–20 kHz; default 16 kHz, which V2 may change after measuring cost | Compute budget (SI-0007) |
 | Soundboard modal basis | From the offline plate compiler or [MAESSTRO](https://hal-ensta-paris.archives-ouvertes.fr/hal-03409789) | Offline |
 
-**Instrument file.** Physical parameters live in a versioned, human-readable description (geometry, materials, tuning, exciter and damper parameters, body references). Body modal data is stored separately as binary blobs referenced by hash. Sample-rate-dependent data (oscillator coefficients) is never stored; it is compiled on load.
+**Instrument file.** Physical parameters live in a versioned, human-readable description (geometry, materials, tuning, exciter and damper parameters, body references). Body modal data is stored separately as binary blobs referenced by hash. Sample-rate-dependent data (oscillator coefficients) is never stored; it is compiled on load. Instrument files do not carry the string f\_max: it comes from the engine configuration (Engine interfaces, "Parameter classes"; SI-0007).
 
 ## Execution order
 
@@ -578,7 +607,7 @@ The engine runs host block → sub-block → sample. Note groups advance in para
 
 **Host block (B samples, sorted events).**
 
-1. If a recompiled instrument or parameter set is waiting, swap it in with one atomic pointer exchange.
+1. If a recompiled instrument or parameter set is waiting, swap it in with one atomic pointer exchange and retire the outgoing one ("Instrument lifetime" below).
 2. For each sub-block j (S samples; the last one may be shorter):
    1. Apply this sub-block's events at their exact sample offsets: note-on launches, note-off and pedal targets, continuous parameter ramps.
    2. **Phase A, parallel:** every awake note group runs S samples of the per-sample loop, reading its external bridge velocity from sub-block j − 1. It writes its bridge-force buffer, its local bridge-velocity buffer and its energy.
@@ -609,6 +638,14 @@ Small-body instruments run this loop with the full body as the bridge model and 
 - Every sum across groups or across mode chunks MUST reduce in a fixed order: groups by index, global body modes in fixed chunks of 64 summed in chunk order. Output is then bit-identical for any thread count.
 - Audio threads MUST NOT allocate, lock, log synchronously or make system calls. Workers wake through atomics with spin-then-yield waits.
 - Denormals MUST be flushed to zero on every audio thread.
+
+**Instrument lifetime.** (SI-0006) The audio thread MUST NOT release the last reference to a compiled instrument, because that would run its destructor and deallocations on the audio thread.
+
+1. `setInstrument` runs on a non-audio thread. The engine keeps a `shared_ptr` to every instrument it was given, in a list owned by non-audio threads; the audio thread sees only raw pointers and never touches a reference count.
+2. Handoff: `setInstrument` publishes the new raw pointer in an atomic `pending` slot. At block start (step 1 of the host block) the audio thread exchanges `pending` with `current` and pushes the outgoing raw pointer into a lock-free single-producer single-consumer retire queue.
+3. Reclamation: every non-audio call into the engine (`prepare`, `setInstrument`, `popDiagnostic`, `collectRetired`) first drains the retire queue and drops the engine's `shared_ptr` for each retired pointer. If a second `setInstrument` arrives before the audio thread took the first, the calling thread retires the first directly. Destroying the engine releases every instrument it holds.
+4. The retire queue is allocated in `prepare` with 4 entries. It cannot overflow: the audio thread pushes at most one pointer per block, and only after a `setInstrument` call, which drains the queue first.
+5. Non-audio calls are serialised by the caller: at most one of `prepare`, `setInstrument`, `popDiagnostic` and `collectRetired` runs at a time. A null instrument removes the current one at the next block, and the engine outputs silence.
 
 **Sleep and wake.**
 
@@ -644,15 +681,19 @@ struct DamperParams   { double xRatio, width, Kd, Rd, tau0, kRelease, tauUp, eta
                         bool hasDamper; DamperMode mode; };   // Diagonal | RankOne
 struct BarrierParams  { BarrierKind kind; std::vector<double> x, b, w;  // samples, profile, weights
                         int side; double K, alpha, muB; };
-struct ExciterParams  { std::variant<HammerParams, PluckPulse, Plectrum, Finger> e; };
+struct ExciterParams  { std::variant<HammerParams, PluckPulse, Plectrum, Finger,
+                                     InitialDisplacement> e; };
 struct SegmentDesc    { StringParams string; int bridgePoint; double polarisationAngle;
                         std::vector<BarrierParams> barriers; std::optional<DamperParams> damper;
                         double muteRatio; bool tensionModulation; int longitudinalModes;
-                        double kappaL, kappaT; };
-struct NoteGroupDesc  { int key; std::vector<SegmentDesc> segments;
+                        double kappaL, kappaT;
+                        double unisonDetuneCents; };   // d_s, cents (SI-0004)
+struct NoteGroupDesc  { int key;                      // MIDI note 0..127 (A4 = 69), or -1
+                        std::vector<SegmentDesc> segments;
                         std::optional<ExciterParams> exciter; UnaCordaParams unaCorda; };
 struct BodyParams     { BodySource source;   // PlateModel | ModalTable | MeasuredMobilityFit
-                        /* plate geometry, wood data, ribs, moisture, or modal table */ };
+                        /* plate geometry (outline, thickness grid, ribs, bridges, rim),
+                           wood data, moisture, or modal table; see Soundboard and bodies */ };
 struct InstrumentDesc { std::string name; std::vector<NoteGroupDesc> groups;
                         std::vector<BridgePointDesc> bridgePoints; BodyParams body;
                         std::vector<ChannelDesc> channels; TuningCurve tuning; Defaults defaults; };
@@ -696,12 +737,17 @@ Compiled data is immutable once built. Recompiling one string MUST NOT rebuild t
 class Engine {
 public:
   void prepare(const EngineConfig&);                                      // non-audio thread
-  void setInstrument(std::shared_ptr<const CompiledInstrument>);           // any thread, applied at next block
+  void setInstrument(std::shared_ptr<const CompiledInstrument>);           // non-audio thread, applied at next block
+  void collectRetired();                                                   // non-audio thread, frees retired instruments
   void process(const EventList& events, AudioOut& out, int frames);        // audio thread only
   void reset();                                                            // audio thread only
   bool popDiagnostic(Diagnostic& d);                                       // non-audio thread, lock-free
 };
 ```
+
+Non-audio calls are serialised by the caller; `prepare`, `setInstrument`, `popDiagnostic` and `collectRetired` drain the retire queue, so the audio thread never releases an instrument (Execution order, "Instrument lifetime"; SI-0006).
+
+**Event addressing.** (SI-0004) `key` in NoteOn, NoteOff and KeyDepth is the MIDI note number of a note group (Stiff string model, "Tension for pitch"); keys are unique among groups that receive NoteOn, and an event for a key no group has is ignored. `segment` in Pluck and Bend is a flat index: segments are numbered from 0 across groups in InstrumentDesc order, then within each group in `segments` order. The index is stable for a given instrument file; a structural edit that adds or removes segments changes it; an event addressing a segment that does not exist is ignored.
 
 **Events (each carries a sample offset within the block).**
 
@@ -711,11 +757,16 @@ public:
 | NoteOff | key, release velocity | Key damper landing with τ\_down from release velocity |
 | KeyDepth | key, depth | Continuous l\_key for half-key damper control |
 | Pedal | Sustain, Sostenuto or Soft, value 0–1 | Damper lift, sostenuto latch, una corda shift or upright soft pedal |
-| Pluck | segment, position, force, angle, kind | Starts a plucked exciter on that segment |
+| Pluck | segment, position x\_p (m; 0 = the description's), angle θ\_p, strength ν ∈ (0, 1\] | Starts the group's plucked exciter on that segment (Plucked exciters and barriers, "Exciter parameters and events") |
 | Bend | segment, cents | Time-varying tension |
 | Param | id, value | A continuous parameter ramp, or a request to recompile for a structural one |
 
-**Parameter classes.** Continuous (ramped on the audio thread): pedal values, una corda shift, bends, κ\_s, output gains, damper timing. Structural (recompiled): every geometry, material, tuning, felt-law, barrier and body parameter.
+**Parameter classes.** Continuous (ramped on the audio thread): pedal values, una corda shift, bends, κ\_s, output gain, damper timing. Structural (recompiled): every geometry, material, tuning, felt-law, barrier and body parameter. (SI-0007)
+
+- The Soft pedal value is the una corda shift s on a grand and the hammer-rail position on an upright: one quantity with one parameter id.
+- Output gain is one master gain in dB. Per-channel gains are a structural property of each channel (`ChannelDesc`).
+- `EngineConfig::fMaxStrings` is authoritative at `prepare`. A `strings.fMax` Param event is a structural request: it recompiles the instrument with the new value and updates the engine's copy.
+- Parameter ranges and classes in the registry (`params.json`) are UI and automation bounds, not physics; each contains SPEC's default.
 
 **Diagnostics.** Per-group energy, active contact counts, κ\_s halvings and SAV resets go to a lock-free ring buffer read by a non-audio thread.
 

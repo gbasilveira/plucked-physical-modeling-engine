@@ -1,6 +1,6 @@
 # SI-0005 Plucked exciters: Pluck event versus ExciterParams, finger model, initial displacement
 
-Status: open · Raised by: P0.4, code-reviewer · Date: 2026-10-11
+Status: accepted · Raised by: P0.4, code-reviewer · Date: 2026-10-11
 SPEC section: SPEC-PLK "Exciters"; SPEC-API "Descriptions" (`ExciterParams`), "Events" (`Pluck`)
 
 ## Failing test
@@ -29,6 +29,11 @@ Breaking ICR (interfaces-v2): `Pluck` loses `kind` and `force` and gains `streng
 Accept items 1 to 5 and apply one ICR before P1 starts (P1 depends on G1, so there is time). If the owner prefers to keep interfaces-v1 unbroken, the fallback is: keep `kind`, require it to match the group's exciter (mismatch ignored), document `force` as F\_p for pulses and ignored otherwise, and add `InitialDisplacement` in the v2 bump that SI-0006 may cause anyway.
 
 ## Resolution
-Open. Orchestrator acceptance and a human reviewer (items 2 and 4) needed.
+Accepted by the orchestrator on 2026-10-11 (owner's proceed instruction). Items 1 to 5 accepted as recommended (not the fallback).
+
+- SPEC-PLK "Exciters": finger row and new "Exciter parameters and events" paragraph (model from the description, strength map, position, angle, NoteOn on plucked groups, finger structure, initial displacement). SPEC-API: `Pluck` row, `ExciterParams` variant.
+- Physics choices — strength map with γ\_p default 1, finger structure, initial-displacement state replacement and polarisation split, NoteOn launch of plucked exciters, event-time evaluation of φ̄ at a non-registered position: Orchestrator default under the owner's proceed instruction — flagged for owner review.
+- SPEC commit: "PLAN: ICR-0001 interfaces-v2 and SPEC for SI-0003 to SI-0007".
+- Route: breaking header changes (`PluckKind` removed, `Pluck` fields, `Finger`, `InitialDisplacement`) in [ICR-0001](../icr/ICR-0001-interfaces-v2.md). Status becomes resolved when interfaces-v2 is tagged.
 
 Affected phases: P1, P5, P6, C4, B1, E4–E8.

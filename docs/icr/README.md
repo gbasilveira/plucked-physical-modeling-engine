@@ -27,3 +27,9 @@ The header diff (declarations only) and the SPEC-API text change, if any.
 ## Decision
 Approved or rejected by the orchestrator, with the reason. Interfaces tag after applying: interfaces-v<n+1>.
 ```
+
+## Index
+
+| ID | Title | Status | Interfaces | Spec issues |
+| --- | --- | --- | --- | --- |
+| [ICR-0001](ICR-0001-interfaces-v2.md) | interfaces-v2: instrument retirement, plucked exciters, tuning keys, body geometry, registry clean-up | approved | v1 → v2 | SI-0003 to SI-0007; SI-0001 and SI-0002 follow-ups |

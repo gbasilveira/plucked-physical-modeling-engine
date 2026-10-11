@@ -34,8 +34,8 @@ Decision, human reviewer (for physics or numerics), SPEC commit, affected phases
 | --- | --- | --- | --- |
 | [SI-0001](SI-0001-compile-string-registered-points.md) | compileString contract omits registeredPoints | resolved | |
 | [SI-0002](SI-0002-api-compiled-data-and-io-types.md) | Compiled-data and I/O types; buildLocalBridge fs; EngineConfig.threads | resolved | |
-| [SI-0003](SI-0003-body-description-types.md) | Body and bridge-point description types | open | B1, B2 |
-| [SI-0004](SI-0004-tuning-keys-and-segment-addressing.md) | Tuning curve, key numbering, unison detune, segment addressing | open | B1, C1 |
-| [SI-0005](SI-0005-plucked-exciter-interfaces.md) | Plucked exciters: Pluck event, finger, initial displacement | open | P1 |
-| [SI-0006](SI-0006-compiled-instrument-retirement.md) | No retire mechanism for the previous CompiledInstrument | open | C1, C4, C6 |
-| [SI-0007](SI-0007-parameter-registry.md) | Parameter registry ranges, soft-pedal duplication, output gains, f_max | open | C4 |
+| [SI-0003](SI-0003-body-description-types.md) | Body and bridge-point description types | accepted; route ICR-0001 | B1, B2 (until interfaces-v2) |
+| [SI-0004](SI-0004-tuning-keys-and-segment-addressing.md) | Tuning curve, key numbering, unison detune, segment addressing | accepted; route ICR-0001 | B1, C1 (until interfaces-v2) |
+| [SI-0005](SI-0005-plucked-exciter-interfaces.md) | Plucked exciters: Pluck event, finger, initial displacement | accepted; route ICR-0001 | P1 (until interfaces-v2) |
+| [SI-0006](SI-0006-compiled-instrument-retirement.md) | No retire mechanism for the previous CompiledInstrument | accepted; route ICR-0001 | C1, C4, C6 (until interfaces-v2) |
+| [SI-0007](SI-0007-parameter-registry.md) | Parameter registry ranges, soft-pedal duplication, output gains, f_max | accepted; route ICR-0001 | C4 (until interfaces-v2) |
