@@ -152,6 +152,7 @@ def test_v1_t1_fixture_without_edits_has_no_gaps(repo: Repo) -> None:
     assert by_id["A1-R3"]["status"] == "pass"  # covered by the 'Covers:' annotation
 
 
+# Covers: V1-R2
 def test_v1_t1_a_removed_test_shows_up_as_a_gap(repo: Repo) -> None:
     """V1-T1: removing a test (sources and results) reports its ID as missing: one gap."""
     repo.remove_test("A1-T2 bandwidth rejections at three sample rates")
@@ -312,6 +313,7 @@ def test_v1_t1_a_step_annotation_takes_its_result_from_the_job(repo: Repo) -> No
     assert state({"lint": {"result": "skipped"}}) == ("not_run_all_systems", False)
 
 
+# Covers: V1-R2
 def test_v1_t1_outputs_are_self_contained(repo: Repo) -> None:
     """V1-T1: traceability.html has no script and no external reference; JSON has the version."""
     repo.remove_test("A1-T2 bandwidth rejections at three sample rates")
