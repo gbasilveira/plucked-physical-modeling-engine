@@ -4,9 +4,9 @@
 #include "pme/params.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
-#include <iterator>
 
 namespace pme {
 namespace {
@@ -15,7 +15,7 @@ constexpr ParamClass Cont = ParamClass::Continuous;
 constexpr ParamClass Struc = ParamClass::Structural;
 
 // clang-format off
-constexpr ParamInfo kRegistry[] = {
+constexpr auto kRegistry = std::to_array<ParamInfo>({
     // 1000: performance controls (continuous)
     {1001, "pedal.sustain", "1", 0.0, 1.0, 0.0, Cont, "SPEC-API Events; SPEC-DMP Lift fraction",
      "Sustain pedal depth P, 0 up to 1 fully down."},
@@ -65,11 +65,11 @@ constexpr ParamInfo kRegistry[] = {
     // 7000: body
     {7001, "body.localBridgeModes", "1", 1.0, 64.0, 64.0, Struc, "SPEC-BODY Local bridge model; SPEC-INST Piano defaults",
      "Private body modes M_b per bridge point (64 SHOULD hold)."},
-};
+});
 // clang-format on
 
 constexpr bool isSortedById() {
-    for (std::size_t i = 1; i < std::size(kRegistry); ++i) {
+    for (std::size_t i = 1; i < kRegistry.size(); ++i) {
         if (kRegistry[i - 1].id >= kRegistry[i].id) {
             return false;
         }
@@ -80,12 +80,12 @@ static_assert(isSortedById(), "kRegistry must be sorted by strictly ascending id
 
 }  // namespace
 
-std::span<const ParamInfo> paramRegistry() noexcept { return {kRegistry, std::size(kRegistry)}; }
+std::span<const ParamInfo> paramRegistry() noexcept { return {kRegistry.data(), kRegistry.size()}; }
 
 const ParamInfo* findParam(ParamId id) noexcept {
-    const auto it = std::lower_bound(std::begin(kRegistry), std::end(kRegistry), id,
+    const auto it = std::lower_bound(kRegistry.begin(), kRegistry.end(), id,
                                      [](const ParamInfo& p, ParamId v) { return p.id < v; });
-    if (it != std::end(kRegistry) && it->id == id) {
+    if (it != kRegistry.end() && it->id == id) {
         return &*it;
     }
     return nullptr;

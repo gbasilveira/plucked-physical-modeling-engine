@@ -3,6 +3,7 @@
 // Engine::prepare validates its configuration; Status has names.
 #include <doctest/doctest.h>
 
+#include <array>
 #include <memory>
 #include <span>
 #include <string_view>
@@ -53,7 +54,7 @@ TEST_CASE("P0.4-R3 compile stubs return NotImplemented and leave outputs unchang
     SUBCASE("compileString") {
         pme::StringModes out;
         out.tension = 99.0;
-        const double points[] = {0.1, 0.2};
+        const std::array<double, 2> points{0.1, 0.2};
         CHECK(pme::compileString(pme::StringParams{}, 48000.0, 16000.0, points, out) ==
               pme::Status::NotImplemented);
         CHECK(out.tension == 99.0);
@@ -70,7 +71,7 @@ TEST_CASE("P0.4-R3 compile stubs return NotImplemented and leave outputs unchang
     SUBCASE("compileBody") {
         pme::BodyModes out;
         out.numModes = 5;
-        const pme::Point pts[] = {{0.1, 0.2, 0.0}};
+        const std::array<pme::Point, 1> pts{{{0.1, 0.2, 0.0}}};
         CHECK(pme::compileBody(pme::BodyParams{}, pts, pts, out) == pme::Status::NotImplemented);
         CHECK(out.numModes == 5);
     }
@@ -112,8 +113,8 @@ TEST_CASE("P0.4-R3 Engine::prepare checks the configuration") {
 TEST_CASE("P0.4-R3 a moved-from Engine can be prepared again") {
     pme::Engine a;
     pme::Engine b(std::move(a));
-    CHECK(a.prepare(validConfig()) ==
-          pme::Status::NotImplemented);  // NOLINT(bugprone-use-after-move)
+    // NOLINTNEXTLINE(bugprone-use-after-move): a moved-from Engine is documented as re-preparable
+    CHECK(a.prepare(validConfig()) == pme::Status::NotImplemented);
     pme::Engine c;
     c = std::move(b);
     CHECK(c.prepare(validConfig()) == pme::Status::NotImplemented);

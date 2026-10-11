@@ -4,9 +4,14 @@
 // Usage: pme_params_json [output-file]     (standard output when no file is given)
 //
 // The output is deterministic: entries sorted by id (the registry order), numbers printed with
-// "%.12g", LF line endings, no locale dependence (the program never calls setlocale).
+// 12 significant digits (printf "%.12g"), LF line endings, no locale dependence (the program never
+// calls setlocale).
 #include <cstddef>
-#include <cstdio>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <locale>
+#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -28,9 +33,10 @@ std::string quote(std::string_view s) {
 }
 
 std::string number(double v) {
-    char buf[64];
-    std::snprintf(buf, sizeof buf, "%.12g", v);
-    return buf;
+    std::ostringstream os;
+    os.imbue(std::locale::classic());
+    os << std::setprecision(12) << v;  // default float format: same as printf "%.12g"
+    return os.str();
 }
 
 std::string render() {
@@ -65,15 +71,15 @@ std::string render() {
 int main(int argc, char** argv) {
     const std::string text = render();
     if (argc < 2) {
-        std::fwrite(text.data(), 1, text.size(), stdout);
-        return 0;
+        std::cout << text;
+        return std::cout.good() ? 0 : 1;
     }
-    std::FILE* f = std::fopen(argv[1], "wb");  // binary: keep LF on Windows
-    if (f == nullptr) {
-        std::fprintf(stderr, "pme_params_json: cannot open %s\n", argv[1]);
+    std::ofstream file(argv[1], std::ios::binary | std::ios::trunc);  // binary: keep LF on Windows
+    if (!file) {
+        std::cerr << "pme_params_json: cannot open " << argv[1] << '\n';
         return 1;
     }
-    const std::size_t written = std::fwrite(text.data(), 1, text.size(), f);
-    const int closed = std::fclose(f);
-    return (written == text.size() && closed == 0) ? 0 : 1;
+    file << text;
+    file.close();
+    return file.good() ? 0 : 1;
 }

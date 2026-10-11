@@ -58,7 +58,10 @@ Status Engine::prepare(const EngineConfig& config) {
     return Status::NotImplemented;
 }
 
-void Engine::setInstrument(std::shared_ptr<const CompiledInstrument> instrument) noexcept {
+// Sink parameter by value, as declared in engine.hpp: the engine takes shared ownership.
+void Engine::setInstrument(
+    std::shared_ptr<const CompiledInstrument>
+        instrument) noexcept {  // NOLINT(performance-unnecessary-value-param)
     // The stub never swaps: the argument is released when it goes out of scope.
     (void)instrument;
 }

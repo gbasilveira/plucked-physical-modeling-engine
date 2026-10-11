@@ -60,7 +60,8 @@ struct Buffers {
         }
     }
     void fillNonZero() { std::fill(storage.begin(), storage.end(), 0.25f); }
-    bool firstFramesAreZero(int frames, int total) const {
+    [[nodiscard]] bool firstFramesAreZero(int frames) const {
+        const int total = static_cast<int>(storage.size() / kChannels);
         for (int c = 0; c < kChannels; ++c) {
             for (int i = 0; i < total; ++i) {
                 const float v = pointers[static_cast<std::size_t>(c)][i];
@@ -88,7 +89,7 @@ bool runBlocks() {
             buffers.fillNonZero();
             pme::AudioOut out{std::span<float* const>(buffers.pointers)};
             engine.process(eventsFor(events, frames), out, frames);
-            allZero = allZero && buffers.firstFramesAreZero(frames, kMaxBlock);
+            allZero = allZero && buffers.firstFramesAreZero(frames);
         }
     }
     engine.reset();
@@ -114,7 +115,7 @@ TEST_CASE("P0.4-T2 stub Engine processes silence in the rt-safety build without 
                 buffers.fillNonZero();
                 pme::AudioOut out{std::span<float* const>(buffers.pointers)};
                 engine.process(eventsFor(events, frames), out, frames);
-                allZero = allZero && buffers.firstFramesAreZero(frames, kMaxBlock);
+                allZero = allZero && buffers.firstFramesAreZero(frames);
             }
         }
         engine.reset();
@@ -157,7 +158,7 @@ TEST_CASE("P0.4-R3 stub Engine process zeroes the output even without a successf
     Buffers buffers(64);
     pme::AudioOut out{std::span<float* const>(buffers.pointers)};
     unprepared.process(pme::EventList{}, out, 64);
-    CHECK(buffers.firstFramesAreZero(64, 64));
+    CHECK(buffers.firstFramesAreZero(64));
 
     // A failed prepare, a null channel pointer and a non-positive frame count do not misbehave.
     CHECK(unprepared.prepare(pme::EngineConfig{}) == pme::Status::InvalidArgument);

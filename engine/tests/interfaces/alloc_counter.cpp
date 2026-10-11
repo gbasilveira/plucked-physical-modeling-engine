@@ -6,6 +6,9 @@
 #include <cstdlib>
 #include <new>
 
+// A counting replacement of the global allocation functions is global mutable state and uses malloc
+// by design.
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
 namespace {
 std::atomic<bool> g_counting{false};
 std::atomic<long> g_count{0};
@@ -42,3 +45,4 @@ void operator delete(void* p) noexcept { std::free(p); }
 void operator delete[](void* p) noexcept { std::free(p); }
 void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
