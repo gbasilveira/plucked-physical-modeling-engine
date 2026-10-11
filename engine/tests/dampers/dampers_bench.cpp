@@ -2,6 +2,7 @@
 // Covers: A6-R1, A6-R2
 // Coefficient refresh of 80 modes per sub-block (diagonal damper) and one rank-one damper step on
 // 80 modes (float32). Nightly (perf). No baseline file until V2 and decision D-4.
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <vector>

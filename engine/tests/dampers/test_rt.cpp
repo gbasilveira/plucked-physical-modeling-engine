@@ -4,6 +4,7 @@
 // rt-safety preset any allocation inside the scope aborts the process.
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <array>
 #include <vector>
 
