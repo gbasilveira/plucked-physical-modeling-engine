@@ -57,10 +57,17 @@ presets). `CPM_SOURCE_CACHE` is honoured; set it to share downloads between buil
 
 One static library per engine module, built from `engine/src/<module>/`, with a `pme::<module>`
 alias: `pme_osc`, `pme_string`, `pme_bridge`, `pme_body`, `pme_nonlinear`, `pme_exciters`,
-`pme_dampers`, `pme_barriers`, `pme_runtime`, `pme_sched`, `pme_simd`. `pme_engine` (alias
-`pme::engine`) is an interface target that links all eleven. Each module currently holds one
-placeholder source (replaced in P0.4 and by the module's own phase). `pme_simd` links Highway
-privately (ADR-0001); no other module does.
+`pme_dampers`, `pme_barriers`, `pme_runtime`, `pme_sched`, `pme_simd`. The public headers are in
+`engine/include/pme/` (see interfaces.md). `osc`, `string`, `bridge`, `body` and `runtime` hold P0.4
+stub sources (`<module>_stub.cpp`, plus `params.cpp` in `runtime`); the other six modules still hold
+one placeholder source, replaced by the module's own phase. `pme_simd` links Highway privately
+(ADR-0001); no other module does.
+
+`pme_engine` (alias `pme::engine`) is an INTERFACE library that links all eleven modules. It lists
+the public headers (a header file set, plus private sources) so that CMake generates a build target
+for it, and depends on every module, so `cmake --build --preset <preset> --target pme_engine` builds
+the whole engine. Other targets from P0.4: `pme_params_json` (writes the parameter registry as JSON),
+`update_params_json` (regenerates the committed `params.json`) and `pme_interface_tests`.
 
 ## Compiler and floating-point flags
 

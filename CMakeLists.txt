@@ -39,8 +39,26 @@ endforeach()
 # pme_simd is the only target that links Highway (ADR-0001).
 target_link_libraries(pme_simd PRIVATE hwy)
 
+# pme_engine: INTERFACE aggregate of all modules (alias pme::engine). It lists the public headers as
+# a file set, so that CMake generates a build target for it, and depends on every module library, so
+# that `cmake --build --preset <p> --target pme_engine` builds the whole engine (P0.4, docs/dev/interfaces.md).
+file(GLOB PME_PUBLIC_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/engine/include/pme/*.hpp")
 add_library(pme_engine INTERFACE)
 add_library(pme::engine ALIAS pme_engine)
+target_sources(pme_engine INTERFACE
+  FILE_SET HEADERS
+  BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/engine/include"
+  FILES ${PME_PUBLIC_HEADERS})
+# CMake generates a build target for an INTERFACE library only when it has its own (non-interface)
+# SOURCES; a header file set alone does not count. The headers are listed again as private sources
+# (they are not compiled, and consumers do not inherit them) so that `--target pme_engine` exists.
+target_sources(pme_engine PRIVATE ${PME_PUBLIC_HEADERS})
 foreach(module IN LISTS PME_MODULES)
   target_link_libraries(pme_engine INTERFACE pme_${module})
+  add_dependencies(pme_engine pme_${module})
 endforeach()
+
+# ---- P0.4: interface tests and parameter generator ----
+add_subdirectory(tools/params)
+add_subdirectory(engine/tests/interfaces)
+# ---- end P0.4 ----
