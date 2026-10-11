@@ -737,7 +737,9 @@ void Sim::solve_contacts(const std::vector<double>& gfree, const std::vector<dou
     };
     g = gfree;
     double res = evaluate(g, phi, dphi, f);
-    const double tol = 1e-14 * scale;
+    const double tol = 1e-14 * scale;        // convergence: 1e-14 relative to the largest gap
+    const double floor_tol = 1e-13 * scale;  // round-off floor at which a stalled iteration stops
+    bool stalled = false;
     int it = 0;
     std::vector<double> gnew(nc);
     std::vector<double> phin(nc);
@@ -793,7 +795,8 @@ void Sim::solve_contacts(const std::vector<double>& gfree, const std::vector<dou
         }
         if (!accepted) {
             // No further descent: only round-off remains if the residual is already tiny.
-            if (res <= 1e-12 * scale) {
+            if (res <= floor_tol) {
+                stalled = true;
                 break;
             }
             throw RefError("contact Newton solve stalled at step " + std::to_string(step) +
@@ -805,7 +808,7 @@ void Sim::solve_contacts(const std::vector<double>& gfree, const std::vector<dou
         f = fnew;
         res = rn;
     }
-    if (res > 1e-12 * scale) {
+    if (res > tol && !stalled) {
         throw RefError("contact Newton solve did not converge in 50 iterations at step " +
                        std::to_string(step) + " (relative residual " + std::to_string(res / scale) +
                        ")");

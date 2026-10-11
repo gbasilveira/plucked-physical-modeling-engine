@@ -2,6 +2,7 @@
 // P0.5-R2 hammer contact; P0.5-T3 (hammer against a rigid wall) and the hammer part of P0.5-T2.
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cmath>
 
 #include "pme/analysis/measures.hpp"
@@ -154,10 +155,12 @@ TEST_CASE("P0.5-R2 Hunt-Crossley term dissipates and the energy balance accounts
     const Results r = simulate(sc);
     CHECK(max_relative_energy_imbalance(r.energy) <= 1e-11);
     double dissipated = 0.0;
+    double least = 0.0;
     for (const double l : r.energy.loss) {
-        CHECK(l >= 0.0);
+        least = std::min(least, l);
         dissipated += l;
     }
+    CHECK(least >= 0.0);  // dissipation is never negative
     CHECK(dissipated > 0.0);
     CHECK(r.energy.total.back() < r.energy.total.front());
 }

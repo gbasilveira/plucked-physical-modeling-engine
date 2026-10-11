@@ -95,10 +95,12 @@ TEST_CASE("P0.5-R5 contact damping makes the energy non-increasing") {
     CHECK(max_relative_energy_imbalance(r.energy) <= 1e-12);
     CHECK(r.energy.total.back() < r.energy.total.front());
     double dissipated = 0.0;
+    double least = 0.0;
     for (const double l : r.energy.loss) {
-        CHECK(l >= 0.0);
+        least = std::min(least, l);
         dissipated += l;
     }
+    CHECK(least >= 0.0);  // dissipation is never negative
     CHECK(dissipated > 0.0);
 }
 

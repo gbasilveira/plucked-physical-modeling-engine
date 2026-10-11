@@ -56,10 +56,15 @@ the plate displacement.
 state) and a force `-phi c`. With the response of the linear system to each contact direction
 precomputed, the step reduces to `g+ = g_free - Gamma phi(g+, g-)` with a small dense `Gamma`.
 Newton iteration with a line search, converged to a residual of 1e-14 of the largest gap (relative)
-or 50 iterations; non-convergence throws `RefError` (never silent). The two-step discrete gradient
+within 50 iterations. When the line search can no longer decrease the residual, the iteration stops
+only if the residual is already below the round-off floor of 1e-13; otherwise, and when 50
+iterations do not suffice, the solver throws `RefError` (never silent). The worst residual of a
+run is reported in `Results::newton`. The two-step discrete gradient
 `(V(g+) - V(g-))/(g+ - g-)` is evaluated with `expm1/log1p` so that it has no cancellation.
 Hunt-Crossley damping is `R = K mu [g^n]_+^p` times the centred gap velocity (explicit in `g`, hence
-dissipative), lumped per contact point for barriers.
+dissipative). For barriers the dashpot is applied per contact point (`R_j = dx_j K_B mu_B [eta_j]_+^alpha`
+along that point's own direction), not as the single dashpot along grad V_B that SPEC-PLK writes;
+without contact damping (the ORC-15 setup) the two are identical.
 
 **Round-off.** `K x` is evaluated through first differences and differences of differences
 (`string_ops.cpp`), because `x_(i+1) - x_i` is exact for smooth data; this keeps the energy monitor
@@ -79,7 +84,7 @@ builds (`CMAKE_BUILD_TYPE` Release or RelWithDebInfo, so it runs in the `*-rt-sa
 | P0.5-T2 | lossless energy per step: string; string + lumped bridge (two strings, rotated axes); string + hammer; string + barrier; string with tension modulation; plate coupled to a string | all builds |
 | P0.5-T3 | hammer against a rigid wall, m = 8 g, v = 3 m/s, p = 2.5, K = 1e9, 4.5e9, 2e10 N/m^p (piano felts, Chaigne and Askenfelt 1994: about 4.5e9 for p = 2.5 at middle C), contact time within 0.1% and rebound -v within 1e-9 | all builds |
 | P0.5-T4 | the ten lowest simply supported orthotropic modes from the discrete operator's eigenvalues (nx = ny = 240) within 0.1%; the lowest three from simulation (90 x 60 grid, 12 kHz) within 0.1% | operator: all builds; simulation: optimised builds |
-| P0.5-R3 | flexible string on a pure conductance decays at `-f0 ln[(1-Z0 G)/(1+Z0 G)]` within 1%; two strings on one conductance (in-phase and anti-phase); horizontal polarisation | all builds |
+| P0.5-R3 | lossless lumped bridge conserves energy to 1e-12 per step; flexible string on a pure conductance decays at `-f0 ln[(1-Z0 G)/(1+Z0 G)]` within 1% (worst 0.41%, N = 200, 48 kHz); two strings on one conductance (in-phase and anti-phase); horizontal polarisation; a bridge mass shifts the partials as the exact end-mass equation `cot(kL) = M k / rhoA` says, and SPEC-BRG's `-2 f0 Z0 Im Y` agrees with that shift within 5% | all builds |
 | P0.5-R5 | string released onto a flat barrier: energy constant (1e-9 per step required, ORC-15 setup), non-increasing with contact damping; the two barrier sides mirror each other | all builds |
 | P0.5-R6 | large-amplitude pluck conserves energy within 1e-11; pitch glides down and its shift scales as amplitude squared; longitudinal modes within 0.1% of `K_m sqrt(EA/rhoA)` | all builds |
 | P0.5-R7 | scenario errors, features, WAV, energy JSON, refinement tool, CLI (ctest), Python module (`tools/tests/test_p0_5_r7_python.py`) | all builds; Python in the `reference-python` job |
@@ -95,3 +100,13 @@ Render a scenario with `pme_reference_cli render` (or `pme_reference.render`) an
 engine's features with `pme_golden_compare` / `pme_analysis.golden`. Partials of the first string,
 bridge or plate observation are indexed `round(f / f1Target)`. Lossless partials report `t60 = 1e12 s`.
 Compare against the reference only with `b2 = 0` and, for plates, rectangles.
+
+**Accuracy of the reference itself.** The scheme is second order, so a partial of index n on a
+grid of N intervals is low by about `(n pi / N)^2 / 12` (space) plus `(omega k)^2 / 12` (time, with
+`theta = 1/4`). Phases that compare partial frequencies at the 0.05 cent level (A2-T3, A4-T3,
+C1-T2) must either use a grid and time step fine enough for the partials they compare, or take the
+Richardson-extrapolated values that `pme_reference_cli refine` reports (`extrapolated_hz`,
+three grids with a constant ratio). Decay rates are accurate to a few 1e-4 on the grids of the
+P0.5-R3 tests. The exact discrete frequencies of the scheme are available in closed form
+(`string_scheme_frequency_hz`, `plate_scheme_frequency_hz`) for a lossless pinned string and a
+plate, and the tests check the simulation against them (to 1e-7 for the string and 1e-5 for the plate).

@@ -3,6 +3,7 @@
 // polarisations; P0.5-T2 string + lumped bridge energy case.
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -205,7 +206,7 @@ TEST_CASE("P0.5-T2 lossless strings on a lumped mass-spring bridge conserve ener
     CHECK(hmax > 0.0);
 }
 
-TEST_CASE("P0.5-R3 dashpot and conductance terms are the only dissipation") {
+TEST_CASE("P0.5-R3 dashpot and conductance losses close the energy balance") {
     const StringParams p = steel_string(1.0, 110.0, 1e-3);
     Scenario sc;
     sc.name = "msd-damped";
@@ -222,10 +223,87 @@ TEST_CASE("P0.5-R3 dashpot and conductance terms are the only dissipation") {
     const Results r = simulate(sc);
     CHECK(max_relative_energy_imbalance(r.energy) <= 1e-12);
     double dissipated = 0.0;
+    double least = 0.0;
     for (const double l : r.energy.loss) {
-        CHECK(l >= 0.0);
+        least = std::min(least, l);
         dissipated += l;
     }
+    CHECK(least >= 0.0);  // dissipation is never negative
     CHECK(dissipated > 0.0);
     CHECK(r.energy.total.back() <= r.energy.total.front());
+}
+
+TEST_CASE("P0.5-R3 lossless lumped bridge conserves total energy to 1e-12 per step") {
+    const StringParams p = steel_string(1.0, 110.0, 1e-3);
+    Scenario sc;
+    sc.name = "msd-single";
+    sc.fs = 48000.0;
+    sc.oversampling = 2;
+    sc.duration = 0.3;
+    BridgeSpec b;
+    b.mass = 0.05;
+    b.stiffness = 2.0e5;
+    sc.bridges.push_back(b);
+    sc.strings.push_back(bridged_string(p, 100, 1e-3, 0.0));
+    const Results r = simulate(sc);
+    CHECK(max_relative_energy_step(r.energy) <= 1e-12);
+    CHECK(max_relative_energy_imbalance(r.energy) <= 1e-12);
+}
+
+TEST_CASE("P0.5-R3 a bridge mass shifts the partials as the exact end-mass equation says") {
+    // Flexible string, fixed at x = 0 and loaded by a mass M at x = L: with y = sin(k x) the
+    // boundary condition T y_x = -M y_tt gives cot(k L) = M k / rhoA (c = sqrt(T / rhoA)). Root 1
+    // is the mass-on-a-spring mode; root i + 1 continues the open partial i (110 i Hz) from above.
+    const StringParams p = flexible_string(1.0, 110.0);
+    const StringPhysics ph = derive_string(p);
+    const double c = std::sqrt(ph.tension / ph.rho_a);
+    const double z0 = std::sqrt(ph.tension * ph.rho_a);
+    const double mass = 0.2;
+    std::vector<double> exact_hz;
+    for (int n = 1; n <= 4; ++n) {
+        double lo = (n - 1) * kPi / ph.length + 1e-9;
+        double hi = n * kPi / ph.length - 1e-9;
+        for (int i = 0; i < 200; ++i) {
+            const double k = 0.5 * (lo + hi);
+            const double f =
+                std::cos(k * ph.length) / std::sin(k * ph.length) - mass * k / ph.rho_a;
+            (f > 0.0 ? lo : hi) = k;
+        }
+        exact_hz.push_back(c * 0.5 * (lo + hi) / (2.0 * kPi));
+    }
+    Scenario sc;
+    sc.name = "end-mass";
+    sc.fs = 48000.0;
+    sc.duration = 1.0;
+    BridgeSpec b;
+    b.mass = mass;
+    sc.bridges.push_back(b);
+    sc.strings.push_back(bridged_string(p, 300, 1e-3, 0.0));
+    ObservationSpec o;
+    o.name = "y";
+    o.kind = ObservationKind::StringDisplacement;
+    o.x = 0.27;
+    sc.observations.push_back(o);
+    SimulationOptions so;
+    so.record_energy = false;
+    const Results r = simulate(sc, so);
+    pme::analysis::PartialTrackingOptions opt;
+    opt.approx_frequencies_hz = exact_hz;
+    opt.envelope_frame_s = 0.0;
+    const auto fit = pme::analysis::track_partials(r.signal("y"), r.sim_rate, opt);
+    for (std::size_t i = 1; i < 4; ++i) {
+        const double fm = fit.partials[i].frequency_hz;
+        const double f_open = 110.0 * static_cast<double>(i);
+        INFO("partial " << i << " measured " << fm << " exact " << exact_hz[i]);
+        CHECK(std::fabs(fm / exact_hz[i] - 1.0) <= 5e-4);
+        // SPEC-BRG small-admittance result delta omega = -2 f0 Z0 Im Y with the mobility of a
+        // mass, Y = 1 / (i omega M) (so Im Y = -1 / (omega M)): the partial rises by
+        // 2 f0 Z0 / (omega M), here Z0 |Y| about 0.001; divided by 2 pi it is in Hz.
+        const double omega = 2.0 * kPi * f_open;
+        const double predicted_shift_hz = 2.0 * 110.0 * z0 / (omega * mass) / (2.0 * kPi);
+        const double exact_shift_hz = exact_hz[i] - f_open;
+        INFO("shift exact " << exact_shift_hz << " predicted " << predicted_shift_hz);
+        CHECK(exact_shift_hz > 0.0);
+        CHECK(std::fabs(exact_shift_hz / predicted_shift_hz - 1.0) <= 0.05);
+    }
 }
