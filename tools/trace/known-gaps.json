@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "known_gaps": [
+    {
+      "id": "P0.2-T3",
+      "phase": "P0.2",
+      "kind": "test_missing",
+      "reason": "P0.2-T3 (all workflows pass on an empty change) is a demonstration run, evidenced by workflow runs in docs/gates/G0.md; no test or annotatable step can carry it.",
+      "owner": "planner/orchestrator (accept by gate report, or define a carrier)"
+    }
+  ]
+}

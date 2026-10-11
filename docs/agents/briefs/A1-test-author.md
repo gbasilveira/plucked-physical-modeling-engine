@@ -57,7 +57,7 @@ From SPEC-ORC, verbatim:
 | ID | Test | Setup | Expected | Tolerance |
 | --- | --- | --- | --- | --- |
 | ORC-01 | Oscillator accuracy ✓ | One mode at 27.5 Hz, 261.6 Hz, 4186 Hz; T60 = 20 s; 48 kHz; float32 difference form | Frequency ω\_d/2π and decay e^(−σt) | 0.01 cent; T60 within 0.5% (run: under 0.001 cent) |
-| ORC-02 | Oscillator energy | Lossless mode, 10 s | H^(n+½) constant | 10⁻¹² relative in float64; 10⁻⁵ in float32 |
+| ORC-02 | Oscillator energy | Lossless mode, 10 s; float32 at 48 kHz (N = 480 000) for 27.5 Hz, 4186 Hz and ω\_dΔt = 0.9π, none within 1% of fs/6, fs/4 or fs/3 | H^(n+½) constant (float32: bounded round-off drift) | 10⁻¹² relative in float64; in float32 24 u√N / (1 − ω̂²Δt²/4), u = 2⁻²⁴: 9.9 × 10⁻⁴ at 27.5 Hz, 1.07 × 10⁻³ at 4186 Hz, 4.05 × 10⁻² at 0.9π ([SI-0009](../../spec-issues/SI-0009-orc02-float32-energy-tolerance.md)) |
 
 ### How to build them
 
@@ -72,7 +72,7 @@ From SPEC-ORC, verbatim:
 
 - Lossless (σ = 0), f = 0, 10 s at 48 kHz (480 000 steps), for at least three frequencies: 27.5 Hz, 4186 Hz and one near the bandwidth limit (ω\_dΔt = 0.9π). Energy H^(n+½) = ½(uⁿ⁺¹/Δt)² + ½ ω̂² qⁿ qⁿ⁺¹ (SPEC-OSC "Discrete energy"), accumulated in float64.
 - **float64 case:** step the difference form in float64. Use the implementer's templated kernel instantiated for `double` **and**, as an independent check, your own five-line float64 implementation of uⁿ⁺¹ = βuⁿ − κqⁿ + γfⁿ, qⁿ⁺¹ = qⁿ + uⁿ⁺¹ written from SPEC-OSC, with float64 β, κ, γ from `compileOscillatorF64` (or computed in the test from SPEC formulas). Pass: max over n of |Hⁿ⁺½ − H½| / |H½| ≤ 10⁻¹².
-- **float32 case:** the engine's float32 `ModeBank`, energy computed from the float32 states in float64 with float64 ω̂². Pass: max relative drift ≤ 10⁻⁵.
+- **float32 case:** the engine's float32 `ModeBank`, energy computed from the float32 states in float64 with float64 ω̂², at 27.5 Hz, 4186 Hz and ω\_dΔt = 0.9π only (no frequency within 1% of fs/6, fs/4 or fs/3). Pass: max relative drift ≤ 24 u√N / (1 − ω̂²Δt²/4) with u = 2⁻²⁴ and N = 480 000, computed in the test from the compiled float64 ω̂² (9.9 × 10⁻⁴, 1.07 × 10⁻³ and 4.05 × 10⁻²). Report the measured drift and its ratio to the tolerance per frequency. (Amended by [SI-0009](../../spec-issues/SI-0009-orc02-float32-energy-tolerance.md): the former 10⁻⁵ is below float32 round-off.)
 - **Tolerances are explicit in the test.** Do not rely on the golden-feature default energy tolerance (10⁻⁹ absolute in `pme_analysis`'s golden format): it is looser than ORC-02 (a P0.3 follow-up). If you use `account_energy`, pass the ORC-02 tolerance explicitly.
 - Add a balance check for one damped, forced case: H^(n+½) − H^(n−½) equals Δt[−2σ̂ (δ\_t· qⁿ)² + fⁿ δ\_t· qⁿ] within 10⁻¹² relative of H in float64 (name it `ORC-02 energy balance with loss and forcing`).
 

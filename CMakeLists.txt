@@ -79,3 +79,8 @@ add_subdirectory(engine/tests/interfaces)
 # ---- A1 (test-author): oracle tests ----
 add_subdirectory(engine/tests/oracles)
 # ---- end A1 (test-author) ----
+
+# ---- A1: modal oscillator ----
+target_include_directories(pme_osc PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/osc/include")
+add_subdirectory(engine/tests/osc)
+# ---- end A1 ----

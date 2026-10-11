@@ -67,6 +67,7 @@ def load_compare() -> ModuleType:
     return module
 
 
+# Covers: P0.3-R6
 def test_p0_3_t3_flags_10_percent_regression(tmp_path: Path) -> None:
     """P0.3-T3: +10% on one benchmark exits 1 naming it; +4% and -10% exit 0."""
     base = bench_doc({"alpha": 1000.0, "beta": 2000.0})
@@ -83,6 +84,7 @@ def test_p0_3_t3_flags_10_percent_regression(tmp_path: Path) -> None:
     assert code == 0, out
 
 
+# Covers: P0.3-R6
 def test_p0_3_t3_boundary_is_strictly_greater_than_five_percent(tmp_path: Path) -> None:
     """P0.3-T3: exactly +5% passes, just above +5% fails."""
     base = bench_doc({"alpha": 100.0})

@@ -2,7 +2,7 @@
 """Signal-analysis tools for validation tests and golden features (P0.3-R3, R4, R5).
 
 Python mirror of the C++ library ``pme_analysis`` (tools/analysis/include/pme/analysis); same
-function set, same results within the P0.3-T1 tolerances. NumPy and SciPy only; never used by the
+function set, same results within the P0.3-T1 tolerances. NumPy only; never used by the
 engine. See docs/dev/signal-analysis.md.
 """
 

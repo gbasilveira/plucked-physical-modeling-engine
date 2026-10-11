@@ -1,0 +1,14 @@
+{
+  "_comment": "Fixture results of the traceability tests (V1-T1): artifact directory -> JUnit file, style and cases. tools/tests/test_v1_t1.py writes them as XML into a temporary copy of the fixture (XML files cannot carry an SPDX header).",
+  "ctest_cases": [
+    ["A1-R1 coefficients compile", "unit"],
+    ["A1-R2 bandwidth rule rejects high modes", "unit"],
+    ["A1-T1 coefficients agree with the reference", "unit"],
+    ["A1-T2 bandwidth rejections at three sample rates", "unit"],
+    ["ORC-01 oscillator accuracy", "unit;oracle"]
+  ],
+  "pytest_classname": "compiler.tests.test_a2_fixture",
+  "pytest_cases": ["test_a2_r1_the_string_compiles", "test_a2_t1_wound_string_mass"],
+  "ctest_artifacts": ["junit-build-linux-gcc", "junit-build-macos-arm64", "junit-build-windows-msvc"],
+  "pytest_artifacts": ["junit-python-linux", "junit-python-macos", "junit-python-windows"]
+}

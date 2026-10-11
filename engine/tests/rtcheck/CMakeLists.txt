@@ -7,11 +7,13 @@ if(PME_RTSAFETY)
   pme_add_doctest(pme_rtcheck_tests
     SOURCES main.cpp child_modes.cpp process.cpp test_rtcheck.cpp
     LIBRARIES pme::rtcheck
-    LABELS unit RT)
+    LABELS unit RT
+    TIMEOUT 120)
 else()
   # Every other build: the library is a no-op and replaces nothing.
   pme_add_doctest(pme_rtcheck_noop_tests
     SOURCES test_rtcheck_noop.cpp
     LIBRARIES pme::rtcheck
-    LABELS unit)
+    LABELS unit
+    TIMEOUT 120)
 endif()

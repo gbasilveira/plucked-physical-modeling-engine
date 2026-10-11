@@ -127,8 +127,18 @@ draft 2020-12), `schema_version` 1. Fields, all SI:
 | Contact time | relative | 0.01 | SPEC-ORC ORC-08 |
 | Amplitude | dB | 0.1 | planner's choice (no SPEC-ORC row sets it) |
 | Energy values | absolute | 1e-9 | ORC-15's per-step float64 figure |
+| Knee time `second_decay.knee_s` | relative | 0.05 (`knee_relative`) | planner's choice; the knee of a two-slope fit is poorly conditioned |
 
-`t60_s` and `knee_s` are stored for readers but not compared (T60 follows from `sigma`).
+`t60_s` is stored for readers but not compared (T60 follows from `sigma`). `knee_s` is compared when
+both files have a second decay for the partial, as `partial[n].knee_s` with `knee_relative`; the
+tolerance can be overridden per file (`tolerances.default.knee_relative`) and per partial
+(`tolerances.partials.<n>.knee_relative`) like the others. The field is optional with a default, so
+`schema_version` stays 1.
+
+**Oracle tests never rely on these defaults.** The golden defaults apply to golden renders. They are
+looser than some oracles (`energy_absolute = 1e-9` against ORC-02's 10^-12 relative in float64 and
+10^-5 in float32, and ORC-09's 10^-10 relative), so an oracle test passes the SPEC-ORC tolerance
+explicitly to `account_energy` or to the comparator.
 
 **Comparison.** `compare_golden(reference, candidate)` uses the reference's tolerances. Every
 feature in the reference must be present in the candidate and within tolerance; partials are matched
@@ -150,6 +160,15 @@ alignment raise `WavError` with a message naming the problem. The writer emits t
 `fmt ` chunk (format tag 1 or 3), even for more than two channels. WAV code is never linked into the
 engine (see [testing.md](testing.md), "Isolation from the engine"); generate test signals in code
 because audio files route to Git LFS.
+
+**Cross-language check.** The tool `pme_wav_roundtrip` (`tools/analysis/wav_roundtrip_main.cpp`;
+`write <file> <format> <channels>` and `read <file>`) and
+`tools/tests/test_p0_3_r5_cross_language.py` prove that a WAV written by the C++ library reads
+identically in Python and the reverse, for 16-, 24- and 32-bit integer and 32- and 64-bit float with
+1 and 3 channels (sample-exact; the signal is built from dyadic rationals k/1024, which every format
+represents exactly; the two writers also emit identical bytes). The tool path comes from the
+environment variable `PME_WAV_TOOL`; the test is skipped without it, and the `build` job of
+`pr.yml` runs it on all three systems and fails the step on a skip.
 
 ## Achieved accuracy (P0.3-T1)
 
