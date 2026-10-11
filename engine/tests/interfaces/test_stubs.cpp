@@ -45,10 +45,12 @@ pme::EngineConfig validConfig() {
 
 TEST_CASE("P0.4-R3 compile stubs return NotImplemented and leave outputs unchanged") {
     SUBCASE("compileOscillator") {
+        // The osc module is implemented by phase A1; an overdamped mode is rejected and leaves
+        // the out-parameter unchanged (ADR-0006).
         pme::OscCoeffs out;
         out.beta = 1.5f;
         out.omegaHat2 = 2.5;
-        CHECK(pme::compileOscillator(100.0, 1.0, 48000.0, out) == pme::Status::NotImplemented);
+        CHECK(pme::compileOscillator(100.0, 200.0, 48000.0, out) == pme::Status::Rejected);
         CHECK(out.beta == 1.5f);
         CHECK(out.omegaHat2 == 2.5);
     }
