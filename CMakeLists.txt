@@ -58,6 +58,11 @@ foreach(module IN LISTS PME_MODULES)
   add_dependencies(pme_engine pme_${module})
 endforeach()
 
+# ---- P0.2: RT-safety trap library ----
+add_subdirectory(engine/src/rtcheck)
+add_subdirectory(engine/tests/rtcheck)
+# ---- end P0.2 ----
+
 # ---- P0.4: interface tests and parameter generator ----
 add_subdirectory(tools/params)
 add_subdirectory(engine/tests/interfaces)

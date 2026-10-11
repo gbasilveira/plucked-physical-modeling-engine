@@ -51,3 +51,28 @@ def test_p0_1_t3_fails_on_unknown_file_type(tmp_path: Path) -> None:
     problems = check_spdx.run(root)
     assert len(problems) == 1
     assert "unknown file type" in problems[0]
+
+
+def test_p0_1_t3_fails_on_identifier_with_suffix(tmp_path: Path) -> None:
+    """P0.1-T3: ``MIT-0`` is not ``MIT``; the identifier must match exactly."""
+    root = _repo(tmp_path, {"a.py": "# SPDX-License-Identifier: MIT-0\n"})
+    assert len(check_spdx.run(root)) == 1
+
+
+def test_p0_1_t3_fails_on_compound_expression(tmp_path: Path) -> None:
+    """P0.1-T3: ``MIT OR Apache-2.0`` is not ``MIT``; the identifier must match exactly."""
+    root = _repo(tmp_path, {"a.cpp": "// SPDX-License-Identifier: MIT OR Apache-2.0\n"})
+    assert len(check_spdx.run(root)) == 1
+
+
+def test_p0_1_t3_accepts_trailing_whitespace_and_comment_styles(tmp_path: Path) -> None:
+    """P0.1-T3: trailing whitespace and block-comment closers are allowed."""
+    root = _repo(
+        tmp_path,
+        {
+            "a.cpp": "// SPDX-License-Identifier: MIT   \n",
+            "b.h": "/* SPDX-License-Identifier: MIT */\n",
+            "c.py": "# SPDX-License-Identifier: MIT\t\n",
+        },
+    )
+    assert check_spdx.run(root) == []

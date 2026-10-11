@@ -1,0 +1,227 @@
+# SPDX-License-Identifier: MIT
+# Nightly workflow (P0.2-R2, R6). Documented in docs/dev/ci.md.
+#
+# Triggers: a daily schedule, manual dispatch, and a push that changes this file or tools/ci/
+# (so that the workflow can be exercised from a branch before it reaches main; workflow_dispatch
+# only works for workflow files on the default branch).
+name: nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/nightly.yml"
+      - "tools/ci/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+  CLANG_APT_MAJOR: "18"
+
+jobs:
+  sanitizers:
+    name: sanitizers (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ThreadSanitizer runs on Linux and macOS only (ADR-0004).
+          - name: linux-asan-gcc
+            os: ubuntu-24.04
+            system: linux
+            preset: linux-asan
+            compiler: gcc
+          - name: linux-asan-clang
+            os: ubuntu-24.04
+            system: linux
+            preset: linux-asan
+            compiler: clang
+          - name: linux-tsan-gcc
+            os: ubuntu-24.04
+            system: linux
+            preset: linux-tsan
+            compiler: gcc
+          - name: linux-tsan-clang
+            os: ubuntu-24.04
+            system: linux
+            preset: linux-tsan
+            compiler: clang
+          - name: macos-asan
+            os: macos-15
+            system: macos
+            preset: macos-asan
+            compiler: appleclang
+          - name: macos-tsan
+            os: macos-15
+            system: macos
+            preset: macos-tsan
+            compiler: appleclang
+          - name: windows-asan
+            os: windows-2025
+            system: windows
+            preset: windows-asan
+            compiler: msvc
+    env:
+      PRESET: ${{ matrix.preset }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja (Linux)
+        if: matrix.system == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Install Clang and its runtime libraries (Linux Clang)
+        if: matrix.system == 'linux' && matrix.compiler == 'clang'
+        # libclang-rt-<major>-dev supplies libclang_rt.asan and libclang_rt.tsan; without it the
+        # link fails, which is exactly what this entry proves it does not.
+        run: |
+          sudo apt-get install -y "clang-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev"
+          echo "CC=clang-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+          echo "CXX=clang++-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+      - name: Lower ASLR entropy for ThreadSanitizer (Linux)
+        # TSan binaries die with "unexpected memory mapping" on runner kernels with
+        # vm.mmap_rnd_bits=32; 28 is the documented workaround (docs/dev/ci.md).
+        if: matrix.system == 'linux'
+        run: sudo sysctl vm.mmap_rnd_bits=28
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Configure
+        shell: bash
+        run: cmake --preset "$PRESET"
+      - name: Build
+        shell: bash
+        run: cmake --build --preset "$PRESET"
+      - name: Test (unit and integration under the sanitizer)
+        shell: bash
+        run: |
+          mkdir -p reports
+          ctest --preset "$PRESET" -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-${{ matrix.name }}.xml"
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          py=python3
+          if [ "${{ matrix.system }}" = windows ]; then py=python; fi
+          $py tools/ci/junit_summary.py --title "ctest ${{ matrix.name }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-sanitizers-${{ matrix.name }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 30
+
+  coverage-build:
+    # Compile check of the coverage presets on macOS and Windows; nothing is run or measured.
+    name: coverage-build (${{ matrix.system }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: macos
+            os: macos-15
+            preset: macos-coverage
+          - system: windows
+            os: windows-2025
+            preset: windows-coverage
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Configure
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset }}
+        run: cmake --preset "$PRESET"
+      - name: Build
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset }}
+        run: cmake --build --preset "$PRESET"
+
+  # The three jobs below are present and green but initially empty: each runs the CTest tests
+  # carrying its label, and succeeds with a message while no such test exists. Later phases add
+  # tests with the labels perf (V2), fuzz (C4, C6) and soak (V2).
+  scheduled-labels:
+    name: ${{ matrix.job }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - job: performance
+            label: perf
+          - job: fuzz
+            label: fuzz
+          - job: soak
+            label: soak
+    env:
+      LABEL: ${{ matrix.label }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Configure
+        run: cmake --preset linux-release
+      - name: Build
+        run: cmake --build --preset linux-release
+      - name: Test the "${{ matrix.label }}" label
+        run: |
+          mkdir -p reports
+          if ctest --preset linux-release -N -L "$LABEL" | grep -q "Total Tests: 0"; then
+            echo "no $LABEL tests yet"
+          fi
+          # --no-tests=ignore is deliberate and only used here: these jobs are empty until the
+          # phases that add perf, fuzz and soak tests land, and must stay green until then.
+          ctest --preset linux-release -L "$LABEL" --no-tests=ignore --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-$LABEL.xml"
+      - name: Job summary
+        if: ${{ always() }}
+        run: python3 tools/ci/junit_summary.py --title "ctest ${{ matrix.label }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-${{ matrix.job }}
+          path: reports/*.xml
+          if-no-files-found: ignore
+          retention-days: 30

@@ -7,12 +7,18 @@ Lists tracked files with ``git ls-files`` and fails (exit 1) when a file that ne
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
 HEADER_LINES = 5
 IDENTIFIER = "SPDX-License-Identifier: MIT"
+
+# After the comment marker (any run of non-word characters such as "//", "#", "/*" or ";"), the
+# line must read exactly the identifier, then optional whitespace, an optional block-comment
+# closer and end of line. "MIT-0" and "MIT OR Apache-2.0" therefore fail.
+IDENTIFIER_LINE = re.compile(r"^\s*(?:[^\w\s]+\s*)?" + re.escape(IDENTIFIER) + r"\s*(?:\*/)?\s*$")
 
 # Extensions that need our header.
 HEADED_SUFFIXES = frozenset(
@@ -49,13 +55,6 @@ VENDORED = {
     "cmake/CPM.cmake": "MIT License",
 }
 
-# Files owned by the planner that cannot take a header from an implementer. Remove an entry once
-# the planner adds the header; the check then passes without it.
-PENDING_HEADER = {
-    "docs/plan/phases.yaml": "planning file, read-only for implementers; planner to add the header",
-}
-
-# Files under these directories are exempt, each with the reason.
 EXEMPT_DIRS = {
     "data": "binary blobs under Git LFS",
 }
@@ -89,8 +88,6 @@ def check_file(root: Path, rel: str) -> str | None:
         if lines is None or not any(VENDORED[rel] in line for line in lines):
             return f"vendored file lacks its own licence marker '{VENDORED[rel]}'"
         return None
-    if rel in PENDING_HEADER:
-        return None
     if pure.parts[0] in EXEMPT_DIRS:
         return None
     if pure.name in EXEMPT_NAMES or pure.suffix in EXEMPT_SUFFIXES:
@@ -102,7 +99,7 @@ def check_file(root: Path, rel: str) -> str | None:
         return None  # binary
     if pure.name not in HEADED_NAMES and pure.suffix not in HEADED_SUFFIXES:
         return "unknown file type (add it to tools/check_spdx.py as headed or exempt)"
-    if not any(IDENTIFIER in line for line in lines):
+    if not any(IDENTIFIER_LINE.match(line) for line in lines):
         return f"missing '{IDENTIFIER}' in the first {HEADER_LINES} lines"
     return None
 

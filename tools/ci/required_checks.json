@@ -1,0 +1,16 @@
+{
+  "required_checks": [
+    "lint",
+    "build (windows-msvc)",
+    "build (windows-clang-cl)",
+    "build (macos-arm64)",
+    "build (macos-universal)",
+    "build (linux-gcc)",
+    "build (linux-clang)",
+    "python (linux)",
+    "python (macos)",
+    "python (windows)",
+    "coverage",
+    "deps"
+  ]
+}
