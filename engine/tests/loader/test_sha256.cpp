@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// Covers: B1-R3
 // SHA-256 against the FIPS 180-4 example vectors and the padding boundaries.
 #include <doctest/doctest.h>
 

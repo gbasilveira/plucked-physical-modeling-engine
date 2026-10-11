@@ -75,7 +75,7 @@
           "type": "number",
           "x-unit": "m",
           "exclusiveMinimum": 0,
-          "description": "Speaking length L"
+          "description": "Speaking length L (SPEC-STR)"
         },
         "dCore": {
           "type": "number",
@@ -87,13 +87,13 @@
           "type": "number",
           "x-unit": "kg/m^3",
           "exclusiveMinimum": 0,
-          "description": "Core density rho_c"
+          "description": "Core density rho_c (SPEC-STR)"
         },
         "ECore": {
           "type": "number",
           "x-unit": "Pa",
           "exclusiveMinimum": 0,
-          "description": "Core Young's modulus E_c"
+          "description": "Core Young's modulus E_c (SPEC-STR)"
         },
         "dOuter": {
           "type": "number",
@@ -105,20 +105,20 @@
           "type": "number",
           "x-unit": "kg/m^3",
           "exclusiveMinimum": 0,
-          "description": "Winding density rho_w"
+          "description": "Winding density rho_w (SPEC-STR)"
         },
         "packing": {
           "type": "number",
           "x-unit": "1",
           "exclusiveMinimum": 0,
           "maximum": 1,
-          "description": "Winding packing factor eta_w, 0.75 to 0.9 for round wire"
+          "description": "Winding packing factor eta_w, 0.75 to 0.9 for round wire (SPEC-STR)"
         },
         "epsWind": {
           "type": "number",
           "x-unit": "1",
           "minimum": 0,
-          "description": "Winding stiffness fraction eps_w of the core EI"
+          "description": "Winding stiffness fraction eps_w of the core EI (SPEC-STR)"
         },
         "f1Target": {
           "type": "number",
@@ -204,7 +204,7 @@
           "type": "number",
           "x-unit": "kg",
           "exclusiveMinimum": 0,
-          "description": "Hammer mass m_H"
+          "description": "Hammer mass m_H (SPEC-HAM)"
         },
         "K": {
           "type": "number",
@@ -216,26 +216,26 @@
           "type": "number",
           "x-unit": "1",
           "exclusiveMinimum": 0,
-          "description": "Felt exponent p"
+          "description": "Felt exponent p (SPEC-HAM)"
         },
         "muHC": {
           "type": "number",
           "x-unit": "s/m",
           "minimum": 0,
-          "description": "Hunt-Crossley hysteresis mu_HC"
+          "description": "Hunt-Crossley hysteresis mu_HC (SPEC-HAM)"
         },
         "width": {
           "type": "number",
           "x-unit": "m",
           "exclusiveMinimum": 0,
-          "description": "Contact window width b_H"
+          "description": "Contact window width b_H (SPEC-HAM)"
         },
         "strikeRatio": {
           "type": "number",
           "x-unit": "1",
           "minimum": 0,
           "maximum": 1,
-          "description": "Strike position beta_c = x_c / L"
+          "description": "Strike position beta_c = x_c / L (SPEC-HAM)"
         },
         "law": {
           "type": "string",
@@ -263,28 +263,28 @@
           "x-unit": "m/s",
           "minimum": 0,
           "default": 0.3,
-          "description": "v_min of the velocity map"
+          "description": "v_min of the velocity map (SPEC-HAM)"
         },
         "vMax": {
           "type": "number",
           "x-unit": "m/s",
           "exclusiveMinimum": 0,
           "default": 6,
-          "description": "v_max of the velocity map"
+          "description": "v_max of the velocity map (SPEC-HAM)"
         },
         "gammaV": {
           "type": "number",
           "x-unit": "1",
           "exclusiveMinimum": 0,
           "default": 1.5,
-          "description": "gamma_v of the velocity map"
+          "description": "gamma_v of the velocity map (SPEC-HAM)"
         },
         "dCheck": {
           "type": "number",
           "x-unit": "m",
           "minimum": 0,
           "default": 0.005,
-          "description": "Release distance d_check"
+          "description": "Release distance d_check (SPEC-HAM)"
         }
       },
       "required": [
@@ -359,7 +359,7 @@
           "type": "number",
           "x-unit": "s",
           "exclusiveMinimum": 0,
-          "description": "Pulse duration t_p"
+          "description": "Pulse duration t_p (SPEC-PLK)"
         },
         "peakForceMax": {
           "type": "number",
@@ -371,18 +371,18 @@
           "type": "number",
           "x-unit": "m",
           "minimum": 0,
-          "description": "Window centre x_p on the segment's x axis"
+          "description": "Window centre x_p on the segment's x axis (SPEC-PLK)"
         },
         "width": {
           "type": "number",
           "x-unit": "m",
           "exclusiveMinimum": 0,
-          "description": "Window width b_p"
+          "description": "Window width b_p (SPEC-PLK)"
         },
         "angle": {
           "type": "number",
           "x-unit": "rad",
-          "description": "Polarisation angle theta_p"
+          "description": "Polarisation angle theta_p (SPEC-PLK)"
         },
         "strengthGamma": {
           "type": "number",
@@ -409,48 +409,48 @@
           "type": "number",
           "x-unit": "kg",
           "exclusiveMinimum": 0,
-          "description": "Tip mass m_p"
+          "description": "Tip mass m_p (SPEC-PLK)"
         },
         "driverStiffness": {
           "type": "number",
           "x-unit": "N/m",
           "exclusiveMinimum": 0,
-          "description": "Spring K_p between tip and driver"
+          "description": "Spring K_p between tip and driver (SPEC-PLK)"
         },
         "driverSpeedMax": {
           "type": "number",
           "x-unit": "m/s",
           "exclusiveMinimum": 0,
-          "description": "Driver speed v_d,max at strength 1"
+          "description": "Driver speed v_d,max at strength 1 (SPEC-PLK)"
         },
         "slipHeight": {
           "type": "number",
           "x-unit": "m",
           "minimum": 0,
-          "description": "Release threshold h_slip"
+          "description": "Release threshold h_slip (SPEC-PLK)"
         },
         "contactK": {
           "type": "number",
           "x-unit": "N/m^alpha",
           "exclusiveMinimum": 0,
-          "description": "Contact stiffness K of the one-sided power law"
+          "description": "Contact stiffness K of the one-sided power law (SPEC-PLK)"
         },
         "contactAlpha": {
           "type": "number",
           "x-unit": "1",
           "exclusiveMinimum": 0,
-          "description": "Contact exponent alpha"
+          "description": "Contact exponent alpha (SPEC-PLK)"
         },
         "position": {
           "type": "number",
           "x-unit": "m",
           "minimum": 0,
-          "description": "Default pluck position x_p on the segment's x axis"
+          "description": "Default pluck position x_p on the segment's x axis (SPEC-PLK)"
         },
         "angle": {
           "type": "number",
           "x-unit": "rad",
-          "description": "Pluck direction theta_p"
+          "description": "Pluck direction theta_p (SPEC-PLK)"
         },
         "strengthGamma": {
           "type": "number",
@@ -480,60 +480,60 @@
           "type": "number",
           "x-unit": "kg",
           "exclusiveMinimum": 0,
-          "description": "Finger tip mass m_f"
+          "description": "Finger tip mass m_f (SPEC-PLK)"
         },
         "driverStiffness": {
           "type": "number",
           "x-unit": "N/m",
           "exclusiveMinimum": 0,
-          "description": "Driver spring K_f between tip and driver"
+          "description": "Driver spring K_f between tip and driver (SPEC-PLK)"
         },
         "driverSpeedMax": {
           "type": "number",
           "x-unit": "m/s",
           "exclusiveMinimum": 0,
-          "description": "Driver speed v_d,max at strength 1"
+          "description": "Driver speed v_d,max at strength 1 (SPEC-PLK)"
         },
         "slipHeight": {
           "type": "number",
           "x-unit": "m",
           "minimum": 0,
-          "description": "Release threshold h_slip,f"
+          "description": "Release threshold h_slip,f (SPEC-PLK)"
         },
         "contactK": {
           "type": "number",
           "x-unit": "N/m^alpha",
           "exclusiveMinimum": 0,
-          "description": "Flesh contact stiffness K_c,f"
+          "description": "Flesh contact stiffness K_c,f (SPEC-PLK)"
         },
         "contactAlpha": {
           "type": "number",
           "x-unit": "1",
           "exclusiveMinimum": 0,
-          "description": "Contact exponent alpha_f"
+          "description": "Contact exponent alpha_f (SPEC-PLK)"
         },
         "muFlesh": {
           "type": "number",
           "x-unit": "s/m",
           "minimum": 0,
-          "description": "Hunt-Crossley flesh damping mu_f"
+          "description": "Hunt-Crossley flesh damping mu_f (SPEC-PLK)"
         },
         "width": {
           "type": "number",
           "x-unit": "m",
           "exclusiveMinimum": 0,
-          "description": "Raised-cosine contact width b_f"
+          "description": "Raised-cosine contact width b_f (SPEC-PLK)"
         },
         "position": {
           "type": "number",
           "x-unit": "m",
           "minimum": 0,
-          "description": "Default pluck position x_p on the segment's x axis"
+          "description": "Default pluck position x_p on the segment's x axis (SPEC-PLK)"
         },
         "angle": {
           "type": "number",
           "x-unit": "rad",
-          "description": "Pluck direction theta_p"
+          "description": "Pluck direction theta_p (SPEC-PLK)"
         },
         "strengthGamma": {
           "type": "number",
@@ -565,18 +565,18 @@
           "type": "number",
           "x-unit": "m",
           "exclusiveMinimum": 0,
-          "description": "Triangle height A_max at strength 1"
+          "description": "Triangle height A_max at strength 1 (SPEC-PLK)"
         },
         "position": {
           "type": "number",
           "x-unit": "m",
           "minimum": 0,
-          "description": "Default apex position x_p on the segment's x axis"
+          "description": "Default apex position x_p on the segment's x axis (SPEC-PLK)"
         },
         "angle": {
           "type": "number",
           "x-unit": "rad",
-          "description": "Polarisation angle theta_p"
+          "description": "Polarisation angle theta_p (SPEC-PLK)"
         },
         "strengthGamma": {
           "type": "number",
@@ -637,19 +637,19 @@
           "type": "number",
           "x-unit": "m",
           "exclusiveMinimum": 0,
-          "description": "Pad width b_d"
+          "description": "Pad width b_d (SPEC-DMP)"
         },
         "Kd": {
           "type": "number",
           "x-unit": "N/m",
           "exclusiveMinimum": 0,
-          "description": "Pad stiffness K_d"
+          "description": "Pad stiffness K_d (SPEC-DMP)"
         },
         "Rd": {
           "type": "number",
           "x-unit": "kg/s",
           "minimum": 0,
-          "description": "Pad resistance R_d"
+          "description": "Pad resistance R_d (SPEC-DMP)"
         },
         "tau0": {
           "type": "number",

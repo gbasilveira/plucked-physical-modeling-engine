@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// Covers: B1-R3, B1-R5
 // B1-T2, C++ half: every malformed fixture fails with exactly the (path, code) pairs listed in
 // compiler/tests/data/b1/malformed/expected.json, the same pairs the Python loader reports.
 #include <doctest/doctest.h>

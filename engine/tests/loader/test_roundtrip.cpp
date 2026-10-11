@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// Covers: B1-R1, B1-R3, B1-R4, B1-R6
 // B1-T1, C++ half: load each committed file, write it back and compare byte for byte with the
 // file Python wrote; check every member of the all-fields instrument against hand-written expected
 // values (this proves the C++ structures mirror the file).
@@ -337,6 +336,7 @@ TEST_CASE("B1-T1 every committed file reads back and writes byte-identical") {
     }
 }
 
+// Covers: B1-R1
 TEST_CASE("B1-T1 all-fields.json matches the hand-written expected value of every member") {
     const std::filesystem::path file = std::filesystem::path(PME_B1_FIXTURES) / "all-fields.json";
     InstrumentFile loaded;

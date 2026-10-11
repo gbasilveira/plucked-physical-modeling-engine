@@ -64,14 +64,12 @@ def test_b1_r1_every_numeric_property_has_a_unit_from_the_vocabulary() -> None:
 
 
 def test_b1_r1_descriptions_cite_a_spec_key() -> None:
-    """B1-R1: every numeric property's description cites a SPEC key (directly or via its struct)."""
+    """B1-R1: every numeric property's description cites a SPEC key."""
     for name, definition in schema()["$defs"].items():
         assert "(SPEC-" in definition["description"], name
         for key, prop in definition["properties"].items():
             if _is_numeric(prop):
-                assert "SPEC-" in prop["description"] or "SPEC-" in definition["description"], (
-                    f"{name}.{key}"
-                )
+                assert "(SPEC-" in prop["description"], f"{name}.{key}"
 
 
 def test_b1_r1_properties_equal_dataclass_fields() -> None:

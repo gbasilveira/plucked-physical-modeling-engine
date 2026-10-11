@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// Covers: B1-R2
 // B1-T3, C++ half: a version 0 fixture migrates to the current version; fixtures without a version
 // 0 source fail with `migration`; a future version fails with `version`.
 #include <doctest/doctest.h>
@@ -36,6 +35,7 @@ TEST_CASE("B1-T3 a version 0 piano migrates to the expected version 1 file") {
     CHECK(current.sourceVersion == 1);
 }
 
+// Covers: B1-R2
 TEST_CASE("B1-T3 migration fills the new members as specified") {
     pme::loader::InstrumentFile loaded;
     std::vector<pme::loader::LoadError> errors;

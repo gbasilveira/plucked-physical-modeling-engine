@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// Covers: B1-R4
 // No exception escapes the loader; hostile input returns InvalidArgument; number formatting.
 #include <doctest/doctest.h>
 

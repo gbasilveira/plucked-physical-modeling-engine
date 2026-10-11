@@ -44,8 +44,8 @@ def _clean(value: float) -> float | int:
     return int(value) if float(value).is_integer() else value
 
 
-def _description(f: Field) -> str:
-    return f.desc + (f" ({f.spec})" if f.spec else "")
+def _description(f: Field, struct_spec: str) -> str:
+    return f"{f.desc} ({f.spec or struct_spec})"
 
 
 INT32_MIN = -(2**31)
@@ -72,20 +72,21 @@ def _bounds(f: Field, cpp: bool = True) -> dict[str, Any]:
     return out
 
 
-def _property(f: Field, cpp: bool) -> dict[str, Any]:
+def _property(f: Field, s: Struct) -> dict[str, Any]:
     """The schema of one member."""
+    cpp = s.cpp
     prop: dict[str, Any] = {}
     kind = f.kind
     if kind in ("obj", "optobj"):
         prop["$ref"] = f"#/$defs/{f.ref}"
-        prop["description"] = _description(f)
+        prop["description"] = _description(f, s.spec)
         return prop
     if kind == "objarray":
         prop["type"] = "array"
         prop["items"] = {"$ref": f"#/$defs/{f.ref}"}
         if f.min_items:
             prop["minItems"] = f.min_items
-        prop["description"] = _description(f)
+        prop["description"] = _description(f, s.spec)
         return prop
     if kind in ("numarray", "intarray"):
         item_type = "number" if kind == "numarray" else "integer"
@@ -95,7 +96,7 @@ def _property(f: Field, cpp: bool) -> dict[str, Any]:
         if f.min_items:
             prop["minItems"] = f.min_items
         prop["x-unit"] = f.unit
-        prop["description"] = _description(f)
+        prop["description"] = _description(f, s.spec)
         return prop
     if kind == "num":
         prop["type"] = "number"
@@ -123,7 +124,7 @@ def _property(f: Field, cpp: bool) -> dict[str, Any]:
         raise ValueError(f"unknown kind {kind}")
     if f.default is not REQUIRED and f.default is not FACTORY and f.default is not None:
         prop["default"] = _clean(f.default) if isinstance(f.default, float) else f.default
-    prop["description"] = _description(f)
+    prop["description"] = _description(f, s.spec)
     return prop
 
 
@@ -131,7 +132,7 @@ def _definition(s: Struct) -> dict[str, Any]:
     d: dict[str, Any] = {
         "type": "object",
         "description": f"{s.doc} ({s.spec})",
-        "properties": {f.name: _property(f, s.cpp) for f in s.fields},
+        "properties": {f.name: _property(f, s) for f in s.fields},
     }
     if s.extra.get("variant"):
         d["minProperties"] = 1
