@@ -32,7 +32,7 @@ def _suites(root: ET.Element) -> list[ET.Element]:
 
 def read_report(path: Path) -> tuple[Counts, list[str]]:
     """Return the totals of a JUnit file and the names of failed test cases."""
-    root = ET.parse(path).getroot()  # noqa: S314 - our own CI output
+    root = ET.parse(path).getroot()
     counts = Counts()
     failed: list[str] = []
     top = _suites(root)
@@ -50,7 +50,12 @@ def read_report(path: Path) -> tuple[Counts, list[str]]:
 
 def summarize(title: str, paths: list[Path]) -> str:
     """Render the Markdown summary for ``paths``."""
-    lines = [f"### {title}", "", "| report | tests | failed | errors | skipped |", "| --- | ---: | ---: | ---: | ---: |"]
+    lines = [
+        f"### {title}",
+        "",
+        "| report | tests | failed | errors | skipped |",
+        "| --- | ---: | ---: | ---: | ---: |",
+    ]
     failed_names: list[str] = []
     for path in paths:
         try:
@@ -59,9 +64,8 @@ def summarize(title: str, paths: list[Path]) -> str:
             lines.append(f"| `{path.name}` (unreadable: {exc}) | | | | |")
             continue
         failed_names.extend(failed)
-        lines.append(
-            f"| `{path.name}` | {counts.tests} | {counts.failures} | {counts.errors} | {counts.skipped} |"
-        )
+        row = [counts.tests, counts.failures, counts.errors, counts.skipped]
+        lines.append(f"| `{path.name}` | " + " | ".join(str(n) for n in row) + " |")
     if not paths:
         lines.append("| (no report files) | | | | |")
     if failed_names:

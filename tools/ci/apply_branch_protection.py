@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     if not token:
         print("GITHUB_TOKEN is not set", file=sys.stderr)
         return 2
-    request = urllib.request.Request(  # noqa: S310 - fixed https URL
+    request = urllib.request.Request(
         url,
         data=json.dumps(body).encode(),
         method=method,
@@ -83,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         },
     )
     try:
-        with urllib.request.urlopen(request) as response:  # noqa: S310
+        with urllib.request.urlopen(request) as response:
             print(f"HTTP {response.status}: branch protection applied to {args.branch}")
     except urllib.error.HTTPError as exc:
         print(f"HTTP {exc.code}: {exc.read().decode(errors='replace')}", file=sys.stderr)

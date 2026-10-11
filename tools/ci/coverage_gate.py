@@ -2,8 +2,8 @@
 """Line-coverage gate over a Cobertura XML report (P0.2-R6; Testing policy: engine core >= 90%).
 
 Measured set: files under ``engine/src/``, excluding ``engine/src/rtcheck/`` (test infrastructure),
-``engine/src/sched/platform/`` (platform glue; none yet) and files named ``*_placeholder.cpp``. When the
-measured set is empty the gate reports "no engine sources measured" and passes.
+``engine/src/sched/platform/`` (platform glue; none yet) and files named ``*_placeholder.cpp``.
+When the measured set is empty the gate reports "no engine sources measured" and passes.
 
     python3 tools/ci/coverage_gate.py coverage.xml --threshold 90
 """
@@ -31,7 +31,7 @@ def measured(path: str) -> bool:
 
 def line_counts(report: Path) -> tuple[int, int, list[str]]:
     """Return (covered, total, files) over the measured set of a Cobertura report."""
-    root = ET.parse(report).getroot()  # noqa: S314 - our own CI output
+    root = ET.parse(report).getroot()
     covered = total = 0
     files: list[str] = []
     for cls in root.iter("class"):

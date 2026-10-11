@@ -6,7 +6,7 @@ for example from ``CC=clang CXX=clang++ cmake --preset linux-debug -B build/linu
 Fetched dependencies live under the build directory and are never listed by ``git ls-files``,
 so they are not analysed. The configuration is ``.clang-tidy``.
 
-    python3 tools/ci/run_clang_tidy.py -p build/linux-debug-clang --clang-tidy "uvx clang-tidy==18.1.8"
+    python3 tools/ci/run_clang_tidy.py -p build/linux-debug-clang --clang-tidy clang-tidy-18
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # runnable as a script
 
-from ci._common import CPP_SOURCE_SUFFIXES, tracked_files  # noqa: E402
+from ci._common import CPP_SOURCE_SUFFIXES, tracked_files
 
 CHUNK = 20
 

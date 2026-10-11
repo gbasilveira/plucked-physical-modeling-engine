@@ -103,9 +103,12 @@ std::size_t cstrLength(const char* s) noexcept {
     // Never let CI hang on an abort dialog or an error-reporting pop-up.
     _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+#if defined(_DEBUG)
+    // Only the debug CRT has report modes (in release they expand to no-op expressions).
     _CrtSetReportMode(_CRT_ASSERT, 0);
     _CrtSetReportMode(_CRT_ERROR, 0);
     _CrtSetReportMode(_CRT_WARN, 0);
+#endif
 #endif
     std::abort();
 }

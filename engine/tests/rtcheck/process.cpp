@@ -46,7 +46,9 @@ ChildResult runSelfAsChild(const std::string& mode) {
     }
     exe.resize(length);
     std::wstring commandLine = L"\"" + exe + L"\" --pme-rtcheck-child=";
-    commandLine.append(mode.begin(), mode.end());  // scenario names are ASCII
+    for (const char c : mode) {  // scenario names are ASCII
+        commandLine.push_back(static_cast<wchar_t>(c));
+    }
 
     SECURITY_ATTRIBUTES inherit{};
     inherit.nLength = sizeof inherit;

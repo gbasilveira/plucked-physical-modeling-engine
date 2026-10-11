@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # runnable as a script
 
-from ci._common import CPP_SUFFIXES, tracked_files  # noqa: E402
+from ci._common import CPP_SUFFIXES, tracked_files
 
 CHUNK = 100  # files per clang-format invocation, to stay below command-line limits
 
