@@ -1,0 +1,500 @@
+# Machine-readable phase graph for the implementation orchestrator.
+# Source of truth for dependencies is docs/plan/phasing-plan.md; this file mirrors it.
+# If the two ever disagree, the phase card in phasing-plan.md wins and this file must be fixed.
+#
+# depends_on entries are phase IDs, gate IDs (G0..G7) or decision IDs (D-1..D-12).
+# outputs: paths the implementer agent may edit (code, tests, module docs) -> model: sonnet
+# planning_outputs: planning or decision documents produced in the phase -> model: opus
+# See CLAUDE.md "Model policy".
+
+version: 1
+
+model_policy:
+  orchestrator: opus
+  planning_documentation: opus
+  code: sonnet
+  code_review: sonnet
+
+decisions:
+  D-1:  {title: "GUI technology and project licence", default: "Web UI in a native WebView; MIT throughout", status: defaulted, note: "Repository LICENSE is MIT, consistent with the default"}
+  D-2:  {title: "Repository host and organisation name", default: null, status: answered, answer: "github.com/gbasilveira/plucked-physical-modeling-engine"}
+  D-3:  {title: "Product name and frozen plug-in identifiers", default: "Internal codename pme; blocks D2", status: open}
+  D-4:  {title: "Reference machines for performance validation", default: "One mid-range 2024 laptop per system plus CI runners", status: open}
+  D-5:  {title: "Access to a concert grand and measurement equipment", default: "No access: E2 skipped, G4 passes without it", status: open}
+  D-6:  {title: "Listening-test participants and consent process", default: "Skipped: G5 passes without V4", status: open}
+  D-7:  {title: "Host licences for compatibility testing", default: "Test available hosts; record untested ones", status: open}
+  D-8:  {title: "Prior-art and patent review sign-off", default: null, status: open, blocks: [G5]}
+  D-9:  {title: "Signing identities (Apple Developer ID, Windows code signing) as CI secrets", default: "Unsigned builds as pre-releases only", status: open}
+  D-10: {title: "Beta programme", default: "Release candidates as GitHub pre-releases", status: open}
+  D-11: {title: "Human approver for G5 and each G7", default: null, status: open, blocks: [G5, G7]}
+  D-12: {title: "Redistribution rights for published piano data", default: "Use only after rights confirmed; otherwise generic scale from published scaling rules", status: open}
+
+gates:
+  G0: {name: "Foundations", requires: [P0.1, P0.2, P0.3, P0.4], human_approval: false}
+  G1: {name: "Core numerics", requires: [A1, A2, A3, A4, A5, A6, A7, A8, P0.5], oracles: [ORC-01, ORC-02, ORC-03, ORC-04, ORC-05, ORC-06, ORC-07, ORC-08, ORC-09, ORC-11, ORC-12, ORC-13, ORC-19], human_approval: false}
+  G2: {name: "Piano engine", requires: [C1, C2, C3, C4, C5, C6, C7, C8, B1, B2, B3], oracles: [ORC-16, ORC-17, ORC-18], human_approval: false}
+  G3: {name: "Plug-in alpha", requires: [D1, D2, D3, D4, D5, D6], human_approval: false}
+  G4: {name: "Piano content", requires: [E1, E3, V3], conditional: {E2: "when D-5 provides an instrument"}, human_approval: false}
+  G5: {name: "Release candidate", requires: [G3, G4, V2, V5, V6, H1, H2, H3, H4], conditional: {V4: "when D-6 provides listeners"}, decisions: [D-8, D-11], human_approval: true}
+  G6: {name: "Plucked numerics", requires: [P1, P2, P3, P4, P5, P6, B4], oracles: [ORC-10, ORC-14, ORC-15], human_approval: false}
+  G7: {name: "Plucked instrument (one gate per instrument)", requires_per_instrument: ["<that instrument's E card>", H4], instruments: [E4, E5, E6, E7, E8], decisions: [D-11], human_approval: true}
+
+tracks:
+  "0": Foundations
+  A: Core numerics
+  B: Bodies and offline toolchain
+  C: Engine runtime
+  P: Plucked-string numerics
+  D: Plug-in shell and application
+  E: Instrument content
+  V: Validation and quality
+  H: Release and publishing
+
+phases:
+  # ---------------- Track 0 ----------------
+  - id: P0.1
+    name: Repository and build skeleton
+    track: "0"
+    depends_on: [D-2]
+    outputs: [CMakeLists.txt, CMakePresets.json, pyproject.toml, CONTRIBUTING.md, CODEOWNERS, .clang-format, .clang-tidy, .editorconfig, .gitattributes, engine/, compiler/, plugin/, reference/, tools/]
+    planning_outputs: [docs/adr/TEMPLATE.md, docs/adr/ADR-0001-highway.md, docs/adr/ADR-0002-scikit-fem.md, docs/adr/ADR-0003-dependency-pinning.md]
+    tests: [P0.1-T1, P0.1-T2, P0.1-T3]
+    references: [PLAN-STACK, PLAN-ARCH]
+  - id: P0.2
+    name: CI and quality gates
+    track: "0"
+    depends_on: [P0.1]
+    outputs: [.github/workflows/pr.yml, .github/workflows/nightly.yml, .github/workflows/release.yml, tools/ci/, engine/src/rtcheck/]
+    tests: [P0.2-T1, P0.2-T2, P0.2-T3]
+    references: [PLAN-STACK]
+  - id: P0.3
+    name: Test and analysis framework
+    track: "0"
+    depends_on: [P0.1]
+    outputs: [engine/tests/framework/, engine/tests/oracles.md, tools/analysis/, tools/bench/]
+    tests: [P0.3-T1, P0.3-T2, P0.3-T3]
+    references: [SPEC-ORC, PLAN-VAL]
+  - id: P0.4
+    name: Interface skeleton
+    track: "0"
+    depends_on: [P0.1]
+    outputs: [engine/include/pme/, engine/src/, params.json, docs/dev/interfaces.md]
+    tests: [P0.4-T1, P0.4-T2, P0.4-T3]
+    references: [SPEC-API, SPEC-EXEC]
+  - id: P0.5
+    name: Reference solver
+    track: "0"
+    depends_on: [P0.3]
+    outputs: [reference/, tools/reference-cli/]
+    tests: [P0.5-T1, P0.5-T2, P0.5-T3, P0.5-T4]
+    references: [SPEC-STR, SPEC-BRG, SPEC-HAM, SPEC-BODY, SPEC-PLK, SPEC-GEO, PLAN-VAL]
+
+  # ---------------- Track A ----------------
+  - id: A1
+    name: Modal oscillator
+    track: A
+    depends_on: [G0]
+    outputs: [engine/src/osc/, docs/dev/osc.md]
+    tests: [A1-T1, A1-T2, A1-T3]
+    oracles: [ORC-01, ORC-02]
+    references: [SPEC-OSC, SPEC-CONV]
+  - id: A2
+    name: Stiff string compiler
+    track: A
+    depends_on: [A1]
+    outputs: [engine/src/string/, docs/dev/string.md]
+    tests: [A2-T1, A2-T2, A2-T3]
+    oracles: [ORC-03, ORC-04, ORC-05]
+    references: [SPEC-STR]
+  - id: A3
+    name: SAV framework and low-rank solve
+    track: A
+    depends_on: [A1]
+    outputs: [engine/src/nonlinear/, docs/dev/nonlinear.md]
+    tests: [A3-T1, A3-T2, A3-T3, A3-T4]
+    oracles: [ORC-08]
+    references: [SPEC-NL]
+  - id: A4
+    name: Bridge coupling
+    track: A
+    depends_on: [A2]
+    outputs: [engine/src/bridge/, docs/dev/bridge.md]
+    tests: [A4-T1, A4-T2, A4-T3]
+    oracles: [ORC-06, ORC-07]
+    references: [SPEC-BRG]
+  - id: A5
+    name: Hammer and felt
+    track: A
+    depends_on: [A2, A3, A4]
+    outputs: [engine/src/exciters/, docs/dev/hammer.md]
+    tests: [A5-T1, A5-T2, A5-T3, A5-T4]
+    oracles: [ORC-09, ORC-19]
+    references: [SPEC-HAM, SPEC-NL]
+  - id: A6
+    name: Dampers and pedals
+    track: A
+    depends_on: [A2, A3]
+    outputs: [engine/src/dampers/, docs/dev/dampers.md]
+    tests: [A6-T1, A6-T2, A6-T3, A6-T4]
+    oracles: [ORC-13]
+    references: [SPEC-DMP]
+  - id: A7
+    name: Geometric nonlinearity and longitudinal waves
+    track: A
+    depends_on: [A3, A4]
+    outputs: [engine/src/string/, engine/src/nonlinear/, docs/dev/geometric.md]
+    tests: [A7-T1, A7-T2, A7-T3]
+    oracles: [ORC-11, ORC-12]
+    references: [SPEC-GEO]
+  - id: A8
+    name: SIMD kernels
+    track: A
+    depends_on: [A1, A2, A4]
+    outputs: [engine/src/simd/, docs/dev/simd.md]
+    tests: [A8-T1, A8-T2, A8-T3]
+    references: [PLAN-COMP, SPEC-EXEC]
+
+  # ---------------- Track B ----------------
+  - id: B1
+    name: Instrument description schema and loader
+    track: B
+    depends_on: [G0]
+    outputs: [compiler/pme_compiler/schema/, engine/src/runtime/loader/, instruments/examples/, docs/dev/instrument-format.md]
+    tests: [B1-T1, B1-T2, B1-T3]
+    references: [SPEC-INST, SPEC-API]
+  - id: B2
+    name: Plate and body FEM compiler
+    track: B
+    depends_on: [B1]
+    outputs: [compiler/pme_compiler/body/, compiler/pme_compiler/materials/, docs/dev/body-compiler.md]
+    tests: [B2-T1, B2-T2, B2-T3, B2-T4, B2-T5]
+    references: [SPEC-BODY]
+  - id: B3
+    name: Radiation, mobility and local bridge builder
+    track: B
+    depends_on: [B2]
+    outputs: [compiler/pme_compiler/radiation/, engine/src/body/, docs/dev/radiation.md]
+    tests: [B3-T1, B3-T2, B3-T3]
+    references: [SPEC-BODY]
+  - id: B4
+    name: Modal data import
+    track: B
+    depends_on: [B1]
+    outputs: [compiler/pme_compiler/import/, docs/dev/body-import.md]
+    tests: [B4-T1, B4-T2, B4-T3]
+    references: [SPEC-BODY, SPEC-INST]
+  - id: B5
+    name: Parameter fitting toolkit
+    track: B
+    depends_on: [B1, A5, C8]
+    outputs: [compiler/pme_compiler/fit/, tools/fit-cli/, docs/dev/fitting.md]
+    tests: [B5-T1, B5-T2, B5-T3]
+    references: [SPEC-STR, SPEC-HAM, PLAN-RISK]
+
+  # ---------------- Track C ----------------
+  - id: C1
+    name: Note group runtime
+    track: C
+    depends_on: [G1, B1]
+    outputs: [engine/src/runtime/, docs/dev/runtime.md]
+    tests: [C1-T1, C1-T2, C1-T3, C1-T4]
+    references: [SPEC-EXEC, SPEC-GLANCE, SPEC-BRG, SPEC-BODY]
+  - id: C2
+    name: Global body engine
+    track: C
+    depends_on: [G1, B1]
+    outputs: [engine/src/body/, docs/dev/global-body.md]
+    tests: [C2-T1, C2-T2, C2-T3]
+    references: [SPEC-BODY, SPEC-EXEC, PLAN-COMP]
+  - id: C3
+    name: Sympathetic path and guard
+    track: C
+    depends_on: [C1, C2, C7]
+    outputs: [engine/src/runtime/, docs/dev/sympathetic.md]
+    tests: [C3-T1, C3-T2, C3-T3]
+    oracles: [ORC-17]
+    references: [SPEC-BODY, SPEC-EXEC]
+  - id: C4
+    name: Event and parameter system
+    track: C
+    depends_on: [C1]
+    outputs: [engine/src/runtime/, docs/dev/events.md]
+    tests: [C4-T1, C4-T2, C4-T3, C4-T4]
+    references: [SPEC-API, SPEC-EXEC]
+  - id: C5
+    name: Scheduler and threading
+    track: C
+    depends_on: [C1, C2]
+    outputs: [engine/src/sched/, docs/dev/scheduler.md]
+    tests: [C5-T1, C5-T2, C5-T3]
+    oracles: [ORC-18]
+    references: [SPEC-EXEC, PLAN-COMP]
+  - id: C6
+    name: Sleep, wake and state management
+    track: C
+    depends_on: [C3]
+    outputs: [engine/src/runtime/, docs/dev/sleep.md]
+    tests: [C6-T1, C6-T2, C6-T3]
+    references: [SPEC-EXEC]
+  - id: C7
+    name: Reference mode
+    track: C
+    depends_on: [C1, C2]
+    outputs: [engine/src/runtime/, docs/dev/reference-mode.md]
+    tests: [C7-T1]
+    oracles: [ORC-17]
+    references: [SPEC-BODY]
+  - id: C8
+    name: Offline render CLI and Python bindings
+    track: C
+    depends_on: [C4]
+    outputs: [tools/render/, bindings/python/, docs/dev/render.md]
+    tests: [C8-T1, C8-T2, C8-T3]
+    references: [SPEC-API, PLAN-VAL]
+
+  # ---------------- Track P ----------------
+  - id: P1
+    name: Plucked exciters
+    track: P
+    depends_on: [G1]
+    outputs: [engine/src/exciters/, docs/dev/plucked-exciters.md]
+    tests: [P1-T1, P1-T2, P1-T3]
+    oracles: [ORC-10]
+    references: [SPEC-PLK, SPEC-NL]
+  - id: P2
+    name: Distributed barriers
+    track: P
+    depends_on: [G1]
+    outputs: [engine/src/barriers/, docs/dev/barriers.md]
+    tests: [P2-T1, P2-T2, P2-T3]
+    oracles: [ORC-15]
+    references: [SPEC-PLK, SPEC-NL]
+  - id: P3
+    name: Frets and stopping finger
+    track: P
+    depends_on: [P1, P2]
+    outputs: [engine/src/barriers/, engine/src/exciters/, docs/dev/frets.md]
+    tests: [P3-T1, P3-T2, P3-T3]
+    oracles: [ORC-14]
+    references: [SPEC-PLK]
+  - id: P4
+    name: Jawari, thread and sawari
+    track: P
+    depends_on: [P2]
+    outputs: [engine/src/barriers/, docs/dev/flat-bridges.md]
+    tests: [P4-T1, P4-T2, P4-T3]
+    references: [SPEC-PLK, SPEC-NL]
+  - id: P5
+    name: Bending and time-varying tension
+    track: P
+    depends_on: [P1, G1]
+    outputs: [engine/src/string/, docs/dev/bending.md]
+    tests: [P5-T1, P5-T2, P5-T3]
+    references: [SPEC-PLK, SPEC-OSC]
+  - id: P6
+    name: Plucked-instrument integration
+    track: P
+    depends_on: [P1, P2, P3, P4, P5, C1, C4]
+    outputs: [engine/src/runtime/, instruments/examples/, docs/dev/plucked-integration.md]
+    tests: [P6-T1, P6-T2, P6-T3]
+    references: [SPEC-PLK, SPEC-INST, SPEC-EXEC]
+
+  # ---------------- Track D ----------------
+  - id: D1
+    name: CLAP plug-in shell
+    track: D
+    depends_on: [G0]
+    outputs: [plugin/clap/, plugin/common/, docs/dev/clap-shell.md]
+    tests: [D1-T1, D1-T2, D1-T3]
+    references: [SPEC-API, PLAN-STACK, PLAN-ARCH]
+  - id: D2
+    name: VST3, AUv2 and standalone
+    track: D
+    depends_on: [D1, D-3]
+    outputs: [plugin/wrappers/, docs/dev/formats.md]
+    tests: [D2-T1, D2-T2, D2-T3, D2-T4]
+    references: [PLAN-STACK]
+  - id: D3
+    name: LV2 plug-in
+    track: D
+    depends_on: [D1]
+    outputs: [plugin/lv2/, docs/dev/lv2.md]
+    tests: [D3-T1, D3-T2]
+    references: [PLAN-STACK]
+  - id: D4
+    name: GUI
+    track: D
+    depends_on: [D1, C4, D-1]
+    outputs: [plugin/gui/, docs/dev/gui.md]
+    tests: [D4-T1, D4-T2, D4-T3, D4-T4]
+    references: [SPEC-INST, SPEC-API]
+  - id: D5
+    name: Instrument and preset management
+    track: D
+    depends_on: [D1, B1]
+    outputs: [plugin/common/library/, docs/dev/library.md, docs/user/files.md]
+    tests: [D5-T1, D5-T2, D5-T3, D5-T4]
+    references: [SPEC-INST]
+  - id: D6
+    name: Real-engine integration
+    track: D
+    depends_on: [G2, D1, D2, D3, D4, D5]
+    outputs: [plugin/, tools/hosts/]
+    tests: [D6-T1, D6-T2, D6-T3]
+    references: [SPEC-EXEC, PLAN-VAL]
+
+  # ---------------- Track E ----------------
+  - id: E1
+    name: Concert grand piano
+    track: E
+    depends_on: [G2, B2, B3, D-12]
+    outputs: [instruments/concert-grand/, data/concert-grand/, docs/user/instruments/concert-grand.md]
+    tests: [EC-T1, EC-T2, EC-T3, E1-T1, E1-T2]
+    references: [SPEC-INST, SPEC-HAM, SPEC-DMP, SPEC-BODY]
+  - id: E2
+    name: Piano measurement and fitting
+    track: E
+    depends_on: [E1, B5, D-5]
+    optional_if: "D-5 provides no instrument (then skipped; G4 passes without it)"
+    outputs: [instruments/concert-grand/]
+    planning_outputs: [docs/dev/fit-reports/concert-grand.md]
+    tests: [E2-T1, E2-T2]
+    references: [PLAN-VAL, PLAN-RISK]
+  - id: E3
+    name: Upright piano
+    track: E
+    depends_on: [E1]
+    outputs: [instruments/upright/]
+    tests: [EC-T1, EC-T2, EC-T3, E3-T1]
+    references: [SPEC-HAM, SPEC-INST]
+  - id: E4
+    name: Harpsichord
+    track: E
+    depends_on: [G2, P1, B2]
+    outputs: [instruments/harpsichord/]
+    tests: [EC-T1, EC-T2, EC-T3, E4-T1, E4-T2, E4-T3]
+    references: [SPEC-PLK, SPEC-INST]
+  - id: E5
+    name: Guitars
+    track: E
+    depends_on: [G6, B4]
+    outputs: [instruments/guitar-classical/, instruments/guitar-steel/]
+    tests: [EC-T1, EC-T2, EC-T3, E5-T1, E5-T2]
+    references: [SPEC-PLK, SPEC-BODY]
+  - id: E6
+    name: Tanpura
+    track: E
+    depends_on: [G6]
+    outputs: [instruments/tanpura/]
+    tests: [EC-T1, EC-T2, EC-T3, E6-T1]
+    references: [SPEC-PLK]
+  - id: E7
+    name: Sitar
+    track: E
+    depends_on: [G6]
+    outputs: [instruments/sitar/]
+    tests: [EC-T1, EC-T2, EC-T3, E7-T1, E7-T2]
+    references: [SPEC-PLK]
+  - id: E8
+    name: Kantele, shamisen and tanbur
+    track: E
+    depends_on: [G6, B4]
+    outputs: [instruments/kantele/, instruments/shamisen/, instruments/tanbur/]
+    tests: [EC-T1, EC-T2, EC-T3, E8-T1, E8-T2]
+    references: [SPEC-PLK, SPEC-GEO, SPEC-BODY]
+
+  # ---------------- Track V ----------------
+  - id: V1
+    name: Traceability and oracle suite
+    track: V
+    continuous: true
+    depends_on: [P0.3]
+    outputs: [tools/trace/]
+    tests: [V1-T1, V1-T2]
+    references: [SPEC-ORC]
+  - id: V2
+    name: Performance and real-time validation
+    track: V
+    depends_on: [C5, C6, D-4]
+    repeat_after: [D6]
+    outputs: [tools/bench/scenarios/]
+    planning_outputs: [docs/dev/performance-report.md]
+    tests: [V2-T1, V2-T2]
+    references: [PLAN-COMP, PLAN-VAL]
+  - id: V3
+    name: Sympathetic approximation validation
+    track: V
+    depends_on: [C3, C7, E1]
+    planning_outputs: [docs/dev/sympathetic-validation.md]
+    tests: [V3-T1, V3-T2]
+    references: [SPEC-BODY, SPEC-ORC]
+  - id: V4
+    name: Listening and playability tests
+    track: V
+    depends_on: [E1, D6, D-6]
+    note: "Uses E2 when it exists; skipped when D-6 provides no listeners"
+    outputs: [tools/listening/]
+    planning_outputs: [docs/dev/listening-report.md]
+    tests: [V4-T1, V4-T2]
+    references: [PLAN-VAL]
+  - id: V5
+    name: Robustness - fuzzing and soak
+    track: V
+    depends_on: [C6, D6]
+    outputs: [tools/fuzz/]
+    tests: [V5-T1, V5-T2, V5-T3]
+    references: [PLAN-VAL, SPEC-EXEC]
+  - id: V6
+    name: Host compatibility matrix
+    track: V
+    depends_on: [D6, D-7]
+    outputs: [tools/hosts/]
+    planning_outputs: [docs/dev/host-matrix.md]
+    tests: [V6-T1]
+    references: [PLAN-VAL]
+
+  # ---------------- Track H ----------------
+  - id: H1
+    name: Licensing, provenance and compliance
+    track: H
+    continuous: true
+    depends_on: [P0.1, D-1, D-8]
+    outputs: [LICENSE, THIRD_PARTY_NOTICES, sbom/, tools/sbom/]
+    planning_outputs: [docs/adr/ADR-licence.md, docs/dev/provenance.md, docs/dev/prior-art.md]
+    tests: [H1-T1, H1-T2, H1-T3]
+    references: [PLAN-STACK, PLAN-RISK]
+  - id: H2
+    name: Packaging and signing
+    track: H
+    depends_on: [G3, D5, D-9]
+    outputs: [packaging/windows/, packaging/macos/, packaging/linux/, docs/dev/packaging.md]
+    tests: [H2-T1, H2-T2, H2-T3]
+    references: [PLAN-STACK]
+  - id: H3
+    name: Documentation and website
+    track: H
+    depends_on: [D4, D5, B1, E1]
+    outputs: [docs/user/, docs/authoring/, docs/dev/, site/]
+    tests: [H3-T1, H3-T2, H3-T3, H3-T4]
+    references: [SPEC-INST, SPEC-API]
+  - id: H4
+    name: Release pipeline
+    track: H
+    depends_on: [H2, P0.2]
+    outputs: [.github/workflows/release.yml, CHANGELOG.md, docs/dev/releasing.md]
+    tests: [H4-T1, H4-T2]
+    references: [PLAN-STACK]
+  - id: H5
+    name: Public release 1.0 (pianos)
+    track: H
+    depends_on: [G5, D-10]
+    outputs: ["release v1.0.0", site/]
+    tests: [H5-T1, H5-T2, H5-T3]
+    references: [PLAN-VAL]
+  - id: H6
+    name: Plucked-instrument releases (1.x)
+    track: H
+    depends_on: [G7, H4]
+    outputs: ["releases v1.x.0"]
+    tests: [H6-T1, H6-T2]
+    references: [PLAN-VAL]

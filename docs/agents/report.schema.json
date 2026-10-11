@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gbasilveira/plucked-physical-modeling-engine/docs/agents/report.schema.json",
+  "title": "Agent handoff report",
+  "description": "Returned by every agent at the end of a brief. See 'Agent briefs and handoff' in docs/plan/phasing-plan.md.",
+  "type": "object",
+  "required": ["phase", "role", "model", "status", "requirements", "tests", "outputs", "pull_requests"],
+  "additionalProperties": false,
+  "properties": {
+    "phase": {"type": "string", "pattern": "^(P0\\.[1-5]|[ABCPDEVH][0-9]+)$"},
+    "role": {"enum": ["planner", "implementer", "code-reviewer", "test-author"]},
+    "model": {"enum": ["opus", "sonnet"], "description": "Must be opus for planner and sonnet otherwise."},
+    "status": {"enum": ["complete", "partial", "blocked"]},
+    "requirements": {
+      "type": "object",
+      "description": "Requirement ID (for example A2-R3) to its state.",
+      "propertyNames": {"pattern": "^[A-Z0-9.]+-R[0-9]+$|^EC-R[0-9]+$"},
+      "additionalProperties": {"enum": ["met", "deferred", "not met"]}
+    },
+    "tests": {
+      "type": "object",
+      "description": "Test or oracle ID (for example A2-T1, ORC-06) to its CI result.",
+      "propertyNames": {"pattern": "^([A-Z0-9.]+-T[0-9]+|EC-T[0-9]+|ORC-[0-9]{2})$"},
+      "additionalProperties": {
+        "type": "object",
+        "required": ["result"],
+        "additionalProperties": false,
+        "properties": {
+          "result": {"enum": ["pass", "fail", "not run"]},
+          "ci_run": {"type": "string", "format": "uri"}
+        }
+      }
+    },
+    "outputs": {"type": "array", "items": {"type": "string"}, "description": "Repository paths created or changed."},
+    "pull_requests": {"type": "array", "items": {"type": "string", "format": "uri"}},
+    "adrs": {"type": "array", "items": {"type": "string"}},
+    "icrs": {"type": "array", "items": {"type": "string"}, "description": "ICR files, or proposed interface changes for the planner to file."},
+    "spec_issues": {"type": "array", "items": {"type": "string"}, "description": "Spec issue files, or described defects for the planner to file."},
+    "open_risks": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": "string"}
+  },
+  "allOf": [
+    {"if": {"properties": {"role": {"const": "planner"}}}, "then": {"properties": {"model": {"const": "opus"}}}},
+    {"if": {"properties": {"role": {"enum": ["implementer", "code-reviewer", "test-author"]}}}, "then": {"properties": {"model": {"const": "sonnet"}}}}
+  ]
+}
