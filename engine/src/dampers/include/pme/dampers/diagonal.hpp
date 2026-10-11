@@ -86,8 +86,9 @@ public:
     /// must hold modes() entries. Returns false when eEnd equals the value in force (nothing to
     /// apply; `ramps` untouched). A mode whose target fails to compile keeps its coefficients
     /// (counted in `refreshFailures()`; unreachable after a successful `configure`).
-    /// Cost: one `compileOscillatorF64` plus one `planRamp` per mode (about 0.2 us per mode on
-    /// the development machine, see docs/dev/dampers.md). Thread: audio. Allocates: no.
+    /// Cost: one `compileOscillatorF64` plus one `planRamp` per mode (about 0.08 us per mode
+    /// for the whole refresh including the ramp writes and the commit, release build on the
+    /// development machine; see docs/dev/dampers.md). Thread: audio. Allocates: no.
     [[nodiscard]] bool plan(double eEnd, int subBlock, std::span<osc::CoeffRamp> ramps) noexcept;
 
     /// After the sub-block: make the planned target the value in force and write it to the bank

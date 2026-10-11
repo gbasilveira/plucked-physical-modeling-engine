@@ -145,8 +145,33 @@ from the controller's `lift(key).l`.
 
 ## Overdamping results
 
-(See the A6 handoff report; the numbers are produced by `A6-R1 overdamping check on the test
-strings at full engagement` and `A6-R1 no damper of generic-grand-88 overdamps a mode at e = 1`.)
+Pad of the example instruments (x\_d/L = 0.0537 for the test strings and 0.05 in the instrument,
+b\_d = 0.02 m, K\_d = 5000 N/m, R\_d = 5 kg/s), fs = 48 kHz, f\_max = 16 kHz, e swept 0 to 1. No mode
+is rejected anywhere, so no mode is dropped and nothing is clamped (a damper with R\_d = 10^6 is
+rejected by `configure`, as the test `A6-R1 overdamping check on the test strings at full
+engagement` shows).
+
+| String | Modes | Largest sigma\_n,d / omega\_n,d at e = 1 |
+| --- | --- | --- |
+| treble, L 0.1 m, f1 2000 Hz | 6 | 0.048 (mode 4) |
+| mid, L 0.65 m, f1 262 Hz | 46 | 0.090 (mode 7) |
+| wound bass, L 1.9 m, f1 27.5 Hz | 220 | 0.014 (mode 7) |
+| every damper of `generic-grand-88` (176 segments) | 9 to 220 | **0.078 (key 73, mode 7)** |
+
+The worst ratio sits at e = 1; the check also samples e = 1/16 ... 15/16.
+
+## Benchmarks
+
+`pme_dampers_bench` (label `perf`), linux-release, GCC, development machine; no baseline file until
+V2 and decision D-4:
+
+| Benchmark | Median | Per unit |
+| --- | --- | --- |
+| `damper_refresh_80_modes_per_subblock`: `plan` + 16 `applyRampsAt` + `commit`, 80 modes, e moving | 6.8 us | 85 ns per mode; at S = 16 and 48 kHz about 2% of a core per moving damper |
+| `damper_rank_one_step_80_modes_x64`: `addSpringForce` + `savStep` (r = 1), 80 modes, 64 samples | 41.5 us | 650 ns per sample (8 ns per mode-sample) |
+| `damper_controller_advance_moving_keys`: `advance()` with 88 moving keys | 246 ns | 2.8 ns per key-sample |
+
+Line coverage of `engine/src/dampers` (gcovr, linux-coverage, tests labelled A6): 98.4%.
 
 ## Real-time rules
 
@@ -162,10 +187,10 @@ allocates nothing` (label `rt`) run them under `ScopedRealtimeThread`.
 
 | Test | File |
 | --- | --- |
-| A6-T1 monotone energy, lossless string, rank-one damper, e = 1 and 0.3, 2 s | `engine/tests/dampers/test_rank_one.cpp` |
+| A6-T1 monotone energy, lossless string (46 modes), rank-one damper, e = 1 and 0.3, 2 s: worst E^(n+1/2)/E^(n-1/2) - 1 = -4.2 x 10^-14 (limit +10^-13), decay 65 000 (e = 1) and 4 900 (e = 0.3) | `engine/tests/dampers/test_rank_one.cpp` |
 | A6-T2 table of 20 key, sustain and sostenuto sequences | `test_controller.cpp` |
 | A6-T3 damping against pedal depth, 1.00 down to 0.00 in steps of 0.01 | `test_diagonal.cpp` |
-| A6-T4 engagement steps against the undamped signal's | `test_engagement.cpp` |
+| A6-T4 engagement steps against the undamped signal's; window from the engagement event (20 ms) to 0.2 s; largest damped step / undamped D: diagonal 0.82 (landing, nu_rel 0), 0.81 (nu_rel 1), 0.75 (lifting); rank-one 0.87, 0.87, 0.36; no margin needed | `test_engagement.cpp` |
 | A6-R1 formulas, vertical only, ramp rule, overdamping | `test_diagonal.cpp`, `test_instrument.cpp` |
 | A6-R2 Dashpot form equals SPEC's pair | `test_rank_one.cpp` |
 | A6-R3, A6-R4, A6-R5 | `test_controller.cpp` |
