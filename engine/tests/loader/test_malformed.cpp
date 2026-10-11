@@ -20,6 +20,7 @@ using Pair = std::pair<std::string, std::string>;
 
 std::vector<Pair> pairsOf(const std::vector<pme::loader::LoadError>& errors) {
     std::vector<Pair> out;
+    out.reserve(errors.size());
     for (const auto& e : errors) {
         out.emplace_back(e.path, e.code);
     }
@@ -37,6 +38,7 @@ TEST_CASE("B1-T2 malformed files fail with the expected paths and codes") {
         const std::string& name = item.key();
         CAPTURE(name);
         std::vector<Pair> want;
+        want.reserve(item.value().size());
         for (const auto& pair : item.value()) {
             want.emplace_back(pair.at(0).get<std::string>(), pair.at(1).get<std::string>());
         }

@@ -41,7 +41,7 @@ TEST_CASE("B1-T3 migration fills the new members as specified") {
     std::vector<pme::loader::LoadError> errors;
     REQUIRE(pme::loader::loadInstrumentFile(kV0 / "piano-v0.json", true, loaded, errors) ==
             pme::Status::Ok);
-    const auto& pulse = std::get<pme::PluckPulse>(loaded.desc.groups[2].exciter->e);
+    const auto& pulse = std::get<pme::PluckPulse>(b1test::must(loaded.desc.groups[2].exciter).e);
     CHECK(pulse.peakForceMax == 5.0);
     CHECK(pulse.strengthGamma == 1.0);
     for (const auto& g : loaded.desc.groups) {
@@ -66,10 +66,12 @@ TEST_CASE("B1-T3 a version 0 plectrum or finger fails with migration at the exci
         CHECK(pme::loader::loadInstrumentFile(kV0 / item.key(), true, loaded, errors) ==
               pme::Status::InvalidArgument);
         std::vector<std::pair<std::string, std::string>> got;
+        got.reserve(errors.size());
         for (const auto& e : errors) {
             got.emplace_back(e.path, e.code);
         }
         std::vector<std::pair<std::string, std::string>> want;
+        want.reserve(item.value().size());
         for (const auto& pair : item.value()) {
             want.emplace_back(pair.at(0).get<std::string>(), pair.at(1).get<std::string>());
         }
@@ -84,7 +86,7 @@ TEST_CASE("B1-T3 a version 0 plectrum with position and angle supplied migrates"
     pme::loader::InstrumentFile loaded;
     std::vector<pme::loader::LoadError> errors;
     REQUIRE(pme::loader::loadInstrument(doc.dump(), loaded, errors) == pme::Status::Ok);
-    const auto& plectrum = std::get<pme::Plectrum>(loaded.desc.groups[2].exciter->e);
+    const auto& plectrum = std::get<pme::Plectrum>(b1test::must(loaded.desc.groups[2].exciter).e);
     CHECK(plectrum.driverSpeedMax == 0.5);
     CHECK(plectrum.strengthGamma == 1.0);
 }
@@ -98,7 +100,7 @@ TEST_CASE("B1-T3 a version 0 finger with the new members supplied migrates") {
     pme::loader::InstrumentFile loaded;
     std::vector<pme::loader::LoadError> errors;
     REQUIRE(pme::loader::loadInstrument(doc.dump(), loaded, errors) == pme::Status::Ok);
-    const auto& f = std::get<pme::Finger>(loaded.desc.groups[2].exciter->e);
+    const auto& f = std::get<pme::Finger>(b1test::must(loaded.desc.groups[2].exciter).e);
     CHECK(f.tipMass == 0.002);
     CHECK(f.contactK == 1.0e5);
     CHECK(f.contactAlpha == 1.5);

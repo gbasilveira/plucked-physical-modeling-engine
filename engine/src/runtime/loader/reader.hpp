@@ -165,7 +165,7 @@ public:
             c.error(Code::Type, "expected a string");
             return;
         }
-        const std::string& text = m->get_ref<const std::string&>();
+        const auto& text = m->get_ref<const std::string&>();
         for (std::size_t i = 0; i < N; ++i) {
             if (text == names[i]) {
                 out = static_cast<E>(i);

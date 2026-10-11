@@ -101,11 +101,11 @@ void Reader::errorAt(std::string_view key, Code code, std::string message) const
 }
 
 Reader Reader::child(std::string_view key, const Json& node) const {
-    return Reader(*errors_, node, path_ + "/" + escapePointer(key));
+    return {*errors_, node, path_ + "/" + escapePointer(key)};
 }
 
 Reader Reader::child(std::size_t index, const Json& node) const {
-    return Reader(*errors_, node, path_ + "/" + std::to_string(index));
+    return {*errors_, node, path_ + "/" + std::to_string(index)};
 }
 
 // ---- ObjectScope ------------------------------------------------------------------------------
@@ -230,7 +230,7 @@ void ObjectScope::text(std::string_view key, std::string& out, bool required, Te
         c.error(Code::Type, "expected a string");
         return;
     }
-    const std::string& s = m->get_ref<const std::string&>();
+    const auto& s = m->get_ref<const std::string&>();
     const bool bad = (rule == TextRule::Hash && !isHash(s)) ||
                      (rule == TextRule::HashOrEmpty && !s.empty() && !isHash(s));
     if (bad) {
@@ -276,7 +276,7 @@ void ObjectScope::choice(std::string_view key, std::string& out, bool required,
         c.error(Code::Type, "expected a string");
         return;
     }
-    const std::string& s = m->get_ref<const std::string&>();
+    const auto& s = m->get_ref<const std::string&>();
     if (std::find(values.begin(), values.end(), std::string_view(s)) == values.end()) {
         std::string list;
         for (const std::string_view v : values) {

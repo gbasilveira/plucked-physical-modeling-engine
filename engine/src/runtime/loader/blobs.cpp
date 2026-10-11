@@ -202,8 +202,7 @@ bool hashFile(const std::filesystem::path& file, std::string& hex) {
         in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const auto got = static_cast<std::size_t>(in.gcount());
         if (got > 0) {
-            sha.update(
-                std::span<const std::byte>(reinterpret_cast<const std::byte*>(buffer.data()), got));
+            sha.update(std::as_bytes(std::span<const char>(buffer.data(), got)));
         }
     }
     if (in.bad()) {

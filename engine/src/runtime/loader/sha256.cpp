@@ -3,6 +3,7 @@
 #include "pme/loader/sha256.hpp"
 
 #include <algorithm>
+#include <string_view>
 
 namespace pme::loader {
 
@@ -106,7 +107,7 @@ std::array<std::uint8_t, 32> Sha256::finish() noexcept {
 }
 
 std::string toHex(const std::array<std::uint8_t, 32>& digest) {
-    static constexpr char kDigits[] = "0123456789abcdef";
+    static constexpr std::string_view kDigits = "0123456789abcdef";
     std::string out;
     out.reserve(64);
     for (const std::uint8_t byte : digest) {

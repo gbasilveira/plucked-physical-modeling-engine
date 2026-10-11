@@ -12,8 +12,7 @@
 namespace {
 
 std::string hashOf(const std::string& text) {
-    return pme::loader::sha256Hex(
-        std::span<const std::byte>(reinterpret_cast<const std::byte*>(text.data()), text.size()));
+    return pme::loader::sha256Hex(std::as_bytes(std::span<const char>(text)));
 }
 
 }  // namespace
@@ -37,8 +36,7 @@ TEST_CASE("B1-R3 SHA-256 of one million letters a fed in uneven pieces") {
     std::size_t left = 1000000;
     while (left > 0) {
         const std::size_t take = left < chunk.size() ? left : chunk.size();
-        sha.update(
-            std::span<const std::byte>(reinterpret_cast<const std::byte*>(chunk.data()), take));
+        sha.update(std::as_bytes(std::span<const char>(chunk.data(), take)));
         left -= take;
     }
     CHECK(pme::loader::toHex(sha.finish()) ==

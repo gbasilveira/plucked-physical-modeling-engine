@@ -344,7 +344,7 @@ TEST_CASE("B1-T1 all-fields.json matches the hand-written expected value of ever
     REQUIRE_MESSAGE(pme::loader::loadInstrumentFile(file, true, loaded, errors) == pme::Status::Ok,
                     describeErrors(errors));
     const json document = json::parse(b1test::readFile(file));
-    const json want = document.at("instrument");
+    const json& want = document.at("instrument");
     const json got = expected(loaded.desc);
     // Compare group by group first so that a failure names the member.
     REQUIRE(got.at("groups").size() == want.at("groups").size());
@@ -365,8 +365,9 @@ TEST_CASE("B1-T1 all-fields.json matches the hand-written expected value of ever
     CHECK(loaded.desc.groups[0].segments[0].barriers.size() == 6);
     CHECK_FALSE(loaded.desc.groups[5].exciter.has_value());
     CHECK(loaded.desc.body.source == pme::BodySource::ModalTable);
-    CHECK(std::holds_alternative<pme::Finger>(loaded.desc.groups[3].exciter->e));
-    CHECK(std::holds_alternative<pme::InitialDisplacement>(loaded.desc.groups[4].exciter->e));
+    CHECK(std::holds_alternative<pme::Finger>(b1test::must(loaded.desc.groups[3].exciter).e));
+    CHECK(std::holds_alternative<pme::InitialDisplacement>(
+        b1test::must(loaded.desc.groups[4].exciter).e));
     REQUIRE(loaded.blobs.size() == 2);
     CHECK(loaded.blobs[1].tool == "pme-fit");
 }
@@ -397,7 +398,7 @@ TEST_CASE("B1-R6 generic-grand-88 has 88 groups with the stated string counts") 
         const std::size_t want = g.key <= 28 ? 1U : (g.key <= 40 ? 2U : 3U);
         CHECK(g.segments.size() == want);
         CHECK(g.segments[0].damper.has_value());
-        CHECK(g.segments[0].damper->hasDamper == (g.key <= 88));
+        CHECK(b1test::must(g.segments[0].damper).hasDamper == (g.key <= 88));
     }
     CHECK(loaded.desc.bridgePoints.size() == 88);
 }
