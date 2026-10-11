@@ -99,6 +99,7 @@ TEST_CASE("A2-T2 f_max binds") {
     REQUIRE(pme::compileString(p, 48000.0, 5000.0, {}, m) == pme::Status::Ok);
     CHECK(m.omega.back() / (2.0 * kPi) <= 5000.0 * 1.0000001);
     CHECK(n < pme::string::modeCount(p, 48000.0, kInf));
+    MESSAGE("N (mid, 48 kHz, fMax 5 kHz) = " << n);
 }
 
 TEST_CASE("A2-T2 the 0.95 pi limit binds") {
@@ -126,6 +127,7 @@ TEST_CASE("A2-T2 a large b3 overdamps a high mode") {
     CHECK(m.sigma.back() < m.omega.back());
     // Without the loss, the Nyquist margin would allow many more modes.
     CHECK(n < pme::string::modeCount(mid(), 96000.0, kInf));
+    MESSAGE("N (mid, 96 kHz, b3 = 1e-5) = " << n);
 }
 
 TEST_CASE("A2-T2 a horizontal detune of 5 cents makes the horizontal polarisation bind") {
