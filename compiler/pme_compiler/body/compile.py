@@ -73,12 +73,12 @@ def quadrature_matrix(basis: Basis) -> tuple[sp.csc_matrix, Array, Array]:
     for i in range(basis.Nbfun):
         rows.append(local.ravel())
         cols.append(np.repeat(basis.element_dofs[i], nq))
-        vals.append(np.asarray(basis.basis[i][0].value).ravel())
+        vals.append(np.asarray(basis.basis[i][0]).ravel())
     ev = sp.csc_matrix(
         (np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
         shape=(nel * nq, basis.N),
     )
-    xy = np.asarray(basis.global_coordinates().value)  # (2, nel, nq)
+    xy = np.asarray(basis.global_coordinates())  # (2, nel, nq)
     pts = np.stack([xy[0].ravel(), xy[1].ravel()], axis=1)
     return ev, pts, np.asarray(basis.dx, dtype=np.float64).ravel()
 

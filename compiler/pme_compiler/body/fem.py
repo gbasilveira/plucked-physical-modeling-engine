@@ -26,7 +26,7 @@ Array = NDArray[np.float64]
 # Dimensionless penalty factors for "simply_supported" and "clamped" (tests and comparisons only).
 # The penalty stiffness is PENALTY * D_max / Lc^3 (translational) and PENALTY * D_max / Lc
 # (rotational), Lc = sqrt(area); the relative frequency error of the constraint is ~ 1 / PENALTY.
-PENALTY = 1.0e10
+PENALTY = 1.0e8
 
 
 @dataclass(frozen=True)

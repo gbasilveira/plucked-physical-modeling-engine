@@ -73,7 +73,9 @@ def _windowed(
     windows = 0
     while True:
         windows += 1
-        vals, vv = spla.eigsh(k, k=nev, M=m, sigma=sigma, which="LM", tol=0.0)
+        # fixed start vector: ARPACK's own random start would make the output run-dependent
+        v0 = np.random.default_rng(20260101 + windows).standard_normal(n)
+        vals, vv = spla.eigsh(k, k=nev, M=m, sigma=sigma, which="LM", tol=0.0, v0=v0)
         dist = np.abs(vals - sigma)
         r = float(dist.max())
         # An eigenvalue at the window edge may have a partner (degenerate pair) that was cut off:
