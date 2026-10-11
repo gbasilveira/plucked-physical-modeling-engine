@@ -44,3 +44,8 @@ add_library(pme::engine ALIAS pme_engine)
 foreach(module IN LISTS PME_MODULES)
   target_link_libraries(pme_engine INTERFACE pme_${module})
 endforeach()
+
+# ---- P0.2: RT-safety trap library ----
+add_subdirectory(engine/src/rtcheck)
+add_subdirectory(engine/tests/rtcheck)
+# ---- end P0.2 ----
