@@ -2,7 +2,9 @@
 // D1-R3: registry-backed parameter model, clamping, value-to-text, module paths.
 #include <doctest/doctest.h>
 
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 
 #include "pme/plugin/param_model.hpp"
