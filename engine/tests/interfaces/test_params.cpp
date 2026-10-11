@@ -7,7 +7,7 @@
 
 #include "pme/params.hpp"
 
-TEST_CASE("P0.4-T3 parameter IDs are unique, units non-empty, ranges valid") {
+TEST_CASE("P0.4-T3 parameter IDs are unique and units are non-empty and ranges are valid") {
     const auto registry = pme::paramRegistry();
     REQUIRE(!registry.empty());
 
