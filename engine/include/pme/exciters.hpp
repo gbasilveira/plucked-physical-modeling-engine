@@ -47,38 +47,56 @@ struct UnaCordaParams {
 
 /// Generic force-pulse pluck (SPEC-PLK "Exciters", row "Force pulse").
 struct PluckPulse {
-    double duration{};   ///< Pulse duration t_p (s); 0.5 to 5 ms.
-    double peakForce{};  ///< Peak force F_p (N).
-    double position{};   ///< Window centre x_p (m).
-    double width{};      ///< Window width b_p (m).
-    double angle{};      ///< Polarisation angle theta_p (rad).
+    double duration{};      ///< Pulse duration t_p (s); 0.5 to 5 ms.
+    double peakForceMax{};  ///< F_p,max (N): peak force at strength 1 (SPEC-PLK "Strength map").
+    double position{};      ///< Window centre x_p (m) on the segment's x axis; default position.
+    double width{};         ///< Window width b_p (m).
+    double angle{};         ///< Polarisation angle theta_p (rad) used by NoteOn launches.
+    double strengthGamma{1.0};  ///< gamma_p of the strength map (dimensionless); default 1.
 };
 
 /// Plectrum: pick, quill, mizrab or bachi (SPEC-PLK "Exciters", row "Plectrum").
 struct Plectrum {
     double tipMass{};          ///< Tip mass m_p (kg).
     double driverStiffness{};  ///< Spring K_p between tip and driver (N/m).
-    double driverSpeed{};      ///< Driver speed v_d along the pluck direction (m/s).
+    double driverSpeedMax{};   ///< v_d,max (m/s): driver speed at strength 1 (SPEC-PLK).
     double slipHeight{};       ///< Release threshold h_slip (m).
     double contactK{};         ///< Contact stiffness K of the one-sided power law (N/m^alpha).
     double contactAlpha{};     ///< Contact exponent alpha (dimensionless).
+    double position{};         ///< Default pluck position x_p (m) on the segment's x axis.
+    double angle{};            ///< Pluck direction theta_p (rad) used by NoteOn launches.
+    double strengthGamma{1.0}; ///< gamma_p of the strength map (dimensionless); default 1.
 };
 
-/// Finger (SPEC-PLK "Exciters", row "Finger"). Provisional: the table lists m_f, K_f, alpha_f,
-/// mu_f, b_f; the driver speed and h_slip follow "As plectrum".
+/// Finger (SPEC-PLK "Exciters", row "Finger"): the plectrum's structure with a wide soft
+/// Hunt-Crossley flesh contact (SI-0005).
 struct Finger {
-    double mass{};         ///< Finger tip mass m_f (kg).
-    double stiffness{};    ///< Contact stiffness K_f (N/m^alpha_f).
-    double alpha{};        ///< Contact exponent alpha_f (dimensionless).
-    double muFlesh{};      ///< Hunt-Crossley flesh damping mu_f (s/m).
-    double width{};        ///< Contact width b_f (m); approximately 10 mm.
-    double driverSpeed{};  ///< Driver speed v_d (m/s). Provisional ("as plectrum").
-    double slipHeight{};   ///< Release threshold h_slip (m); larger than a plectrum's.
+    double tipMass{};          ///< Finger tip mass m_f (kg).
+    double driverStiffness{};  ///< Driver spring K_f between tip and driver (N/m).
+    double driverSpeedMax{};   ///< v_d,max (m/s): driver speed at strength 1.
+    double slipHeight{};       ///< Release threshold h_slip,f (m); larger than a plectrum's.
+    double contactK{};         ///< Flesh contact stiffness K_c,f (N/m^alpha_f).
+    double contactAlpha{};     ///< Contact exponent alpha_f (dimensionless).
+    double muFlesh{};          ///< Hunt-Crossley flesh damping mu_f (s/m).
+    double width{};            ///< Raised-cosine contact width b_f (m); approximately 10 mm.
+    double position{};         ///< Default pluck position x_p (m) on the segment's x axis.
+    double angle{};            ///< Pluck direction theta_p (rad) used by NoteOn launches.
+    double strengthGamma{1.0}; ///< gamma_p of the strength map (dimensionless); default 1.
+};
+
+/// Initial displacement (SPEC-PLK "Exciters", row "Initial displacement"): the segment is set
+/// to the closed-form triangle of height A at x_p, at rest, at the event's sample.
+struct InitialDisplacement {
+    double amplitudeMax{};     ///< A_max (m): triangle height at strength 1.
+    double position{};         ///< Default apex position x_p (m) on the segment's x axis.
+    double angle{};            ///< Polarisation angle theta_p (rad) used by NoteOn launches.
+    double strengthGamma{1.0}; ///< gamma_p of the strength map (dimensionless); default 1.
 };
 
 /// An exciter attached to a note group (SPEC-API `ExciterParams`).
 struct ExciterParams {
-    std::variant<HammerParams, PluckPulse, Plectrum, Finger> e;  ///< The exciter model.
+    std::variant<HammerParams, PluckPulse, Plectrum, Finger, InitialDisplacement>
+        e;  ///< The exciter model.
 };
 
 }  // namespace pme
