@@ -211,8 +211,19 @@ namespace fs = std::filesystem;
 constexpr double kRefErrCents = 0.01;  // reference's own error estimate, cents
 
 int envInt(const char* name, int fallback) {
+#ifdef _WIN32
+    char* buffer = nullptr;
+    std::size_t size = 0;
+    if (_dupenv_s(&buffer, &size, name) != 0 || buffer == nullptr) {
+        return fallback;
+    }
+    const int value = (*buffer != '\0') ? std::atoi(buffer) : fallback;  // NOLINT(cert-err34-c)
+    std::free(buffer);                                                   // NOLINT
+    return value;
+#else
     const char* v = std::getenv(name);                              // NOLINT(concurrency-mt-unsafe)
     return (v != nullptr && *v != '\0') ? std::atoi(v) : fallback;  // NOLINT(cert-err34-c)
+#endif
 }
 
 /// Writes a P0.5 scenario (schema_version 1, reference/scenario.schema.json) for the A2-T3 string:
@@ -239,21 +250,23 @@ void writeScenario(const fs::path& path, const str::StringSpec& s, const RefGrid
   "duration": )"
       << kDuration << R"(,
   "strings": [{
-    "L": )"
+    "params": {
+      "L": )"
       << s.L << R"(, "dCore": )" << s.dCore << R"(, "rhoCore": )" << s.rhoCore << R"(, "ECore": )"
       << s.ECore << R"(,
-    "dOuter": )"
+      "dOuter": )"
       << s.dOuter << R"(, "rhoWind": 0, "packing": 0, "epsWind": 0,
-    "f1Target": )"
+      "f1Target": )"
       << s.f1 << R"(, "b1": )" << s.b1 << R"(, "b2": 0, "b3": )" << s.b3 << R"(,
-    "boundary": "pinned", "detuneH": 0, "grid_intervals": )"
-      << grid.intervals << R"(
+      "boundary": "pinned", "detuneH": 0, "bridgeEnd": "at_L"
+    },
+    "grid": {"intervals": )"
+      << grid.intervals << R"(},
+    "initial_displacement": {"amplitude": )"
+      << kPluckHeight << R"(, "position": )" << kPluckFraction * s.L << R"(}
   }],
-  "bridge": {"type": "rigid"},
-  "excitation": {"type": "initial_displacement", "string": 0, "shape": "triangle", "position": )"
-      << kPluckFraction * s.L << R"(, "amplitude": )" << kPluckHeight << R"(},
-  "observation_points": [{"string": 0, "position": )"
-      << kObsFraction * s.L << R"(}]
+  "observations": [{"name": "y", "kind": "string_displacement", "string": 0, "x": )"
+      << kObsFraction * s.L << R"(, "polarisation": "v"}]
 }
 )";
     std::ofstream out(path);
@@ -270,9 +283,11 @@ std::vector<double> renderReference(const fs::path& dir, const str::StringSpec& 
     const fs::path features = dir / (tag + "_features.json");
     const fs::path wav = dir / (tag + ".wav");
     writeScenario(scenario, s, grid);
-    const std::string cmd = quote(PME_A2T3_REFERENCE_CLI) + " render " + quote(scenario.string()) +
-                            " --features " + quote(features.string()) + " --wav " +
-                            quote(wav.string());
+    std::string cmd = quote(PME_A2T3_REFERENCE_CLI) + " render " + quote(scenario.string()) +
+                      " --features " + quote(features.string()) + " --wav " + quote(wav.string());
+#ifdef _WIN32
+    cmd = '"' + cmd + '"';  // cmd.exe /c strips one pair of outer quotes
+#endif
     INFO("reference command: " << cmd);
     const int rc = std::system(cmd.c_str());  // NOLINT(concurrency-mt-unsafe,cert-env33-c)
     REQUIRE(rc == 0);
@@ -299,19 +314,40 @@ TEST_CASE("A2-T3 stiff string compiler vs P0.5 reference solver") {
         const std::vector<double> yEngine = engineSignal(spec, modes);
         const auto engine = trackSignal(yEngine, kFs, approx);
         REQUIRE(engine.partials.size() == approx.size());
-
         const fs::path dir =
             fs::temp_directory_path() / ("pme_a2t3_" + std::to_string(std::rand()));
         fs::create_directories(dir);
-        // Three refinement levels of the reference.
-        std::array<pme::analysis::PartialTrackingResult, 3> ref;
+        // Three refinement levels of the reference (grid and time step halve per level).
+        std::array<std::vector<double>, 3> refSignal;
         for (int level = 0; level < 3; ++level) {
             double sr = 0.0;
-            const std::vector<double> y =
+            const auto idx = static_cast<std::size_t>(level);
+            refSignal[idx] =
                 renderReference(dir, spec, level, RefGrid{n0 << level, os0 << level}, sr);
             REQUIRE(sr == doctest::Approx(kFs));
+        }
+        // The joint spectral fit converges only from a start within about one spectral bin of each
+        // peak, and the coarsest levels are off by more than that at the upper partials. The fits
+        // therefore start from the engine's fitted frequencies at the finest level and from the
+        // second-order prediction f_engine + 4^(2 - l) (f_2 - f_engine) at level l. Start values
+        // only: every compared frequency and decay rate is the converged fit of the reference
+        // signal itself.
+        std::array<pme::analysis::PartialTrackingResult, 3> ref;
+        std::vector<double> engineHz;
+        for (const auto& p : engine.partials) {
+            engineHz.push_back(p.frequency_hz);
+        }
+        ref[2] = trackSignal(refSignal[2], kFs, engineHz);
+        REQUIRE(ref[2].partials.size() == approx.size());
+        for (int level = 1; level >= 0; --level) {
+            const double scale = std::pow(4.0, 2 - level);
+            std::vector<double> start;
+            for (std::size_t i = 0; i < approx.size(); ++i) {
+                start.push_back(engineHz[i] +
+                                scale * (ref[2].partials[i].frequency_hz - engineHz[i]));
+            }
             const auto idx = static_cast<std::size_t>(level);
-            ref[idx] = trackSignal(y, sr, approx);
+            ref[idx] = trackSignal(refSignal[idx], kFs, start);
             REQUIRE(ref[idx].partials.size() == approx.size());
         }
         std::error_code ec;
