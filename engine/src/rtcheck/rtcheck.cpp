@@ -18,6 +18,10 @@ ScopedRealtimeThread::ScopedRealtimeThread() noexcept { ++t_depth; }
 ScopedRealtimeThread::~ScopedRealtimeThread() { --t_depth; }
 bool isRealtimeThread() noexcept { return t_depth != 0; }
 
+#if !(defined(PME_RTSAFETY) && PME_RTSAFETY)
+void blockingCall(const char* /*what*/) noexcept {}  // no-op outside the rt-safety build
+#endif
+
 }  // namespace pme::rtcheck
 
 #if defined(PME_RTSAFETY) && PME_RTSAFETY
