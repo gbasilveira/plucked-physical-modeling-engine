@@ -77,7 +77,7 @@ Flagged for owner review (orchestrator defaults under the proceed instruction, l
 
 | Gate | Name | Status | Report |
 | --- | --- | --- | --- |
-| G0 | Foundations | not passed |  |
+| G0 | Foundations | passed (2026-10-11, at 15a1a43 on `ccr-5ef35d73-oqb6fd`; tag push and merge to `main` pending the owner) | [G0.md](../gates/G0.md) |
 | G1 | Core numerics | not passed |  |
 | G2 | Piano engine | not passed |  |
 | G3 | Plug-in alpha | not passed |  |
