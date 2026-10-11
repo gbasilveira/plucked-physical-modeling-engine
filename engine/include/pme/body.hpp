@@ -21,8 +21,7 @@ enum class BodySource : std::uint8_t {
     MeasuredMobilityFit,  ///< Modes fitted to measured mobility.
 };
 
-/// A rib or bridge attached to the plate as a beam (SPEC-BODY "Plate model": "ribs and bridges as
-/// attached beams"). Provisional: SPEC-BODY names ribs but gives no members.
+/// A rib: a straight beam attached to the plate (SPEC-BODY "Plate model", SI-0003).
 struct RibDesc {
     Point start;       ///< Start of the beam axis (m).
     Point end;         ///< End of the beam axis (m).
@@ -32,12 +31,23 @@ struct RibDesc {
     double density{};  ///< Density (kg/m^3).
 };
 
-/// Plate geometry and wood data (SPEC-BODY "Plate model"). Members follow the symbols of the
-/// Kirchhoff form; the uniform thickness is provisional (SPEC-BODY writes h(x, y)).
+/// A bridge attached to the plate: a polyline beam of rectangular section (SPEC-BODY "Plate
+/// model", SI-0003).
+struct BridgeBeamDesc {
+    std::vector<Point> path;  ///< Polyline vertices in the body frame (m), z = 0, at least 2.
+    double width{};           ///< Section width (m).
+    double height{};          ///< Section height (m).
+    double youngs{};          ///< Young's modulus along the bridge (Pa).
+    double density{};         ///< Density (kg/m^3).
+};
+
+/// Plate geometry and wood data (SPEC-BODY "Plate model", SI-0003). Members follow the symbols of
+/// the Kirchhoff form.
 struct PlateParams {
-    double lengthX{};     ///< Plate extent along the grain (m). Provisional.
-    double lengthY{};     ///< Plate extent across the grain (m). Provisional.
-    double thickness{};   ///< Thickness h (m); uniform. Provisional (SPEC-BODY has h(x, y)).
+    double lengthX{};     ///< Extent along +x (m); with an empty `outline` the plate is the
+                          ///< rectangle (0, 0)-(lengthX, lengthY); ignored otherwise.
+    double lengthY{};     ///< Extent along +y (m); see `lengthX`.
+    double thickness{};   ///< Uniform thickness h (m), used when `thicknessGrid` is empty.
     double grainAngle{};  ///< Grain angle theta_g (rad), SPEC-BODY.
     double youngsL{};     ///< E_L along the grain (Pa) at reference moisture, SPEC-BODY.
     double youngsR{};     ///< E_R across the grain (Pa) at reference moisture, SPEC-BODY.
@@ -51,9 +61,20 @@ struct PlateParams {
     double dGdMc{};       ///< Linear coefficient of G_LR with MC (Pa per unit MC), SPEC-BODY.
     double dRhodMc{};  ///< Linear coefficient of density with MC (kg/m^3 per unit MC), SPEC-BODY.
     double lossFactor{};        ///< Wood loss factor eta (dimensionless), SPEC-BODY "Modal data".
-    double rimStiffness{};      ///< Elastic rim support stiffness (N/m per m of rim). Provisional.
+    double rimStiffness{};      ///< Translational rim support stiffness per unit rim length k_rim
+                                ///< (N/m^2), SPEC-BODY.
     double fMax{};              ///< Highest kept body mode frequency f_max (Hz), SPEC-BODY.
-    std::vector<RibDesc> ribs;  ///< Ribs and bridges as attached beams, SPEC-BODY.
+    std::vector<RibDesc> ribs;  ///< Ribs as straight attached beams, SPEC-BODY.
+    std::vector<Point> outline;  ///< Outline polygon in the body frame (m), z = 0, vertices in
+                                 ///< order, not closed; empty = the lengthX x lengthY rectangle.
+    int thicknessNx{};           ///< Thickness grid points along x (>= 2 when the grid is used).
+    int thicknessNy{};           ///< Thickness grid points along y (>= 2 when the grid is used).
+    std::vector<double> thicknessGrid;  ///< h (m) on a regular Nx x Ny grid over the outline's
+                                        ///< bounding box, row-major [j * Nx + i], bilinearly
+                                        ///< interpolated; empty = uniform `thickness`.
+    std::vector<BridgeBeamDesc> bridges;  ///< Bridges as polyline beams, SPEC-BODY.
+    double rimRotationalStiffness{};  ///< Rotational rim stiffness per unit length k_rim,theta
+                                      ///< (N m/rad per m); 0 = none (MAY, SPEC-BODY).
 };
 
 /// Description of a body (SPEC-API `BodyParams`; SPEC-BODY). Sample-rate independent.
@@ -101,7 +122,9 @@ struct LocalBridge {
 };
 
 /// Description of one radiation output channel (SPEC-API `ChannelDesc`; SPEC-BODY "Radiation
-/// weights"). Provisional members.
+/// weights"). Provisional members. Per-channel gain is a structural property of the channel and
+/// will be added here as `gainDb` by a later compatible ICR when D4 or E1 needs it (SPEC-API,
+/// SI-0007).
 struct ChannelDesc {
     std::string name;  ///< Human-readable channel name, for example "L".
     Point position;    ///< Listening position R_c (m), same frame as the body.

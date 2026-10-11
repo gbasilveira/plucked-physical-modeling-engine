@@ -7,14 +7,15 @@
 namespace pme {
 
 /// A point in three-dimensional space (SPEC-API `Point`; members from SPEC-BODY and SPEC-CONV).
-/// Bridge points and radiation channels are given in the body's coordinate frame, which is
-/// defined by the body description (SPEC-BODY, "Plate model"): x along the grain (L axis), y
-/// across it (R axis), z normal to the plate towards the strings. Provisional: SPEC-BODY does not
-/// spell out the frame; bridge points of planar bodies use z = 0.
+/// Bridge points, plate outline, ribs, bridges and radiation channels are given in the body
+/// frame (SPEC-BODY "Plate model", SI-0003): x and y span the plate's mid-surface in the
+/// instrument's case frame defined by the body outline; the grain (L axis) lies at angle
+/// theta_g from +x; z is normal to the plate and points towards the strings (the +y
+/// polarisation axis). Bridge points and outline vertices use z = 0.
 struct Point {
-    double x{};  ///< Coordinate along the grain, metres (SPEC-CONV). Provisional frame.
-    double y{};  ///< Coordinate across the grain, metres (SPEC-CONV). Provisional frame.
-    double z{};  ///< Coordinate normal to the plate, metres (SPEC-CONV). Provisional frame.
+    double x{};  ///< Case-frame x, metres (SPEC-CONV).
+    double y{};  ///< Case-frame y, metres (SPEC-CONV).
+    double z{};  ///< Normal to the plate, towards the strings, metres (SPEC-CONV).
 };
 
 }  // namespace pme

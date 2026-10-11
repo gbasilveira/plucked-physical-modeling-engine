@@ -35,8 +35,9 @@ struct StringParams {
     double rhoWind{};  ///< Winding density rho_w (kg/m^3), SPEC-STR.
     double packing{};  ///< Winding packing factor eta_w, 0.75 to 0.9 for round wire (SPEC-STR).
     double epsWind{};  ///< Winding stiffness fraction eps_w of the core's EI (SPEC-STR).
-    double
-        f1Target{};  ///< Target first-partial frequency f_1 from the tuning curve (Hz), SPEC-STR.
+    double f1Target{};  ///< Target first-partial frequency f_1 (Hz), SPEC-STR. For a group with
+                        ///< key >= 0, compileInstrument replaces it with the tuning-curve value
+                        ///< in its compiled copy; for key = -1 it is used as given (SI-0004).
     double
         b1{};  ///< Intrinsic loss b_1 (1/s) in sigma_n = b_1 + b_2 sqrt(omega_n) + b_3 omega_n^2.
     double b2{};                        ///< Intrinsic loss b_2 (s^(-1/2)) (SPEC-STR "Losses").
@@ -63,9 +64,10 @@ struct StringModes {
     std::vector<double> sigma;    ///< Decay rates sigma_n (1/s), SPEC-STR.
     std::vector<OscCoeffs> oscV;  ///< Vertical-polarisation oscillator coefficients per mode.
     std::vector<OscCoeffs> oscH;  ///< Horizontal-polarisation coefficients (detuned) per mode.
-    /// Window-averaged shape values phiBar_n at every registered point, computed float64 and
-    /// stored float32 (SPEC-STR "Forces and observations"). phiBar[p][n] is point p (order of the
-    /// `registeredPoints` argument of `compileString`), mode n; unit m^(-1/2).
+    /// Point shape values phi_n(x_0) (W = 1) at every registered point, computed float64 and
+    /// stored float32 (SPEC-STR "Contract", SI-0001). The caller applies the window factor
+    /// W(k_n). phiBar[p][n] is point p (order of the `registeredPoints` argument of
+    /// `compileString`), mode n; unit m^(-1/2).
     std::vector<std::vector<float>> phiBar;
 };
 
@@ -74,8 +76,9 @@ struct StringModes {
 /// @param params           The string description.
 /// @param fs               Sample rate (Hz).
 /// @param fMax             Highest kept frequency (Hz); modes above it are dropped (SPEC-OSC).
-/// @param registeredPoints Points x_0 (m) at which phiBar is evaluated (exciter, damper, barrier,
-///                         bridge).
+/// @param registeredPoints Positions x_0 (m), 0 <= x_0 <= L, on the segment's own x axis, at
+///                         which point shapes phi_n(x_0) (W = 1) are evaluated (exciter, damper,
+///                         barrier). The bridge needs none.
 /// @param out              Receives the tables on success.
 /// Thread: non-audio. Allocates: yes. Failures: `InvalidArgument` for non-physical parameters
 /// (fs <= 0, L <= 0 ...); `Rejected` if no mode survives the bandwidth rule; `NotImplemented` in

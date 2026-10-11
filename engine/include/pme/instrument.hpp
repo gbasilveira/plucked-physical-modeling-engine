@@ -34,24 +34,28 @@ struct SegmentDesc {
     double kappaL{0.026};  ///< Longitudinal transmission kappa_L (dimensionless); about sin 1.5 deg
                            ///< (SPEC-GEO).
     double kappaT{};       ///< Tension-modulation transmission kappa_T (dimensionless) (SPEC-GEO).
+    double unisonDetuneCents{};  ///< Unison detune d_s of this string (cents), added to the
+                                 ///< tuning curve (SPEC-STR "Tension for pitch", SI-0004).
 };
 
 /// One key's strings, exciter and una corda map (SPEC-API `NoteGroupDesc`).
 struct NoteGroupDesc {
-    int key{};                          ///< Key number (see TuningCurve for the numbering).
+    int key{};  ///< MIDI note number 0..127 (A4 = 69), unique among groups that receive NoteOn;
+                ///< -1 for groups that never do (plucked strings addressed by segment,
+                ///< sympathetic strings). With key >= 0, compileInstrument computes every
+                ///< segment's f_1 from the tuning curve (SPEC-STR, SI-0004).
     std::vector<SegmentDesc> segments;  ///< Speaking, rear and duplex segments.
     std::optional<ExciterParams>
         exciter;              ///< Exciter; absent for sympathetic-only groups (SPEC-PLK).
     UnaCordaParams unaCorda;  ///< Una corda and soft-pedal map (SPEC-HAM).
 };
 
-/// Pitch map (SPEC-STR "Tension for pitch": equal temperament plus per-key stretch plus unison
-/// detune). Provisional members: SPEC-API names the type only.
+/// Pitch map (SPEC-STR "Tension for pitch", SI-0004): equal temperament plus per-key stretch plus
+/// unison detune.
 struct TuningCurve {
     double referencePitch{440.0};  ///< Frequency of MIDI key 69 (A4) in Hz; default 440 (SPEC-STR).
-    std::vector<double>
-        stretchCents;  ///< Per-key stretch in cents, indexed by MIDI key number
-                       ///< (key 0 first); keys beyond the vector have 0. Provisional.
+    std::vector<double> stretchCents;  ///< Per-key stretch (cents) indexed by MIDI key, key 0
+                                       ///< first; keys beyond the vector have 0.
 };
 
 /// Instrument-wide default values (SPEC-INST "Piano defaults"). Provisional composition:
@@ -62,8 +66,8 @@ struct Defaults {
     double sympatheticGain{1.0};        ///< kappa_s in [0, 1] (SPEC-BODY "Sympathetic path").
     double sympatheticLowPass{5000.0};  ///< f_symp (Hz) (SPEC-BODY).
     int localBridgeModes{64};           ///< M_b (SPEC-BODY, SPEC-INST).
-    double localBridgeFSplit{
-        2000.0};  ///< f_split (Hz) for buildLocalBridge. Provisional: no SPEC default.
+    double localBridgeFSplit{2000.0};  ///< f_split (Hz) for buildLocalBridge; SPEC-INST default
+                                       ///< 2 kHz, provisional until B3-T2 and V3 (SI-0003).
 };
 
 /// Complete instrument description (SPEC-API `InstrumentDesc`). Data, not code (SPEC-INST).

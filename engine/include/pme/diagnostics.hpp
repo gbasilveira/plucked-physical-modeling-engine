@@ -20,7 +20,7 @@ enum class DiagnosticKind : std::uint8_t {
 /// Provisional layout: SPEC-API lists the quantities, not the record.
 struct Diagnostic {
     DiagnosticKind kind{DiagnosticKind::GroupEnergy};  ///< What is reported.
-    std::int32_t group{};   ///< Note group (key) index the record refers to.
+    std::int32_t group{};   ///< Index into InstrumentDesc::groups (not the key), SPEC-API.
     std::int64_t sample{};  ///< Engine sample counter at the sub-block boundary that produced it.
     double value{};         ///< Energy (J), contact count, or new kappa_s, per `kind`.
 };
