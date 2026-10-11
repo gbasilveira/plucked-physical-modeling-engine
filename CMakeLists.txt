@@ -107,3 +107,8 @@ add_subdirectory(engine/tests/nonlinear)
 add_subdirectory(reference)
 add_subdirectory(tools/reference-cli)
 # ---- end P0.5 ----
+
+# ---- B1: instrument file loader ----
+add_subdirectory(engine/src/runtime/loader)
+add_subdirectory(engine/tests/loader)
+# ---- end B1 ----

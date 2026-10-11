@@ -1,0 +1,1494 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pme:schema:instrument:1",
+  "title": "Plucked physical modelling engine instrument file",
+  "description": "One instrument as a versioned, human-readable document (SPEC-INST 'Instrument file'). Field names are the member names of the description structs of interfaces-v2 (SPEC-API 'Descriptions'); every numeric field records its SI unit in x-unit.",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": [
+        "pme-instrument"
+      ],
+      "description": "File format marker (SPEC-INST Instrument file)"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [
+        1
+      ],
+      "x-unit": "index",
+      "description": "Schema version of this document; older versions are migrated on load (SPEC-INST Instrument file)"
+    },
+    "instrument": {
+      "$ref": "#/$defs/InstrumentDesc",
+      "description": "The instrument description (SPEC-API InstrumentDesc)"
+    },
+    "blobs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/BlobEntry"
+      },
+      "default": [],
+      "description": "Blob manifest: binary data referenced by hash (SPEC-INST Instrument file)"
+    }
+  },
+  "required": [
+    "format",
+    "schemaVersion",
+    "instrument"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Point": {
+      "type": "object",
+      "description": "A point in the body frame (types.hpp, SI-0003). (SPEC-API)",
+      "properties": {
+        "x": {
+          "type": "number",
+          "x-unit": "m",
+          "description": "Case-frame x (SPEC-CONV)"
+        },
+        "y": {
+          "type": "number",
+          "x-unit": "m",
+          "description": "Case-frame y (SPEC-CONV)"
+        },
+        "z": {
+          "type": "number",
+          "x-unit": "m",
+          "description": "Normal to the plate, towards the strings (SPEC-CONV)"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "additionalProperties": false
+    },
+    "StringParams": {
+      "type": "object",
+      "description": "Physical description of one string (string.hpp). (SPEC-STR)",
+      "properties": {
+        "L": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Speaking length L (SPEC-STR)"
+        },
+        "dCore": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Core diameter d_c (SPEC-STR Wound strings)"
+        },
+        "rhoCore": {
+          "type": "number",
+          "x-unit": "kg/m^3",
+          "exclusiveMinimum": 0,
+          "description": "Core density rho_c (SPEC-STR)"
+        },
+        "ECore": {
+          "type": "number",
+          "x-unit": "Pa",
+          "exclusiveMinimum": 0,
+          "description": "Core Young's modulus E_c (SPEC-STR)"
+        },
+        "dOuter": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Outer (winding) diameter d_o; at least dCore (SPEC-STR Wound strings)"
+        },
+        "rhoWind": {
+          "type": "number",
+          "x-unit": "kg/m^3",
+          "exclusiveMinimum": 0,
+          "description": "Winding density rho_w (SPEC-STR)"
+        },
+        "packing": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "description": "Winding packing factor eta_w, 0.75 to 0.9 for round wire (SPEC-STR)"
+        },
+        "epsWind": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "description": "Winding stiffness fraction eps_w of the core EI (SPEC-STR)"
+        },
+        "f1Target": {
+          "type": "number",
+          "x-unit": "Hz",
+          "exclusiveMinimum": 0,
+          "description": "Target first-partial frequency f_1 (replaced by the tuning curve when key >= 0) (SPEC-STR Tension for pitch, SI-0004)"
+        },
+        "b1": {
+          "type": "number",
+          "x-unit": "1/s",
+          "minimum": 0,
+          "description": "Intrinsic loss b_1 (SPEC-STR Losses)"
+        },
+        "b2": {
+          "type": "number",
+          "x-unit": "s^(-1/2)",
+          "minimum": 0,
+          "description": "Intrinsic loss b_2 (SPEC-STR Losses)"
+        },
+        "b3": {
+          "type": "number",
+          "x-unit": "s",
+          "minimum": 0,
+          "description": "Intrinsic loss b_3 (SPEC-STR Losses)"
+        },
+        "sigmaOverride": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "x-unit": "1/s",
+            "minimum": 0
+          },
+          "x-unit": "1/s",
+          "description": "Optional per-partial sigma_n; empty = use b1..b3 (SPEC-STR Losses)"
+        },
+        "boundary": {
+          "type": "string",
+          "enum": [
+            "Pinned",
+            "Clamped"
+          ],
+          "default": "Pinned",
+          "description": "End conditions (SPEC-STR Modes)"
+        },
+        "detuneH": {
+          "type": "number",
+          "x-unit": "cent",
+          "description": "Horizontal-polarisation detune Delta_h (SPEC-STR Polarisations)"
+        },
+        "bridgeEnd": {
+          "type": "string",
+          "enum": [
+            "AtL",
+            "At0"
+          ],
+          "default": "AtL",
+          "description": "Which end moves with the bridge (SPEC-BRG Decomposition)"
+        }
+      },
+      "required": [
+        "L",
+        "dCore",
+        "rhoCore",
+        "ECore",
+        "dOuter",
+        "rhoWind",
+        "packing",
+        "epsWind",
+        "f1Target",
+        "b1",
+        "b2",
+        "b3",
+        "sigmaOverride",
+        "detuneH"
+      ],
+      "additionalProperties": false
+    },
+    "HammerParams": {
+      "type": "object",
+      "description": "Hammer parameters (exciters.hpp). (SPEC-HAM)",
+      "properties": {
+        "mass": {
+          "type": "number",
+          "x-unit": "kg",
+          "exclusiveMinimum": 0,
+          "description": "Hammer mass m_H (SPEC-HAM)"
+        },
+        "K": {
+          "type": "number",
+          "x-unit": "N/m^p",
+          "exclusiveMinimum": 0,
+          "description": "Felt stiffness K (SPEC-HAM Contact)"
+        },
+        "p": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "description": "Felt exponent p (SPEC-HAM)"
+        },
+        "muHC": {
+          "type": "number",
+          "x-unit": "s/m",
+          "minimum": 0,
+          "description": "Hunt-Crossley hysteresis mu_HC (SPEC-HAM)"
+        },
+        "width": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Contact window width b_H (SPEC-HAM)"
+        },
+        "strikeRatio": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Strike position beta_c = x_c / L (SPEC-HAM)"
+        },
+        "law": {
+          "type": "string",
+          "enum": [
+            "HuntCrossley",
+            "Stulov"
+          ],
+          "default": "HuntCrossley",
+          "description": "Felt dissipation law (SPEC-HAM Felt dissipation)"
+        },
+        "stulovEps": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "description": "Stulov hereditary amplitude epsilon (SPEC-HAM Alternative: Stulov)"
+        },
+        "stulovTau": {
+          "type": "number",
+          "x-unit": "s",
+          "minimum": 0,
+          "description": "Stulov relaxation time tau (SPEC-HAM Alternative: Stulov)"
+        },
+        "vMin": {
+          "type": "number",
+          "x-unit": "m/s",
+          "minimum": 0,
+          "default": 0.3,
+          "description": "v_min of the velocity map (SPEC-HAM)"
+        },
+        "vMax": {
+          "type": "number",
+          "x-unit": "m/s",
+          "exclusiveMinimum": 0,
+          "default": 6,
+          "description": "v_max of the velocity map (SPEC-HAM)"
+        },
+        "gammaV": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "default": 1.5,
+          "description": "gamma_v of the velocity map (SPEC-HAM)"
+        },
+        "dCheck": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "default": 0.005,
+          "description": "Release distance d_check (SPEC-HAM)"
+        }
+      },
+      "required": [
+        "mass",
+        "K",
+        "p",
+        "muHC",
+        "width",
+        "strikeRatio",
+        "stulovEps",
+        "stulovTau"
+      ],
+      "additionalProperties": false
+    },
+    "UnaCordaParams": {
+      "type": "object",
+      "description": "Una corda and soft-pedal parameters (exciters.hpp). (SPEC-HAM)",
+      "properties": {
+        "s0": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.3,
+          "description": "Smoothstep lower bound s_0 (SPEC-HAM Una corda (grand))"
+        },
+        "s1": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.9,
+          "description": "Smoothstep upper bound s_1 (SPEC-HAM Una corda (grand))"
+        },
+        "kappaUC": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "default": 0.6,
+          "description": "Stiffness factor kappa_uc (SPEC-HAM Una corda (grand))"
+        },
+        "deltaPUC": {
+          "type": "number",
+          "x-unit": "1",
+          "default": 0,
+          "description": "Exponent shift Delta p_uc (SPEC-HAM Una corda (grand))"
+        },
+        "rhoUpright": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.3,
+          "description": "Upright soft-pedal velocity scale rho_up (SPEC-HAM Soft pedal (upright))"
+        },
+        "leavingString": {
+          "type": "integer",
+          "x-unit": "index",
+          "minimum": -1,
+          "maximum": 2147483647,
+          "default": 0,
+          "description": "Zero-based index of the string that leaves the hammer; -1 for none (SPEC-HAM String that leaves the hammer)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluckPulse": {
+      "type": "object",
+      "description": "Generic force-pulse pluck (exciters.hpp). (SPEC-PLK)",
+      "properties": {
+        "duration": {
+          "type": "number",
+          "x-unit": "s",
+          "exclusiveMinimum": 0,
+          "description": "Pulse duration t_p (SPEC-PLK)"
+        },
+        "peakForceMax": {
+          "type": "number",
+          "x-unit": "N",
+          "exclusiveMinimum": 0,
+          "description": "Peak force F_p,max at strength 1 (SPEC-PLK Strength map)"
+        },
+        "position": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Window centre x_p on the segment's x axis (SPEC-PLK)"
+        },
+        "width": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Window width b_p (SPEC-PLK)"
+        },
+        "angle": {
+          "type": "number",
+          "x-unit": "rad",
+          "description": "Polarisation angle theta_p (SPEC-PLK)"
+        },
+        "strengthGamma": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "default": 1,
+          "description": "gamma_p of the strength map (SPEC-PLK Strength map)"
+        }
+      },
+      "required": [
+        "duration",
+        "peakForceMax",
+        "position",
+        "width",
+        "angle"
+      ],
+      "additionalProperties": false
+    },
+    "Plectrum": {
+      "type": "object",
+      "description": "Plectrum: pick, quill, mizrab or bachi (exciters.hpp). (SPEC-PLK)",
+      "properties": {
+        "tipMass": {
+          "type": "number",
+          "x-unit": "kg",
+          "exclusiveMinimum": 0,
+          "description": "Tip mass m_p (SPEC-PLK)"
+        },
+        "driverStiffness": {
+          "type": "number",
+          "x-unit": "N/m",
+          "exclusiveMinimum": 0,
+          "description": "Spring K_p between tip and driver (SPEC-PLK)"
+        },
+        "driverSpeedMax": {
+          "type": "number",
+          "x-unit": "m/s",
+          "exclusiveMinimum": 0,
+          "description": "Driver speed v_d,max at strength 1 (SPEC-PLK)"
+        },
+        "slipHeight": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Release threshold h_slip (SPEC-PLK)"
+        },
+        "contactK": {
+          "type": "number",
+          "x-unit": "N/m^alpha",
+          "exclusiveMinimum": 0,
+          "description": "Contact stiffness K of the one-sided power law (SPEC-PLK)"
+        },
+        "contactAlpha": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "description": "Contact exponent alpha (SPEC-PLK)"
+        },
+        "position": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Default pluck position x_p on the segment's x axis (SPEC-PLK)"
+        },
+        "angle": {
+          "type": "number",
+          "x-unit": "rad",
+          "description": "Pluck direction theta_p (SPEC-PLK)"
+        },
+        "strengthGamma": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "default": 1,
+          "description": "gamma_p of the strength map (SPEC-PLK Strength map)"
+        }
+      },
+      "required": [
+        "tipMass",
+        "driverStiffness",
+        "driverSpeedMax",
+        "slipHeight",
+        "contactK",
+        "contactAlpha",
+        "position",
+        "angle"
+      ],
+      "additionalProperties": false
+    },
+    "Finger": {
+      "type": "object",
+      "description": "Finger with a wide soft Hunt-Crossley flesh contact (exciters.hpp, SI-0005). (SPEC-PLK)",
+      "properties": {
+        "tipMass": {
+          "type": "number",
+          "x-unit": "kg",
+          "exclusiveMinimum": 0,
+          "description": "Finger tip mass m_f (SPEC-PLK)"
+        },
+        "driverStiffness": {
+          "type": "number",
+          "x-unit": "N/m",
+          "exclusiveMinimum": 0,
+          "description": "Driver spring K_f between tip and driver (SPEC-PLK)"
+        },
+        "driverSpeedMax": {
+          "type": "number",
+          "x-unit": "m/s",
+          "exclusiveMinimum": 0,
+          "description": "Driver speed v_d,max at strength 1 (SPEC-PLK)"
+        },
+        "slipHeight": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Release threshold h_slip,f (SPEC-PLK)"
+        },
+        "contactK": {
+          "type": "number",
+          "x-unit": "N/m^alpha",
+          "exclusiveMinimum": 0,
+          "description": "Flesh contact stiffness K_c,f (SPEC-PLK)"
+        },
+        "contactAlpha": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "description": "Contact exponent alpha_f (SPEC-PLK)"
+        },
+        "muFlesh": {
+          "type": "number",
+          "x-unit": "s/m",
+          "minimum": 0,
+          "description": "Hunt-Crossley flesh damping mu_f (SPEC-PLK)"
+        },
+        "width": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Raised-cosine contact width b_f (SPEC-PLK)"
+        },
+        "position": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Default pluck position x_p on the segment's x axis (SPEC-PLK)"
+        },
+        "angle": {
+          "type": "number",
+          "x-unit": "rad",
+          "description": "Pluck direction theta_p (SPEC-PLK)"
+        },
+        "strengthGamma": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "default": 1,
+          "description": "gamma_p of the strength map (SPEC-PLK Strength map)"
+        }
+      },
+      "required": [
+        "tipMass",
+        "driverStiffness",
+        "driverSpeedMax",
+        "slipHeight",
+        "contactK",
+        "contactAlpha",
+        "muFlesh",
+        "width",
+        "position",
+        "angle"
+      ],
+      "additionalProperties": false
+    },
+    "InitialDisplacement": {
+      "type": "object",
+      "description": "Initial displacement exciter (exciters.hpp). (SPEC-PLK)",
+      "properties": {
+        "amplitudeMax": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Triangle height A_max at strength 1 (SPEC-PLK)"
+        },
+        "position": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Default apex position x_p on the segment's x axis (SPEC-PLK)"
+        },
+        "angle": {
+          "type": "number",
+          "x-unit": "rad",
+          "description": "Polarisation angle theta_p (SPEC-PLK)"
+        },
+        "strengthGamma": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "default": 1,
+          "description": "gamma_p of the strength map (SPEC-PLK Strength map)"
+        }
+      },
+      "required": [
+        "amplitudeMax",
+        "position",
+        "angle"
+      ],
+      "additionalProperties": false
+    },
+    "ExciterParams": {
+      "type": "object",
+      "description": "An exciter: an object with exactly one key naming the alternative. (SPEC-API)",
+      "properties": {
+        "hammer": {
+          "$ref": "#/$defs/HammerParams",
+          "description": "Hammer (SPEC-HAM)"
+        },
+        "pluckPulse": {
+          "$ref": "#/$defs/PluckPulse",
+          "description": "Force pulse (SPEC-PLK)"
+        },
+        "plectrum": {
+          "$ref": "#/$defs/Plectrum",
+          "description": "Plectrum (SPEC-PLK)"
+        },
+        "finger": {
+          "$ref": "#/$defs/Finger",
+          "description": "Finger (SPEC-PLK)"
+        },
+        "initialDisplacement": {
+          "$ref": "#/$defs/InitialDisplacement",
+          "description": "Initial displacement (SPEC-PLK)"
+        }
+      },
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false
+    },
+    "DamperParams": {
+      "type": "object",
+      "description": "Damper parameters (dampers.hpp). (SPEC-DMP)",
+      "properties": {
+        "xRatio": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Pad centre x_d / L (SPEC-DMP Damper model)"
+        },
+        "width": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Pad width b_d (SPEC-DMP)"
+        },
+        "Kd": {
+          "type": "number",
+          "x-unit": "N/m",
+          "exclusiveMinimum": 0,
+          "description": "Pad stiffness K_d (SPEC-DMP)"
+        },
+        "Rd": {
+          "type": "number",
+          "x-unit": "kg/s",
+          "minimum": 0,
+          "description": "Pad resistance R_d (SPEC-DMP)"
+        },
+        "tau0": {
+          "type": "number",
+          "x-unit": "s",
+          "exclusiveMinimum": 0,
+          "default": 0.012,
+          "description": "Landing time constant tau_0 (SPEC-DMP Timing)"
+        },
+        "kRelease": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "default": 2,
+          "description": "Release-velocity factor k_r (SPEC-DMP Timing)"
+        },
+        "tauUp": {
+          "type": "number",
+          "x-unit": "s",
+          "exclusiveMinimum": 0,
+          "default": 0.004,
+          "description": "Lift time constant tau_up (SPEC-DMP Timing)"
+        },
+        "etaD": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "default": 2,
+          "description": "Contact shape exponent eta_d (SPEC-DMP Lift fraction)"
+        },
+        "hasDamper": {
+          "type": "boolean",
+          "default": true,
+          "description": "False for the undamped top keys (SPEC-DMP Undamped notes)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "Diagonal",
+            "RankOne"
+          ],
+          "default": "Diagonal",
+          "description": "Diagonal or rank-one (SPEC-DMP Damper model)"
+        }
+      },
+      "required": [
+        "xRatio",
+        "width",
+        "Kd",
+        "Rd"
+      ],
+      "additionalProperties": false
+    },
+    "BarrierParams": {
+      "type": "object",
+      "description": "Distributed barrier (barriers.hpp). (SPEC-PLK)",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Custom",
+            "Fret",
+            "Fretboard",
+            "Jawari",
+            "Thread",
+            "Sawari"
+          ],
+          "default": "Custom",
+          "description": "Geometry family (SPEC-PLK Barrier geometries)"
+        },
+        "x": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "x-unit": "m"
+          },
+          "x-unit": "m",
+          "description": "Sample positions x_j along the string (SPEC-PLK Distributed barriers)"
+        },
+        "b": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "x-unit": "m"
+          },
+          "x-unit": "m",
+          "description": "Profile b(x_j) (SPEC-PLK Distributed barriers)"
+        },
+        "w": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "x-unit": "m"
+          },
+          "x-unit": "m",
+          "description": "Quadrature weights Delta x_j (SPEC-PLK Distributed barriers)"
+        },
+        "side": {
+          "type": "integer",
+          "x-unit": "1",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "enum": [
+            -1,
+            1
+          ],
+          "default": 1,
+          "description": "Side s_b, +1 or -1 (SPEC-PLK Distributed barriers)"
+        },
+        "K": {
+          "type": "number",
+          "x-unit": "N/m^(alpha+1)",
+          "minimum": 0,
+          "description": "Contact stiffness K_B (SPEC-PLK Distributed barriers)"
+        },
+        "alpha": {
+          "type": "number",
+          "x-unit": "1",
+          "exclusiveMinimum": 0,
+          "description": "Contact exponent alpha (SPEC-PLK Distributed barriers)"
+        },
+        "muB": {
+          "type": "number",
+          "x-unit": "s/m",
+          "minimum": 0,
+          "description": "Contact damping mu_B (SPEC-PLK Distributed barriers)"
+        }
+      },
+      "required": [
+        "x",
+        "b",
+        "w",
+        "K",
+        "alpha",
+        "muB"
+      ],
+      "additionalProperties": false
+    },
+    "SegmentDesc": {
+      "type": "object",
+      "description": "One string segment of a note group (instrument.hpp). (SPEC-INST)",
+      "properties": {
+        "string": {
+          "$ref": "#/$defs/StringParams",
+          "description": "The string (SPEC-STR)"
+        },
+        "bridgePoint": {
+          "type": "integer",
+          "x-unit": "index",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "description": "Index into instrument.bridgePoints (SPEC-BRG)"
+        },
+        "polarisationAngle": {
+          "type": "number",
+          "x-unit": "rad",
+          "description": "Angle of the vertical polarisation axis (SPEC-BRG)"
+        },
+        "barriers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BarrierParams"
+          },
+          "description": "Barriers this segment collides with (SPEC-PLK)"
+        },
+        "damper": {
+          "$ref": "#/$defs/DamperParams",
+          "description": "Damper, if any (SPEC-DMP)"
+        },
+        "muteRatio": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Rear-segment mute m_d (SPEC-STR Duplex and rear segments)"
+        },
+        "tensionModulation": {
+          "type": "boolean",
+          "description": "Enable Kirchhoff-Carrier tension modulation (SPEC-NL)"
+        },
+        "longitudinalModes": {
+          "type": "integer",
+          "x-unit": "index",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "default": 8,
+          "description": "Longitudinal modes M_L (SPEC-INST Piano defaults)"
+        },
+        "kappaL": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "default": 0.026,
+          "description": "Longitudinal transmission kappa_L (SPEC-GEO)"
+        },
+        "kappaT": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "description": "Tension-modulation transmission kappa_T (SPEC-GEO)"
+        },
+        "unisonDetuneCents": {
+          "type": "number",
+          "x-unit": "cent",
+          "description": "Unison detune d_s added to the tuning curve (SPEC-STR Tension for pitch, SI-0004)"
+        }
+      },
+      "required": [
+        "string",
+        "bridgePoint",
+        "polarisationAngle",
+        "barriers",
+        "muteRatio",
+        "tensionModulation",
+        "kappaT",
+        "unisonDetuneCents"
+      ],
+      "additionalProperties": false
+    },
+    "NoteGroupDesc": {
+      "type": "object",
+      "description": "One key's strings, exciter and una corda map (instrument.hpp). (SPEC-API)",
+      "properties": {
+        "key": {
+          "type": "integer",
+          "x-unit": "index",
+          "minimum": -1,
+          "maximum": 127,
+          "description": "MIDI note number 0..127 (A4 = 69), or -1 (SPEC-API Event addressing, SI-0004)"
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SegmentDesc"
+          },
+          "description": "Speaking, rear and duplex segments (SPEC-STR)"
+        },
+        "exciter": {
+          "$ref": "#/$defs/ExciterParams",
+          "description": "Exciter; absent for sympathetic-only groups (SPEC-PLK)"
+        },
+        "unaCorda": {
+          "$ref": "#/$defs/UnaCordaParams",
+          "description": "Una corda and soft-pedal map (SPEC-HAM)"
+        }
+      },
+      "required": [
+        "key",
+        "segments"
+      ],
+      "additionalProperties": false
+    },
+    "BridgePointDesc": {
+      "type": "object",
+      "description": "A bridge point (bridge.hpp). (SPEC-BRG)",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Point",
+          "description": "Location on the body (SPEC-BODY)"
+        },
+        "thetaB": {
+          "type": "number",
+          "x-unit": "rad",
+          "description": "Bridge frame rotation theta_b (SPEC-BRG)"
+        },
+        "conductanceH": {
+          "type": "number",
+          "x-unit": "s/kg",
+          "minimum": 0,
+          "description": "Horizontal-axis conductance G_h (SPEC-BRG Polarisation coupling)"
+        }
+      },
+      "required": [
+        "position",
+        "thetaB",
+        "conductanceH"
+      ],
+      "additionalProperties": false
+    },
+    "RibDesc": {
+      "type": "object",
+      "description": "A rib: a straight beam attached to the plate (body.hpp). (SPEC-BODY)",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Point",
+          "description": "Start of the beam axis (SPEC-BODY Plate model)"
+        },
+        "end": {
+          "$ref": "#/$defs/Point",
+          "description": "End of the beam axis (SPEC-BODY Plate model)"
+        },
+        "width": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Beam width (SPEC-BODY Plate model)"
+        },
+        "height": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Beam height (SPEC-BODY Plate model)"
+        },
+        "youngs": {
+          "type": "number",
+          "x-unit": "Pa",
+          "exclusiveMinimum": 0,
+          "description": "Young's modulus along the beam (SPEC-BODY Plate model)"
+        },
+        "density": {
+          "type": "number",
+          "x-unit": "kg/m^3",
+          "exclusiveMinimum": 0,
+          "description": "Density (SPEC-BODY Plate model)"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "width",
+        "height",
+        "youngs",
+        "density"
+      ],
+      "additionalProperties": false
+    },
+    "BridgeBeamDesc": {
+      "type": "object",
+      "description": "A bridge attached to the plate: a polyline beam (body.hpp). (SPEC-BODY)",
+      "properties": {
+        "path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Point"
+          },
+          "minItems": 2,
+          "description": "Polyline vertices in the body frame, z = 0, at least 2 (SPEC-BODY Plate model)"
+        },
+        "width": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Section width (SPEC-BODY Plate model)"
+        },
+        "height": {
+          "type": "number",
+          "x-unit": "m",
+          "exclusiveMinimum": 0,
+          "description": "Section height (SPEC-BODY Plate model)"
+        },
+        "youngs": {
+          "type": "number",
+          "x-unit": "Pa",
+          "exclusiveMinimum": 0,
+          "description": "Young's modulus along the bridge (SPEC-BODY Plate model)"
+        },
+        "density": {
+          "type": "number",
+          "x-unit": "kg/m^3",
+          "exclusiveMinimum": 0,
+          "description": "Density (SPEC-BODY Plate model)"
+        }
+      },
+      "required": [
+        "path",
+        "width",
+        "height",
+        "youngs",
+        "density"
+      ],
+      "additionalProperties": false
+    },
+    "PlateParams": {
+      "type": "object",
+      "description": "Plate geometry and wood data (body.hpp, SI-0003). (SPEC-BODY)",
+      "properties": {
+        "lengthX": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Extent along +x; used when outline is empty (SPEC-BODY Plate model)"
+        },
+        "lengthY": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Extent along +y; used when outline is empty (SPEC-BODY Plate model)"
+        },
+        "thickness": {
+          "type": "number",
+          "x-unit": "m",
+          "minimum": 0,
+          "description": "Uniform thickness h, used when thicknessGrid is empty (SPEC-BODY Plate model)"
+        },
+        "grainAngle": {
+          "type": "number",
+          "x-unit": "rad",
+          "description": "Grain angle theta_g (SPEC-BODY Plate model)"
+        },
+        "youngsL": {
+          "type": "number",
+          "x-unit": "Pa",
+          "minimum": 0,
+          "description": "E_L along the grain at reference moisture (SPEC-BODY Plate model)"
+        },
+        "youngsR": {
+          "type": "number",
+          "x-unit": "Pa",
+          "minimum": 0,
+          "description": "E_R across the grain at reference moisture (SPEC-BODY Plate model)"
+        },
+        "shearLR": {
+          "type": "number",
+          "x-unit": "Pa",
+          "minimum": 0,
+          "description": "G_LR at reference moisture (SPEC-BODY Plate model)"
+        },
+        "poissonLR": {
+          "type": "number",
+          "x-unit": "1",
+          "description": "nu_LR (SPEC-BODY Plate model)"
+        },
+        "poissonRL": {
+          "type": "number",
+          "x-unit": "1",
+          "description": "nu_RL (SPEC-BODY Plate model)"
+        },
+        "density": {
+          "type": "number",
+          "x-unit": "kg/m^3",
+          "minimum": 0,
+          "description": "Density rho at reference moisture (SPEC-BODY Plate model)"
+        },
+        "moisture": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "description": "Moisture content MC (fraction) (SPEC-BODY Plate model)"
+        },
+        "dEdMcL": {
+          "type": "number",
+          "x-unit": "Pa",
+          "description": "Linear coefficient of E_L with MC (Pa per unit MC) (SPEC-BODY Plate model)"
+        },
+        "dEdMcR": {
+          "type": "number",
+          "x-unit": "Pa",
+          "description": "Linear coefficient of E_R with MC (Pa per unit MC) (SPEC-BODY Plate model)"
+        },
+        "dGdMc": {
+          "type": "number",
+          "x-unit": "Pa",
+          "description": "Linear coefficient of G_LR with MC (Pa per unit MC) (SPEC-BODY Plate model)"
+        },
+        "dRhodMc": {
+          "type": "number",
+          "x-unit": "kg/m^3",
+          "description": "Linear coefficient of density with MC (per unit MC) (SPEC-BODY Plate model)"
+        },
+        "lossFactor": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "description": "Wood loss factor eta (SPEC-BODY Modal data)"
+        },
+        "rimStiffness": {
+          "type": "number",
+          "x-unit": "N/m^2",
+          "minimum": 0,
+          "description": "Translational rim support stiffness per unit rim length k_rim (SPEC-BODY Plate model)"
+        },
+        "fMax": {
+          "type": "number",
+          "x-unit": "Hz",
+          "minimum": 0,
+          "description": "Highest kept body mode frequency f_max (SPEC-BODY Plate model)"
+        },
+        "ribs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RibDesc"
+          },
+          "description": "Ribs as straight attached beams (SPEC-BODY Plate model)"
+        },
+        "outline": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Point"
+          },
+          "description": "Outline polygon in the body frame, z = 0, not closed; empty = the lengthX x lengthY rectangle (SPEC-BODY Plate model, SI-0003)"
+        },
+        "thicknessNx": {
+          "type": "integer",
+          "x-unit": "index",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "description": "Thickness grid points along x (at least 2 when the grid is used) (SPEC-BODY Plate model, SI-0003)"
+        },
+        "thicknessNy": {
+          "type": "integer",
+          "x-unit": "index",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "description": "Thickness grid points along y (at least 2 when the grid is used) (SPEC-BODY Plate model, SI-0003)"
+        },
+        "thicknessGrid": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "x-unit": "m",
+            "exclusiveMinimum": 0
+          },
+          "x-unit": "m",
+          "description": "Thickness h on a regular Nx x Ny grid, row-major [j * Nx + i]; empty = uniform thickness (SPEC-BODY Plate model, SI-0003)"
+        },
+        "bridges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BridgeBeamDesc"
+          },
+          "description": "Bridges as polyline beams (SPEC-BODY Plate model)"
+        },
+        "rimRotationalStiffness": {
+          "type": "number",
+          "x-unit": "N",
+          "minimum": 0,
+          "description": "Rotational rim stiffness per unit length k_rim,theta (N m/rad per m); 0 = none (SPEC-BODY Plate model)"
+        }
+      },
+      "required": [
+        "lengthX",
+        "lengthY",
+        "thickness",
+        "grainAngle",
+        "youngsL",
+        "youngsR",
+        "shearLR",
+        "poissonLR",
+        "poissonRL",
+        "density",
+        "moisture",
+        "dEdMcL",
+        "dEdMcR",
+        "dGdMc",
+        "dRhodMc",
+        "lossFactor",
+        "rimStiffness",
+        "fMax",
+        "ribs",
+        "outline",
+        "thicknessNx",
+        "thicknessNy",
+        "thicknessGrid",
+        "bridges",
+        "rimRotationalStiffness"
+      ],
+      "additionalProperties": false
+    },
+    "BodyParams": {
+      "type": "object",
+      "description": "Description of a body (body.hpp). (SPEC-BODY)",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "PlateModel",
+            "ModalTable",
+            "MeasuredMobilityFit"
+          ],
+          "default": "PlateModel",
+          "description": "Where the modal data comes from (SPEC-BODY)"
+        },
+        "plate": {
+          "$ref": "#/$defs/PlateParams",
+          "description": "Used when source is PlateModel (SPEC-BODY Plate model)"
+        },
+        "modalTableHash": {
+          "type": "string",
+          "pattern": "^(sha256:[0-9a-f]{64})?$",
+          "description": "Manifest hash 'sha256:<64 hex>' of the modal blob when source is not PlateModel; empty otherwise (SPEC-INST Instrument file)"
+        }
+      },
+      "required": [
+        "plate",
+        "modalTableHash"
+      ],
+      "additionalProperties": false
+    },
+    "ChannelDesc": {
+      "type": "object",
+      "description": "One radiation output channel (body.hpp). (SPEC-BODY)",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable channel name (SPEC-BODY Radiation weights)"
+        },
+        "position": {
+          "$ref": "#/$defs/Point",
+          "description": "Listening position R_c (SPEC-BODY Radiation weights)"
+        }
+      },
+      "required": [
+        "name",
+        "position"
+      ],
+      "additionalProperties": false
+    },
+    "TuningCurve": {
+      "type": "object",
+      "description": "Pitch map (instrument.hpp, SI-0004). (SPEC-STR)",
+      "properties": {
+        "referencePitch": {
+          "type": "number",
+          "x-unit": "Hz",
+          "exclusiveMinimum": 0,
+          "default": 440,
+          "description": "Frequency of MIDI key 69 (A4) (SPEC-STR Tension for pitch)"
+        },
+        "stretchCents": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "x-unit": "cent"
+          },
+          "x-unit": "cent",
+          "description": "Per-key stretch indexed by MIDI key, key 0 first; keys beyond the array have 0 (SPEC-STR Tension for pitch)"
+        }
+      },
+      "required": [
+        "stretchCents"
+      ],
+      "additionalProperties": false
+    },
+    "Defaults": {
+      "type": "object",
+      "description": "Instrument-wide default values (instrument.hpp). (SPEC-INST)",
+      "properties": {
+        "halfPedalP0": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.35,
+          "description": "Half-pedal region start P_0 (SPEC-DMP Lift fraction)"
+        },
+        "halfPedalP1": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.65,
+          "description": "Half-pedal region end P_1 (SPEC-DMP Lift fraction)"
+        },
+        "sympatheticGain": {
+          "type": "number",
+          "x-unit": "1",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1,
+          "description": "kappa_s (SPEC-BODY Sympathetic path)"
+        },
+        "sympatheticLowPass": {
+          "type": "number",
+          "x-unit": "Hz",
+          "exclusiveMinimum": 0,
+          "default": 5000,
+          "description": "f_symp (SPEC-BODY Sympathetic path)"
+        },
+        "localBridgeModes": {
+          "type": "integer",
+          "x-unit": "index",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "default": 64,
+          "description": "M_b (SPEC-INST Piano defaults)"
+        },
+        "localBridgeFSplit": {
+          "type": "number",
+          "x-unit": "Hz",
+          "exclusiveMinimum": 0,
+          "default": 2000,
+          "description": "f_split for buildLocalBridge (SPEC-INST Piano defaults, SI-0003)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InstrumentDesc": {
+      "type": "object",
+      "description": "Complete instrument description (instrument.hpp). (SPEC-API)",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Instrument name (no trademarks) (SPEC-INST)"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NoteGroupDesc"
+          },
+          "description": "Note groups (SPEC-INST)"
+        },
+        "bridgePoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BridgePointDesc"
+          },
+          "description": "Bridge points (SPEC-BRG)"
+        },
+        "body": {
+          "$ref": "#/$defs/BodyParams",
+          "description": "Body (SPEC-BODY)"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChannelDesc"
+          },
+          "description": "Radiation output channels (SPEC-BODY)"
+        },
+        "tuning": {
+          "$ref": "#/$defs/TuningCurve",
+          "description": "Pitch map (SPEC-STR)"
+        },
+        "defaults": {
+          "$ref": "#/$defs/Defaults",
+          "description": "Instrument-wide defaults (SPEC-INST Piano defaults)"
+        }
+      },
+      "required": [
+        "name",
+        "groups",
+        "bridgePoints",
+        "body",
+        "channels",
+        "tuning"
+      ],
+      "additionalProperties": false
+    },
+    "BlobProducer": {
+      "type": "object",
+      "description": "Tool that produced a blob (B1-R3). (SPEC-INST)",
+      "properties": {
+        "tool": {
+          "type": "string",
+          "description": "Producing tool (SPEC-INST Instrument file)"
+        },
+        "version": {
+          "type": "string",
+          "description": "Producing tool version (SPEC-INST Instrument file)"
+        }
+      },
+      "required": [
+        "tool",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "BlobArray": {
+      "type": "object",
+      "description": "One array inside a blob file (B1-R3). (SPEC-INST)",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Array name (SPEC-INST Instrument file)"
+        },
+        "dtype": {
+          "type": "string",
+          "enum": [
+            "float32",
+            "float64",
+            "int32",
+            "uint32"
+          ],
+          "description": "Element type (SPEC-INST Instrument file)"
+        },
+        "shape": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "x-unit": "index",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "minItems": 1,
+          "x-unit": "index",
+          "description": "Shape; positive integers (SPEC-INST Instrument file)"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Physical unit of the elements (same vocabulary as x-unit) (SPEC-INST Instrument file)"
+        },
+        "offset": {
+          "type": "integer",
+          "x-unit": "bytes",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Offset in bytes from the start of the file, aligned to the dtype size (SPEC-INST Instrument file)"
+        }
+      },
+      "required": [
+        "name",
+        "dtype",
+        "shape",
+        "unit",
+        "offset"
+      ],
+      "additionalProperties": false
+    },
+    "BlobEntry": {
+      "type": "object",
+      "description": "One blob file of the manifest (B1-R3). (SPEC-INST)",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "'sha256:<64 hex>' of the whole blob file (SPEC-INST Instrument file)"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path relative to the instrument file's directory, forward slashes, no '..' (SPEC-INST Instrument file)"
+        },
+        "producer": {
+          "$ref": "#/$defs/BlobProducer",
+          "description": "Producing tool and version (SPEC-INST Instrument file)"
+        },
+        "arrays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BlobArray"
+          },
+          "description": "Arrays stored in the file (SPEC-INST Instrument file)"
+        }
+      },
+      "required": [
+        "hash",
+        "path",
+        "producer",
+        "arrays"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
