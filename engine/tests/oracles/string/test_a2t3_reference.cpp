@@ -334,6 +334,7 @@ TEST_CASE("A2-T3 stiff string compiler vs P0.5 reference solver") {
         // signal itself.
         std::array<pme::analysis::PartialTrackingResult, 3> ref;
         std::vector<double> engineHz;
+        engineHz.reserve(engine.partials.size());
         for (const auto& p : engine.partials) {
             engineHz.push_back(p.frequency_hz);
         }
@@ -342,6 +343,7 @@ TEST_CASE("A2-T3 stiff string compiler vs P0.5 reference solver") {
         for (int level = 1; level >= 0; --level) {
             const double scale = std::pow(4.0, 2 - level);
             std::vector<double> start;
+            start.reserve(approx.size());
             for (std::size_t i = 0; i < approx.size(); ++i) {
                 start.push_back(engineHz[i] +
                                 scale * (ref[2].partials[i].frequency_hz - engineHz[i]));
