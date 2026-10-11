@@ -30,6 +30,7 @@ void ModeBank::setMode(std::size_t i, const OscCoeffs& c) noexcept {
     sigmaHat_.data()[i] = c.sigmaHat;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): beta, kappa, gamma in SPEC order
 void ModeBank::setCoefficients(std::size_t i, float beta, float kappa, float gamma) noexcept {
     assert(i < count_);
     beta_.data()[i] = beta;

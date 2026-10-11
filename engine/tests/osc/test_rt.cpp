@@ -2,10 +2,11 @@
 // Covers: A1-R3, A1-R4, A1-R5, A1-R6
 // Real-time safety of the audio-thread code of the osc module: under the rt-safety preset any
 // allocation or blocking call inside the scope aborts the process.
-#include <array>
-#include <vector>
-
 #include <doctest/doctest.h>
+
+#include <array>
+#include <numbers>
+#include <vector>
 
 #include "pme/osc.hpp"
 #include "pme/osc/mode_bank.hpp"
@@ -19,8 +20,8 @@ TEST_CASE("A1-R3 the update, derived quantities, energy and ramps allocate nothi
     bank.resize(n);
     pme::OscCoeffs c0;
     pme::OscCoeffs c1;
-    REQUIRE(pme::compileOscillator(2.0 * 3.14159265358979 * 220.0, 2.0, fs, c0) == pme::Status::Ok);
-    REQUIRE(pme::compileOscillator(2.0 * 3.14159265358979 * 230.0, 2.0, fs, c1) == pme::Status::Ok);
+    REQUIRE(pme::compileOscillator(2.0 * std::numbers::pi * 220.0, 2.0, fs, c0) == pme::Status::Ok);
+    REQUIRE(pme::compileOscillator(2.0 * std::numbers::pi * 230.0, 2.0, fs, c1) == pme::Status::Ok);
     for (std::size_t i = 0; i < n; ++i) {
         bank.setMode(i, c0);
         bank.q()[i] = 1.0F;
@@ -30,8 +31,8 @@ TEST_CASE("A1-R3 the update, derived quantities, energy and ramps allocate nothi
     std::vector<float> uPrev(n);
     std::array<pme::osc::CoeffRamp, 4> ramps{};
     for (auto& r : ramps) {
-        r = pme::osc::planRamp(c0, 2.0 * 3.14159265358979 * 220.0, 2.0, c1,
-                               2.0 * 3.14159265358979 * 230.0, 2.0, 16);
+        r = pme::osc::planRamp(c0, 2.0 * std::numbers::pi * 220.0, 2.0, c1,
+                               2.0 * std::numbers::pi * 230.0, 2.0, 16);
     }
     double sink = 0.0;
     {

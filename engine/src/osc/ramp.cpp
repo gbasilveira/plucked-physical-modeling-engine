@@ -8,6 +8,7 @@
 
 namespace pme::osc {
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): values in force, then target
 bool exceedsRampThreshold(double omegaInForce, double sigmaInForce, double omegaTarget,
                           double sigmaTarget) noexcept {
     // SPEC-OSC time-varying parameters: changes larger than 0.1% per sub-block are ramped.
@@ -29,13 +30,14 @@ CoeffRamp planRamp(const OscCoeffs& current, double omegaCurrent, double sigmaCu
     r.kappa1 = target.kappa;
     r.gamma1 = target.gamma;
     r.length = subBlock;
-    r.ramped = subBlock > 0 &&
-               exceedsRampThreshold(omegaCurrent, sigmaCurrent, omegaTarget, sigmaTarget);
+    r.ramped =
+        subBlock > 0 && exceedsRampThreshold(omegaCurrent, sigmaCurrent, omegaTarget, sigmaTarget);
     return r;
 }
 
 namespace {
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): start, end in order
 float lerpEnd(float c0, float c1, int sample, int length) noexcept {
     if (sample + 1 >= length) {
         return c1;  // ends exactly on the target
@@ -47,6 +49,7 @@ float lerpEnd(float c0, float c1, int sample, int length) noexcept {
 
 }  // namespace
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): beta, kappa, gamma in SPEC order
 void coefficientsAt(const CoeffRamp& ramp, int sample, float& beta, float& kappa,
                     float& gamma) noexcept {
     if (!ramp.ramped) {

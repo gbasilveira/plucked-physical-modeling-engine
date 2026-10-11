@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Covers: A1-R6
 // Coefficient ramp utility: the 0.1% rule and linear interpolation ending on the target.
+#include <doctest/doctest.h>
+
 #include <array>
 #include <cmath>
-
-#include <doctest/doctest.h>
+#include <numbers>
 
 #include "pme/osc.hpp"
 #include "pme/osc/mode_bank.hpp"
@@ -12,7 +13,7 @@
 
 namespace {
 
-constexpr double kPi = 3.141592653589793238462643383279502884;
+constexpr double kPi = std::numbers::pi;
 constexpr double kFs = 48000.0;
 
 pme::OscCoeffs compile(double omega, double sigma) {
@@ -42,7 +43,8 @@ TEST_CASE("A1-R6 changes at 0.09 percent switch and changes at 0.11 percent ramp
     for (const int s : {16, 32}) {
         const pme::OscCoeffs small = compile(omega * 1.0009, sigma);
         const pme::OscCoeffs big = compile(omega * 1.0011, sigma);
-        const auto planSmall = pme::osc::planRamp(cur, omega, sigma, small, omega * 1.0009, sigma, s);
+        const auto planSmall =
+            pme::osc::planRamp(cur, omega, sigma, small, omega * 1.0009, sigma, s);
         const auto planBig = pme::osc::planRamp(cur, omega, sigma, big, omega * 1.0011, sigma, s);
         CHECK_FALSE(planSmall.ramped);
         CHECK(planBig.ramped);
@@ -83,7 +85,7 @@ TEST_CASE("A1-R6 the ramp is linear per sample and ends exactly on the target") 
                 firstStep = step;
             } else if (i + 1 < s) {
                 // float32 quantisation of kappa: the steps agree within two ulp.
-                const double ulp = static_cast<double>(std::nextafter(tgt.kappa, 1.0F) - tgt.kappa);
+                const auto ulp = static_cast<double>(std::nextafter(tgt.kappa, 1.0F) - tgt.kappa);
                 CHECK(std::fabs(step - firstStep) <= 2.0 * ulp);
             }
             prevK = k;

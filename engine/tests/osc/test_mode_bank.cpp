@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Covers: A1-R3, A1-R4, A1-R5
 // ModeBank layout and update (A1-R3), derived quantities (A1-R4), discrete energy (A1-R5).
+#include <doctest/doctest.h>
+
+#include <array>
+#include <bit>
 #include <cmath>
 #include <cstdint>
+#include <numbers>
 #include <vector>
-
-#include <doctest/doctest.h>
 
 #include "pme/osc.hpp"
 #include "pme/osc/mode_bank.hpp"
@@ -14,9 +17,9 @@
 
 namespace {
 
-constexpr double kPi = 3.141592653589793238462643383279502884;
+constexpr double kPi = std::numbers::pi;
 
-bool aligned(const void* p) { return reinterpret_cast<std::uintptr_t>(p) % 64U == 0U; }
+bool aligned(const void* p) { return std::bit_cast<std::uintptr_t>(p) % 64U == 0U; }
 
 pme::OscCoeffs compile(double freqHz, double sigma, double fs) {
     pme::OscCoeffs c;
@@ -88,16 +91,16 @@ TEST_CASE("A1-R3 float32 and float64 kernels agree for a 27.5 Hz mode over 1e5 s
     const double w = 2.0 * kPi * 27.5 / fs;
     bank.u()[0] = static_cast<float>(std::cos(0.0) - std::cos(-w));
 
-    double q = static_cast<double>(bank.q()[0]);
-    double u = static_cast<double>(bank.u()[0]);
+    auto q = static_cast<double>(bank.q()[0]);
+    auto u = static_cast<double>(bank.u()[0]);
     const float forceF = 0.0F;
     const double forceD = 0.0;
     double worst = 0.0;
     for (int n = 0; n < 100000; ++n) {
         bank.step(std::span<const float>(&forceF, 1));
         // Same (float32) coefficients, float64 state: isolates state rounding.
-        pme::osc::stepModes<double, float>(&q, &u, bank.beta(), bank.kappa(), bank.gamma(),
-                                           &forceD, 1);
+        pme::osc::stepModes<double, float>(&q, &u, bank.beta(), bank.kappa(), bank.gamma(), &forceD,
+                                           1);
         worst = std::fmax(worst, std::fabs(static_cast<double>(bank.q()[0]) - q));
     }
     MESSAGE("worst |q_float32 - q_float64| over 1e5 steps (amplitude 1): " << worst);
@@ -115,8 +118,8 @@ TEST_CASE("A1-R3 step stores the previous state when asked and matches the formu
     const std::vector<float> force{0.1F, -0.2F, 0.3F};
     std::vector<float> qPrev(3);
     std::vector<float> uPrev(3);
-    float expectQ[3];
-    float expectU[3];
+    std::array<float, 3> expectQ{};
+    std::array<float, 3> expectU{};
     for (std::size_t i = 0; i < 3; ++i) {
         // SPEC-OSC difference form, in the fixed order of the kernel.
         expectU[i] = bank.beta()[i] * bank.u()[i] - bank.kappa()[i] * bank.q()[i] +
@@ -236,7 +239,8 @@ TEST_CASE("A1-R5 bank energy sums modes in index order") {
     pme::osc::ModeBank bank;
     bank.resize(n);
     for (std::size_t i = 0; i < n; ++i) {
-        bank.setMode(i, compile(55.0 * static_cast<double>(i + 1), 1.0 + static_cast<double>(i), fs));
+        bank.setMode(i,
+                     compile(55.0 * static_cast<double>(i + 1), 1.0 + static_cast<double>(i), fs));
         bank.q()[i] = 1.0F / static_cast<float>(i + 1);
     }
     std::vector<float> force(n, 0.25F);
@@ -247,7 +251,8 @@ TEST_CASE("A1-R5 bank energy sums modes in index order") {
     double expectE = 0.0;
     double expectB = 0.0;
     for (std::size_t i = 0; i < n; ++i) {
-        expectE += pme::osc::modeEnergy(bank.omegaHat2()[i], qPrev[i], bank.q()[i], bank.u()[i], dt);
+        expectE +=
+            pme::osc::modeEnergy(bank.omegaHat2()[i], qPrev[i], bank.q()[i], bank.u()[i], dt);
         expectB += pme::osc::energyBalance(bank.sigmaHat()[i], force[i], bank.u()[i], uPrev[i], dt);
     }
     CHECK(pme::osc::bankEnergy(bank, qPrev, dt) == expectE);

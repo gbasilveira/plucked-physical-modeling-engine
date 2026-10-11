@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Covers: A1-T3
 // A1-T3: a 1% frequency ramp over one sub-block tracks the analytic chirp phase.
-#include <cmath>
-#include <vector>
-
 #include <doctest/doctest.h>
+
+#include <cmath>
+#include <numbers>
+#include <vector>
 
 #include "pme/osc.hpp"
 #include "pme/osc/mode_bank.hpp"
@@ -13,10 +14,11 @@
 
 namespace {
 
-constexpr double kPi = 3.141592653589793238462643383279502884;
+constexpr double kPi = std::numbers::pi;
 
 // Least-squares fit of q[k] ~ exp(-sigma t_k) (a cos(w t_k) + b sin(w t_k)) with t_k = (k - k0) dt,
 // k over [first, last]. Returns the phase phi of A exp(-sigma t) cos(w t + phi) at t = 0 (k = k0).
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): window bounds and centre index
 double fitPhase(const std::vector<double>& q, int first, int last, int k0, double w, double sigma,
                 double dt) {
     double saa = 0.0;
@@ -50,6 +52,7 @@ struct ChirpResult {
 };
 
 // One mode at f Hz, ramp to 1.01 f over one sub-block of S samples.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): frequency, then sub-block length
 ChirpResult measure(double freqHz, int subBlock, bool ramp) {
     const double fs = 48000.0;
     const double dt = 1.0 / fs;
@@ -68,7 +71,7 @@ ChirpResult measure(double freqHz, int subBlock, bool ramp) {
     const double wd0 = pme::osc::dampedFrequencyTimesDt(omega0, sigma, fs) / dt;
     const double wd1 = pme::osc::dampedFrequencyTimesDt(omega1, sigma, fs) / dt;
 
-    const int pre = 6000;   // free oscillation before the ramp ("until steady")
+    const int pre = 6000;  // free oscillation before the ramp ("until steady")
     const int window = 3000;
     const int total = pre + subBlock + window;
     std::vector<double> q;
@@ -105,8 +108,8 @@ ChirpResult measure(double freqHz, int subBlock, bool ramp) {
     // Phase of the free oscillation before the ramp, referred to the ramp start; and after the
     // ramp, referred to the ramp end.
     const double phi0 = fitPhase(q, pre - window, pre, pre, wd0, sigma, dt);
-    const double phiEnd = fitPhase(q, pre + subBlock, pre + subBlock + window, pre + subBlock, wd1,
-                                   sigma, dt);
+    const double phiEnd =
+        fitPhase(q, pre + subBlock, pre + subBlock + window, pre + subBlock, wd1, sigma, dt);
     // Analytic linear chirp: f(t) from f to 1.01 f over S dt, phase = phi0 + 2 pi int f dt.
     const double advance = 0.5 * (wd0 + wd1) * static_cast<double>(subBlock) * dt;
     const double expected = phi0 + advance;

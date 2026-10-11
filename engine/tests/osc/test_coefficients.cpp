@@ -2,15 +2,17 @@
 // Covers: A1-R1, A1-R2, A1-T1, A1-T2
 // A1 coefficient tests: the 60-digit reference table (A1-T1), the printed-formula comparison
 // (A1-R1), invalid arguments, and the bandwidth rule at 44.1, 48 and 96 kHz (A1-T2, A1-R2).
+#include <doctest/doctest.h>
+
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <limits>
-#include <string>
-
-#include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
+#include <numbers>
+#include <string>
 
 #include "pme/osc.hpp"
 #include "pme/osc/oscillator.hpp"
@@ -18,7 +20,7 @@
 
 namespace {
 
-constexpr double kPi = 3.141592653589793238462643383279502884;
+constexpr double kPi = std::numbers::pi;
 
 double hexToDouble(const std::string& s) { return std::strtod(s.c_str(), nullptr); }
 
@@ -35,6 +37,7 @@ nlohmann::json loadReference() {
 }
 
 // The former SPEC-OSC expression (SI-0008), float64, with omega_d dt in the product form.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): omega, sigma, fs
 double printedOmegaHat2Dt2(double omega, double sigma, double fs) {
     const double dt = 1.0 / fs;
     const double x = sigma * dt;
@@ -52,7 +55,7 @@ TEST_CASE("A1-T1 coefficients agree with the 60-digit reference") {
     const auto& entries = doc.at("entries");
     REQUIRE(entries.size() >= 60U * 40U);
 
-    double worst[5] = {0, 0, 0, 0, 0};
+    std::array<double, 5> worst{};
     std::size_t accepted = 0;
     std::size_t rejected = 0;
     for (const auto& e : entries) {
@@ -86,10 +89,10 @@ TEST_CASE("A1-T1 coefficients agree with the 60-digit reference") {
 
         pme::osc::OscCoeffsF64 c;
         REQUIRE(pme::osc::compileOscillatorF64(omega, sigma, fs, c) == pme::Status::Ok);
-        const double errs[5] = {relErr(c.sigmaHatDt, rSigmaHatDt), relErr(c.omegaHat2Dt2, rOmegaHat2Dt2),
-                                relErr(c.beta, rBeta), relErr(c.kappa, rKappa),
-                                relErr(c.gamma, rGamma)};
-        for (int k = 0; k < 5; ++k) {
+        const std::array<double, 5> errs = {
+            relErr(c.sigmaHatDt, rSigmaHatDt), relErr(c.omegaHat2Dt2, rOmegaHat2Dt2),
+            relErr(c.beta, rBeta), relErr(c.kappa, rKappa), relErr(c.gamma, rGamma)};
+        for (std::size_t k = 0; k < 5; ++k) {
             worst[k] = std::fmax(worst[k], errs[k]);
         }
         // sigmaHat = 0 gives a reference of exactly 0 for sigmaHatDt: relative error is undefined.
@@ -239,16 +242,20 @@ TEST_CASE("A1-T2 bandwidth rejections at 44.1, 48 and 96 kHz") {
 
         // f_max = 16 kHz: frequency is omega_d / 2 pi (sigma = 0 here).
         const double fMax = 16000.0;
-        CHECK(passesBandwidthRule(2.0 * kPi * 16000.1, 0.0, fs, fMax) == BandwidthVerdict::AboveFMax);
-        CHECK(passesBandwidthRule(2.0 * kPi * 15999.9, 0.0, fs, fMax) == BandwidthVerdict::Accepted);
+        CHECK(passesBandwidthRule(2.0 * kPi * 16000.1, 0.0, fs, fMax) ==
+              BandwidthVerdict::AboveFMax);
+        CHECK(passesBandwidthRule(2.0 * kPi * 15999.9, 0.0, fs, fMax) ==
+              BandwidthVerdict::Accepted);
     }
 
     // At 44.1 kHz an f_max above the Nyquist margin leaves the 0.95 pi rule binding.
     const double fs = 44100.0;
     const double aboveMargin = 2.0 * kPi * 0.48 * fs;  // 0.96 pi
-    CHECK(passesBandwidthRule(aboveMargin, 0.0, fs, 30000.0) == BandwidthVerdict::AboveNyquistMargin);
+    CHECK(passesBandwidthRule(aboveMargin, 0.0, fs, 30000.0) ==
+          BandwidthVerdict::AboveNyquistMargin);
     CHECK(passesBandwidthRule(2.0 * kPi * 20000.0, 0.0, fs, 30000.0) == BandwidthVerdict::Accepted);
-    CHECK(passesBandwidthRule(2.0 * kPi * 20000.0, 0.0, fs, 19999.0) == BandwidthVerdict::AboveFMax);
+    CHECK(passesBandwidthRule(2.0 * kPi * 20000.0, 0.0, fs, 19999.0) ==
+          BandwidthVerdict::AboveFMax);
 }
 
 TEST_CASE("A1-R2 compileOscillator agrees with the bandwidth rule at f_max = infinity") {

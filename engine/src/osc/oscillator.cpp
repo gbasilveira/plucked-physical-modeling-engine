@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <limits>
+#include <numbers>
 
 #include "pme/osc.hpp"
 
@@ -13,7 +14,7 @@ namespace pme::osc {
 
 namespace {
 
-constexpr double kPi = 3.141592653589793238462643383279502884;
+constexpr double kPi = std::numbers::pi;
 constexpr double kNyquistMargin = 0.95 * kPi;  // SPEC-OSC "Bandwidth": omega_d dt <= 0.95 pi.
 
 bool argumentsValid(double omega, double sigma, double fs) noexcept {
@@ -23,14 +24,14 @@ bool argumentsValid(double omega, double sigma, double fs) noexcept {
 
 }  // namespace
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): omega, sigma, fs in SPEC-OSC order
 double dampedFrequencyTimesDt(double omega, double sigma, double fs) noexcept {
     // SPEC-OSC discrete scheme: omega_d dt = dt sqrt((omega - sigma)(omega + sigma)).
     const double dt = 1.0 / fs;
     return dt * std::sqrt((omega - sigma) * (omega + sigma));
 }
 
-BandwidthVerdict passesBandwidthRule(double omega, double sigma, double fs,
-                                     double fMax) noexcept {
+BandwidthVerdict passesBandwidthRule(double omega, double sigma, double fs, double fMax) noexcept {
     // SPEC-OSC bandwidth.
     if (!argumentsValid(omega, sigma, fs) || std::isnan(fMax)) {
         return BandwidthVerdict::InvalidArgument;

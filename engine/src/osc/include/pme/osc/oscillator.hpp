@@ -23,9 +23,9 @@ struct OscCoeffsF64 {
 
 /// Verdict of the SPEC-OSC "Bandwidth" rule.
 enum class BandwidthVerdict : std::uint8_t {
-    Accepted,            ///< The mode is kept.
-    InvalidArgument,     ///< fs <= 0, omega, sigma, fs not finite, sigma < 0, omega < 0 or fMax NaN.
-    Overdamped,          ///< sigma >= omega.
+    Accepted,         ///< The mode is kept.
+    InvalidArgument,  ///< fs <= 0, omega, sigma, fs not finite, sigma < 0, omega < 0 or fMax NaN.
+    Overdamped,       ///< sigma >= omega.
     AboveNyquistMargin,  ///< omega_d dt > 0.95 pi.
     AboveFMax,           ///< omega_d / (2 pi) > fMax.
 };
@@ -33,6 +33,7 @@ enum class BandwidthVerdict : std::uint8_t {
 /// omega_d dt = dt sqrt((omega - sigma)(omega + sigma)) (SPEC-OSC "Discrete scheme"); the
 /// product form avoids cancellation near sigma ~ omega. Requires 0 <= sigma <= omega.
 /// Thread: any. Allocates: no.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): omega, sigma, fs in SPEC-OSC order
 [[nodiscard]] double dampedFrequencyTimesDt(double omega, double sigma, double fs) noexcept;
 
 /// SPEC-OSC "Bandwidth": a mode is dropped if omega_d dt > 0.95 pi, if its frequency

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Covers: A1-R3
-// Scalar difference-form update of 64, 512 and 4096 modes; work unit "mode-samples". Nightly (perf).
+// Scalar difference-form update of 64, 512 and 4096 modes; work unit "mode-samples". Nightly
+// (perf).
 #include <cstddef>
+#include <numbers>
 #include <vector>
 
 #include "pme/bench/bench.hpp"
@@ -21,7 +23,8 @@ struct Fixture {
         for (std::size_t i = 0; i < n; ++i) {
             pme::OscCoeffs c;
             const double f = 50.0 + 15000.0 * static_cast<double>(i) / static_cast<double>(n);
-            if (pme::compileOscillator(2.0 * 3.14159265358979 * f, 1.0, kFs, c) == pme::Status::Ok) {
+            if (pme::compileOscillator(2.0 * std::numbers::pi * f, 1.0, kFs, c) ==
+                pme::Status::Ok) {
                 bank.setMode(i, c);
             }
             bank.q()[i] = 1.0F;

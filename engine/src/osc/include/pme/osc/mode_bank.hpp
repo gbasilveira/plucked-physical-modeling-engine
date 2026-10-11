@@ -22,7 +22,9 @@ inline constexpr std::size_t kBankLane = 16;
 
 /// Deleter for 64-byte-aligned arrays.
 struct AlignedDeleter {
-    void operator()(void* p) const noexcept { ::operator delete(p, std::align_val_t{kBankAlignment}); }
+    void operator()(void* p) const noexcept {
+        ::operator delete(p, std::align_val_t{kBankAlignment});
+    }
 };
 
 /// Zero-initialised, 64-byte-aligned array of trivially destructible T. Allocation happens only
@@ -45,6 +47,7 @@ public:
     [[nodiscard]] std::size_t size() const noexcept { return count_; }
 
 private:
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays): array deleter
     std::unique_ptr<T[], AlignedDeleter> data_;
     std::size_t count_{0};
 };
@@ -57,6 +60,7 @@ private:
 /// If `qPrevOut` / `uPrevOut` are non-null they receive q^n / u^n (the values before the step),
 /// from which callers form the centred quantities. Thread: audio. Allocates: no.
 template <class S, class C>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): SoA pointers in SPEC order
 void stepModes(S* q, S* u, const C* beta, const C* kappa, const C* gamma, const S* force,
                std::size_t n, S* qPrevOut = nullptr, S* uPrevOut = nullptr) noexcept {
     for (std::size_t i = 0; i < n; ++i) {
@@ -106,6 +110,7 @@ public:
     void setMode(std::size_t i, const OscCoeffs& c) noexcept;
     /// Set beta, kappa, gamma of mode `i`; omegaHat2 and sigmaHat and the state are kept.
     /// Used per sample while a coefficient ramp is running (A1-R6).
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): beta, kappa, gamma in SPEC order
     void setCoefficients(std::size_t i, float beta, float kappa, float gamma) noexcept;
     /// Zero q and u of every mode (not the padding's coefficients, which are always zero).
     void clearState() noexcept;
@@ -141,8 +146,8 @@ private:
 
 /// Discrete energy of one unit-mass mode (SPEC-OSC discrete energy):
 /// H^{n+1/2} = 1/2 (u^{n+1}/dt)^2 + 1/2 omegaHat^2 q^n q^{n+1}. Callers multiply by the modal mass.
-[[nodiscard]] inline double modeEnergy(double omegaHat2, double qPrev, double qNext,
-                                       double uNext, double dt) noexcept {
+[[nodiscard]] inline double modeEnergy(double omegaHat2, double qPrev, double qNext, double uNext,
+                                       double dt) noexcept {
     const double v = uNext / dt;
     return 0.5 * v * v + 0.5 * omegaHat2 * qPrev * qNext;
 }
@@ -150,8 +155,9 @@ private:
 /// Right-hand side of the energy balance (SPEC-OSC discrete energy):
 /// H^{n+1/2} - H^{n-1/2} = dt [ -2 sigmaHat (delta_t. q^n)^2 + f^n delta_t. q^n ].
 /// Returns the bracket times dt, for the step that produced uNext from uPrev with force `force`.
-[[nodiscard]] inline double energyBalance(double sigmaHat, double force, double uNext,
-                                          double uPrev, double dt) noexcept {
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): sigmaHat then force in SPEC order
+[[nodiscard]] inline double energyBalance(double sigmaHat, double force, double uNext, double uPrev,
+                                          double dt) noexcept {
     const double v = centredVelocity(uNext, uPrev, dt);
     return dt * (-2.0 * sigmaHat * v * v + force * v);
 }
