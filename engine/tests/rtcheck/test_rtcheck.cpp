@@ -70,7 +70,7 @@ TEST_CASE("P0.2-R5 scope nesting is tracked in process") {
     CHECK_FALSE(pme::rtcheck::isRealtimeThread());
 }
 
-TEST_CASE("P0.2-R5 blockingCall inside a scope aborts, outside it does not") {
+TEST_CASE("P0.2-R5 blockingCall inside a scope aborts and outside it does not") {
     const ChildResult trapped = runSelfAsChild("blocking-call-in-scope");
     REQUIRE(trapped.launched);
     CHECK_MESSAGE(trappedWith(trapped, "test primitive"), trapped.standardError);
@@ -80,7 +80,7 @@ TEST_CASE("P0.2-R5 blockingCall inside a scope aborts, outside it does not") {
 #if !defined(_WIN32) && !defined(__APPLE__)
 // Linux: libc interposition. macOS has no libc interposition (docs/dev/rtcheck.md), so these
 // scenarios are not exercised there.
-TEST_CASE("P0.2-R5 pthread_mutex_lock inside a scope aborts, outside it does not") {
+TEST_CASE("P0.2-R5 pthread_mutex_lock inside a scope aborts and outside it does not") {
     const ChildResult trapped = runSelfAsChild("mutex-lock-in-scope");
     REQUIRE(trapped.launched);
     CHECK_MESSAGE(trappedWith(trapped, "pthread_mutex_lock"), trapped.standardError);
