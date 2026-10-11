@@ -40,7 +40,9 @@ def helmholtz_frequency(
     """f_H = (c0 / 2 pi) sqrt(S / (V L_eff)) in Hz."""
     if volume <= 0 or hole_area <= 0 or plate_thickness < 0 or c0 <= 0:
         raise ImportDataError("volume, hole area and c0 must be > 0 and thickness >= 0")
-    l_eff = effective_neck_length(hole_area, plate_thickness) if neck_length is None else neck_length
+    l_eff = (
+        effective_neck_length(hole_area, plate_thickness) if neck_length is None else neck_length
+    )
     if l_eff <= 0:
         raise ImportDataError("effective neck length must be > 0")
     return c0 / (2.0 * math.pi) * math.sqrt(hole_area / (volume * l_eff))
@@ -54,7 +56,7 @@ def merge_mode(
     alpha: F64 | None = None,
     beta: F64 | None = None,
 ) -> BodyModalTable:
-    """Insert one mode (Omega = 2 pi f, sigma = Omega / (2 Q), Phi_H = ``phi`` [P]) keeping the sort.
+    """Insert one mode (Omega = 2 pi f, sigma = Omega / (2 Q), Phi_H = ``phi`` [P]), sorted.
 
     Tables with ``alpha``/``beta`` need the new mode's [C] gains; tables with a radiation grid
     (``grid_phi``) cannot be merged (the caller would have to supply Phi_H on the grid).

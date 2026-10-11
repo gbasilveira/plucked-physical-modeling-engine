@@ -6,8 +6,8 @@ maesstro.cnrs.fr, section "Structure du fichier de sortie et donnees normalisees
 (maesstro-matlab computes the soundboard modal basis on a Gmsh mesh). Its output-file specification
 could not be retrieved in the implementation environment (the host was unreachable), so the exact
 variable names are NOT verified. This adapter therefore reads a documented, closest-description
-layout (below) from a MATLAB v5 ``.mat`` or NumPy ``.npz`` file, with a ``names`` mapping so the real
-names can be substituted without code changes once a genuine sample is available. The
+layout (below) from a MATLAB v5 ``.mat`` or NumPy ``.npz`` file, with a ``names`` mapping so the
+real names can be substituted without code changes once a genuine sample is available. The
 MAESSTRO licence is also unverified (to be recorded for H1).
 
 Layout (one file; names are the defaults of ``DEFAULT_NAMES``):
@@ -72,9 +72,7 @@ def _text(v: Any) -> str:
     return str(np.asarray(v).reshape(-1)[0]).strip()
 
 
-def read_maesstro(
-    path: Path, points: F64, names: dict[str, str] | None = None
-) -> BodyModalTable:
+def read_maesstro(path: Path, points: F64, names: dict[str, str] | None = None) -> BodyModalTable:
     """Read the modal basis in ``path`` and return the table at ``points`` [P, 3]."""
     nm = {**DEFAULT_NAMES, **(names or {})}
     data = _load(path)
@@ -108,7 +106,9 @@ def read_maesstro(
         if sigma.size != k or np.any(sigma < 0) or not np.all(np.isfinite(sigma)):
             raise ImportDataError(f"{path.name}: sigma must be {k} finite values >= 0")
     else:
-        raise ImportDataError(f"{path.name}: neither {nm['loss_factor']!r} nor {nm['sigma']!r} found")
+        raise ImportDataError(
+            f"{path.name}: neither {nm['loss_factor']!r} nor {nm['sigma']!r} found"
+        )
 
     declared_mass = nm["normalisation"] in data and _text(data[nm["normalisation"]]) == "mass"
     scale = np.ones(k)
@@ -121,7 +121,8 @@ def read_maesstro(
             worst = float(np.max(np.abs(norm2 - 1.0)))
             if worst > MASS_TOLERANCE:
                 raise ImportDataError(
-                    f"{path.name}: shapes declared mass-normalised but |sum m Phi^2 - 1| = {worst:.3g}"
+                    f"{path.name}: shapes declared mass-normalised "
+                    f"but |sum m Phi^2 - 1| = {worst:.3g}"
                 )
         else:
             if np.any(norm2 <= 0):
@@ -141,7 +142,8 @@ def read_maesstro(
     if bad.size:
         b = int(bad[0])
         raise ImportDataError(
-            f"bridge point {b} at ({pts[b, 0]:g}, {pts[b, 1]:g}) lies outside the mesh of {path.name}"
+            f"bridge point {b} at ({pts[b, 0]:g}, {pts[b, 1]:g}) "
+            f"lies outside the mesh of {path.name}"
         )
     return sorted_table(
         BodyModalTable(omega=omega, sigma=sigma, phi=phi_kp.T.copy(), points=pts.copy())

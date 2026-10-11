@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: MIT
-"""Rational (vector) fitting of measured mobilities into modal tables (B4-R3). (SPEC-BODY, SPEC-CONV)
+"""Rational (vector) fitting of measured mobilities into modal tables (B4-R3).
+
+(SPEC-BODY, SPEC-CONV)
 
 Algorithm: vector fitting with relaxed non-triviality constraint and complex-conjugate pole pairs,
 after B. Gustavsen and A. Semlyen, "Rational approximation of frequency domain responses by vector
@@ -7,8 +9,8 @@ fitting", IEEE Trans. Power Delivery 14(3), 1999 (pole relocation via the zeros 
 function sigma(s)); the relaxed constraint follows B. Gustavsen, "Improving the pole relocating
 properties of vector fitting", IEEE Trans. Power Delivery 21(3), 2006. Own implementation.
 
-Convention (e^(+i omega t), s = i omega, SI-0012): the mobility (velocity per force) between points a
-and b of a mass-normalised modal table is
+Convention (e^(+i omega t), s = i omega, SI-0012): the mobility (velocity per force) between
+points a and b of a mass-normalised modal table is
 
     Y_ab(s) = sum_k s Phi_k(a) Phi_k(b) / (s^2 + 2 sigma_k s + Omega_k^2)
             = sum_k [ R_k / (s - p_k) + conj(R_k) / (s - conj(p_k)) ],
@@ -120,7 +122,7 @@ def _relocate(
         amat[2 * k : 2 * k + 2, 2 * k : 2 * k + 2] = [[ak.real, ak.imag], [-ak.imag, ak.real]]
         bvec[2 * k] = 2.0
     eig = np.linalg.eigvals(amat - np.outer(bvec, c_t) / d_t)
-    return _pairs_from_eigs(eig, n)
+    return _pairs_from_eigs(np.asarray(eig, dtype=np.complex128), n)
 
 
 def _pairs_from_eigs(eig: C128, n: int) -> C128:
@@ -162,9 +164,7 @@ def _residues(
     return out
 
 
-def evaluate(
-    omega: F64, poles: C128, residue: C128, d: float = 0.0, e: float = 0.0
-) -> C128:
+def evaluate(omega: F64, poles: C128, residue: C128, d: float = 0.0, e: float = 0.0) -> C128:
     """H(i omega) = sum R/(s-p) + conj(R)/(s-conj p) + d + e s (physical units)."""
     s = 1j * omega[:, None]
     h = np.sum(residue / (s - poles) + np.conj(residue) / (s - np.conj(poles)), axis=1)
@@ -182,7 +182,7 @@ def vector_fit(
     constant_terms: bool = True,
     relative_weighting: bool = True,
 ) -> FitResult:
-    """Fit ``responses`` ((a, b) -> complex mobility in s/kg at ``freq_hz``) with ``n_pairs`` pole pairs.
+    """Fit ``responses`` ((a, b) -> complex mobility, s/kg, at ``freq_hz``) with ``n_pairs`` pairs.
 
     Stopping rule: the largest relative pole change below ``tol`` or ``max_iter`` relocations.
     ``relative_weighting`` weights each sample by 1/|H| (relative error), else unweighted.
@@ -202,25 +202,28 @@ def vector_fit(
     keys = list(responses)
     omega = 2.0 * math.pi * f[sel]
     ws = float(omega[-1])
-    s = 1j * omega / ws
+    s: C128 = np.asarray(1j * omega / ws, dtype=np.complex128)
     resp: list[C128] = []
     for k in keys:
         h = np.asarray(responses[k], dtype=np.complex128)[sel]
         if h.shape != omega.shape or not np.all(np.isfinite(h)):
             raise ImportDataError(f"mobility {k}: wrong length or non-finite values")
         resp.append(h)
-    weights = [1.0 / np.maximum(np.abs(h), 1e-300) if relative_weighting else np.ones(h.size) for h in resp]
+    weights = [
+        1.0 / np.maximum(np.abs(h), 1e-300) if relative_weighting else np.ones(h.size) for h in resp
+    ]
     if relative_weighting:
         weights = [w / float(np.mean(w)) for w in weights]  # keep the LS well scaled
 
-    a = _initial_poles(n_pairs, float(omega[0]) / ws, 1.0)
+    a: C128 = _initial_poles(n_pairs, float(omega[0]) / ws, 1.0)
     changes: list[float] = []
     converged = False
     it = 0
-    for it in range(1, max_iter + 1):
+    for _ in range(max_iter):
+        it += 1
         new = _relocate(s, a, resp, weights, constant_terms)
         change = float(np.max(np.abs(new - a) / np.abs(a)))
-        a = new
+        a = np.asarray(new, dtype=np.complex128)
         changes.append(change)
         if change < tol:
             converged = True
@@ -274,7 +277,7 @@ def modal_rms_error(
 
 
 def transfer_mobility(table: BodyModalTable, a: int, b: int, omega: F64) -> C128:
-    """Y_ab(w) = sum_k i w Phi_k(a) Phi_k(b) / (Omega_k^2 - w^2 + 2 i sigma_k w)  (SPEC-BODY, e^(+iwt))."""
+    """Y_ab(w) = sum_k i w Phi_k(a) Phi_k(b) / (Omega_k^2 - w^2 + 2 i sigma_k w) (SPEC-BODY)."""
     w = omega[:, None]
     num = 1j * w * (table.phi[:, a] * table.phi[:, b])
     den = table.omega**2 - w**2 + 2j * table.sigma * w

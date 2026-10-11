@@ -96,7 +96,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--tol", type=float, default=1e-9)
     p.add_argument("--driving", type=int, default=0, help="driving-point index")
 
-    p = sub.add_parser("helmholtz", help="merge a Helmholtz mode into the instrument's table (B4-R4)")
+    p = sub.add_parser(
+        "helmholtz", help="merge a Helmholtz mode into the instrument's table (B4-R4)"
+    )
     common(p)
     p.add_argument("--volume", type=float, required=True, help="m^3")
     p.add_argument("--hole-area", type=float, required=True, help="m^2")
@@ -104,7 +106,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--neck-length", type=float, help="m (overrides t + 1.7 r)")
     p.add_argument("--c0", type=float, default=helmholtz.C0_20C)
     p.add_argument("--q-factor", type=float, required=True)
-    p.add_argument("--phi", type=_floats, required=True, help="Phi_H at the bridge points, kg^(-1/2)")
+    p.add_argument(
+        "--phi", type=_floats, required=True, help="Phi_H at the bridge points, kg^(-1/2)"
+    )
     p.add_argument("--alpha", type=_floats)
     p.add_argument("--beta", type=_floats)
 

@@ -55,7 +55,8 @@ def circular_modes(
     """Modes (m, n, f_mn in Hz, variant) of a clamped circular membrane up to ``f_max`` Hz.
 
     f_mn = j_{m,n} c / (2 pi a) with j_{m,n} the n-th positive zero of J_m (Bessel; Fletcher &
-    Rossing, The Physics of Musical Instruments, membrane chapter). ``variant`` is 0 for cos(m theta)
+    Rossing, The Physics of Musical Instruments, membrane chapter). ``variant`` is 0 for
+    cos(m theta)
     and 1 for sin(m theta); m = 0 has only the cos (axisymmetric) variant. Sorted by frequency.
     """
     c = wave_speed(tension, areal_density)
@@ -86,14 +87,18 @@ def circular_norm(radius: float, areal_density: float, m: int, j: float) -> floa
     Derived from integral_0^a J_m(j r / a)^2 r dr = (a^2 / 2) J_{m+1}(j)^2 and the angular integral
     2 pi (m = 0) or pi (cos^2 or sin^2, m > 0).
     """
-    n_mn = math.pi * radius**2 * jv(1, j) ** 2 if m == 0 else 0.5 * math.pi * radius**2 * jv(m + 1, j) ** 2
+    n_mn = (
+        math.pi * radius**2 * jv(1, j) ** 2
+        if m == 0
+        else 0.5 * math.pi * radius**2 * jv(m + 1, j) ** 2
+    )
     return math.sqrt(areal_density * n_mn)
 
 
 def circular_shape(
     radius: float, areal_density: float, m: int, n: int, variant: int, xy: F64
 ) -> F64:
-    """Phi_mn(r, theta) = J_m(j r / a) {cos, sin}(m theta) / sqrt(rho_s N_mn) at points ``xy`` [N, 2+]."""
+    """Phi_mn = J_m(j r / a) {cos, sin}(m theta) / sqrt(rho_s N_mn) at points ``xy`` [N, 2+]."""
     j = float(jn_zeros(m, n)[-1])
     r = np.hypot(xy[:, 0], xy[:, 1])
     theta = np.arctan2(xy[:, 1], xy[:, 0])
@@ -122,9 +127,7 @@ def circular_table(
     if not modes:
         raise ImportDataError("no mode below f_max")
     omega = np.array([2.0 * math.pi * md[2] for md in modes])
-    phi = np.stack(
-        [circular_shape(radius, areal_density, m, n, v, pts) for m, n, _, v in modes]
-    )
+    phi = np.stack([circular_shape(radius, areal_density, m, n, v, pts) for m, n, _, v in modes])
     table = BodyModalTable(
         omega=omega, sigma=_sigma(omega, loss_factor, q_factor), phi=phi, points=pts.copy()
     )
@@ -173,7 +176,12 @@ def rectangular_table(
     if a <= 0 or b <= 0:
         raise ImportDataError("side lengths must be > 0")
     pts = np.asarray(points, dtype=np.float64)
-    if np.any(pts[:, 0] < 0) or np.any(pts[:, 0] > a) or np.any(pts[:, 1] < 0) or np.any(pts[:, 1] > b):
+    if (
+        np.any(pts[:, 0] < 0)
+        or np.any(pts[:, 0] > a)
+        or np.any(pts[:, 1] < 0)
+        or np.any(pts[:, 1] > b)
+    ):
         raise ImportDataError("a bridge point lies outside the membrane")
     modes = rectangular_modes(a, b, tension, areal_density, f_max)
     if not modes:

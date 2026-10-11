@@ -9,9 +9,8 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from pme_compiler.importers._common import ImportDataError
+from pme_compiler.importers._common import BodyModalTable, ImportDataError
 from pme_compiler.importers.vector_fit import (
-    BodyModalTable,
     fit_to_table,
     modal_rms_error,
     transfer_mobility,
@@ -32,9 +31,7 @@ def _truth() -> BodyModalTable:
     rng = np.random.default_rng(20261011)
     phi = rng.uniform(0.2, 0.6, (12, 3)) * rng.choice([-1.0, 1.0], (12, 3))
     phi[:, 0] = np.abs(phi[:, 0])
-    return BodyModalTable(
-        omega=2 * np.pi * FREQ, sigma=SIGMA, phi=phi, points=np.zeros((3, 3))
-    )
+    return BodyModalTable(omega=2 * np.pi * FREQ, sigma=SIGMA, phi=phi, points=np.zeros((3, 3)))
 
 
 def _data(noise: float) -> tuple[F64, dict[tuple[int, int], NDArray[np.complex128]]]:

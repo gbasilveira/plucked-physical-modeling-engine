@@ -43,7 +43,9 @@ def read_channel_delays(path: Path) -> F64:
     out = []
     for i, row in enumerate(rows[1:], start=2):
         if len(row) != 1:
-            raise ImportDataError(f"{path.name}, line {i}, column channel_delay_s: one value required")
+            raise ImportDataError(
+                f"{path.name}, line {i}, column channel_delay_s: one value required"
+            )
         out.append(_number(row[0], f"{path.name}, line {i}, column channel_delay_s"))
     return np.array(out, dtype=np.float64)
 
@@ -119,7 +121,8 @@ def read_modal_csv(
             if set(cols) != set(range(num_channels)):
                 extra = sorted(set(cols) - set(range(num_channels)))[0]
                 raise ImportDataError(
-                    f"{name}, line 1, column {label}_{extra}: instrument has {num_channels} channels"
+                    f"{name}, line 1, column {label}_{extra}: "
+                    f"instrument has {num_channels} channels"
                 )
 
     data = rows[1:]
@@ -148,7 +151,7 @@ def read_modal_csv(
             )
     omega = 2.0 * math.pi * freq
 
-    (dname, dcol), = damp_cols.items()
+    ((dname, dcol),) = damp_cols.items()
     d = values[:, dcol]
     for r in range(k):
         bad = d[r] < 0 if dname != "q_factor" else d[r] <= 0

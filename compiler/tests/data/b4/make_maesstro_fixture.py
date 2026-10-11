@@ -36,7 +36,9 @@ def build() -> dict[str, np.ndarray]:
         for n in range(1, 4):
             # Simply supported plate: f = (pi/2) sqrt(D / (rho h)) ((m/a)^2 + (n/b)^2)
             f = (math.pi / 2) * math.sqrt(D_FLEX / RHO_H) * ((m / A) ** 2 + (n / B) ** 2)
-            modes.append(np.sin(m * math.pi * nodes[:, 0] / A) * np.sin(n * math.pi * nodes[:, 1] / B))
+            modes.append(
+                np.sin(m * math.pi * nodes[:, 0] / A) * np.sin(n * math.pi * nodes[:, 1] / B)
+            )
             freq.append(f)
             eta.append(0.01 + 0.002 * m * n)
     order = np.argsort(freq)[::-1]  # deliberately descending: the adapter must sort
@@ -51,6 +53,10 @@ def build() -> dict[str, np.ndarray]:
 
 
 if __name__ == "__main__":
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).with_name("synthetic_maesstro.mat")
+    out = (
+        Path(sys.argv[1])
+        if len(sys.argv) > 1
+        else Path(__file__).with_name("synthetic_maesstro.mat")
+    )
     savemat(out, build())
     print(f"wrote {out}")

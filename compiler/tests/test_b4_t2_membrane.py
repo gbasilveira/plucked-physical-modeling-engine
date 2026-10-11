@@ -43,7 +43,9 @@ def test_b4_t2_circular_frequencies_match_bessel_zeros() -> None:
             xs = np.linspace(0.1, 40.0, 40000)
             vals = jv(m, xs)
             idx = np.where(np.sign(vals[:-1]) * np.sign(vals[1:]) < 0)[0]
-            root = brentq(lambda x, mm=m: float(jv(mm, x)), xs[idx[n - 1]], xs[idx[n - 1] + 1], xtol=1e-14)
+            root = brentq(
+                lambda x, mm=m: float(jv(mm, x)), xs[idx[n - 1]], xs[idx[n - 1] + 1], xtol=1e-14
+            )
             assert abs(f / (root * C / (2 * math.pi * A)) - 1.0) <= 1e-9
 
 
@@ -73,7 +75,7 @@ def _quad_circle(m1: int, n1: int, v1: int, m2: int, n2: int, v2: int) -> float:
 
 
 def test_b4_t2_circular_shapes_are_mass_normalised_and_orthogonal() -> None:
-    """B4-T2: integral rho_s Phi^2 dA = 1 to 1e-8, cos/sin pair and neighbouring modes orthogonal."""
+    """B4-T2: integral rho_s Phi^2 dA = 1 to 1e-8, cos/sin pair and neighbours orthogonal."""
     for m in range(0, 4):
         for n in (1, 2, 3):
             for v in (0, 1) if m > 0 else (0,):
@@ -107,11 +109,15 @@ def test_b4_r5_tables_are_sorted_and_sampled() -> None:
     pair = np.isclose(t.omega[1:], t.omega[:-1])
     assert pair.any()  # degenerate cos/sin pairs of m > 0
     r = pts[0, :2]
-    k0 = int(np.argmin(np.abs(t.omega - 2 * math.pi * float(jn_zeros(0, 1)[0]) * C / (2 * math.pi * A))))
+    k0 = int(
+        np.argmin(np.abs(t.omega - 2 * math.pi * float(jn_zeros(0, 1)[0]) * C / (2 * math.pi * A)))
+    )
     j = float(jn_zeros(0, 1)[0])
     want = jv(0, j * np.hypot(*r) / A) / math.sqrt(RHO_S * math.pi * A**2 * jv(1, j) ** 2)
     assert abs(t.phi[k0, 0] - want) < 1e-12
-    rect = rectangular_table(0.15, 0.1, T_M, RHO_S, np.array([[0.05, 0.04, 0.0]]), 4000.0, loss_factor=0.02)
+    rect = rectangular_table(
+        0.15, 0.1, T_M, RHO_S, np.array([[0.05, 0.04, 0.0]]), 4000.0, loss_factor=0.02
+    )
     assert np.all(np.diff(rect.omega) >= 0)
     assert np.allclose(rect.sigma, 0.01 * rect.omega)
 
