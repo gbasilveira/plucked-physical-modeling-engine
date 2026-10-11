@@ -201,6 +201,20 @@ jobs:
           PRESET: ${{ matrix.preset_a }}
         run: ctest --preset "$PRESET" -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-${{ matrix.name }}-$PRESET.xml"
 
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: P0.3-T3 bench smoke (PME_BENCH_SMOKE)
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: |
+          uv sync --locked --all-extras
+          exe="$GITHUB_WORKSPACE/build/$PRESET/tools/bench/pme_bench_smoke"
+          if [ "${{ matrix.system }}" = windows ]; then exe="$exe.exe"; fi
+          test -f "$exe"
+          PME_BENCH_SMOKE="$exe" uv run pytest tools/tests/test_p0_3_t3.py -rs
+
       - name: "${{ matrix.preset_b }}: configure"
         if: ${{ matrix.preset_b != '' && !cancelled() }}
         shell: bash
