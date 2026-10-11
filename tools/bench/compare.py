@@ -7,9 +7,10 @@ Exit status 1 when any benchmark's current median exceeds its baseline median by
 (strictly greater than 1.05 x baseline); 0 otherwise. Benchmarks present in only one file are
 reported, not failed. Exit status 2 for unreadable or malformed input.
 
-Baselines live in ``tools/bench/baselines/<machine-id>.json`` (none yet). Timings are comparable only
-between runs on the same machine class (V2 and decision D-4 define the reference machines); the
-script prints both files' machine and build information so a mismatch is visible.
+Baselines live in ``tools/bench/baselines/<machine-id>.json`` (none yet). Timings are
+comparable only between runs on the same machine class (V2 and decision D-4 define the
+reference machines); the script prints both files' machine and build information so that a
+mismatch is visible.
 
 Standard library only.
 """
@@ -23,7 +24,16 @@ from typing import Any
 
 THRESHOLD = 1.05  # current / baseline strictly above this fails
 SCHEMA_VERSION = 1
-RESULT_KEYS = ("name", "unit", "work_per_call", "repetitions", "inner_iterations", "median_ns", "min_ns", "iqr_ns")
+RESULT_KEYS = (
+    "name",
+    "unit",
+    "work_per_call",
+    "repetitions",
+    "inner_iterations",
+    "median_ns",
+    "min_ns",
+    "iqr_ns",
+)
 
 
 class BenchFormatError(ValueError):
@@ -35,7 +45,9 @@ def validate(doc: Any, source: str = "benchmark file") -> dict[str, Any]:
     if not isinstance(doc, dict):
         raise BenchFormatError(f"{source}: top level must be an object")
     if doc.get("schema_version") != SCHEMA_VERSION:
-        raise BenchFormatError(f"{source}: unsupported schema_version {doc.get('schema_version')!r}")
+        raise BenchFormatError(
+            f"{source}: unsupported schema_version {doc.get('schema_version')!r}"
+        )
     for section in ("machine", "build", "settings"):
         if not isinstance(doc.get(section), dict):
             raise BenchFormatError(f"{source}: missing object '{section}'")
@@ -88,7 +100,9 @@ def compare(baseline: dict[str, Any], current: dict[str, Any]) -> tuple[list[str
         ratio = c / b
         line = f"{name}: median {b:.1f} ns -> {c:.1f} ns ({(ratio - 1.0) * 100.0:+.1f}%)"
         if ratio > THRESHOLD:
-            regressions.append(f"REGRESSION {line}, above the {(THRESHOLD - 1.0) * 100.0:.0f}% limit")
+            regressions.append(
+                f"REGRESSION {line}, above the {(THRESHOLD - 1.0) * 100.0:.0f}% limit"
+            )
         else:
             info.append(f"ok {line}")
     return regressions, info

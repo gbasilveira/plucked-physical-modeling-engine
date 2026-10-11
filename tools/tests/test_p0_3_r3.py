@@ -101,7 +101,7 @@ def test_p0_3_r3_spectral_envelope_of_one_pole_matches_response() -> None:
 
 
 def test_p0_3_r3_energy_accounting_reports_drift_and_monotonicity() -> None:
-    """P0.3-R3: energy drift, per-step change and the non-increasing check (ORC-02, ORC-09, ORC-15)."""
+    """P0.3-R3: energy drift, per-step change and non-increasing check (ORC-02/09/15)."""
     h = np.full(1000, 2.0)
     flat = account_energy(h)
     assert flat.max_relative_drift == 0.0 and flat.non_increasing

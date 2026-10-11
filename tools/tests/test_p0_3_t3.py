@@ -46,7 +46,9 @@ def bench_doc(medians: dict[str, float], cpu: str = "Test CPU") -> dict[str, Any
     }
 
 
-def run_compare(tmp_path: Path, baseline: dict[str, Any], current: dict[str, Any]) -> tuple[int, str]:
+def run_compare(
+    tmp_path: Path, baseline: dict[str, Any], current: dict[str, Any]
+) -> tuple[int, str]:
     b, c = tmp_path / "baseline.json", tmp_path / "current.json"
     b.write_text(json.dumps(baseline), encoding="utf-8")
     c.write_text(json.dumps(current), encoding="utf-8")
@@ -91,7 +93,9 @@ def test_p0_3_t3_boundary_is_strictly_greater_than_five_percent(tmp_path: Path) 
 def test_p0_3_t3_benchmarks_in_only_one_file_are_reported_not_failed(tmp_path: Path) -> None:
     """P0.3-T3: a benchmark present in only one file is reported and does not fail the run."""
     code, out = run_compare(
-        tmp_path, bench_doc({"alpha": 100.0, "gone": 50.0}), bench_doc({"alpha": 100.0, "new": 70.0})
+        tmp_path,
+        bench_doc({"alpha": 100.0, "gone": 50.0}),
+        bench_doc({"alpha": 100.0, "new": 70.0}),
     )
     assert code == 0
     assert "only in baseline: gone" in out

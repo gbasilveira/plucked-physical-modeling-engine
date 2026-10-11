@@ -42,7 +42,9 @@ def check_cpp_text(text: str) -> list[str]:
         if not CPP_NAME.match(name):
             problems.append(f'TEST_CASE("{name}") does not begin with an ID and a space')
         elif CPP_FORBIDDEN.search(name):
-            problems.append(f'TEST_CASE("{name}") contains one of , * ? \\ " (breaks ctest filters)')
+            problems.append(
+                f'TEST_CASE("{name}") contains one of , * ? \\ " (breaks ctest filters)'
+            )
     return problems
 
 

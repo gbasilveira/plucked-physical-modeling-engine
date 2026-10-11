@@ -57,7 +57,7 @@ class PartialTolerance:
 
 @dataclass
 class GoldenTolerances:
-    """Defaults: SPEC-ORC for frequency, decay, envelope, contact time; planner's choice for the rest."""
+    """Defaults: SPEC-ORC for frequency, decay, envelope, contact time; planner's for the rest."""
 
     frequency_cents: float = 0.01
     amplitude_db: float = 0.1
@@ -327,7 +327,12 @@ def _relative(candidate: float, reference: float) -> float:
 
 
 def _add(
-    out: ComparisonResult, feature: str, difference: float, tolerance: float, unit: str, note: str = ""
+    out: ComparisonResult,
+    feature: str,
+    difference: float,
+    tolerance: float,
+    unit: str,
+    note: str = "",
 ) -> None:
     ok = difference <= tolerance  # False for NaN
     out.passed = out.passed and ok
@@ -358,7 +363,9 @@ def compare_golden(ref: GoldenFeatures, cand: GoldenFeatures) -> ComparisonResul
         f_tol = tol.frequency_cents if over.frequency_cents is None else over.frequency_cents
         a_tol = tol.amplitude_db if over.amplitude_db is None else over.amplitude_db
         d_tol = (
-            tol.decay_rate_relative if over.decay_rate_relative is None else over.decay_rate_relative
+            tol.decay_rate_relative
+            if over.decay_rate_relative is None
+            else over.decay_rate_relative
         )
         _add(out, f"{name}.frequency", _cents(cp.frequency_hz, rp.frequency_hz), f_tol, "cent")
         _add(out, f"{name}.amplitude", _db(cp.amplitude, rp.amplitude), a_tol, "dB")
@@ -387,11 +394,14 @@ def compare_golden(ref: GoldenFeatures, cand: GoldenFeatures) -> ComparisonResul
 
     if ref.spectral_envelope is not None:
         if cand.spectral_envelope is None:
-            _missing(out, "spectral_envelope", "reference has a spectral envelope, candidate has none")
+            _missing(
+                out, "spectral_envelope", "reference has a spectral envelope, candidate has none"
+            )
         else:
             re, ce = ref.spectral_envelope, cand.spectral_envelope
             same_grid = len(re.frequencies_hz) == len(ce.frequencies_hz) and all(
-                abs(a - b) <= 1e-9 * abs(a) for a, b in zip(re.frequencies_hz, ce.frequencies_hz, strict=True)
+                abs(a - b) <= 1e-9 * abs(a)
+                for a, b in zip(re.frequencies_hz, ce.frequencies_hz, strict=True)
             )
             if not same_grid:
                 _missing(out, "spectral_envelope", "frequency grids differ")

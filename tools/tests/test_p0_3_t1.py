@@ -140,7 +140,9 @@ def test_p0_3_r3_envelope_and_phase() -> None:
         assert est.phase_rad == pytest.approx(truth["phase_rad"], abs=1e-6)
         assert len(est.envelope_times_s) == 8
         for t, a in zip(est.envelope_times_s, est.envelope_amplitudes, strict=True):
-            assert a == pytest.approx(truth["amplitude"] * math.exp(-truth["sigma_per_s"] * t), rel=1e-5)
+            assert a == pytest.approx(
+                truth["amplitude"] * math.exp(-truth["sigma_per_s"] * t), rel=1e-5
+            )
 
 
 @pytest.mark.parametrize("case", cases_of("A"), ids=lambda c: c["name"])

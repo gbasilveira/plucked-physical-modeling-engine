@@ -43,7 +43,9 @@ class DoubleDecayFit:
     rms_log_residual: float
 
 
-def _log_amplitudes(times: ArrayLike, amplitudes: ArrayLike, minimum: int) -> tuple[FloatArray, FloatArray]:
+def _log_amplitudes(
+    times: ArrayLike, amplitudes: ArrayLike, minimum: int
+) -> tuple[FloatArray, FloatArray]:
     t = np.asarray(times, dtype=np.float64)
     a = np.asarray(amplitudes, dtype=np.float64)
     if t.shape != a.shape or t.ndim != 1 or t.size < minimum:
@@ -130,7 +132,9 @@ def fit_inharmonicity(
 
     for _ in range(30):
         r = residuals(f0, b)
-        jac = np.column_stack([np.full_like(n, to_cents), to_cents * 0.5 * n * n / (1.0 + b * n * n)])
+        jac = np.column_stack(
+            [np.full_like(n, to_cents), to_cents * 0.5 * n * n / (1.0 + b * n * n)]
+        )
         scale_b = float(np.max(np.abs(jac[:, 1])))
         jac[:, 1] /= scale_b
         delta = np.linalg.lstsq(jac, -r, rcond=None)[0]
@@ -139,9 +143,7 @@ def fit_inharmonicity(
         if abs(delta[0]) < 1e-15 and abs(delta[1] / scale_b) < 1e-15 * (1.0 + abs(b)):
             break
     r = residuals(f0, b)
-    return InharmonicityFit(
-        f0, b, math.sqrt(float(np.mean(r * r))), float(np.max(np.abs(r)))
-    )
+    return InharmonicityFit(f0, b, math.sqrt(float(np.mean(r * r))), float(np.max(np.abs(r))))
 
 
 # ---- Contact time ------------------------------------------------------------------------------
@@ -156,7 +158,7 @@ class ContactInterval:
 
 
 def measure_contact(force: ArrayLike, sample_rate_hz: float, threshold: float) -> ContactInterval:
-    """First upward to last downward crossing of ``threshold``, linearly interpolated (sub-sample)."""
+    """First upward to last downward crossing of ``threshold`` (linear, sub-sample)."""
     x = np.asarray(force, dtype=np.float64)
     above = np.nonzero(x > threshold)[0]
     if above.size == 0:
@@ -223,7 +225,7 @@ def spectral_envelope(
 
     def cumulative(b: float) -> float:
         t = min(max(b + 0.5, 0.0), float(half + 1))
-        k = int(math.floor(t))
+        k = math.floor(t)
         if k >= half + 1:
             return float(cum[half + 1])
         return float(cum[k] + (t - k) * power[k])
@@ -243,7 +245,7 @@ def spectral_envelope(
         if hi > lo:
             mean = (cumulative(hi) - cumulative(lo)) / (hi - lo)
         else:
-            mean = float(power[min(int(round(fc / bin_hz)), half)])
+            mean = float(power[min(round(fc / bin_hz), half)])
         freqs.append(fc)
         dbs.append(10.0 * math.log10(max(mean, 1e-300)))
     return SpectralEnvelope(np.array(freqs), np.array(dbs))

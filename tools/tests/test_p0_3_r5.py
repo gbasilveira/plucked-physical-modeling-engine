@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 """P0.3-R5 (Python): WAV round trips for every supported format, WAVE_FORMAT_EXTENSIBLE on read,
-errors for malformed and unsupported files, and byte-level agreement with the C++ writer's layout."""
+errors for malformed and unsupported files, and the canonical header layout."""
 
 from __future__ import annotations
 
@@ -14,7 +14,13 @@ from pme_analysis import WavData, WavError, encode_wav, parse_wav, read_wav, wri
 from pme_analysis.wav import WavFormat
 
 FORMATS: list[WavFormat] = ["pcm16", "pcm24", "pcm32", "float32", "float64"]
-STEP = {"pcm16": 1 / 32768, "pcm24": 1 / 8388608, "pcm32": 1 / 2147483648, "float32": 0.0, "float64": 0.0}
+STEP = {
+    "pcm16": 1 / 32768,
+    "pcm24": 1 / 8388608,
+    "pcm32": 1 / 2147483648,
+    "float32": 0.0,
+    "float64": 0.0,
+}
 
 
 def make_signal(fmt: WavFormat, channels: int) -> WavData:

@@ -174,7 +174,7 @@ def _solve_amplitudes(sp: _Spectrum, params: FloatArray, bins: NDArray[np.intp])
 def _levenberg_marquardt(
     sp: _Spectrum, params: FloatArray, bins: NDArray[np.intp], max_iterations: int
 ) -> tuple[int, bool, float]:
-    """Fits every parameter of every partial in place; returns (iterations, converged, rel. residual)."""
+    """Fit every parameter of every partial in place; (iterations, converged, rel. residual)."""
     data_norm2 = float(np.sum(np.abs(sp.x[bins]) ** 2))
     _solve_amplitudes(sp, params, bins)
     residual, jac, cost = _evaluate(sp, params, bins, True)
@@ -231,7 +231,7 @@ def _bins_near(sp: _Spectrum, freqs: list[float], radius: int) -> NDArray[np.int
     top = sp.m // 2
     used = np.zeros(top + 1, dtype=bool)
     for f in freqs:
-        centre = int(round(f / sp.bin_hz))
+        centre = round(f / sp.bin_hz)
         used[max(centre - radius, 0) : min(centre + radius, top) + 1] = True
     return np.nonzero(used)[0].astype(np.intp)
 
