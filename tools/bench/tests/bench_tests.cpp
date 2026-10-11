@@ -10,12 +10,13 @@
 
 namespace {
 
+// A dependent chain (linear congruential step) that the compiler cannot fold into closed form.
 void busy_work() {
-    std::uint64_t sum = 0;
-    for (std::uint64_t i = 0; i < 2000; ++i) {
-        sum += i * 3U;
+    std::uint64_t x = 88172645463325252ULL;
+    for (int i = 0; i < 2000; ++i) {
+        x = x * 6364136223846793005ULL + 1442695040888963407ULL;
     }
-    pme::bench::do_not_optimize(sum);
+    pme::bench::do_not_optimize(x);
 }
 
 }  // namespace
