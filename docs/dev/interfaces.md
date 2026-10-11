@@ -159,7 +159,7 @@ buffers.
 
 ## Tests
 
-`engine/tests/interfaces/` builds `pme_interface_tests` (doctest, own `main`):
+`engine/tests/interfaces/` builds `pme_interface_tests` (`pme_add_doctest`, own `main`; one CTest test per test case, label `unit`, plus `rt` in the rt-safety build):
 
 | Test | What |
 | --- | --- |

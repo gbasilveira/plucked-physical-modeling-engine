@@ -60,12 +60,13 @@ endforeach()
 
 # ---- P0.2: RT-safety trap library ----
 add_subdirectory(engine/src/rtcheck)
-add_subdirectory(engine/tests/rtcheck)
+# engine/tests/rtcheck is added below, after P0.3's test framework (pme_add_doctest)
 # ---- end P0.2 ----
 
 # ---- P0.3: test and analysis framework ----
 include(pme_testing)
 add_subdirectory(engine/tests/framework)
+add_subdirectory(engine/tests/rtcheck)  # P0.2-T1, P0.2-R5
 add_subdirectory(tools/analysis)
 add_subdirectory(tools/bench)
 # ---- end P0.3 ----
