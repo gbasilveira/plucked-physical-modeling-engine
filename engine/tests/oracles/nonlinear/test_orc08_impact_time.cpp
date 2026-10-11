@@ -21,26 +21,25 @@
 // Recorded, not pass criteria: relative energy drift of m u^2/(2 dt^2) + psi^2/2 - eps0 during
 // contact, and the number of psi resets (expected exactly 1: separation).
 //
-// WIRING A3 (post-merge, for the orchestrator). The scenario is templated on a Stepper type with
+// STEPPERS. Every case runs through ReferenceSavStepper<T> (SPEC-NL formulas written in this file)
+// and through A3Stepper<T> (the engine's pme::nl::savStep, same Wall as a Potential), with the same
+// tolerances. The scenario is templated on a Stepper type with
 //   Stepper(double m, double dt, double eps0, const Wall& wall, double z0, double v0)
 //   void step();                 // one sample, n -> n+1
 //   double z() const;            // z^n (position, metres)
 //   double u() const;            // u^n = z^n - z^(n-1) (metres per sample)
 //   double psi() const;
 //   int resets() const;          // times the separation reset fired
-// ReferenceSavStepper<T> below implements it from the SPEC-NL formulas. To run the engine instead,
-// add a class `A3Stepper<T>` with the same members whose step() calls pme::nonlinear::savStep
-// with a Potential built from `Wall` (value = wall.value(z), gradient = wall.gradient(z)), one
-// float32/float64 coordinate with oscillator coefficients beta = 1, kappa = 0, gamma = dt^2 (from
-// pme::osc), and add TEST_CASEs calling checkCase<A3Stepper<float>> / <double> next to the
-// reference ones (keep the reference cases; the A3 ones use the same tolerances). Link
-// pme_nonlinear in CMakeLists.txt then.
 
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
+#include <numbers>
+#include <pme/nonlinear/sav.hpp>
+#include <span>
 
 namespace {
 
@@ -49,13 +48,15 @@ constexpr double kSpeed = 3.0;   // m/s
 constexpr double kP = 2.5;
 constexpr double kEps0 = 1e-12;     // J
 constexpr double kStartGap = 1e-3;  // m before the wall
-constexpr double kPi = 3.14159265358979323846;
+constexpr double kPi = std::numbers::pi;
 
 /// Rigid-wall test potential V(z) = K/(p+1) [z - zw]_+^(p+1), wall at z = 0.
 struct Wall {
     double k;
-    double value(double z) const { return z > 0.0 ? k / (kP + 1.0) * std::pow(z, kP + 1.0) : 0.0; }
-    double gradient(double z) const { return z > 0.0 ? k * std::pow(z, kP) : 0.0; }
+    [[nodiscard]] double value(double z) const {
+        return z > 0.0 ? k / (kP + 1.0) * std::pow(z, kP + 1.0) : 0.0;
+    }
+    [[nodiscard]] double gradient(double z) const { return z > 0.0 ? k * std::pow(z, kP) : 0.0; }
 };
 
 /// SPEC-HAM "Oracle": contact time of mass m at speed v on K [delta]_+^p.
@@ -76,6 +77,7 @@ double analyticContactTime(double k) {
 template <typename T>
 class ReferenceSavStepper {
 public:
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): SPEC-NL order
     ReferenceSavStepper(double m, double dt, double eps0, const Wall& wall, double z0, double v0)
         : m_(m),
           dt_(dt),
@@ -86,9 +88,9 @@ public:
           psi_(std::sqrt(2.0 * eps0)) {}
 
     void step() {
-        const double z = static_cast<double>(z_);
+        const auto z = static_cast<double>(z_);
         const double v = wall_.value(z);
-        double uNext = static_cast<double>(u_);
+        auto uNext = static_cast<double>(u_);
         if (v > 0.0) {
             const double c = dt_ * dt_ / m_;
             const double g = wall_.gradient(z) / std::sqrt(2.0 * (v + eps0_));
@@ -105,10 +107,10 @@ public:
         u_ = static_cast<T>(uNext);
         z_ = static_cast<T>(z + static_cast<double>(u_));
     }
-    double z() const { return static_cast<double>(z_); }
-    double u() const { return static_cast<double>(u_); }
-    double psi() const { return psi_; }
-    int resets() const { return resets_; }
+    [[nodiscard]] double z() const { return static_cast<double>(z_); }
+    [[nodiscard]] double u() const { return static_cast<double>(u_); }
+    [[nodiscard]] double psi() const { return psi_; }
+    [[nodiscard]] int resets() const { return resets_; }
 
 private:
     double m_, dt_, eps0_;
@@ -120,6 +122,53 @@ private:
     int resets_ = 0;
 };
 
+/// The same wall as an A3 Potential (SPEC-NL "Contracts"), one lumped coordinate.
+template <typename T>
+class WallPotential final : public pme::nl::Potential<T> {
+public:
+    explicit WallPotential(const Wall& w) : wall_(w) {}
+    [[nodiscard]] double value(std::span<const T> z) const noexcept override {
+        return wall_.value(static_cast<double>(z[0]));
+    }
+    void gradient(std::span<const T> z, std::span<double> grad) const noexcept override {
+        grad[0] = wall_.gradient(static_cast<double>(z[0]));
+    }
+
+private:
+    Wall wall_;
+};
+
+/// The engine's savStep (A3) driving one free lumped mass; same interface as the reference.
+template <typename T>
+class A3Stepper {
+public:
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): SPEC-NL order
+    A3Stepper(double m, double dt, double eps0, const Wall& wall, double z0, double v0)
+        : potential_(wall) {
+        pme::nl::SavParams params;
+        params.eps0 = eps0;
+        const bool configured = seg_.configure(0, 1, 0, 1.0 / dt, params) == pme::Status::Ok;
+        const bool lumped = seg_.setLumped(0, m) == pme::Status::Ok;
+        REQUIRE(configured);
+        REQUIRE(lumped);
+        seg_.q()[0] = static_cast<T>(z0);
+        seg_.u()[0] = static_cast<T>(v0 * dt);
+    }
+    void step() {
+        const std::array<const pme::nl::Potential<T>*, 1> pots{&potential_};
+        pme::nl::savStep<T>(
+            seg_, std::span<const pme::nl::Potential<T>* const>(pots.data(), pots.size()), {}, {});
+    }
+    [[nodiscard]] double z() const { return static_cast<double>(seg_.q()[0]); }
+    [[nodiscard]] double u() const { return static_cast<double>(seg_.u()[0]); }
+    [[nodiscard]] double psi() const { return seg_.psi(); }
+    [[nodiscard]] int resets() const { return static_cast<int>(seg_.counters().resets); }
+
+private:
+    pme::nl::SavSegment<T> seg_;
+    WallPotential<T> potential_;
+};
+
 struct Measured {
     double contactTime = 0.0;
     double rebound = 0.0;  // v_out in m/s
@@ -129,6 +178,7 @@ struct Measured {
 };
 
 template <typename Stepper>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): (K, fs)
 Measured runCase(double k, double fs) {
     const double dt = 1.0 / fs;
     const Wall wall{k};
@@ -174,7 +224,7 @@ void checkCase(const char* label, double k, double fs) {
     const double tolTime = std::max(0.01 * tc, 1.0 / fs);
     const double errTime = std::fabs(m.contactTime - tc);
     const double errReb = std::fabs(m.rebound / (-kSpeed) - 1.0);
-    std::fprintf(stderr,
+    std::fprintf(stderr,  // NOLINT(cppcoreguidelines-pro-type-vararg)
                  "[ORC-08] %s K=%.4e fs=%.0f: t_c expected %.9e measured %.9e err %.3e s "
                  "(%.4f %%, %.4f samples; tol %.3e s); rebound %.9f m/s err %.3e (tol 1e-3); "
                  "energy drift %.3e; resets %d\n",
@@ -218,4 +268,30 @@ TEST_CASE("ORC-08 impact time rigid wall float64 96 kHz 1 ms") {
 }
 TEST_CASE("ORC-08 impact time rigid wall float64 96 kHz 4 ms") {
     checkCase<ReferenceSavStepper<double>>("float64", kK4ms, 96000.0);
+}
+
+// The same eight cases through the engine's savStep (A3).
+TEST_CASE("ORC-08 impact time rigid wall A3 savStep float32 48 kHz 1 ms") {
+    checkCase<A3Stepper<float>>("A3 float32", kK1ms, 48000.0);
+}
+TEST_CASE("ORC-08 impact time rigid wall A3 savStep float32 48 kHz 4 ms") {
+    checkCase<A3Stepper<float>>("A3 float32", kK4ms, 48000.0);
+}
+TEST_CASE("ORC-08 impact time rigid wall A3 savStep float32 96 kHz 1 ms") {
+    checkCase<A3Stepper<float>>("A3 float32", kK1ms, 96000.0);
+}
+TEST_CASE("ORC-08 impact time rigid wall A3 savStep float32 96 kHz 4 ms") {
+    checkCase<A3Stepper<float>>("A3 float32", kK4ms, 96000.0);
+}
+TEST_CASE("ORC-08 impact time rigid wall A3 savStep float64 48 kHz 1 ms") {
+    checkCase<A3Stepper<double>>("A3 float64", kK1ms, 48000.0);
+}
+TEST_CASE("ORC-08 impact time rigid wall A3 savStep float64 48 kHz 4 ms") {
+    checkCase<A3Stepper<double>>("A3 float64", kK4ms, 48000.0);
+}
+TEST_CASE("ORC-08 impact time rigid wall A3 savStep float64 96 kHz 1 ms") {
+    checkCase<A3Stepper<double>>("A3 float64", kK1ms, 96000.0);
+}
+TEST_CASE("ORC-08 impact time rigid wall A3 savStep float64 96 kHz 4 ms") {
+    checkCase<A3Stepper<double>>("A3 float64", kK4ms, 96000.0);
 }
