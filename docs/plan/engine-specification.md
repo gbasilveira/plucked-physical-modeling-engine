@@ -186,7 +186,7 @@ W(k) = \frac{\sin(kb/2)}{kb/2}\cdot\frac{\pi^2}{\pi^2 - (kb/2)^2}
 
 **Truncation.** Keep n = 1 … N with N the largest index whose ω\_d,n satisfies the oscillator bandwidth rule.
 
-**Contract.** `StringModes compileString(const StringParams&, double fs, double fMax)` computes T, B, the k, ω, σ tables and oscillator coefficients for both polarisations, and the shape vectors φ̄ at every registered point (exciter, damper, barrier, bridge). All shape values MUST be computed in float64 and stored float32.
+**Contract.** `StringModes compileString(const StringParams&, double fs, double fMax, std::span<const double> registeredPoints)` computes T, B, the k, ω, σ tables and oscillator coefficients for both polarisations, and the shape vectors at every registered point (exciter, damper, barrier). Each registered point is a position x₀ in metres on the segment's own x axis (0 ≤ x₀ ≤ L); the vectors are returned in the order of `registeredPoints`. compileString evaluates point shapes φ\_n(x₀) (W = 1); the window factor W(k\_n) of a windowed contact is applied by the caller that knows the window width (compileInstrument), which forms φ̄\_n = φ\_n(x₀) W(k\_n) in float64 from L, k\_n and x₀. The bridge needs no registered point: its terms come from compileBridgeTerms. All shape values MUST be computed in float64 and stored float32. (SI-0001)
 
 ## Bridge coupling
 
@@ -297,7 +297,7 @@ Subtracting the local velocity removes each point's response to its own force, w
 
 **Reference mode.** The engine MUST also offer an offline mode in which every bridge point couples to all K modes every sample on one thread. It is the yardstick for the sympathetic approximation.
 
-**Contracts.** `BodyModes compileBody(const BodyParams&, span<const Point> bridgePoints, span<const Point> channels)` (offline). `LocalBridge buildLocalBridge(const BodyModes&, int point, int maxModes, double fSplit)`. `void GlobalBody::processSubBlock(const ForceBuffer&, int S, AudioOut&, BridgeVelocityOut&)`.
+**Contracts.** `BodyModes compileBody(const BodyParams&, span<const Point> bridgePoints, span<const Point> channels)` (offline). `LocalBridge buildLocalBridge(const BodyModes&, int point, int maxModes, double fSplit)` is sample-rate independent: it selects the kept modes and stores their Ω\_k, σ\_k, Φ\_k(x\_b) and G\_hf,b; compileInstrument derives their oscillator coefficients (SPEC-OSC) at the engine's fs, like every other sample-rate-dependent quantity (SPEC-INST "Instrument file"). (SI-0002) `void GlobalBody::processSubBlock(const ForceBuffer&, int S, AudioOut&, BridgeVelocityOut&)`.
 
 ## Nonlinear framework
 
@@ -676,6 +676,19 @@ std::shared_ptr<const CompiledInstrument>
 ```
 
 Compiled data is immutable once built. Recompiling one string MUST NOT rebuild the body.
+
+**Compiled-data and I/O types.** SPEC defines what these types contain; their member layout is fixed by the frozen interface headers (`interfaces-v<n>`) and changes only through an interface change request (SI-0002).
+
+| Type | Contents |
+| --- | --- |
+| StringModes | fs, L, T, ρA, EI, B; k\_n, ω\_n, σ\_n (float64); oscillator coefficients per mode for both polarisations; float32 point-shape vectors φ\_n(x₀), one per registered point in argument order |
+| SegmentBridgeTerms | The bridge end; g\_n and a\_n (computed float64, stored float32); T/L |
+| BodyModes | K, the number of bridge points and channels; Ω\_k, σ\_k; Φ\_k(x\_b); α\_c,k, β\_c,k; τ\_c; per bridge point the residual mobility from which G\_hf,b is derived |
+| LocalBridge | Bridge point index, kept mode indices with their Ω\_k, σ\_k, Φ\_k(x\_b), G\_hf,b and the f\_split used; no oscillator coefficients (Soundboard and bodies, "Contracts") |
+| AudioOut | Non-interleaved float32 output: one host-owned pointer per channel, each to at least `frames` samples |
+| Diagnostic | Kind (group energy, active contact count, κ\_s halving, SAV reset), note group index (position in InstrumentDesc::groups, not the key), the engine sample counter at the sub-block boundary that produced it, and one value (J, count, or the new κ\_s) |
+
+**EngineConfig.threads** is the total number of threads that run Phase A, the audio thread included; 1 means no worker threads. Output MUST NOT depend on it (Execution order, "Threading contract").
 
 **Real-time interface.**
 
