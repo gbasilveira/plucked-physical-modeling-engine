@@ -110,10 +110,23 @@ Result run_benchmark(const Benchmark& benchmark, const Options& options) {
     const int reps = std::max(options.repetitions, 1);
     result.repetitions = reps;
 
-    // Calibrate: calls per repetition so that a repetition lasts at least min_repetition_ns.
-    const double once = std::max(elapsed_ns(benchmark.fn, 1), 1.0);
-    auto inner = static_cast<long long>(std::ceil(options.min_repetition_ns / once));
-    inner = std::clamp<long long>(inner, 1, 1'000'000'000LL);
+    // Calibrate: calls per repetition so that a repetition lasts at least min_repetition_ns. Grow
+    // the count until a measured repetition reaches the target; one timed call is not trusted,
+    // because on a coarse clock (Windows: 100 ns ticks) a single call can read as zero or as a
+    // cold-start outlier.
+    constexpr long long kMaxInner = 1'000'000'000LL;
+    long long inner = 1;
+    while (inner < kMaxInner) {
+        const double measured = elapsed_ns(benchmark.fn, inner);
+        if (measured >= options.min_repetition_ns) {
+            break;
+        }
+        const double scale = options.min_repetition_ns / std::max(measured, 1.0);
+        const double grown = std::min(std::ceil(static_cast<double>(inner) * scale),
+                                      static_cast<double>(inner) * 10.0);
+        inner =
+            std::clamp<long long>(std::max(static_cast<long long>(grown), inner + 1), 1, kMaxInner);
+    }
     result.inner_iterations = inner;
 
     for (int i = 0; i < options.warmup; ++i) {
