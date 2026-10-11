@@ -41,7 +41,7 @@ def main():
     dt = 1 / fs
     limit = mp.mpf("0.95") * mp.pi
     omega_dt = logspace("1e-4", limit * (1 - mp.mpf("1e-9")), N_OMEGA)
-    sigma_dt = [mp.mpf(0)] + logspace("1e-9", "0.1", N_SIGMA)
+    sigma_dt = [mp.mpf(0), *logspace("1e-9", "0.1", N_SIGMA)]
     entries = []
     min_margin = mp.mpf(10)
     for wdt in omega_dt:
@@ -80,7 +80,10 @@ def main():
     out = pathlib.Path(__file__).with_name("a1_t1_reference.json")
     out.write_text(json.dumps(doc, indent=1) + "\n")
     accepted = sum(1 for e in entries if not e["rejected"])
-    print(f"wrote {out}: {len(entries)} pairs, {accepted} accepted, min margin {mp.nstr(min_margin, 5)}")
+    print(
+        f"wrote {out}: {len(entries)} pairs, {accepted} accepted, "
+        f"min margin {mp.nstr(min_margin, 5)}"
+    )
 
 
 if __name__ == "__main__":
