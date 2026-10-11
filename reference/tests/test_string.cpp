@@ -182,7 +182,7 @@ double clamped_frequency_hz(const StringPhysics& ph, int n) {
 
 }  // namespace
 
-TEST_CASE("P0.5-T1 reviewer: third string (B 1e-3, L 0.5 m, clamped) converges at second order") {
+TEST_CASE("P0.5-T1 reviewer third string B 1e-3 L 0.5 m clamped converges at second order") {
     StringParams params = steel_string(0.5, 220.0, 1e-3);
     params.boundary = pme::Boundary::Clamped;
     const StringPhysics ph = derive_string(params);
