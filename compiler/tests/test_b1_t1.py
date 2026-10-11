@@ -28,7 +28,7 @@ ROUND_TRIP_FILES = [
 
 def test_b1_t1_files_exist() -> None:
     """B1-T1: the four examples and the three fixtures are committed."""
-    assert [p.parent.name for p in EXAMPLES.glob("*/instrument.json")] == sorted(
+    assert sorted(p.parent.name for p in EXAMPLES.glob("*/instrument.json")) == sorted(
         ["generic-grand-88", "test-guitar-6", "test-monochord", "test-unison-pair"]
     )
     assert all(p.exists() for p in ROUND_TRIP_FILES)
