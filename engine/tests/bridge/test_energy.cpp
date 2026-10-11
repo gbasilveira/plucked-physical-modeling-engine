@@ -7,7 +7,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <cstdio>
+#include <iostream>
+#include <numbers>
 
 #include "test_support.hpp"
 
@@ -22,6 +23,7 @@ struct Result {
     std::size_t modes{};
 };
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): theta_b, sample count
 Result runLossless(double thetaB, std::size_t samples) {
     Rig<double> rig;
     const pme::StringModes a = compile(plainSteel(0.65, 262.0, true), 16000.0);
@@ -32,7 +34,7 @@ Result runLossless(double thetaB, std::size_t samples) {
     REQUIRE(rig.addSegment(b, pme::BridgeEnd::AtL) == pme::Status::Ok);
     // Lossless mass-spring bridge: m = 0.4 kg, f_b = 300 Hz, r_b = 0, G = 0, G_h = 0.
     const double m = 0.4;
-    const double omegaB = 2.0 * 3.14159265358979323846 * 300.0;
+    const double omegaB = 2.0 * std::numbers::pi * 300.0;
     pme::bridge::ParallelModel model;
     REQUIRE(pme::bridge::massSpringDamperModel(m, m * omegaB * omegaB, 0.0, model) ==
             pme::Status::Ok);
@@ -43,7 +45,7 @@ Result runLossless(double thetaB, std::size_t samples) {
     for (std::size_t s = 0; s < rig.segs.size(); ++s) {
         const double amp = (s == 0 ? 1.0e-4 : 7.0e-5);
         for (std::size_t i = 0; i < rig.segs[s].modeCount(); ++i) {
-            const double n = static_cast<double>(i + 1);
+            const auto n = static_cast<double>(i + 1);
             rig.segs[s].qV()[i] = amp / (n * n);
             rig.segs[s].qH()[i] = 0.3 * amp / (n * n) * ((i % 3U) == 0U ? 1.0 : -1.0);
         }
@@ -66,7 +68,7 @@ Result runLossless(double thetaB, std::size_t samples) {
     double sy = 0.0;
     double sxx = 0.0;
     double sxy = 0.0;
-    const double cnt = static_cast<double>(dev.size());
+    const auto cnt = static_cast<double>(dev.size());
     for (std::size_t i = 0; i < dev.size(); ++i) {
         const double x = static_cast<double>((i + 1) * stride) / 1.0e6;
         res.maxDeviation = std::max(res.maxDeviation, std::abs(dev[i]));
@@ -83,16 +85,16 @@ Result runLossless(double thetaB, std::size_t samples) {
 
 TEST_CASE("A4-T1 two lossless strings on a lossless mass-spring bridge conserve energy") {
     const Result r = runLossless(0.0, 1000000);
-    std::printf("A4-T1 theta=0: E0=%.6e max|dE|/E0=%.3e slope/1e6=%.3e (%zu modes)\n", r.e0,
-                r.maxDeviation, r.slopePer1e6, r.modes);
+    std::cout << "A4-T1 theta=0: E0=" << sci(r.e0, 6) << " max|dE|/E0=" << sci(r.maxDeviation)
+              << " slope/1e6=" << sci(r.slopePer1e6) << " (" << r.modes << " modes)\n";
     CHECK(r.maxDeviation < 1e-6);
     CHECK(std::abs(r.slopePer1e6) < 1e-6);
 }
 
 TEST_CASE("A4-T1 energy conservation holds with the polarisations rotated by 0.1 rad") {
     const Result r = runLossless(0.1, 1000000);
-    std::printf("A4-T1 theta=0.1: E0=%.6e max|dE|/E0=%.3e slope/1e6=%.3e (%zu modes)\n", r.e0,
-                r.maxDeviation, r.slopePer1e6, r.modes);
+    std::cout << "A4-T1 theta=0.1: E0=" << sci(r.e0, 6) << " max|dE|/E0=" << sci(r.maxDeviation)
+              << " slope/1e6=" << sci(r.slopePer1e6) << " (" << r.modes << " modes)\n";
     CHECK(r.maxDeviation < 1e-6);
     CHECK(std::abs(r.slopePer1e6) < 1e-6);
 }

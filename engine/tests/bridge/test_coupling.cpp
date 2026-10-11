@@ -6,6 +6,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <numbers>
@@ -27,6 +28,7 @@ using pme::bridge::Stage;
 
 constexpr double kPi = std::numbers::pi;
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): mass, f_b, r_b in SPEC-BODY order
 ParallelModel springBridge(double massKg = 0.4, double fb = 300.0, double r = 0.0) {
     ParallelModel model;
     const double w = 2.0 * kPi * fb;
@@ -36,7 +38,7 @@ ParallelModel springBridge(double massKg = 0.4, double fb = 300.0, double r = 0.
 
 void excite(Rig<double>& rig, std::size_t seg, double amp, double ampH = 0.0) {
     for (std::size_t i = 0; i < rig.segs[seg].modeCount(); ++i) {
-        const double n = static_cast<double>(i + 1);
+        const auto n = static_cast<double>(i + 1);
         rig.segs[seg].qV()[i] = amp / (n * n);
         rig.segs[seg].qH()[i] = ampH / (n * n);
     }
@@ -55,9 +57,9 @@ TEST_CASE("A4-R2 the point follows add force then advance then read acceleration
     for (int n = 0; n < 200; ++n) {
         p.addForce(n < 5 ? 20.0 : 0.0, 0.0);  // step 1: segments add forces
         trace.push_back(p.stage());
-        p.advance();                           // step 2: advance to w^{n+1}
+        p.advance();  // step 2: advance to w^{n+1}
         trace.push_back(p.stage());
-        acc.push_back(p.accelV());             // step 3: segments read delta_tt w^n
+        acc.push_back(p.accelV());  // step 3: segments read delta_tt w^n
         w.push_back(p.wV());
     }
     for (std::size_t i = 0; i < trace.size(); i += 2) {
@@ -130,14 +132,14 @@ TEST_CASE("A4-R3 three segments share one bridge displacement") {
     // SI-0010 / A2 follow-up: the caller passes the string's detuneH to applyMute.
     REQUIRE(pme::string::applyMute(r, 0.8, 20.0, pr.detuneH) == Status::Ok);
 
-    auto build = [&](const std::vector<int>& order, Rig<double>& rig) {
-        const pme::StringModes* ms[3] = {&a, &b, &r};
-        const BridgeEnd ends[3] = {BridgeEnd::AtL, BridgeEnd::AtL, BridgeEnd::At0};
-        for (const int i : order) {
+    auto build = [&](const std::vector<std::size_t>& order, Rig<double>& rig) {
+        const std::array<const pme::StringModes*, 3> ms{&a, &b, &r};
+        const std::array<BridgeEnd, 3> ends{BridgeEnd::AtL, BridgeEnd::AtL, BridgeEnd::At0};
+        for (const auto i : order) {
             REQUIRE(rig.addSegment(*ms[i], ends[i]) == Status::Ok);
         }
-        REQUIRE(rig.point.configure(pme::BridgePointDesc{}, springBridge(0.4, 300.0, 15.0),
-                                    kFs) == Status::Ok);
+        REQUIRE(rig.point.configure(pme::BridgePointDesc{}, springBridge(0.4, 300.0, 15.0), kFs) ==
+                Status::Ok);
         for (std::size_t s = 0; s < order.size(); ++s) {
             excite(rig, s, 1.0e-4 * (1.0 + 0.3 * static_cast<double>(order[s])),
                    0.2e-4 * (1.0 + static_cast<double>(order[s])));
@@ -168,11 +170,13 @@ TEST_CASE("A4-R3 three segments share one bridge displacement") {
         // reconstruct the displacement from the summed force through a reference point
         if (n == 0) {
             const double dt = 1.0 / kFs;
-            // first step of the bridge mode: w^1 = gamma F / m with gamma = dt^2 / (1 + tanh(sigma dt))
+            // first step of the bridge mode: w^1 = gamma F / m with gamma = dt^2 / (1 + tanh(sigma
+            // dt))
             const double gamma = dt * dt / (1.0 + std::tanh(15.0 / (2.0 * 0.4) * dt));
             CHECK(fwd1.point.wV() == doctest::Approx(gamma * fv / 0.4).epsilon(1e-12));
             CHECK(fwd1.point.wH() == 0.0);
-            CHECK(fh != 0.0);  // horizontal force exists but the bridge (theta = 0, G_h = 0) is rigid
+            CHECK(fh !=
+                  0.0);  // horizontal force exists but the bridge (theta = 0, G_h = 0) is rigid
         }
         // identical order: bit-identical
         CHECK(fwd1.point.wV() == fwd2.point.wV());

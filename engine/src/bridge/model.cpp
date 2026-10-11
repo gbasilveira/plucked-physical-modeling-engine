@@ -45,7 +45,8 @@ Status massSpringDamperModel(double mass, double stiffness, double damping, Para
 
 Status modalSetModel(const LocalBridge& local, ParallelModel& out) {
     const std::size_t n = local.omega.size();
-    if (local.sigma.size() != n || local.phi.size() != n || !finiteNonNegative(local.conductanceHf)) {
+    if (local.sigma.size() != n || local.phi.size() != n ||
+        !finiteNonNegative(local.conductanceHf)) {
         return Status::InvalidArgument;
     }
     ParallelModel m;

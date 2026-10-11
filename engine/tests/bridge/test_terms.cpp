@@ -39,7 +39,7 @@ TEST_CASE("A4-R1 g_n matches the lifting-function overlaps for both ends") {
         std::vector<double> g64;
         REQUIRE(pme::bridge::liftingOverlaps(m, end, g64) == Status::Ok);
         for (std::size_t i = 0; i < m.k.size(); ++i) {
-            const double n = static_cast<double>(i + 1);
+            const auto n = static_cast<double>(i + 1);
             const double sign = (end == BridgeEnd::AtL && (i % 2U) == 1U) ? -1.0 : 1.0;
             const double expected = sign * std::sqrt(2.0 / m.L) / m.k[i];
             CHECK(std::abs(g64[i] - expected) <= 1e-12 * std::abs(expected));
@@ -215,6 +215,6 @@ TEST_CASE("A4-R1 bridgeForce is one dot product plus the static term") {
     CHECK(std::abs(static_cast<double>(fd) - ref) <= static_cast<double>(n) * 6e-8 * mag);
 
     // The double instantiation with the same coefficients matches the float64 dot product.
-    const double fdbl = pme::bridge::bridgeForce<double>(t, q64.data(), static_cast<double>(wb));
+    const auto fdbl = pme::bridge::bridgeForce<double>(t, q64.data(), static_cast<double>(wb));
     CHECK(std::abs(fdbl - (ref + refStatic)) <= 1e-12 * (mag + std::abs(refStatic)));
 }

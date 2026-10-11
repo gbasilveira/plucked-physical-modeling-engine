@@ -121,7 +121,8 @@ public:
     /// `BridgePoint::wV()` and `incrementV()` after the `advance` (likewise for h). This is the
     /// per-segment part of the conserved energy of the partitioned scheme (docs/dev/bridge.md).
     /// Thread: any. Allocates: no.
-    [[nodiscard]] double energy(double wVnext, double dwV, double wHnext, double dwH) const noexcept {
+    [[nodiscard]] double energy(double wVnext, double dwV, double wHnext,
+                                double dwH) const noexcept {
         return polarisationEnergy(v_, wVnext, dwV) + polarisationEnergy(h_, wHnext, dwH);
     }
 
@@ -153,8 +154,8 @@ private:
                                             double dw) const noexcept {
         double sum = 0.0;
         for (std::size_t i = 0; i < g_.size(); ++i) {
-            const double qNext = static_cast<double>(p.q[i]);
-            const double uNext = static_cast<double>(p.u[i]);
+            const auto qNext = static_cast<double>(p.q[i]);
+            const auto uNext = static_cast<double>(p.u[i]);
             const double v = (uNext + static_cast<double>(g_[i]) * dw) / dt_;
             sum += 0.5 * v * v + 0.5 * p.omegaHat2[i] * (qNext - uNext) * qNext;
         }

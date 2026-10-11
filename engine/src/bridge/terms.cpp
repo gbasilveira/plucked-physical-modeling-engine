@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Bridge terms of one segment (A4-R1): SPEC-BRG "Modal equation with a moving support", "Bridge
 // force" and "Contract". See docs/dev/bridge.md.
+#include "pme/bridge/terms.hpp"
+
 #include <cmath>
 #include <cstddef>
 #include <utility>
 #include <vector>
 
 #include "pme/bridge.hpp"
-#include "pme/bridge/terms.hpp"
 
 namespace pme {
 

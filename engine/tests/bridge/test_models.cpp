@@ -26,6 +26,7 @@ using pme::bridge::ParallelModel;
 constexpr double kFs = 48000.0;
 constexpr double kPi = std::numbers::pi;
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): theta_b, G_h
 BridgePoint<double> makePoint(const ParallelModel& model, double thetaB = 0.0, double gH = 0.0) {
     BridgePoint<double> p;
     pme::BridgePointDesc d;
@@ -148,9 +149,9 @@ TEST_CASE("A4-R2 free mass and mass with damper under a constant force") {
             p.addForce(force, 0.0);
             p.advance();
             // free mass: w^{n+1} = F/m dt^2 (n+1)(n+2)/2 after the step with index n
-            const double k = static_cast<double>(n + 1);
-            CHECK(p.wV() == doctest::Approx(force / 0.8 * dt * dt * k * (k + 1.0) / 2.0)
-                                .epsilon(1e-12));
+            const auto k = static_cast<double>(n + 1);
+            CHECK(p.wV() ==
+                  doctest::Approx(force / 0.8 * dt * dt * k * (k + 1.0) / 2.0).epsilon(1e-12));
             CHECK(p.accelV() == doctest::Approx(force / 0.8).epsilon(1e-9));
         }
     }
@@ -304,7 +305,6 @@ TEST_CASE("A4-R2 model factories and configure reject invalid arguments") {
     CHECK(p.configure(d, bad, kFs) == Status::InvalidArgument);
     bad.modes = {{10.0, 0.0, nan}};
     CHECK(p.configure(d, bad, kFs) == Status::InvalidArgument);
-
 }
 
 TEST_CASE("A4-R2 free-mass mode compile matches the overdamped continuation") {

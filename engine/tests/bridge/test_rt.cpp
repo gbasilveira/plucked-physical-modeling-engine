@@ -19,7 +19,7 @@ TEST_CASE("A4-R2 the per-sample path of a BridgePoint with three segments alloca
         pme::rtcheck::ScopedRealtimeThread realtime;
         for (int s = 0; s < 256; ++s) {
             rig.point.setExternalVelocity(1e-6F * static_cast<float>(s % 7));  // A4-R5 hook
-            rig.point.addVerticalForce(1e-3F);                                  // A4-R5 hook
+            rig.point.addVerticalForce(1e-3F);                                 // A4-R5 hook
             rig.step();
             sink += static_cast<double>(rig.point.wV()) + static_cast<double>(rig.point.wH());
         }

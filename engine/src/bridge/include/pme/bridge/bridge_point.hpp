@@ -165,9 +165,9 @@ public:
             modeSum += phi_[i] * r_[i];
             modeDelta += phi_[i] * u_[i];
         }
-        const S dwR = gPar_ * fPar;          // SPEC-BODY: w_R^{n+1} - w_R^n = dt G F^n
-        const S dwExt = dtS_ * vExt_;        // SPEC-BODY Sympathetic path: dt v_ext^n
-        const S dwPerp = gPerp_ * fPerp;     // SPEC-BRG: w_perp^{n+1} - w_perp^n = dt G_h F_perp^n
+        const S dwR = gPar_ * fPar;       // SPEC-BODY: w_R^{n+1} - w_R^n = dt G F^n
+        const S dwExt = dtS_ * vExt_;     // SPEC-BODY Sympathetic path: dt v_ext^n
+        const S dwPerp = gPerp_ * fPerp;  // SPEC-BRG: w_perp^{n+1} - w_perp^n = dt G_h F_perp^n
         wR_ += dwR;
         wExt_ += dwExt;
         wPerp_ += dwPerp;
@@ -229,8 +229,8 @@ public:
     [[nodiscard]] double modeEnergy() const noexcept {
         double e = 0.0;
         for (std::size_t i = 0; i < r_.size(); ++i) {
-            const double qNext = static_cast<double>(r_[i]);
-            const double uNext = static_cast<double>(u_[i]);
+            const auto qNext = static_cast<double>(r_[i]);
+            const auto uNext = static_cast<double>(u_[i]);
             const double v = uNext / dt_;
             e += 0.5 * v * v + 0.5 * omegaHat2_[i] * (qNext - uNext) * qNext;
         }

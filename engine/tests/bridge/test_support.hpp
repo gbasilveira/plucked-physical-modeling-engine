@@ -4,20 +4,31 @@
 #pragma once
 
 #include <cstddef>
+#include <iomanip>
 #include <memory>
+#include <numbers>
+#include <sstream>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "pme/body.hpp"
 #include "pme/bridge.hpp"
 #include "pme/bridge/bridge_point.hpp"
-#include "pme/bridge/model.hpp"
 #include "pme/bridge/modal_segment.hpp"
+#include "pme/bridge/model.hpp"
 #include "pme/string.hpp"
 
 namespace pme::bridge_test {
 
 inline constexpr double kFs = 48000.0;
+
+/// Scientific-notation text of a number for the evidence lines the tests print.
+inline std::string sci(double v, int precision = 3) {
+    std::ostringstream os;
+    os << std::scientific << std::setprecision(precision) << v;
+    return os.str();
+}
 
 /// Plain steel string d = 1 mm; `lossless` sets b1 = b2 = b3 = 0.
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): L, f1
@@ -105,7 +116,7 @@ Status buildThreeSegmentRig(Rig<S>& rig, double fs = kFs) {
     }
     LocalBridge local;
     for (int k = 0; k < 16; ++k) {
-        local.omega.push_back(2.0 * 3.14159265358979323846 * (120.0 + 230.0 * k));
+        local.omega.push_back(2.0 * std::numbers::pi * (120.0 + 230.0 * k));
         local.sigma.push_back(15.0 + 3.0 * k);
         local.phi.push_back((k % 2 == 0 ? 1.0 : -1.0) / (1.0 + 0.2 * k));
         local.modeIndex.push_back(k);
