@@ -16,52 +16,51 @@ constexpr ParamClass Struc = ParamClass::Structural;
 
 // clang-format off
 constexpr auto kRegistry = std::to_array<ParamInfo>({
-    // 1000: performance controls (continuous)
+    // 1000: performance controls (continuous). Id 1010 (unaCorda.shift) is retired and never
+    // reused (ICR-0001, SI-0007): 1003 is the only id for the una corda shift.
     {1001, "pedal.sustain", "1", 0.0, 1.0, 0.0, Cont, "SPEC-API Events; SPEC-DMP Lift fraction",
      "Sustain pedal depth P, 0 up to 1 fully down."},
     {1002, "pedal.sostenuto", "1", 0.0, 1.0, 0.0, Cont, "SPEC-API Events; SPEC-DMP Sostenuto",
      "Sostenuto pedal depth, 0 up to 1 fully down."},
     {1003, "pedal.soft", "1", 0.0, 1.0, 0.0, Cont, "SPEC-API Events; SPEC-HAM Una corda",
-     "Soft pedal depth: una corda shift s on a grand, hammer-rail position on an upright."},
-    {1010, "unaCorda.shift", "1", 0.0, 1.0, 0.0, Cont, "SPEC-HAM Una corda (grand)",
-     "Una corda shift s in [0, 1], continuous."},
+     "Soft pedal depth: una corda shift s on a grand, hammer-rail position on an upright. Also the una corda shift s (grand) and hammer-rail position (upright); the only id for that quantity."},
     // 2000: output (continuous)
     {2001, "output.gain", "dB", -96.0, 24.0, 0.0, Cont, "SPEC-API Parameter classes",
-     "Master output gain in decibels (not linear). Range provisional."},
+     "Master output gain in decibels (not linear)."},
     // 3000: sympathetic path
     {3001, "sympathetic.gain", "1", 0.0, 1.0, 1.0, Cont, "SPEC-BODY Sympathetic path",
      "Sympathetic coupling gain kappa_s (linear), default 1."},
     {3101, "sympathetic.lowPass", "Hz", 500.0, 20000.0, 5000.0, Struc, "SPEC-BODY Sympathetic path; SPEC-INST Piano defaults",
-     "Second-order low-pass frequency f_symp of the sympathetic path. Range provisional."},
+     "Second-order low-pass frequency f_symp of the sympathetic path."},
     // 4000: dampers
     {4001, "damper.tauUp", "s", 0.001, 0.05, 0.004, Cont, "SPEC-DMP Timing",
-     "Damper lift time constant tau_up. Range provisional."},
+     "Damper lift time constant tau_up."},
     {4002, "damper.tau0", "s", 0.002, 0.1, 0.012, Cont, "SPEC-DMP Timing",
-     "Damper landing time constant tau_0 at zero release velocity. Range provisional."},
+     "Damper landing time constant tau_0 at zero release velocity."},
     {4003, "damper.kRelease", "1", 0.0, 10.0, 2.0, Cont, "SPEC-DMP Timing",
-     "Release-velocity factor k_r of the landing time. Range provisional."},
+     "Release-velocity factor k_r of the landing time."},
     {4101, "damper.halfPedalStart", "1", 0.0, 1.0, 0.35, Struc, "SPEC-DMP Lift fraction; SPEC-INST Piano defaults",
-     "Half-pedal region start P_0 (must stay below P_1). Class provisional."},
+     "Half-pedal region start P_0 (must stay below P_1)."},
     {4102, "damper.halfPedalEnd", "1", 0.0, 1.0, 0.65, Struc, "SPEC-DMP Lift fraction; SPEC-INST Piano defaults",
-     "Half-pedal region end P_1 (must stay above P_0). Class provisional."},
+     "Half-pedal region end P_1 (must stay above P_0)."},
     {4103, "damper.eta", "1", 0.5, 8.0, 2.0, Struc, "SPEC-DMP Lift fraction; SPEC-INST Piano defaults",
-     "Progressive felt contact exponent eta_d. Range and class provisional."},
+     "Progressive felt contact exponent eta_d."},
     // 5000: una corda felt map
     {5001, "unaCorda.s0", "1", 0.0, 1.0, 0.3, Struc, "SPEC-HAM Una corda; SPEC-INST Piano defaults",
      "Smoothstep lower bound s_0."},
     {5002, "unaCorda.s1", "1", 0.0, 1.0, 0.9, Struc, "SPEC-HAM Una corda; SPEC-INST Piano defaults",
      "Smoothstep upper bound s_1."},
     {5003, "unaCorda.kappaUC", "1", 0.0, 1.0, 0.6, Struc, "SPEC-HAM Una corda; SPEC-INST Piano defaults",
-     "Felt stiffness factor kappa_uc. Range provisional."},
+     "Felt stiffness factor kappa_uc."},
     {5004, "unaCorda.deltaP", "1", -2.0, 2.0, 0.0, Struc, "SPEC-HAM Una corda; SPEC-INST Piano defaults",
-     "Felt exponent shift Delta p_uc. Range provisional."},
+     "Felt exponent shift Delta p_uc."},
     // 6000: strings and geometry
     {6001, "longitudinal.kappaL", "1", 0.0, 0.2, 0.026, Struc, "SPEC-GEO Transmission to the body; SPEC-INST Piano defaults",
-     "Longitudinal transmission kappa_L (about sin 1.5 degrees). Range provisional."},
+     "Longitudinal transmission kappa_L (about sin 1.5 degrees)."},
     {6002, "longitudinal.modes", "1", 0.0, 32.0, 8.0, Struc, "SPEC-GEO Longitudinal modes; SPEC-INST Piano defaults",
-     "Number of longitudinal modes M_L per string. Range provisional."},
+     "Number of longitudinal modes M_L per string."},
     {6003, "strings.fMax", "Hz", 12000.0, 20000.0, 16000.0, Struc, "SPEC-INST Piano defaults",
-     "Highest kept string frequency f_max. Range from SPEC (12 to 20 kHz); default provisional."},
+     "Highest kept string frequency f_max; default 16 kHz (SPEC-INST), V2 may revise. Structural: recompiles the instrument; EngineConfig::fMaxStrings is updated."},
     // 7000: body
     {7001, "body.localBridgeModes", "1", 1.0, 64.0, 64.0, Struc, "SPEC-BODY Local bridge model; SPEC-INST Piano defaults",
      "Private body modes M_b per bridge point (64 SHOULD hold)."},

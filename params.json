@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "interfaces_version": 1,
+  "interfaces_version": 2,
   "parameters": [
     {
       "id": 1001,
@@ -33,18 +33,7 @@
       "default": 0,
       "class": "continuous",
       "spec_key": "SPEC-API Events; SPEC-HAM Una corda",
-      "description": "Soft pedal depth: una corda shift s on a grand, hammer-rail position on an upright."
-    },
-    {
-      "id": 1010,
-      "name": "unaCorda.shift",
-      "unit": "1",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "class": "continuous",
-      "spec_key": "SPEC-HAM Una corda (grand)",
-      "description": "Una corda shift s in [0, 1], continuous."
+      "description": "Soft pedal depth: una corda shift s on a grand, hammer-rail position on an upright. Also the una corda shift s (grand) and hammer-rail position (upright); the only id for that quantity."
     },
     {
       "id": 2001,
@@ -55,7 +44,7 @@
       "default": 0,
       "class": "continuous",
       "spec_key": "SPEC-API Parameter classes",
-      "description": "Master output gain in decibels (not linear). Range provisional."
+      "description": "Master output gain in decibels (not linear)."
     },
     {
       "id": 3001,
@@ -77,7 +66,7 @@
       "default": 5000,
       "class": "structural",
       "spec_key": "SPEC-BODY Sympathetic path; SPEC-INST Piano defaults",
-      "description": "Second-order low-pass frequency f_symp of the sympathetic path. Range provisional."
+      "description": "Second-order low-pass frequency f_symp of the sympathetic path."
     },
     {
       "id": 4001,
@@ -88,7 +77,7 @@
       "default": 0.004,
       "class": "continuous",
       "spec_key": "SPEC-DMP Timing",
-      "description": "Damper lift time constant tau_up. Range provisional."
+      "description": "Damper lift time constant tau_up."
     },
     {
       "id": 4002,
@@ -99,7 +88,7 @@
       "default": 0.012,
       "class": "continuous",
       "spec_key": "SPEC-DMP Timing",
-      "description": "Damper landing time constant tau_0 at zero release velocity. Range provisional."
+      "description": "Damper landing time constant tau_0 at zero release velocity."
     },
     {
       "id": 4003,
@@ -110,7 +99,7 @@
       "default": 2,
       "class": "continuous",
       "spec_key": "SPEC-DMP Timing",
-      "description": "Release-velocity factor k_r of the landing time. Range provisional."
+      "description": "Release-velocity factor k_r of the landing time."
     },
     {
       "id": 4101,
@@ -121,7 +110,7 @@
       "default": 0.35,
       "class": "structural",
       "spec_key": "SPEC-DMP Lift fraction; SPEC-INST Piano defaults",
-      "description": "Half-pedal region start P_0 (must stay below P_1). Class provisional."
+      "description": "Half-pedal region start P_0 (must stay below P_1)."
     },
     {
       "id": 4102,
@@ -132,7 +121,7 @@
       "default": 0.65,
       "class": "structural",
       "spec_key": "SPEC-DMP Lift fraction; SPEC-INST Piano defaults",
-      "description": "Half-pedal region end P_1 (must stay above P_0). Class provisional."
+      "description": "Half-pedal region end P_1 (must stay above P_0)."
     },
     {
       "id": 4103,
@@ -143,7 +132,7 @@
       "default": 2,
       "class": "structural",
       "spec_key": "SPEC-DMP Lift fraction; SPEC-INST Piano defaults",
-      "description": "Progressive felt contact exponent eta_d. Range and class provisional."
+      "description": "Progressive felt contact exponent eta_d."
     },
     {
       "id": 5001,
@@ -176,7 +165,7 @@
       "default": 0.6,
       "class": "structural",
       "spec_key": "SPEC-HAM Una corda; SPEC-INST Piano defaults",
-      "description": "Felt stiffness factor kappa_uc. Range provisional."
+      "description": "Felt stiffness factor kappa_uc."
     },
     {
       "id": 5004,
@@ -187,7 +176,7 @@
       "default": 0,
       "class": "structural",
       "spec_key": "SPEC-HAM Una corda; SPEC-INST Piano defaults",
-      "description": "Felt exponent shift Delta p_uc. Range provisional."
+      "description": "Felt exponent shift Delta p_uc."
     },
     {
       "id": 6001,
@@ -198,7 +187,7 @@
       "default": 0.026,
       "class": "structural",
       "spec_key": "SPEC-GEO Transmission to the body; SPEC-INST Piano defaults",
-      "description": "Longitudinal transmission kappa_L (about sin 1.5 degrees). Range provisional."
+      "description": "Longitudinal transmission kappa_L (about sin 1.5 degrees)."
     },
     {
       "id": 6002,
@@ -209,7 +198,7 @@
       "default": 8,
       "class": "structural",
       "spec_key": "SPEC-GEO Longitudinal modes; SPEC-INST Piano defaults",
-      "description": "Number of longitudinal modes M_L per string. Range provisional."
+      "description": "Number of longitudinal modes M_L per string."
     },
     {
       "id": 6003,
@@ -220,7 +209,7 @@
       "default": 16000,
       "class": "structural",
       "spec_key": "SPEC-INST Piano defaults",
-      "description": "Highest kept string frequency f_max. Range from SPEC (12 to 20 kHz); default provisional."
+      "description": "Highest kept string frequency f_max; default 16 kHz (SPEC-INST), V2 may revise. Structural: recompiles the instrument; EngineConfig::fMaxStrings is updated."
     },
     {
       "id": 7001,
