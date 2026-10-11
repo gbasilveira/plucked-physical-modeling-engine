@@ -75,3 +75,7 @@ add_subdirectory(tools/bench)
 add_subdirectory(tools/params)
 add_subdirectory(engine/tests/interfaces)
 # ---- end P0.4 ----
+
+# ---- P0.5: reference solver ----
+add_subdirectory(reference)
+# ---- end P0.5 ----
