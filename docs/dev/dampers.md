@@ -188,7 +188,7 @@ allocates nothing` (label `rt`) run them under `ScopedRealtimeThread`.
 | Test | File |
 | --- | --- |
 | A6-T1 monotone energy, lossless string (46 modes), rank-one damper, e = 1 and 0.3, 2 s: worst E^(n+1/2)/E^(n-1/2) - 1 = -4.2 x 10^-14 (limit +10^-13), decay 65 000 (e = 1) and 4 900 (e = 0.3) | `engine/tests/dampers/test_rank_one.cpp` |
-| A6-T2 table of 20 key, sustain and sostenuto sequences | `test_controller.cpp` |
+| A6-T2 table of 21 key, sustain and sostenuto sequences | `test_controller.cpp` |
 | A6-T3 damping against pedal depth, 1.00 down to 0.00 in steps of 0.01 | `test_diagonal.cpp` |
 | A6-T4 engagement steps against the undamped signal's; window from the engagement event (20 ms) to 0.2 s; largest damped step / undamped D: diagonal 0.82 (landing, nu_rel 0), 0.81 (nu_rel 1), 0.75 (lifting); rank-one 0.87, 0.87, 0.36; no margin needed | `test_engagement.cpp` |
 | A6-R1 formulas, vertical only, ramp rule, overdamping | `test_diagonal.cpp`, `test_instrument.cpp` |
