@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "pme/body.hpp"
 #include "pme/bridge.hpp"
 #include "pme/bridge/bridge_point.hpp"
 #include "pme/bridge/model.hpp"
@@ -84,5 +85,49 @@ struct Rig {
         return e;
     }
 };
+
+/// Three segments (two speaking, one rear) on a bridge point with a 16-mode modal set, the
+/// configuration of the RT-safety test and of the benchmark. Returns `Ok` on success.
+template <class S>
+Status buildThreeSegmentRig(Rig<S>& rig, double fs = kFs) {
+    StringParams pa = plainSteel(0.65, 262.0, false);
+    StringParams pb = plainSteel(0.65, 262.0 * 1.001, false);
+    StringParams pr = plainSteel(0.15, 400.0, false);
+    pr.bridgeEnd = BridgeEnd::At0;
+    const StringModes a = compile(pa, 16000.0, fs);
+    const StringModes b = compile(pb, 16000.0, fs);
+    const StringModes r = compile(pr, 16000.0, fs);
+    for (const auto& [m, end] : {std::pair{&a, BridgeEnd::AtL}, std::pair{&b, BridgeEnd::AtL},
+                                 std::pair{&r, BridgeEnd::At0}}) {
+        if (const Status s = rig.addSegment(*m, end); s != Status::Ok) {
+            return s;
+        }
+    }
+    LocalBridge local;
+    for (int k = 0; k < 16; ++k) {
+        local.omega.push_back(2.0 * 3.14159265358979323846 * (120.0 + 230.0 * k));
+        local.sigma.push_back(15.0 + 3.0 * k);
+        local.phi.push_back((k % 2 == 0 ? 1.0 : -1.0) / (1.0 + 0.2 * k));
+        local.modeIndex.push_back(k);
+    }
+    local.conductanceHf = 1.0e-4;
+    bridge::ParallelModel model;
+    if (const Status s = bridge::modalSetModel(local, model); s != Status::Ok) {
+        return s;
+    }
+    BridgePointDesc d;
+    d.thetaB = 0.1;
+    d.conductanceH = 1.0e-4;
+    if (const Status s = rig.point.configure(d, model, fs); s != Status::Ok) {
+        return s;
+    }
+    for (auto& seg : rig.segs) {
+        for (std::size_t i = 0; i < seg.modeCount(); ++i) {
+            seg.qV()[i] = static_cast<S>(1.0e-5 / static_cast<double>((i + 1) * (i + 1)));
+            seg.qH()[i] = static_cast<S>(0.5e-5 / static_cast<double>((i + 1) * (i + 1)));
+        }
+    }
+    return Status::Ok;
+}
 
 }  // namespace pme::bridge_test
