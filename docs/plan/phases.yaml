@@ -181,7 +181,7 @@ phases:
     name: Modal data import
     track: B
     depends_on: [B1]
-    outputs: [compiler/pme_compiler/import/, docs/dev/body-import.md]
+    outputs: [compiler/pme_compiler/importers/, docs/dev/body-import.md]
     tests: [B4-T1, B4-T2, B4-T3]
     references: [SPEC-BODY, SPEC-INST]
   - id: B5

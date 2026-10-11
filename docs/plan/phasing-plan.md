@@ -439,7 +439,7 @@ Track B builds everything that runs off the audio thread: the instrument file fo
   3. B4-R3 Rational (vector) fitting of measured mobilities into modal tables.
   4. B4-R4 Air-cavity (Helmholtz) modes for guitar-type bodies as fitted body modes.
   5. B4-R5 Analytic circular and rectangular membrane modes for shamisen-type bodies, from tension and areal density.
-- **Outputs:** compiler/pme\_compiler/import/, docs/dev/body-import.md.
+- **Outputs:** compiler/pme\_compiler/importers/, docs/dev/body-import.md. (Amended 2026-10-11: `import` is a Python keyword, so a package of that name cannot be imported normally.)
 - **Tests:** B4-T1 vector fitting recovers synthetic modal parameters within 0.5% in frequency and 5% in damping; B4-T2 membrane frequencies match Bessel-zero values within 10⁻⁹; B4-T3 an imported MAESSTRO sample yields a valid blob.
 - **References:** SPEC-BODY, SPEC-INST.
 
