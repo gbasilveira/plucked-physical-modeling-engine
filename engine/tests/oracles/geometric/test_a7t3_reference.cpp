@@ -26,17 +26,21 @@
 // Engine: public compileString at 96 kHz (f_max = infinity), the rig of geometric_rig.hpp with
 // M_L = 16 (the pair-sum maximum; the number kept by the bandwidth rule is reported and used).
 // The transverse state is the exact modal projection of the triangle (closed form), the
-// longitudinal modes start at rest (time-symmetric leapfrog start, GeoRig::startLongitudinalAtRest;
-// without it the explicit scheme begins dt / 2 early, an artefact of the initial condition).
+// longitudinal modes start at rest (Taylor start q^(-1) = q^0 + dt^2 f^0 / 2, i.e. u^0 =
+// -dt^2 f^0 / 2, GeoRig::startLongitudinalAtRest; with u^0 = 0 the explicit scheme begins dt / 2
+// early, -0.5% of t_pred at 96 kHz, an artefact of the initial condition and not of the model).
 //
 // Reference: `pme_reference_cli render` with scenario geometric = {tension_modulation,
 // longitudinal}, observation longitudinal_bridge_force (F_L = EA xi_x(L) + (EA - T)/2 y_x(L)^2 with
-// one-sided second-order slopes). The scheme is second order in h and k, so a refinement ladder of
-// three levels l = 0, 1, 2 with N0 2^l intervals and sample rate R0 2^l (oversampling 1: the CLI's
-// WAV writer decimates with a low-pass only when oversampling > 1, which would smear the front;
-// the Courant number c_L k / h stays constant) gives the arrival times t_l, the observed order
-// log2((t_0 - t_1) / (t_1 - t_2)) and the extrapolated t* = t_2 + (t_2 - t_1) / 3. PME_A7T3_N0
-// (default 380) and PME_A7T3_FS0 (default 192000 Hz) set the coarsest level.
+// one-sided second-order slopes). A refinement ladder of three levels l = 0, 1, 2 with N0 2^l
+// intervals and sample rate R0 2^l (oversampling 1: the CLI's WAV writer decimates with a low-pass
+// only when oversampling > 1, which would smear the front; the Courant number c_L k / h stays
+// constant) gives the arrival times t_l and the observed order p = log2((t_0 - t_1) / (t_1 - t_2)).
+// The extrapolated value is t* = t_2 + (t_2 - t_1) / (2^p - 1) with p the observed order when it
+// lies in [0.8, 2.5] and p = 2 (the scheme's formal order) otherwise. PME_A7T3_N0 (default 190)
+// and PME_A7T3_FS0 (default 96000 Hz) set the coarsest level. The default ladder is 190, 380, 760
+// intervals: the Newton iteration of the reference's tension modulation does not converge on a
+// 1520-interval, 768 kHz level (spec issue reported by the test author).
 //
 // Estimator (identical on both signals). x(t) = F_L(t) - F_L(0); a zero-phase Blackman-windowed
 // sinc low-pass whose cutoff lies between the engine's highest kept longitudinal mode and the next
@@ -80,11 +84,11 @@ namespace str = pme::oracle::str;
 using geo::kPi;
 
 constexpr double kEngineFs = 96000.0;
-constexpr double kDuration = 3.0e-3;       // s
-constexpr double kPluckFraction = 0.12;    // x_p / L
-constexpr double kPluckHeight = 5.0e-3;    // m
-constexpr double kHalfSeconds = 6.0e-3;    // half-length of the low-pass kernel (s)
-constexpr double kArrivalTol = 0.01;       // card A7-T3
+constexpr double kDuration = 3.0e-3;                      // s
+constexpr double kPluckFraction = 0.12;                   // x_p / L
+constexpr double kPluckHeight = 5.0e-3;                   // m
+constexpr double kHalfSeconds = 6.0e-3;                   // half-length of the low-pass kernel (s)
+constexpr double kArrivalTol = 0.01;                      // card A7-T3
 [[maybe_unused]] constexpr double kRefErrorTol = 1.0e-3;  // brief: reference's own error / t_pred
 constexpr int kRequestedLongitudinal = 16;
 
@@ -131,17 +135,17 @@ struct EngineResult {
     int kept{};                  ///< longitudinal modes kept by the bandwidth rule
     double cutoffHz{};           ///< between the last kept mode and the next
     double lastKeptHz{};
-    double transverse0{};        ///< transverse energy at t = 0 (J)
-    double transverseDrift{};    ///< max |E_T(t) - E_T(0)| / E_T(0)
-    double longitudinalEnd{};    ///< E_L at the end (J)
-    double transverseEnd{};      ///< E_T at the end (J)
+    double transverse0{};      ///< transverse energy at t = 0 (J)
+    double transverseDrift{};  ///< max |E_T(t) - E_T(0)| / E_T(0)
+    double longitudinalEnd{};  ///< E_L at the end (J)
+    double transverseEnd{};    ///< E_T at the end (J)
 };
 
 EngineResult runEngine(const T3String& t) {
     EngineResult r;
     pme::StringModes modes;
-    REQUIRE(str::is(pme::compileString(t.params, kEngineFs, str::kInf, {}, modes),
-                    pme::Status::Ok));
+    REQUIRE(
+        str::is(pme::compileString(t.params, kEngineFs, str::kInf, {}, modes), pme::Status::Ok));
     CHECK(pme::test::relative_error(modes.tension, t.tension) <= 1.0e-9);
     geo::GeoSetup setup;
     setup.modes = modes;
@@ -155,8 +159,8 @@ EngineResult runEngine(const T3String& t) {
     REQUIRE(r.kept >= 1);
     const double dt = 1.0 / kEngineFs;
     for (std::size_t i = 0; i < modes.omega.size(); ++i) {
-        const double q0 = geo::trianglePluckMode(t.spec.L, t.xp, kPluckHeight,
-                                                 static_cast<int>(i) + 1);
+        const double q0 =
+            geo::trianglePluckMode(t.spec.L, t.xp, kPluckHeight, static_cast<int>(i) + 1);
         const double sigma = modes.sigma[i];
         const double wd = std::sqrt((modes.omega[i] - sigma) * (modes.omega[i] + sigma));
         const double back =
@@ -186,8 +190,8 @@ EngineResult runEngine(const T3String& t) {
 }
 
 std::string describe(const geo::StepEstimate& e) {
-    return "arrival " + str::sci(e.arrival) + " s, H = " + str::sci(e.height) +
-           " N, ringing " + str::sci(e.ringing) + ", pre-front level " + str::sci(e.preLevel);
+    return "arrival " + str::sci(e.arrival) + " s, H = " + str::sci(e.height) + " N, ringing " +
+           str::sci(e.ringing) + ", pre-front level " + str::sci(e.preLevel);
 }
 
 }  // namespace
@@ -197,9 +201,8 @@ TEST_CASE("A7-T3 setup meets the card: travel time spans 60 samples and the defa
     str::report("A7-T3 string: rhoA = " + str::sci(t.rhoA) + " kg/m, EA = " + str::sci(t.ea) +
                 " N, T = " + str::sci(t.tension) + " N, c_L = " + str::sci(t.cL) +
                 " m/s, c_T = " + str::sci(std::sqrt(t.tension / t.rhoA)) +
-                " m/s, t_pred = " + str::sci(t.tPred) + " s (" +
-                str::sci(t.tPred * kEngineFs) + " samples at 96 kHz), plateau " +
-                str::sci(t.plateau * kEngineFs) + " samples");
+                " m/s, t_pred = " + str::sci(t.tPred) + " s (" + str::sci(t.tPred * kEngineFs) +
+                " samples at 96 kHz), plateau " + str::sci(t.plateau * kEngineFs) + " samples");
     CHECK(t.rhoA > 0.04);
     CHECK(t.rhoA < 0.06);
     CHECK(t.cL > 2000.0);
@@ -208,8 +211,8 @@ TEST_CASE("A7-T3 setup meets the card: travel time spans 60 samples and the defa
     CHECK(t.ea > t.tension);
     // The transverse kink needs far longer than the observation window.
     CHECK((t.spec.L - t.xp) / std::sqrt(t.tension / t.rhoA) > 3.0 * kDuration);
-    // Default tier: the relative tension change of the initial triangle is small. S of the triangle:
-    // slopes h / x_p and h / (L - x_p).
+    // Default tier: the relative tension change of the initial triangle is small. S of the
+    // triangle: slopes h / x_p and h / (L - x_p).
     const double a = kPluckHeight / t.xp;
     const double b = kPluckHeight / (t.spec.L - t.xp);
     const double s = a * a * t.xp + b * b * (t.spec.L - t.xp);
@@ -221,8 +224,8 @@ TEST_CASE("A7-T3 setup meets the card: travel time spans 60 samples and the defa
 TEST_CASE("A7-T3 engine longitudinal precursor reaches the bridge at the predicted time") {
     const T3String t = buildString();
     const EngineResult e = runEngine(t);
-    const std::vector<double> y = geo::lowPassZeroPhase(e.signal, kEngineFs, e.cutoffHz,
-                                                        kHalfSeconds);
+    const std::vector<double> y =
+        geo::lowPassZeroPhase(e.signal, kEngineFs, e.cutoffHz, kHalfSeconds);
     const geo::StepEstimate est = geo::estimateArrival(y, kEngineFs, t.tPred, t.plateau);
     REQUIRE(est.arrival > 0.0);
     const double rel = est.arrival / t.tPred - 1.0;
@@ -233,8 +236,8 @@ TEST_CASE("A7-T3 engine longitudinal precursor reaches the bridge at the predict
                 "; " + describe(est));
     str::report("A7-T3 energy (SI-0015) engine: E_T(0) = " + str::sci(e.transverse0) +
                 " J, max |E_T - E_T(0)|/E_T(0) = " + str::sci(e.transverseDrift) +
-                ", E_L(end) = " + str::sci(e.longitudinalEnd) + " J, E_L/E_T = " +
-                str::sci(e.longitudinalEnd / e.transverseEnd));
+                ", E_L(end) = " + str::sci(e.longitudinalEnd) +
+                " J, E_L/E_T = " + str::sci(e.longitudinalEnd / e.transverseEnd));
     CHECK(std::fabs(rel) <= kArrivalTol);
     // The estimator must see a clear precursor, not noise: the plateau is far above the
     // acausal pre-front ripple of the filter.
@@ -352,13 +355,13 @@ RefLevel renderReference(const fs::path& dir, const T3String& t, int level, cons
 TEST_CASE("A7-T3 longitudinal precursor of engine and P0.5 reference reach the bridge at t_pred") {
     const T3String t = buildString();
     const EngineResult e = runEngine(t);
-    const geo::StepEstimate engineEst = geo::estimateArrival(
-        geo::lowPassZeroPhase(e.signal, kEngineFs, e.cutoffHz, kHalfSeconds), kEngineFs, t.tPred,
-        t.plateau);
+    const geo::StepEstimate engineEst =
+        geo::estimateArrival(geo::lowPassZeroPhase(e.signal, kEngineFs, e.cutoffHz, kHalfSeconds),
+                             kEngineFs, t.tPred, t.plateau);
     REQUIRE(engineEst.arrival > 0.0);
 
-    const int n0 = envInt("PME_A7T3_N0", 380);
-    const int fs0 = envInt("PME_A7T3_FS0", 192000);
+    const int n0 = envInt("PME_A7T3_N0", 190);
+    const int fs0 = envInt("PME_A7T3_FS0", 96000);
     const fs::path dir = fs::temp_directory_path() / ("pme_a7t3_" + std::to_string(std::rand()));
     fs::create_directories(dir);
     std::array<geo::StepEstimate, 3> est{};
@@ -368,15 +371,15 @@ TEST_CASE("A7-T3 longitudinal precursor of engine and P0.5 reference reach the b
         levels[static_cast<std::size_t>(level)] = renderReference(dir, t, level, grid);
         const RefLevel& rl = levels[static_cast<std::size_t>(level)];
         const double cutoff = e.cutoffHz;  // the engine's bandwidth, on every level
-        est[static_cast<std::size_t>(level)] = geo::estimateArrival(
-            geo::lowPassZeroPhase(rl.signal, rl.fs, cutoff, kHalfSeconds), rl.fs, t.tPred,
-            t.plateau);
+        est[static_cast<std::size_t>(level)] =
+            geo::estimateArrival(geo::lowPassZeroPhase(rl.signal, rl.fs, cutoff, kHalfSeconds),
+                                 rl.fs, t.tPred, t.plateau);
         REQUIRE(est[static_cast<std::size_t>(level)].arrival > 0.0);
-        str::report("A7-T3 reference level " + std::to_string(level) + " (N = " +
-                    std::to_string(grid.intervals) + ", " + std::to_string(grid.sampleRate) +
-                    " Hz): " + describe(est[static_cast<std::size_t>(level)]) +
-                    ", t/t_pred - 1 = " +
-                    str::sci(est[static_cast<std::size_t>(level)].arrival / t.tPred - 1.0));
+        str::report(
+            "A7-T3 reference level " + std::to_string(level) +
+            " (N = " + std::to_string(grid.intervals) + ", " + std::to_string(grid.sampleRate) +
+            " Hz): " + describe(est[static_cast<std::size_t>(level)]) + ", t/t_pred - 1 = " +
+            str::sci(est[static_cast<std::size_t>(level)].arrival / t.tPred - 1.0));
     }
     std::error_code ec;
     fs::remove_all(dir, ec);
@@ -384,29 +387,29 @@ TEST_CASE("A7-T3 longitudinal precursor of engine and P0.5 reference reach the b
     const double t0 = est[0].arrival;
     const double t1 = est[1].arrival;
     const double t2 = est[2].arrival;
-    const double order = ((t1 - t2) != 0.0 && (t0 - t1) / (t1 - t2) > 0.0)
-                             ? std::log2((t0 - t1) / (t1 - t2))
-                             : 0.0;
-    const double tStar = t2 + (t2 - t1) / 3.0;  // second-order Richardson extrapolation
+    const double order =
+        ((t1 - t2) != 0.0 && (t0 - t1) / (t1 - t2) > 0.0) ? std::log2((t0 - t1) / (t1 - t2)) : 0.0;
+    const double usedOrder = (order >= 0.8 && order <= 2.5) ? order : 2.0;
+    const double tStar = t2 + (t2 - t1) / (std::pow(2.0, usedOrder) - 1.0);  // Richardson
     const double refOwnError = std::fabs(tStar - t2) / t.tPred;
     const double relEngine = engineEst.arrival / t.tPred - 1.0;
     const double relRef = tStar / t.tPred - 1.0;
     const double relBoth = engineEst.arrival / tStar - 1.0;
-    str::report("A7-T3 summary: t_pred " + str::sci(t.tPred) + " s, t_engine " +
-                str::sci(engineEst.arrival) + " s (" + std::to_string(e.kept) + " longitudinal modes kept, cutoff " +
-                str::sci(e.cutoffHz) + " Hz), t_ref (extrapolated) " + str::sci(tStar) +
-                " s; engine/t_pred - 1 = " + str::sci(relEngine) + ", ref/t_pred - 1 = " +
-                str::sci(relRef) + ", engine/ref - 1 = " + str::sci(relBoth) +
-                "; reference observed order " + str::sci(order) + " on N = " +
-                std::to_string(n0) + "..." + std::to_string(n0 << 2) + ", reference own error " +
-                str::sci(refOwnError) + " of t_pred; engine ringing " +
-                str::sci(engineEst.ringing) + ", reference ringing " + str::sci(est[2].ringing));
+    str::report(
+        "A7-T3 summary: t_pred " + str::sci(t.tPred) + " s, t_engine " +
+        str::sci(engineEst.arrival) + " s (" + std::to_string(e.kept) +
+        " longitudinal modes kept, cutoff " + str::sci(e.cutoffHz) + " Hz), t_ref (extrapolated) " +
+        str::sci(tStar) + " s; engine/t_pred - 1 = " + str::sci(relEngine) +
+        ", ref/t_pred - 1 = " + str::sci(relRef) + ", engine/ref - 1 = " + str::sci(relBoth) +
+        "; reference observed order " + str::sci(order) + " on N = " + std::to_string(n0) + "..." +
+        std::to_string(n0 << 2) + ", reference own error " + str::sci(refOwnError) +
+        " of t_pred; engine ringing " + str::sci(engineEst.ringing) + ", reference ringing " +
+        str::sci(est[2].ringing));
     str::report("A7-T3 plateau height: engine " + str::sci(engineEst.height) + " N, reference " +
                 str::sci(est[2].height) + " N");
     str::report("A7-T3 energy (SI-0015): reference E(0) = " + str::sci(levels[2].energyInitial) +
-                " J (transverse plus V_KC), max relative drift " +
-                str::sci(levels[2].energyDrift) + "; engine E_T(0) = " + str::sci(e.transverse0) +
-                " J (relative difference " +
+                " J (transverse plus V_KC), max relative drift " + str::sci(levels[2].energyDrift) +
+                "; engine E_T(0) = " + str::sci(e.transverse0) + " J (relative difference " +
                 str::sci(e.transverse0 / levels[2].energyInitial - 1.0) +
                 "), engine max |dE_T|/E_T = " + str::sci(e.transverseDrift) +
                 ", E_L/E_T at the end " + str::sci(e.longitudinalEnd / e.transverseEnd));

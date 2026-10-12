@@ -21,6 +21,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -50,9 +51,7 @@ public:
         return z ^ (z >> 31U);
     }
     /// Uniform in [-1, 1).
-    double uniform() {
-        return 2.0 * static_cast<double>(next() >> 11U) / 9007199254740992.0 - 1.0;
-    }
+    double uniform() { return 2.0 * static_cast<double>(next() >> 11U) / 9007199254740992.0 - 1.0; }
 
 private:
     std::uint64_t state_;
@@ -66,6 +65,7 @@ struct ModalStates {
 
 /// Random states of N modes: q_n = u_n * amplitude * sqrt(L/2) / n with u_n uniform in [-1, 1), so
 /// that the displacement of mode n is of order `amplitude` (m) / n: a forte note has about 1 mm.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 inline ModalStates randomStates(int n, double length, std::uint64_t seed, double amplitude,
                                 bool vertical, bool horizontal) {
     SplitMix64 rng(seed);
@@ -133,6 +133,7 @@ inline SlopeQuadrature quadrature(double length, std::span<const float> qv,
 /// SPEC-ORC "Longitudinal forcing" reference: f_m^L = -(EA - T) / (2 rhoA) Int (...) chi_m' dx,
 /// from the finest of two panel counts, whose difference (the quadrature's own error estimate,
 /// relative to the largest |f_m^L|) is returned in `selfError`.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 inline std::vector<double> quadratureForce(double length, double ea, double tension, double rhoA,
                                            std::span<const float> qv, std::span<const float> qh,
                                            int modesM, double& selfError, double* slope2Out) {
@@ -166,8 +167,8 @@ inline std::vector<double> specPairSumForce(double length, double ea, double ten
                                             std::span<const float> qv, std::span<const float> qh,
                                             int modesM) {
     const std::size_t n = qv.size();
-    std::vector<double> kq[2];
-    for (int p = 0; p < 2; ++p) {
+    std::array<std::vector<double>, 2> kq;
+    for (std::size_t p = 0; p < 2; ++p) {
         const std::span<const float> q = (p == 0) ? qv : qh;
         kq[p].resize(n);
         for (std::size_t i = 0; i < n; ++i) {
@@ -207,8 +208,9 @@ inline double specS(double length, std::span<const float> qv, std::span<const fl
 /// Sine coefficient q_n of a triangle of peak h at xp released at rest, closed form:
 /// y0 = sum b_n sin(k_n x), b_n = 2 h L^2 sin(n pi xp / L) / (pi^2 n^2 xp (L - xp)),
 /// q_n = b_n sqrt(L/2) (phi_n = sqrt(2/L) sin(k_n x)).
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 inline double trianglePluckMode(double length, double xp, double h, int n) {
-    const double nn = static_cast<double>(n);
+    const auto nn = static_cast<double>(n);
     const double b = 2.0 * h * length * length * std::sin(nn * kPi * (xp / length)) /
                      (kPi * kPi * nn * nn * xp * (length - xp));
     return b * std::sqrt(length / 2.0);
@@ -221,13 +223,14 @@ inline double trianglePluckMode(double length, double xp, double h, int n) {
 /// Zero-phase low-pass: Blackman-windowed sinc of half-length `halfSeconds`, unit DC gain, cutoff
 /// fc (Hz), applied with zeros before the first sample (the signals are differences from
 /// sample 0, so they start at 0) and the last sample held after the end.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 inline std::vector<double> lowPassZeroPhase(const std::vector<double>& x, double fs, double fc,
                                             double halfSeconds) {
     const auto half = static_cast<std::ptrdiff_t>(std::llround(halfSeconds * fs));
     std::vector<double> taps(static_cast<std::size_t>(2 * half + 1));
     double sum = 0.0;
     for (std::ptrdiff_t i = -half; i <= half; ++i) {
-        const double t = static_cast<double>(i);
+        const auto t = static_cast<double>(i);
         const double a = 2.0 * fc / fs;
         const double sinc = (i == 0) ? a : std::sin(kPi * a * t) / (kPi * t);
         const double u = kPi * t / static_cast<double>(half);
@@ -262,6 +265,7 @@ struct StepEstimate {
 /// Arrival of the front in `y` (already filtered, F_L(t) - F_L(0), sample k at k / fs). The
 /// plateau height H is the mean of y over [t0 + 0.3 w, t0 + 0.7 w], t0 = tPred, w = the plateau
 /// duration (a physical figure the caller derives: 2 x_p / c_L).
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 inline StepEstimate estimateArrival(const std::vector<double>& y, double fs, double tPred,
                                     double plateau) {
     StepEstimate e;

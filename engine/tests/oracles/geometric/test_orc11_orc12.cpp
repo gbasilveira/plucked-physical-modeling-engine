@@ -45,9 +45,9 @@ namespace geo = pme::oracle::geo;
 namespace str = pme::oracle::str;
 using geo::kPi;
 
-constexpr int kModes = 60;          // transverse modes N
-constexpr int kLongModes = 16;      // every longitudinal mode m <= 16
-constexpr double kFs = 192000.0;    // Hz: keeps all 16 longitudinal modes of both strings
+constexpr int kModes = 60;             // transverse modes N
+constexpr int kLongModes = 16;         // every longitudinal mode m <= 16
+constexpr double kFs = 192000.0;       // Hz: keeps all 16 longitudinal modes of both strings
 constexpr double kAmplitude = 1.0e-3;  // m, forte-note modal displacement scale
 constexpr double kOrc11Tol = 1.0e-9;   // SPEC-ORC row ORC-11, relative to the largest |f_m^L|
 constexpr double kOrc12Tol = 1.0e-12;  // SPEC-ORC row ORC-12, relative
@@ -129,8 +129,8 @@ void runOrc11(std::size_t specIndex, bool vertical, bool horizontal, std::uint64
         CHECK(err <= kOrc11Tol);
     }
     str::report("ORC-11 " + f.spec.name + (vertical ? " v" : "") + (horizontal ? " h" : "") +
-                ": worst |f_m - quadrature| / max|f| = " + str::sci(worst) + " at m = " +
-                std::to_string(worstMode) + " (largest |f| = " + str::sci(largest) +
+                ": worst |f_m - quadrature| / max|f| = " + str::sci(worst) +
+                " at m = " + std::to_string(worstMode) + " (largest |f| = " + str::sci(largest) +
                 " 1/s^2 m, quadrature self-error " + str::sci(quadError) + ")");
 }
 
@@ -140,8 +140,8 @@ void runOrc12(std::size_t specIndex, bool vertical, bool horizontal, std::uint64
         geo::randomStates(kModes, f.spec.L, seed, kAmplitude, vertical, horizontal);
     double quadError = 0.0;
     double sQuad = 0.0;
-    static_cast<void>(geo::quadratureForce(f.spec.L, f.ea, f.tension, f.rhoA, s.qv, s.qh, 1,
-                                           quadError, &sQuad));
+    static_cast<void>(
+        geo::quadratureForce(f.spec.L, f.ea, f.tension, f.rhoA, s.qv, s.qh, 1, quadError, &sQuad));
     CHECK(quadError <= kQuadTol);
     REQUIRE(sQuad > 0.0);
     // The modal sum written out in the test (SPEC-ORC row), against the quadrature.
@@ -159,8 +159,8 @@ void runOrc12(std::size_t specIndex, bool vertical, bool horizontal, std::uint64
     str::report("ORC-12 " + f.spec.name + (vertical ? " v" : "") + (horizontal ? " h" : "") +
                 ": S relative error " + str::sci(errS) + " (modal sum vs quadrature " +
                 str::sci(pme::test::relative_error(sModal, sQuad)) + "), Delta T relative error " +
-                str::sci(errDt) + ", Delta T = " + str::sci(dtExpected) + " N (T = " +
-                str::sci(f.tension) + " N, EA = " + str::sci(f.ea) + " N)");
+                str::sci(errDt) + ", Delta T = " + str::sci(dtExpected) +
+                " N (T = " + str::sci(f.tension) + " N, EA = " + str::sci(f.ea) + " N)");
 }
 
 }  // namespace
@@ -172,8 +172,8 @@ TEST_CASE("ORC-11 SPEC pair-sum prefactor agrees with the quadrature (formula ch
     // spec issue, not something to adapt in either side.
     for (const std::size_t index : {std::size_t{0}, std::size_t{2}}) {
         const Fixture f = makeFixture(index);
-        const geo::ModalStates s = geo::randomStates(kModes, f.spec.L, 0xA7A7A7ULL + index,
-                                                     kAmplitude, true, true);
+        const geo::ModalStates s =
+            geo::randomStates(kModes, f.spec.L, 0xA7A7A7ULL + index, kAmplitude, true, true);
         double quadError = 0.0;
         const std::vector<double> quad = geo::quadratureForce(
             f.spec.L, f.ea, f.tension, f.rhoA, s.qv, s.qh, kLongModes, quadError, nullptr);

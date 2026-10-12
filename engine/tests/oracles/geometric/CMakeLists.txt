@@ -22,8 +22,8 @@
 #   ctest --preset linux-debug -L oracle -R "ORC-1[12]" --output-on-failure
 #   cmake --preset linux-release && cmake --build --preset linux-release
 #   ctest --preset linux-release -R "A7-T3" --output-on-failure -V
-# A7-T3 reads PME_A7T3_N0 (default 380, coarsest reference grid intervals) and PME_A7T3_FS0
-# (default 192000, coarsest simulation rate in Hz); levels 0, 1, 2 double both.
+# A7-T3 reads PME_A7T3_N0 (default 190, coarsest reference grid intervals) and PME_A7T3_FS0
+# (default 96000, coarsest simulation rate in Hz); levels 0, 1, 2 double both.
 
 set(PME_A7_ORACLE_BACKEND "AUTO" CACHE STRING "Backend of the A7 oracle rig: AUTO, SCRATCH or A7")
 set_property(CACHE PME_A7_ORACLE_BACKEND PROPERTY STRINGS AUTO SCRATCH A7)

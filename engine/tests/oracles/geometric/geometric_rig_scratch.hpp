@@ -37,10 +37,10 @@ public:
           ea_(setup.params.ECore * kPi * setup.params.dCore * setup.params.dCore / 4.0),
           tension_(setup.modes.tension),
           rhoA_(setup.modes.rhoA),
-          tm_(setup.tensionModulation) {
+          tm_(setup.tensionModulation),
+          gamma_(ea_ - tension_),
+          ok_(gamma_ > 0.0) {
         const std::size_t n = setup.modes.omega.size();
-        gamma_ = ea_ - tension_;
-        ok_ = gamma_ > 0.0;
         bankV_.resize(n);
         bankH_.resize(n);
         kSq_.resize(n);
@@ -83,15 +83,17 @@ public:
     [[nodiscard]] float* qH() { return bankH_.q(); }
     [[nodiscard]] float* uH() { return bankH_.u(); }
 
-    /// Zero-velocity start of the longitudinal modes at t = 0 under the force of the present
-    /// transverse state: u^0 = gamma f^0 / 2 (the time-symmetric leapfrog start, q^(-1) =
-    /// q^0 - u^0). Without it the explicit scheme starts as if the force had been on for half a
-    /// step already and the front arrives dt / 2 early. A test initial condition, not a request.
+    /// Zero-velocity start of the longitudinal modes at t = 0 (q^0 = 0) under the force of the
+    /// present transverse state: the Taylor start q^(-1) = q^0 + (dt^2 / 2) f^0 gives
+    /// u^0 = q^0 - q^(-1) = -gamma f^0 / 2. With u^0 = 0 the explicit scheme starts as if the force
+    /// had been on for half a step already (q^1 = dt^2 f instead of dt^2 f / 2) and the front
+    /// arrives about dt / 2 early. A test initial condition, not a request on the engine.
     void startLongitudinalAtRest() {
         std::vector<double> f(static_cast<std::size_t>(kept_));
         longitudinalForce(f);
         for (std::size_t m = 0; m < f.size(); ++m) {
-            bankL_.u()[m] = static_cast<float>(0.5 * static_cast<double>(bankL_.gamma()[m]) * f[m]);
+            bankL_.u()[m] =
+                static_cast<float>(-0.5 * static_cast<double>(bankL_.gamma()[m]) * f[m]);
         }
     }
 
@@ -188,8 +190,8 @@ private:
     double tension_;
     double rhoA_;
     bool tm_;
-    double gamma_{0.0};
-    bool ok_{true};
+    double gamma_;
+    bool ok_;
     int kept_{0};
     pme::osc::ModeBank bankV_, bankH_, bankL_;
     std::vector<double> kSq_;
