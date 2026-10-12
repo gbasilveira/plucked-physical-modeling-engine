@@ -38,7 +38,7 @@ required checks of `main` (`tools/ci/required_checks.json`, [CONTRIBUTING.md](..
 | `build (macos-universal)` | macos-15 | `macos-release` with `-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64`; `lipo -archs` must list both slices for `libpme_simd.a`, `libhwy.a` and `libpme_rtcheck.a`; tests run natively (arm64) |
 | `build (linux-gcc)` | ubuntu-24.04 | `linux-debug`, `linux-rt-safety` |
 | `build (linux-clang)` | ubuntu-24.04 | the same with Clang 18 and `libclang-rt-18-dev` |
-| `python (linux)`, `python (macos)`, `python (windows)` | per system | `uv sync --locked --all-extras`, `pytest --junitxml` |
+| `python (linux)`, `python (macos)`, `python (windows)` | per system | `uv sync --locked --all-extras`, `pytest --junitxml` (the whole `testpaths`: `compiler/tests` and `tools/tests`, on every system; Linux first installs libglu1-mesa, libgl1, libxrender1 and friends so `import gmsh` works) |
 | `coverage` | ubuntu-24.04 | `linux-coverage` (GCC), gcovr HTML and Cobertura, coverage gate |
 | `deps` | ubuntu-24.04 | configure with `PME_FETCH_ALL_DEPS=ON` (every pin resolves) |
 | `traceability` | ubuntu-24.04 | V1: downloads every `junit-*` artifact, builds the traceability matrix, uploads it as the artifact `traceability`, fails on a gap in a `complete` phase (see below) |
