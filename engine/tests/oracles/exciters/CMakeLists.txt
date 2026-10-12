@@ -68,3 +68,21 @@ pme_add_doctest(pme_oracle_exciters_aftersound_tests
 pme_a5_oracle_target(pme_oracle_exciters_aftersound_tests)
 target_compile_definitions(pme_oracle_exciters_aftersound_tests PRIVATE
   PME_ORC19_GOLDEN="${CMAKE_CURRENT_SOURCE_DIR}/data/orc19_envelope.json")
+
+pme_add_doctest(pme_oracle_exciters_t2_tests
+  SOURCES test_a5t2_reference.cpp
+  LIBRARIES ${_a5_libs}
+  LABELS integration
+  TIMEOUT 900)
+pme_a5_oracle_target(pme_oracle_exciters_t2_tests)
+
+# P0.5's targets are defined after this directory is processed (the root CMakeLists.txt appends the
+# P0.5 block at its end), so decide at the end of the root directory's configuration.
+function(pme_a5t2_register_reference)
+  if(TARGET pme_reference_cli)
+    target_compile_definitions(pme_oracle_exciters_t2_tests PRIVATE
+      "$<$<CONFIG:Release,RelWithDebInfo>:PME_A5T2_REFERENCE_CLI=\"$<TARGET_FILE:pme_reference_cli>\">")
+    add_dependencies(pme_oracle_exciters_t2_tests pme_reference_cli)
+  endif()
+endfunction()
+cmake_language(DEFER DIRECTORY "${PROJECT_SOURCE_DIR}" CALL pme_a5t2_register_reference)

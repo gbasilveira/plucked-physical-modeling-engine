@@ -1,5 +1,5 @@
 {
-  "_comment": "ORC-19 una corda aftersound, envelope of the passive string's vertical bridge force F_b,0 (N): RMS in non-overlapping 50 ms windows over 3 s. This is the first accepted run (pending the orchestrator's acceptance), written by the SPEC scratch scheme in float32 at 48 kHz; see test_orc19_aftersound.cpp for the setup. Comparison: 0.5 dB per window.",
+  "_comment": "ORC-19 una corda aftersound, envelope of the passive string's vertical bridge force F_b,0 (N): RMS in non-overlapping 50 ms windows over 3 s. PROVISIONAL: the first run, pending the owner's acceptance (SPEC-ORC: the first accepted run) and a re-run on the real A5 StruckNote; written by the SPEC scratch scheme in float32 at 48 kHz; see test_orc19_aftersound.cpp for the setup. Comparison: 0.5 dB per window.",
   "schema_version": 1,
   "window_seconds": 0.05,
   "tolerance_db": 0.5,
