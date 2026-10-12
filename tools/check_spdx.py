@@ -40,6 +40,7 @@ HEADED_NAMES = frozenset(
 EXEMPT_SUFFIXES = {
     ".md": "Markdown has no comment syntax we rely on",
     ".json": "JSON has no comment syntax (covers CMakePresets.json)",
+    ".pmepreset": "preset files are JSON (D5); provisional extension until D-3, see ids.hpp",
 }
 
 # Exempt by exact file name, each with the reason.
