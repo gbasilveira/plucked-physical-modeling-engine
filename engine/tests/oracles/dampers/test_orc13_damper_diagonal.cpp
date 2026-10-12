@@ -32,7 +32,8 @@
 //  - Test 2 (measured, the SPEC row): the float32 pme::osc::ModeBank, released from q = 1, u = 0,
 //    f = 0, runs min(10 s, 6/sigma) (at least 1 s; at least 2 time constants is checked) and the
 //    decay rate is fitted with pme::analysis::track_partials (parametric damped-sinusoid fit).
-//    Pass: |sigma_fit / sigma - 1| <= 1e-3 for every case; the worst case is printed.
+//    Pass (SI-0017): |sigma_fit / sigma - 1| <= 1e-3 + 2^-24 / (2 sigma dt) per case, from SPEC;
+//    the worst case is printed.
 //  - Test 3 (not part of the SPEC row): the fitted damped frequency follows the expected one
 //    within 0.01 cent.
 //
@@ -44,8 +45,8 @@
 //   pme::Status pme::oracle::dmp::a6Coefficients(const ModeInput&, pme::OscCoeffs&)
 // by calling A6's function that returns the coefficients of one mode at engagement ModeInput::e
 // (A6 documents it in docs/dev/dampers.md); (2) add the A6 target to LIBRARIES in CMakeLists.txt;
-// (3) enable the commented PME_ORC13_WIRE_A6 line there. Nothing else changes: expected values
-// never come from the seam.
+// (3) enable the commented PME_ORC13_WIRE_A6 line there. (Done: A6 is wired in.) Nothing else
+// changes: expected values never come from the seam.
 
 #include <algorithm>
 #include <array>
@@ -78,15 +79,17 @@ using str::kPi;
 
 constexpr double kFs = 48000.0;
 constexpr double kDt = 1.0 / kFs;
-constexpr double kTolMeasured = 1e-3;     // SPEC-ORC tolerance of ORC-13 (0.1 %)
-constexpr double kTolCoefficient = 1e-9;  // exact check of the compiled sigmaHat (brief)
+constexpr double kTolMeasured = 1e-3;               // SPEC-ORC tolerance of ORC-13 (0.1 %)
+constexpr double kBetaUlp = 5.9604644775390625e-8;  // 2^-24, SI-0017
+constexpr double kTolCoefficient = 1e-9;            // exact check of the compiled sigmaHat (brief)
 constexpr double kTolCents = 0.01;        // frequency case (brief, not part of the SPEC row)
 constexpr double kStiffnessRatio = 0.02;  // e K_d phibar^2 / (rho A omega_n^2)
 constexpr double kMinShape = 0.05;        // |phibar| / sqrt(2/L) below this counts as nodal
-constexpr std::array<double, 3> kLossRatios{0.5, 3.0, 10.0};  // r = e R_d phibar^2 / (2 rho A sigma_n)
+constexpr std::array<double, 3> kLossRatios{0.5, 3.0,
+                                            10.0};  // r = e R_d phibar^2 / (2 rho A sigma_n)
 
 /// SPEC reference of the diagonal damper's per-mode coefficients (default seam).
-pme::Status referenceCoefficients(const ModeInput& in, pme::OscCoeffs& out) {
+[[maybe_unused]] pme::Status referenceCoefficients(const ModeInput& in, pme::OscCoeffs& out) {
     const double shape2 = in.phiBar * in.phiBar;
     const double omegaTot = std::sqrt(in.omega * in.omega + in.e * in.Kd * shape2 / in.rhoA);
     const double sigmaTot = in.sigma + in.e * in.Rd * shape2 / (2.0 * in.rhoA);
@@ -128,6 +131,7 @@ double sigmaOf(const str::StringSpec& s, double omega) {
 }
 
 /// phibar_{d,n} = integral of g(x - xd) phi_n(x) dx over the pad window (float64 quadrature).
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 double phiBarQuadrature(double length, int n, double xd, double b, int nodes, int panels) {
     const str::GaussLegendre rule = str::gaussLegendre(nodes);
     return str::integrate(
@@ -175,6 +179,7 @@ std::vector<double> simulate(const pme::OscCoeffs& c, std::size_t count) {
 
 /// Builds the case for string `sc`, mode selector `sel` (0: n = 1, 1: middle, 2: highest), pad at
 /// `xd` with width `b`. `index` picks r. `measure` runs the float32 simulation and fit.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 bool buildCase(const StringCase& sc, int sel, double xd, double b, std::size_t index, bool measure,
                CaseResult& res) {
     const str::StringSpec& s = sc.spec;
@@ -195,6 +200,7 @@ bool buildCase(const StringCase& sc, int sel, double xd, double b, std::size_t i
     const double r = kLossRatios[index % kLossRatios.size()];
     const int step = (sel == 2) ? -1 : 1;
     int n = (sel == 0) ? 1 : (sel == 1 ? count / 2 : count);
+    const pme::StringParams params = str::toParams(s, s.f1);
     ModeInput in;
     pme::OscCoeffs coeffs;
     for (; n >= 1 && n <= count; n += step) {
@@ -213,7 +219,11 @@ bool buildCase(const StringCase& sc, int sel, double xd, double b, std::size_t i
               rhoA,
               phi,
               kStiffnessRatio * omega * omega * rhoA / (phi * phi),
-              r * sigma * 2.0 * rhoA / (phi * phi)};
+              r * sigma * 2.0 * rhoA / (phi * phi),
+              &params,
+              n,
+              xd / s.L,
+              b};
         if (coefficientsUnderTest(in, coeffs) == pme::Status::Ok) {
             break;
         }
@@ -325,17 +335,20 @@ TEST_CASE("ORC-13 diagonal damper measured decay rate within 0.1 percent") {
     double worst = 0.0;
     std::string worstLabel;
     for (const CaseResult& c : cases) {
+        // SI-0017: 0.1% + 2^-24 / (2 sigma dt) (float32 quantisation of beta), from SPEC per case.
+        const double tol = kTolMeasured + kBetaUlp / (2.0 * c.sigmaExpected * kDt);
         const double err = pme::test::relative_error(c.sigmaMeasured, c.sigmaExpected);
         if (err > worst) {
             worst = err;
             worstLabel = c.label;
         }
-        reportCase("ORC-13 decay", c, err, kTolMeasured);
+        reportCase("ORC-13 decay", c, err, tol);
         INFO(c.label);
-        PME_CHECK_REL(c.sigmaMeasured, c.sigmaExpected, kTolMeasured);
+        PME_CHECK_REL(c.sigmaMeasured, c.sigmaExpected, tol);
     }
-    std::cerr << "ORC-13 worst measured decay error " << sci(worst) << " (limit "
-              << sci(kTolMeasured) << ") at " << worstLabel << std::endl;  // NOLINT
+    std::cerr << "ORC-13 worst measured decay error " << sci(worst)
+              << " (limit 0.1% + 2^-24/(2 sigma dt)" << ") at " << worstLabel
+              << std::endl;  // NOLINT
 }
 
 // Not part of the SPEC row ORC-13: SPEC-DMP's stiffness term omega_{n,d}^2 = omega_n^2 + e K_d
@@ -350,6 +363,6 @@ TEST_CASE("ORC-13 frequency follows omega squared plus K phibar squared over rho
         INFO(c.label);
         PME_CHECK_CENTS(c.freqMeasuredHz, c.freqExpectedHz, kTolCents);
     }
-    std::cerr << "ORC-13 frequency worst error " << sci(worst) << " cent (limit "
-              << sci(kTolCents) << ")" << std::endl;  // NOLINT(performance-avoid-endl)
+    std::cerr << "ORC-13 frequency worst error " << sci(worst) << " cent (limit " << sci(kTolCents)
+              << ")" << std::endl;  // NOLINT(performance-avoid-endl)
 }

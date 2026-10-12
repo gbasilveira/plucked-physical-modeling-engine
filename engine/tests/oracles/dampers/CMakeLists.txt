@@ -13,9 +13,9 @@
 # enable the commented target_compile_definitions line (PME_ORC13_WIRE_A6).
 pme_add_doctest(pme_oracle_dampers_tests
   SOURCES test_orc13_damper_diagonal.cpp
-  LIBRARIES pme_string pme_osc pme_analysis
+  LIBRARIES pme_string pme_osc pme_dampers pme_analysis
   LABELS oracle unit
   TIMEOUT 600)
 target_include_directories(pme_oracle_dampers_tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../string")
-# target_compile_definitions(pme_oracle_dampers_tests PRIVATE PME_ORC13_WIRE_A6)
+target_compile_definitions(pme_oracle_dampers_tests PRIVATE PME_ORC13_WIRE_A6)

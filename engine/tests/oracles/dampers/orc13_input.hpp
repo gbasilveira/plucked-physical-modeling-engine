@@ -6,6 +6,8 @@
 // by calling A6's diagonal-damper coefficient function for one mode at engagement ModeInput::e.
 #pragma once
 
+#include "pme/string.hpp"
+
 namespace pme::oracle::dmp {
 
 /// Everything a diagonal damper needs to know about one mode (SPEC-DMP "Diagonal"). All SI,
@@ -20,6 +22,11 @@ struct ModeInput {
     double phiBar{};  ///< phi-bar_{d,n} (m^(-1/2)).
     double Kd{};      ///< Pad stiffness K_d (N/m).
     double Rd{};      ///< Pad resistance R_d (kg/s).
+    // Context for an implementation that works from compiled string tables (A6 adapter).
+    const pme::StringParams* string{};  ///< The string description (compiled at fs, f_max = inf).
+    int n{};                            ///< Mode number, 1-based.
+    double xRatio{};                    ///< Pad centre x_d / L.
+    double width{};                     ///< Pad width b_d (m).
 };
 
 }  // namespace pme::oracle::dmp
