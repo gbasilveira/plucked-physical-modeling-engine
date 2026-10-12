@@ -225,7 +225,7 @@ TEST_CASE("A4-R2 modal-set model equals the sum of its modes plus the conductanc
     CHECK(maxErr <= 1e-12 * scale);
 }
 
-TEST_CASE("A4-R2 modal-set modes failing the bandwidth rule are dropped, other kinds reject") {
+TEST_CASE("A4-R2 modal-set modes failing the bandwidth rule are dropped and other kinds reject") {
     pme::LocalBridge local;
     local.omega = {2.0 * kPi * 300.0, 2.0 * kPi * 23500.0};  // second: omega_d dt > 0.95 pi
     local.sigma = {10.0, 10.0};
