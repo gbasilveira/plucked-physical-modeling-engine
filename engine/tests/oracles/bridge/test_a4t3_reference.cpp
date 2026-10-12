@@ -84,9 +84,10 @@ constexpr double kDuration = 1.0;
 constexpr double kObsFraction = 0.37;
 constexpr double kPluckFraction = 0.12;
 constexpr double kPluckHeight = 1.0e-3;
-constexpr double kFreqTolCents = 0.05;  // card A4-T3
-constexpr double kDecayTol = 0.02;      // card A4-T3
-constexpr double kWaveformTol = 0.10;   // horizontal waveform, relative L2 over 0.1 s
+[[maybe_unused]] constexpr double kFreqTolCents = 0.05;  // card A4-T3
+[[maybe_unused]] constexpr double kDecayTol = 0.02;      // card A4-T3
+[[maybe_unused]] constexpr double kWaveformTol =
+    0.10;  // horizontal waveform, relative L2 over 0.1 s
 constexpr int kPartials = 8;
 constexpr double kB1 = 0.5;
 constexpr double kB3 = 2.0e-9;
@@ -201,6 +202,7 @@ std::array<std::vector<double>, 4> engineSignals(const T3Strings& t, const Case&
 }
 
 /// Fits the 16 partials (own 8, then the other string's 8) of one signal from the given starts.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 pme::analysis::PartialTrackingResult track(const std::vector<double>& y,
                                            const std::vector<double>& start) {
     pme::analysis::PartialTrackingOptions opt;
@@ -324,15 +326,14 @@ void writeScenario(const fs::path& path, const T3Strings& t, const Case& c, cons
     const std::array<double, 2> angle{0.0, c.angle1};
     for (std::size_t i = 0; i < 2; ++i) {
         const auto& sp = t.s[i].spec;
-        j << "    {\"params\": {\"L\": " << sp.L << ", \"dCore\": " << sp.dCore
+        j << R"(    {"params": {"L": )" << sp.L << ", \"dCore\": " << sp.dCore
           << ", \"rhoCore\": " << sp.rhoCore << ", \"ECore\": " << sp.ECore
-          << ", \"dOuter\": " << sp.dOuter << ", \"rhoWind\": 0, \"packing\": 0, \"epsWind\": 0"
-          << ", \"f1Target\": " << sp.f1 << ", \"b1\": " << sp.b1
-          << ", \"b2\": 0, \"b3\": " << sp.b3
+          << ", \"dOuter\": " << sp.dOuter << R"(, "rhoWind": 0, "packing": 0, "epsWind": 0)"
+          << ", \"f1Target\": " << sp.f1 << ", \"b1\": " << sp.b1 << R"(, "b2": 0, "b3": )" << sp.b3
           << ", \"boundary\": \"pinned\", \"detuneH\": 0, \"bridgeEnd\": \"at_L\"},\n"
-          << "     \"grid\": {\"intervals\": " << grid.intervals << "},\n"
+          << R"(     "grid": {"intervals": )" << grid.intervals << "},\n"
           << "     \"bridge\": 0,\n"
-          << "     \"initial_displacement\": {\"amplitude\": " << kPluckHeight
+          << R"(     "initial_displacement": {"amplitude": )" << kPluckHeight
           << ", \"position\": " << kPluckFraction * sp.L << ", \"angle\": " << angle[i] << "}}"
           << (i == 0 ? "," : "") << "\n";
     }
@@ -344,9 +345,8 @@ void writeScenario(const fs::path& path, const T3Strings& t, const Case& c, cons
       << ", \"damping\": " << kBridgeDamping << "}}],\n";
     j << "  \"observations\": [\n";
     for (std::size_t i = 0; i < 4; ++i) {
-        j << "    {\"name\": \"y" << i
-          << "\", \"kind\": \"string_displacement\", \"string\": " << i / 2
-          << ", \"x\": " << kObsFraction * brg::kLength << ", \"polarisation\": \""
+        j << R"(    {"name": "y)" << i << R"(", "kind": "string_displacement", "string": )" << i / 2
+          << ", \"x\": " << kObsFraction * brg::kLength << R"(, "polarisation": ")"
           << (i % 2 == 0 ? "v" : "h") << "\"}" << (i == 3 ? "" : ",") << "\n";
     }
     j << "  ]\n}\n";
@@ -412,6 +412,7 @@ void runReferenceCase(const Case& c) {
         const auto engine = track(engineY[2 * obs], start);
         REQUIRE(engine.partials.size() == start.size());
         std::vector<double> engineHz;
+        engineHz.reserve(engine.partials.size());
         for (const auto& p : engine.partials) {
             engineHz.push_back(p.frequency_hz);
         }

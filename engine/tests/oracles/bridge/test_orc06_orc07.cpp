@@ -50,6 +50,7 @@ constexpr double kQ0 = 1.0e-3;      // modal start amplitude (linear system: sca
 double conductanceDecay(double f0, double z0g) { return -f0 * std::log((1.0 - z0g) / (1.0 + z0g)); }
 
 /// Runs the rig for `steps` samples and records q_i(t) of segment 0 for i < record.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 std::vector<std::vector<float>> runAndRecord(brg::Rig& rig, std::size_t record, std::size_t steps) {
     std::vector<std::vector<float>> series(record);
     for (auto& s : series) {

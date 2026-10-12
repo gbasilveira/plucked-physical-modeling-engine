@@ -44,6 +44,7 @@ struct BridgeModel {
         m.conductance = g;
         return m;
     }
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
     static BridgeModel lumped(double mass, double stiffness, double damping) {
         BridgeModel m;
         m.massSpringDamper = true;

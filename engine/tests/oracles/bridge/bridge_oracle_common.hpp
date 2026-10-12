@@ -36,6 +36,7 @@ struct OracleString {
 
 /// Plain steel string of core diameter d and target f1, loss b1, b3, pinned. Returns false and
 /// leaves `out` partly filled when compileString does not return Ok.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 inline bool makeString(double f1, double d, double b1, double b3, double fMax, OracleString& out,
                        std::span<const double> points = {}) {
     str::StringSpec s;
@@ -72,6 +73,7 @@ inline void startMode(Rig& rig, std::size_t s, std::size_t i, const pme::StringM
 }
 
 /// SPEC-STR "Modes": f_n = n f0 sqrt(1 + B n^2); the damped value sqrt(w^2 - sigma^2) / 2 pi.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): physical quantities in SPEC order
 inline double dampedPartialHz(const OracleString& s, int n, double sigma) {
     const double w = 2.0 * kPi * str::stiffPartial(s.f0, s.b, n);
     return std::sqrt((w - sigma) * (w + sigma)) / (2.0 * kPi);
