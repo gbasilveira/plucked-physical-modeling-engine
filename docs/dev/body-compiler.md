@@ -122,6 +122,12 @@ one has none.
 ribs and bridges) with a Cholesky factor when the Gram matrix deviates from I by more than 10⁻¹³, so
 `Φᵀ M Φ = I` holds to 10⁻¹⁵ in the tests (required: 10⁻⁶), also across window boundaries.
 
+**Mode sign.** An eigenvector's sign is arbitrary and differs between LAPACK/ARPACK builds, so
+`mass_normalise` (which the dense and the windowed path both end in) fixes it: each mode is multiplied
+by ±1 so that its largest-magnitude component is positive; components within 10⁻⁹ (relative) of the
+largest count as tied and the lowest index among them decides. Blob bytes therefore no longer depend
+on the solver's sign choice (test `test_b2_r5_mode_sign_is_deterministic`).
+
 **Bridge points.** Φ\_k(x\_b) is interpolated with the Argyris basis (`Basis.probes`); `phi[k, b]` =
 `BodyModes::phi[k * numPoints + b]`. Bridge points must lie inside the outline. The values at mesh nodes
 equal the nodal degrees of freedom of the field (tested).
