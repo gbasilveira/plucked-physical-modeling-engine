@@ -48,11 +48,15 @@ public:
     using Scalar = S;
 
     explicit ScratchRig(const NoteSetup& cfg)
-        : cfg_(cfg), dt_(1.0 / cfg.fs), cosT_(std::cos(cfg.thetaB)), sinT_(std::sin(cfg.thetaB)) {
-        ns_ = cfg.strings.size();
+        : cfg_(cfg),
+          dt_(1.0 / cfg.fs),
+          cosT_(std::cos(cfg.thetaB)),
+          sinT_(std::sin(cfg.thetaB)),
+          ns_(cfg.strings.size()) {
         const std::vector<double> weights =
             ns_ > 0 ? strikeWeights(ns_, cfg.una, cfg.shift) : std::vector<double>{1.0};
-        const double kEff = ns_ > 0 ? feltStiffness(cfg.hammer.K, cfg.shift, cfg.una) : cfg.hammer.K;
+        const double kEff =
+            ns_ > 0 ? feltStiffness(cfg.hammer.K, cfg.shift, cfg.una) : cfg.hammer.K;
         const double pEff = ns_ > 0 ? feltExponent(cfg.hammer.p, cfg.shift, cfg.una) : cfg.hammer.p;
         // Coordinates: modes of every string in order, then the hammer.
         std::size_t total = 0;
@@ -236,10 +240,9 @@ public:
         const double gH = gradH / std::sqrt(2.0 * (v + cfg_.eps0));
         psiPrev_ = segV_.psi();
         const std::array<const pme::nl::Potential<S>*, 1> pots{pot_.get()};
-        pme::nl::savStep<S>(
-            segV_, std::span<const pme::nl::Potential<S>* const>(pots.data(), 1),
-            std::span<const pme::nl::Dashpot<S>>(dash_.data(), dash_.size()),
-            std::span<const S>(forceV_));
+        pme::nl::savStep<S>(segV_, std::span<const pme::nl::Potential<S>* const>(pots.data(), 1),
+                            std::span<const pme::nl::Dashpot<S>>(dash_.data(), dash_.size()),
+                            std::span<const S>(forceV_));
         contactForce_ = gH * 0.5 * (segV_.psi() + psiPrev_);
         // Step 7: the horizontal polarisation is linear.
         if (ns_ > 0) {
@@ -281,29 +284,29 @@ public:
 
 private:
     struct Contact {
-        std::size_t offset;
-        std::size_t count;
+        std::size_t offset{0};
+        std::size_t count{0};
         std::vector<double> phi;  ///< window-averaged mode values (empty for the fixed target)
-        double weight;
-        double k;
-        double p;
-        std::size_t string;
+        double weight{1.0};
+        double k{0.0};
+        double p{0.0};
+        std::size_t string{0};
     };
 
     /// V_H of SPEC-HAM and its gradient over the stacked coordinates (SPEC-NL "Contracts").
     class Pot final : public pme::nl::Potential<S> {
     public:
-        explicit Pot(const ScratchRig& rig) : rig_(rig) {}
+        explicit Pot(const ScratchRig& rig) : rig_(&rig) {}
         [[nodiscard]] double delta(const Contact& c, std::span<const S> z) const {
             double sum = 0.0;
             for (std::size_t i = 0; i < c.count; ++i) {
                 sum += c.phi[i] * static_cast<double>(z[c.offset + i]);
             }
-            return static_cast<double>(z[rig_.hammerIndex_]) - rig_.cfg_.approachSign * sum;
+            return static_cast<double>(z[rig_->hammerIndex_]) - rig_->cfg_.approachSign * sum;
         }
         [[nodiscard]] double value(std::span<const S> z) const noexcept override {
             double v = 0.0;
-            for (const Contact& c : rig_.contacts_) {
+            for (const Contact& c : rig_->contacts_) {
                 const double d = delta(c, z);
                 if (d > 0.0) {
                     v += c.weight * c.k / (c.p + 1.0) * std::pow(d, c.p + 1.0);
@@ -315,28 +318,28 @@ private:
             for (double& g : grad) {
                 g = 0.0;
             }
-            for (const Contact& c : rig_.contacts_) {
+            for (const Contact& c : rig_->contacts_) {
                 const double d = delta(c, z);
                 if (d > 0.0) {
                     const double f = c.weight * c.k * std::pow(d, c.p);
-                    grad[rig_.hammerIndex_] += f;
+                    grad[rig_->hammerIndex_] += f;
                     for (std::size_t i = 0; i < c.count; ++i) {
-                        grad[c.offset + i] -= rig_.cfg_.approachSign * c.phi[i] * f;
+                        grad[c.offset + i] -= rig_->cfg_.approachSign * c.phi[i] * f;
                     }
                 }
             }
         }
 
     private:
-        const ScratchRig& rig_;
+        const ScratchRig* rig_;
     };
 
     NoteSetup cfg_;
     double dt_;
     double cosT_;
     double sinT_;
+    std::size_t ns_;
     bool ok_{true};
-    std::size_t ns_{0};
     std::size_t total_{0};
     std::size_t hammerIndex_{0};
     std::size_t nz_{0};

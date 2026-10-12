@@ -12,8 +12,8 @@
 // shape phi_n(x_c) in the engine) and the raised cosine b_H = 10 mm.
 //
 // Window convention (checked before relying on it). The reference (reference/src/simulation.cpp,
-// build_contacts) weights the interior nodes within |x - x_c| < b/2 with (1 + cos(2 pi d / b)) / b h
-// and normalises the weights to sum 1; that is the unit-area raised cosine g(s) = (1 + cos(2 pi s
+// build_contacts) weights the interior nodes within |x - x_c| < b/2 with (1 + cos(2 pi d / b)) / b
+// h and normalises the weights to sum 1; that is the unit-area raised cosine g(s) = (1 + cos(2 pi s
 // / b)) / b of full width b, |s| < b/2, that SPEC-STR "Forces and observations" and A2's
 // windowedShapes use (their transform is W(k) = sin(u)/u pi^2/(pi^2 - u^2), u = k b / 2, which the
 // A2 oracle ORC-05 verifies against quadrature). The reference switches to a linear interpolation
@@ -35,9 +35,9 @@
 // the parabola through the maximum force sample and its neighbours.
 //
 // Engine side. The rig of hammer_rig.hpp (the SAV hammer on the modal string, rigid bridge so the
-// ends are fixed), f_max = 20 kHz, float32 at 48 kHz (the engine instantiation, checked) and float64
-// at 96 kHz (reported). Sensitivity of the engine to f_max (16 and 20 kHz) and fs (48 and 96 kHz)
-// is reported by an engine-only case that exists in every build.
+// ends are fixed), f_max = 20 kHz, float32 at 48 kHz (the engine instantiation, checked) and
+// float64 at 96 kHz (reported). Sensitivity of the engine to f_max (16 and 20 kHz) and fs (48 and
+// 96 kHz) is reported by an engine-only case that exists in every build.
 //
 // Pass: |F_pk,engine / F_pk,ref - 1| <= 0.02 and |t_c,engine / t_c,ref - 1| <= 0.02 for every
 // speed and window, float32 at 48 kHz. The reference case exists only when CMake finds the target
@@ -54,9 +54,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <map>
 #include <pme/analysis/wav.hpp>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hammer_oracle_common.hpp"
@@ -73,10 +75,10 @@ constexpr double kB1 = 0.5;
 constexpr double kB3 = 2.0e-9;
 constexpr double kStrike = 1.0 / 8.0;
 constexpr double kWidthRaisedCosine = 0.01;
-constexpr double kEngineFMax = 20000.0;
-constexpr double kEngineFs = 48000.0;
-constexpr double kSimSeconds = 0.010;  // contact (about 1 to 2 ms) and rebound
-[[maybe_unused]] constexpr double kPassTol = 0.02;         // card A5-T2
+[[maybe_unused]] constexpr double kEngineFMax = 20000.0;
+[[maybe_unused]] constexpr double kEngineFs = 48000.0;
+constexpr double kSimSeconds = 0.010;                       // contact (about 1 to 2 ms) and rebound
+[[maybe_unused]] constexpr double kPassTol = 0.02;          // card A5-T2
 [[maybe_unused]] constexpr double kRefEstimateTol = 0.005;  // the reference's own error estimate
 constexpr std::array<double, 3> kSpeeds{1.0, 3.0, 5.0};
 constexpr std::array<double, 2> kWidths{0.0, kWidthRaisedCosine};
@@ -88,6 +90,7 @@ struct Contact {
 };
 
 /// The estimators of the header comment on a penetration series and a force series (same sampling).
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): penetration, then force
 Contact estimate(const std::vector<double>& delta, const std::vector<double>& force, double dt) {
     Contact c;
     const ham::ContactInterval ci = ham::firstContact(delta, dt);
@@ -105,12 +108,13 @@ const char* windowName(double width) { return width > 0.0 ? "raised cosine 10 mm
 /// The oracle string and its compiled table at (fs, fMax).
 ham::OracleString buildString(double fs, double fMax) {
     ham::OracleString s;
-    REQUIRE(ham::makeString(kF1, ham::diameterForInharmonicity(kBTarget, kF1), kB1, kB3, fs, fMax,
-                            s));
+    REQUIRE(
+        ham::makeString(kF1, ham::diameterForInharmonicity(kBTarget, kF1), kB1, kB3, fs, fMax, s));
     return s;
 }
 
 template <class RigT>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): fs, f_max, speed, width
 Contact engineContact(double fs, double fMax, double speed, double width) {
     const ham::OracleString s = buildString(fs, fMax);
     ham::NoteSetup cfg;
@@ -142,30 +146,29 @@ Contact engineContact(double fs, double fMax, double speed, double width) {
 
 }  // namespace
 
-TEST_CASE("A5-T2 engine side contact duration and peak force sensitivity to f_max and fs (SPEC "
-          "scratch scheme)") {
+template <class RigF, class RigD>
+void sensitivityCase() {
     // Attribution aid for a reference disagreement, not the card's criterion: the engine's own
     // modal-truncation and sample-rate sensitivity of the two estimators. The point contact is the
     // sensitive one (a point load excites every kept mode); the cases are reported, and loosely
     // bounded (5 %) so that a truncation artefact cannot hide behind the 2 % comparison.
     for (const double width : kWidths) {
         for (const double speed : kSpeeds) {
-            const Contact base = engineContact<ham::ScratchRig<float>>(48000.0, 20000.0, speed, width);
-            const Contact low = engineContact<ham::ScratchRig<float>>(48000.0, 16000.0, speed, width);
-            const Contact hi = engineContact<ham::ScratchRig<double>>(96000.0, 20000.0, speed, width);
-            const Contact hiLow =
-                engineContact<ham::ScratchRig<double>>(96000.0, 16000.0, speed, width);
-            str::report(std::string("A5-T2 engine sensitivity, ") + windowName(width) +
-                        ", v = " + std::to_string(speed) + " m/s: 48 kHz f_max 20 kHz: t_c " +
-                        str::sci(base.duration) + " s, peak " + str::sci(base.peak) +
-                        " N; f_max 16 kHz: " + str::sci(low.duration / base.duration - 1.0) +
-                        " (t_c), " + str::sci(low.peak / base.peak - 1.0) +
-                        " (peak); 96 kHz f_max 20 kHz: " + str::sci(hi.duration / base.duration - 1.0) +
-                        " (t_c), " + str::sci(hi.peak / base.peak - 1.0) +
-                        " (peak); 96 kHz f_max 16 kHz: " +
-                        str::sci(hiLow.duration / base.duration - 1.0) + " (t_c), " +
-                        str::sci(hiLow.peak / base.peak - 1.0) + " (peak); contact intervals " +
-                        std::to_string(base.intervals));
+            const Contact base = engineContact<RigF>(48000.0, 20000.0, speed, width);
+            const Contact low = engineContact<RigF>(48000.0, 16000.0, speed, width);
+            const Contact hi = engineContact<RigD>(96000.0, 20000.0, speed, width);
+            const Contact hiLow = engineContact<RigD>(96000.0, 16000.0, speed, width);
+            str::report(
+                std::string("A5-T2 engine sensitivity, ") + windowName(width) +
+                ", v = " + std::to_string(speed) + " m/s: 48 kHz f_max 20 kHz: t_c " +
+                str::sci(base.duration) + " s, peak " + str::sci(base.peak) +
+                " N; f_max 16 kHz: " + str::sci(low.duration / base.duration - 1.0) + " (t_c), " +
+                str::sci(low.peak / base.peak - 1.0) +
+                " (peak); 96 kHz f_max 20 kHz: " + str::sci(hi.duration / base.duration - 1.0) +
+                " (t_c), " + str::sci(hi.peak / base.peak - 1.0) +
+                " (peak); 96 kHz f_max 16 kHz: " + str::sci(hiLow.duration / base.duration - 1.0) +
+                " (t_c), " + str::sci(hiLow.peak / base.peak - 1.0) +
+                " (peak); contact intervals " + std::to_string(base.intervals));
             CHECK(std::fabs(low.duration / base.duration - 1.0) <= 0.05);
             CHECK(std::fabs(low.peak / base.peak - 1.0) <= 0.05);
             CHECK(std::fabs(hi.duration / base.duration - 1.0) <= 0.05);
@@ -173,6 +176,19 @@ TEST_CASE("A5-T2 engine side contact duration and peak force sensitivity to f_ma
         }
     }
 }
+
+TEST_CASE(
+    "A5-T2 engine side contact duration and peak force sensitivity to f_max and fs (SPEC "
+    "scratch scheme)") {
+    sensitivityCase<ham::ScratchRig<float>, ham::ScratchRig<double>>();
+}
+#ifdef PME_ORACLE_HAMMER_A5
+TEST_CASE(
+    "A5-T2 engine side contact duration and peak force sensitivity to f_max and fs (A5 "
+    "StruckNote)") {
+    sensitivityCase<ham::A5Rig<float>, ham::A5Rig<double>>();
+}
+#endif
 
 #ifdef PME_A5T2_REFERENCE_CLI
 
@@ -218,15 +234,12 @@ void writeScenario(const fs::path& path, const ham::OracleString& s, double spee
       << ", \"f1Target\": " << sp.f1 << ", \"b1\": " << sp.b1 << R"(, "b2": 0, "b3": )" << sp.b3
       << ", \"boundary\": \"pinned\", \"detuneH\": 0, \"bridgeEnd\": \"at_L\"},\n"
       << R"(     "grid": {"intervals": )" << grid.intervals << "}}\n  ],\n";
-    j << "  \"hammers\": [{\"mass\": " << ham::kHammerMass << ", \"K\": " << ham::kFeltK
-      << ", \"p\": " << ham::kFeltP << ", \"mu\": 0, \"width\": " << width
-      << ", \"strike_x\": " << kStrike * sp.L << ", \"velocity\": " << speed
-      << ", \"strings\": [0]}],\n";
+    j << R"(  "hammers": [{"mass": )" << ham::kHammerMass << R"(, "K": )" << ham::kFeltK
+      << R"(, "p": )" << ham::kFeltP << R"(, "mu": 0, "width": )" << width << R"(, "strike_x": )"
+      << kStrike * sp.L << R"(, "velocity": )" << speed << ", \"strings\": [0]}],\n";
     j << "  \"observations\": [\n"
-      << R"(    {"name": "delta", "kind": "hammer_penetration", "hammer": 0},)"
-      << "\n"
-      << R"(    {"name": "force", "kind": "hammer_force", "hammer": 0})"
-      << "\n  ]\n}\n";
+      << R"(    {"name": "delta", "kind": "hammer_penetration", "hammer": 0},)" << "\n"
+      << R"(    {"name": "force", "kind": "hammer_force", "hammer": 0})" << "\n  ]\n}\n";
     std::ofstream out(path);
     out << j.str();
 }
@@ -234,6 +247,7 @@ void writeScenario(const fs::path& path, const ham::OracleString& s, double spee
 std::string quote(const std::string& text) { return '"' + text + '"'; }
 
 /// Runs the CLI and returns the contact estimates of the simulation-rate signals.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): dir, string, speed, width, level, grid
 Contact renderReference(const fs::path& dir, const ham::OracleString& s, double speed, double width,
                         int level, const RefGrid& grid) {
     const std::string tag = "t2_" + std::to_string(level);
@@ -281,31 +295,36 @@ ReferenceValues referenceLadder(const ham::OracleString& s, double speed, double
     ReferenceValues r;
     r.duration = ham::richardson(c[0].duration, c[1].duration, c[2].duration);
     r.peak = ham::richardson(c[0].peak, c[1].peak, c[2].peak);
-    str::report(std::string("A5-T2 reference ladder, ") + windowName(width) +
-                ", v = " + std::to_string(speed) + " m/s, N = " + std::to_string(n0) + " x 2^l, fs = " +
-                std::to_string(fs0) + " x 2^l: t_c levels " + str::sci(c[0].duration) + ", " +
-                str::sci(c[1].duration) + ", " + str::sci(c[2].duration) + " -> " +
-                str::sci(r.duration.value) + " s (observed order " +
-                std::to_string(r.duration.observedOrder) + ", correction " +
-                str::sci(r.duration.correctionRel) + "); peak levels " + str::sci(c[0].peak) + ", " +
-                str::sci(c[1].peak) + ", " + str::sci(c[2].peak) + " -> " + str::sci(r.peak.value) +
-                " N (observed order " + std::to_string(r.peak.observedOrder) + ", correction " +
-                str::sci(r.peak.correctionRel) + "); contact intervals " +
-                std::to_string(c[2].intervals));
+    str::report(
+        std::string("A5-T2 reference ladder, ") + windowName(width) +
+        ", v = " + std::to_string(speed) + " m/s, N = " + std::to_string(n0) +
+        " x 2^l, fs = " + std::to_string(fs0) + " x 2^l: t_c levels " + str::sci(c[0].duration) +
+        ", " + str::sci(c[1].duration) + ", " + str::sci(c[2].duration) + " -> " +
+        str::sci(r.duration.value) + " s (observed order " +
+        std::to_string(r.duration.observedOrder) + ", correction " +
+        str::sci(r.duration.correctionRel) + "); peak levels " + str::sci(c[0].peak) + ", " +
+        str::sci(c[1].peak) + ", " + str::sci(c[2].peak) + " -> " + str::sci(r.peak.value) +
+        " N (observed order " + std::to_string(r.peak.observedOrder) + ", correction " +
+        str::sci(r.peak.correctionRel) + "); contact intervals " + std::to_string(c[2].intervals));
     return r;
 }
 
+template <class RigF, class RigD>
 void runReferenceCase(double speed, double width) {
     // The reference string is the engine string (same physical description); the table is only
     // needed for its spec.
     const ham::OracleString s = buildString(kEngineFs, kEngineFMax);
-    str::report("A5-T2 string: B = " + str::sci(s.b) + " (target 2e-4), d = " + str::sci(s.spec.dCore) +
-                " m, f0 = " + str::sci(s.f0) + " Hz, " + std::to_string(s.modes.omega.size()) +
-                " modes below 20 kHz at 48 kHz");
-    const ReferenceValues ref = referenceLadder(s, speed, width);
-    const Contact e48 =
-        engineContact<ham::ScratchRig<float>>(kEngineFs, kEngineFMax, speed, width);
-    const Contact e96 = engineContact<ham::ScratchRig<double>>(96000.0, kEngineFMax, speed, width);
+    str::report("A5-T2 string: B = " + str::sci(s.b) +
+                " (target 2e-4), d = " + str::sci(s.spec.dCore) + " m, f0 = " + str::sci(s.f0) +
+                " Hz, " + std::to_string(s.modes.omega.size()) + " modes below 20 kHz at 48 kHz");
+    static std::map<std::pair<double, double>, ReferenceValues> cache;  // both backends share it
+    const auto key = std::make_pair(speed, width);
+    if (cache.find(key) == cache.end()) {
+        cache[key] = referenceLadder(s, speed, width);
+    }
+    const ReferenceValues ref = cache[key];
+    const Contact e48 = engineContact<RigF>(kEngineFs, kEngineFMax, speed, width);
+    const Contact e96 = engineContact<RigD>(96000.0, kEngineFMax, speed, width);
     const double errPeak48 = e48.peak / ref.peak.value - 1.0;
     const double errDur48 = e48.duration / ref.duration.value - 1.0;
     const double errPeak96 = e96.peak / ref.peak.value - 1.0;
@@ -324,17 +343,53 @@ void runReferenceCase(double speed, double width) {
 
 }  // namespace
 
-TEST_CASE("A5-T2 point contact 1 m/s vs P0.5 reference solver") { runReferenceCase(1.0, 0.0); }
-TEST_CASE("A5-T2 point contact 3 m/s vs P0.5 reference solver") { runReferenceCase(3.0, 0.0); }
-TEST_CASE("A5-T2 point contact 5 m/s vs P0.5 reference solver") { runReferenceCase(5.0, 0.0); }
-TEST_CASE("A5-T2 raised cosine 10 mm 1 m/s vs P0.5 reference solver") {
-    runReferenceCase(1.0, kWidthRaisedCosine);
+TEST_CASE("A5-T2 point contact 1 m/s vs P0.5 reference solver (SPEC scratch scheme)") {
+    runReferenceCase<ham::ScratchRig<float>, ham::ScratchRig<double>>(1.0, 0.0);
 }
-TEST_CASE("A5-T2 raised cosine 10 mm 3 m/s vs P0.5 reference solver") {
-    runReferenceCase(3.0, kWidthRaisedCosine);
+#ifdef PME_ORACLE_HAMMER_A5
+TEST_CASE("A5-T2 point contact 1 m/s vs P0.5 reference solver (A5 StruckNote)") {
+    runReferenceCase<ham::A5Rig<float>, ham::A5Rig<double>>(1.0, 0.0);
 }
-TEST_CASE("A5-T2 raised cosine 10 mm 5 m/s vs P0.5 reference solver") {
-    runReferenceCase(5.0, kWidthRaisedCosine);
+#endif
+TEST_CASE("A5-T2 point contact 3 m/s vs P0.5 reference solver (SPEC scratch scheme)") {
+    runReferenceCase<ham::ScratchRig<float>, ham::ScratchRig<double>>(3.0, 0.0);
 }
+#ifdef PME_ORACLE_HAMMER_A5
+TEST_CASE("A5-T2 point contact 3 m/s vs P0.5 reference solver (A5 StruckNote)") {
+    runReferenceCase<ham::A5Rig<float>, ham::A5Rig<double>>(3.0, 0.0);
+}
+#endif
+TEST_CASE("A5-T2 point contact 5 m/s vs P0.5 reference solver (SPEC scratch scheme)") {
+    runReferenceCase<ham::ScratchRig<float>, ham::ScratchRig<double>>(5.0, 0.0);
+}
+#ifdef PME_ORACLE_HAMMER_A5
+TEST_CASE("A5-T2 point contact 5 m/s vs P0.5 reference solver (A5 StruckNote)") {
+    runReferenceCase<ham::A5Rig<float>, ham::A5Rig<double>>(5.0, 0.0);
+}
+#endif
+TEST_CASE("A5-T2 raised cosine 10 mm 1 m/s vs P0.5 reference solver (SPEC scratch scheme)") {
+    runReferenceCase<ham::ScratchRig<float>, ham::ScratchRig<double>>(1.0, kWidthRaisedCosine);
+}
+#ifdef PME_ORACLE_HAMMER_A5
+TEST_CASE("A5-T2 raised cosine 10 mm 1 m/s vs P0.5 reference solver (A5 StruckNote)") {
+    runReferenceCase<ham::A5Rig<float>, ham::A5Rig<double>>(1.0, kWidthRaisedCosine);
+}
+#endif
+TEST_CASE("A5-T2 raised cosine 10 mm 3 m/s vs P0.5 reference solver (SPEC scratch scheme)") {
+    runReferenceCase<ham::ScratchRig<float>, ham::ScratchRig<double>>(3.0, kWidthRaisedCosine);
+}
+#ifdef PME_ORACLE_HAMMER_A5
+TEST_CASE("A5-T2 raised cosine 10 mm 3 m/s vs P0.5 reference solver (A5 StruckNote)") {
+    runReferenceCase<ham::A5Rig<float>, ham::A5Rig<double>>(3.0, kWidthRaisedCosine);
+}
+#endif
+TEST_CASE("A5-T2 raised cosine 10 mm 5 m/s vs P0.5 reference solver (SPEC scratch scheme)") {
+    runReferenceCase<ham::ScratchRig<float>, ham::ScratchRig<double>>(5.0, kWidthRaisedCosine);
+}
+#ifdef PME_ORACLE_HAMMER_A5
+TEST_CASE("A5-T2 raised cosine 10 mm 5 m/s vs P0.5 reference solver (A5 StruckNote)") {
+    runReferenceCase<ham::A5Rig<float>, ham::A5Rig<double>>(5.0, kWidthRaisedCosine);
+}
+#endif
 
 #endif  // PME_A5T2_REFERENCE_CLI

@@ -25,14 +25,16 @@
 //   1. F_b,0^n is exactly 0 for every sample n up to and including the first sample at which the
 //      bridge has moved (w^n = 0 and its own modes are at rest); it is non-zero from the next
 //      sample on.
-//   2. The RMS envelope of F_b,0 in non-overlapping 50 ms windows rises: by the window that contains
+//   2. The RMS envelope of F_b,0 in non-overlapping 50 ms windows rises: by the window that
+//   contains
 //      t = 0.5 s it is at least 20 dB above the first window's level, and the maximum of the
 //      envelope lies after 0.1 s.
 //   3. The struck strings' bridge forces start immediately: their first non-zero sample is within
 //      4 samples of the launch (the first contact sample is n = 2).
 //
 // Regression. The envelope (window centres and RMS values over the first 3 s) is compared with
-// data/orc19_envelope.json, the first accepted run, window by window: |20 log10(rms / golden)|
+// data/orc19_envelope.json, a PROVISIONAL first run (pending owner acceptance), window by window:
+// |20 log10(rms / golden)|
 // <= 0.5 dB (allows cross-platform float32 differences). The file is written from the SPEC
 // scratch scheme with PME_ORC19_WRITE_GOLDEN=<path> and is accepted by the orchestrator.
 
@@ -44,6 +46,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -59,12 +62,12 @@ namespace str = pme::oracle::str;
 constexpr double kFs = 48000.0;
 constexpr double kSeconds = 3.0;
 constexpr double kWindowSeconds = 0.05;
-constexpr double kBriefRiseDb = 20.0;      // brief: by t = 0.5 s (see orc19Rise20Db)
-constexpr double kRiseDb = 6.0;            // growth check: envelope at 0.5 s over the first window
-constexpr double kStartDb = 60.0;          // maximum window over the RMS of the first 2 ms
+constexpr double kBriefRiseDb = 20.0;  // brief: by t = 0.5 s (see orc19Rise20Db)
+constexpr double kRiseDb = 6.0;        // growth check: envelope at 0.5 s over the first window
+constexpr double kStartDb = 60.0;      // maximum window over the RMS of the first 2 ms
 constexpr double kStartSeconds = 0.002;
-constexpr double kRiseCheckTime = 0.5;     // s
-constexpr double kPeakAfter = 0.1;         // s: the envelope maximum lies after this time
+constexpr double kRiseCheckTime = 0.5;  // s
+constexpr double kPeakAfter = 0.1;      // s: the envelope maximum lies after this time
 constexpr std::size_t kImmediateSamples = 4;
 constexpr double kGoldenToleranceDb = 0.5;  // per window
 constexpr double kF1 = 220.0;
@@ -91,7 +94,8 @@ template <class RigT>
 Orc19Data runOrc19() {
     ham::OracleString s;
     REQUIRE(ham::makeString(kF1, kDCore, kB1, kB3, kFs, kFMax, s));
-    // Bridge dashpot from Z0 |Y(f0)| = 0.02 (SPEC-BRG small-admittance quantity, SPEC-CONV e^(+iwt)).
+    // Bridge dashpot from Z0 |Y(f0)| = 0.02 (SPEC-BRG small-admittance quantity, SPEC-CONV
+    // e^(+iwt)).
     const double w0 = 2.0 * ham::kPi * s.f0;
     const double omegaB = 2.0 * ham::kPi * kBridgeHz;
     const double kb = kBridgeMass * omegaB * omegaB;
@@ -188,24 +192,25 @@ std::vector<double> readArray(const std::string& text, const std::string& key) {
 void writeGolden(const std::string& path, const Envelope& e) {
     std::ofstream out(path);
     out << "{\n";
-    out << "  \"_comment\": \"ORC-19 una corda aftersound, envelope of the passive string's vertical "
+    out << "  \"_comment\": \"ORC-19 una corda aftersound, envelope of the passive string's "
+           "vertical "
            "bridge force F_b,0 (N): RMS in non-overlapping 50 ms windows over 3 s. This is the "
-           "first accepted run (pending the orchestrator's acceptance), written by the SPEC "
+           "PROVISIONAL first run (pending the owner's acceptance and a run on the real A5 "
+           "StruckNote), written by the SPEC "
            "scratch scheme in float32 at 48 kHz; see test_orc19_aftersound.cpp for the setup. "
            "Comparison: 0.5 dB per window.\",\n";
     out << "  \"schema_version\": 1,\n";
     out << "  \"window_seconds\": " << kWindowSeconds << ",\n";
     out << "  \"tolerance_db\": " << kGoldenToleranceDb << ",\n";
-    char buf[64];
     out << "  \"window_centres_s\": [";
+    out << std::fixed << std::setprecision(6);
     for (std::size_t i = 0; i < e.centres.size(); ++i) {
-        std::snprintf(buf, sizeof buf, "%.6f", e.centres[i]);  // NOLINT(cppcoreguidelines-pro-type-vararg)
-        out << (i ? ", " : "") << buf;
+        out << (i != 0 ? ", " : "") << e.centres[i];
     }
     out << "],\n  \"rms_newtons\": [";
+    out << std::scientific << std::setprecision(9);
     for (std::size_t i = 0; i < e.rms.size(); ++i) {
-        std::snprintf(buf, sizeof buf, "%.9e", e.rms[i]);  // NOLINT(cppcoreguidelines-pro-type-vararg)
-        out << (i ? ", " : "") << buf;
+        out << (i != 0 ? ", " : "") << e.rms[i];
     }
     out << "]\n}\n";
 }
@@ -217,10 +222,10 @@ struct Orc19Metrics {
     std::size_t firstMove{0};     ///< first n with w^(n+1) != 0
     std::size_t firstStruck1{0};  ///< first n with F_b,1^n != 0
     std::size_t firstStruck2{0};
-    std::size_t riseWindow{0};    ///< window containing t = 0.5 s
+    std::size_t riseWindow{0};  ///< window containing t = 0.5 s
     std::size_t peakWindow{0};
-    double riseDb{0.0};           ///< envelope at 0.5 s over the first window, dB
-    double startDb{0.0};          ///< maximum window over the RMS of the first 2 ms, dB
+    double riseDb{0.0};   ///< envelope at 0.5 s over the first window, dB
+    double startDb{0.0};  ///< maximum window over the RMS of the first 2 ms, dB
 };
 
 std::size_t firstNonZero(const std::vector<double>& v) {
@@ -237,8 +242,8 @@ Orc19Metrics measure(const char* label) {
     Orc19Metrics m;
     m.data = runOrc19<RigT>();
     const Orc19Data& d = m.data;
-    str::report(std::string("ORC-19 ") + label + ": f0 = " + str::sci(d.f0Hz) + " Hz, Z0 = " +
-                str::sci(d.z0) + " kg/s, bridge r_b = " + str::sci(d.bridgeDamping) +
+    str::report(std::string("ORC-19 ") + label + ": f0 = " + str::sci(d.f0Hz) +
+                " Hz, Z0 = " + str::sci(d.z0) + " kg/s, bridge r_b = " + str::sci(d.bridgeDamping) +
                 " N s/m (Z0 |Y(f0)| = 0.02), m = 0.3 kg, 250 Hz, theta_b = 0.1 rad");
     m.firstMove = firstNonZero(d.w);
     m.firstStruck1 = firstNonZero(d.f1);
@@ -266,8 +271,8 @@ Orc19Metrics measure(const char* label) {
                 "; envelope: first window " + str::sci(m.env.rms[0]) + " N, window at 0.5 s " +
                 str::sci(m.env.rms[m.riseWindow]) + " N (" + std::to_string(m.riseDb) +
                 " dB above the first window), maximum " + str::sci(m.env.rms[m.peakWindow]) +
-                " N at t = " + std::to_string(m.env.centres[m.peakWindow]) +
-                " s, " + std::to_string(m.startDb) + " dB above the RMS of the first 2 ms");
+                " N at t = " + std::to_string(m.env.centres[m.peakWindow]) + " s, " +
+                std::to_string(m.startDb) + " dB above the RMS of the first 2 ms");
     return m;
 }
 
@@ -297,7 +302,8 @@ void orc19Case(const char* label) {
     CHECK(m.env.centres[m.peakWindow] > kPeakAfter);
 
     // Regression against the first accepted run.
-    if (const char* writePath = std::getenv("PME_ORC19_WRITE_GOLDEN")) {  // NOLINT(concurrency-mt-unsafe)
+    if (const char* writePath =
+            std::getenv("PME_ORC19_WRITE_GOLDEN")) {  // NOLINT(concurrency-mt-unsafe)
         writeGolden(writePath, m.env);
     }
 #ifdef PME_ORC19_GOLDEN
@@ -336,25 +342,29 @@ void orc19Rise20Db(const char* label) {
 
 }  // namespace
 
-TEST_CASE("ORC-19 una corda aftersound passive string bridge force trichord s = 1 (SPEC scratch "
-          "scheme)") {
+TEST_CASE(
+    "ORC-19 una corda aftersound passive string bridge force trichord s = 1 (SPEC scratch "
+    "scheme)") {
     orc19Case<ham::ScratchRig<float>>("SPEC scratch scheme");
 }
 
-TEST_CASE("ORC-19 una corda aftersound envelope 20 dB above the first window by 0.5 s brief "
-          "criterion (SPEC scratch scheme)" *
-          doctest::may_fail()) {
+TEST_CASE(
+    "ORC-19 una corda aftersound envelope 20 dB above the first window by 0.5 s brief "
+    "criterion (SPEC scratch scheme)" *
+    doctest::may_fail()) {
     orc19Rise20Db<ham::ScratchRig<float>>("SPEC scratch scheme");
 }
 
 #ifdef PME_ORACLE_HAMMER_A5
-TEST_CASE("ORC-19 una corda aftersound passive string bridge force trichord s = 1 (A5 StruckNote)") {
+TEST_CASE(
+    "ORC-19 una corda aftersound passive string bridge force trichord s = 1 (A5 StruckNote)") {
     orc19Case<ham::A5Rig<float>>("A5 StruckNote");
 }
 
-TEST_CASE("ORC-19 una corda aftersound envelope 20 dB above the first window by 0.5 s brief "
-          "criterion (A5 StruckNote)" *
-          doctest::may_fail()) {
+TEST_CASE(
+    "ORC-19 una corda aftersound envelope 20 dB above the first window by 0.5 s brief "
+    "criterion (A5 StruckNote)" *
+    doctest::may_fail()) {
     orc19Rise20Db<ham::A5Rig<float>>("A5 StruckNote");
 }
 #endif

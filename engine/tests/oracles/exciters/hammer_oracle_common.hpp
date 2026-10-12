@@ -97,7 +97,9 @@ inline std::vector<double> windowedShape(const pme::StringModes& m, double x0, d
             out[i] = str::modeShape(m.L, n, x0);
             continue;
         }
-        const auto f = [&](double x) { return str::raisedCosine(x - x0, b) * str::modeShape(m.L, n, x); };
+        const auto f = [&](double x) {
+            return str::raisedCosine(x - x0, b) * str::modeShape(m.L, n, x);
+        };
         out[i] = str::integrate(f, x0 - 0.5 * b, x0 + 0.5 * b, rule, 4);
     }
     return out;
@@ -158,8 +160,8 @@ inline ContactInterval firstContact(std::span<const double> delta, double dt) {
     bool inside = false;
     for (std::size_t i = 1; i < delta.size(); ++i) {
         if (!inside && delta[i - 1] <= 0.0 && delta[i] > 0.0) {
-            const double entry = static_cast<double>(i - 1) +
-                                 (-delta[i - 1]) / (delta[i] - delta[i - 1]);
+            const double entry =
+                static_cast<double>(i - 1) + (-delta[i - 1]) / (delta[i] - delta[i - 1]);
             ++c.count;
             if (c.count == 1) {
                 c.entry = entry;
@@ -214,8 +216,8 @@ inline Ladder richardson(double q0, double q1, double q2) {
     l.value = q2 + (q2 - q1) / 3.0;
     const double d01 = q0 - q1;
     const double d12 = q1 - q2;
-    l.observedOrder = (d01 * d12 > 0.0) ? std::log2(d01 / d12)
-                                        : std::numeric_limits<double>::quiet_NaN();
+    l.observedOrder =
+        (d01 * d12 > 0.0) ? std::log2(d01 / d12) : std::numeric_limits<double>::quiet_NaN();
     l.correctionRel = std::fabs((q2 - q1) / 3.0 / l.value);
     return l;
 }

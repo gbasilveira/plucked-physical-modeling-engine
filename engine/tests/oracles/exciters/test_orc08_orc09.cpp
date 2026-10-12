@@ -42,13 +42,13 @@ namespace {
 namespace ham = pme::oracle::ham;
 namespace str = pme::oracle::str;
 
-constexpr double kSpeed = 3.0;                 // m/s
-constexpr double kWidth = 0.01;                // m, b_H
-constexpr double kStrike = 1.0 / 8.0;          // beta_c
-constexpr double kEnergyTol = 1.0e-10;         // ORC-09
-constexpr double kReboundTol = 1.0e-3;         // ORC-08 rebound
-constexpr double kTimeTolFraction = 0.01;      // ORC-08 contact time, or one sample
-constexpr double kFMax = 16000.0;              // ORC-09: all modes below 16 kHz
+constexpr double kSpeed = 3.0;             // m/s
+constexpr double kWidth = 0.01;            // m, b_H
+constexpr double kStrike = 1.0 / 8.0;      // beta_c
+constexpr double kEnergyTol = 1.0e-10;     // ORC-09
+constexpr double kReboundTol = 1.0e-3;     // ORC-08 rebound
+constexpr double kTimeTolFraction = 0.01;  // ORC-08 contact time, or one sample
+constexpr double kFMax = 16000.0;          // ORC-09: all modes below 16 kHz
 constexpr double kFs = 48000.0;
 
 // ---- ORC-08 -----------------------------------------------------------------------------------
@@ -74,8 +74,8 @@ void orc08Case(double fs) {
         rig.step();
         delta.push_back(rig.penetration());
     }
-    const double tcExact = ham::analyticContactTime(ham::kHammerMass, kSpeed, ham::kFeltK,
-                                                    ham::kFeltP);
+    const double tcExact =
+        ham::analyticContactTime(ham::kHammerMass, kSpeed, ham::kFeltK, ham::kFeltP);
     const ham::ContactInterval contact = ham::firstContact(delta, dt);
     REQUIRE(contact.found);
     const double rebound = rig.hammerSpeed();
@@ -85,8 +85,8 @@ void orc08Case(double fs) {
     str::report("ORC-08 hammer potential fs=" + std::to_string(fs) + ": t_c expected " +
                 str::sci(tcExact) + " measured " + str::sci(contact.duration) + " error " +
                 str::sci(err) + " s (" + std::to_string(100.0 * err / tcExact) + " %, " +
-                std::to_string(err / dt) + " samples; tolerance " + str::sci(tol) +
-                "), rebound " + std::to_string(rebound) + " m/s error " + str::sci(reboundErr) +
+                std::to_string(err / dt) + " samples; tolerance " + str::sci(tol) + "), rebound " +
+                std::to_string(rebound) + " m/s error " + str::sci(reboundErr) +
                 " (tolerance 1e-3), contact intervals " + std::to_string(contact.count) +
                 ", psi resets " + std::to_string(rig.resets()));
     CHECK(err <= tol);
@@ -115,8 +115,8 @@ std::vector<pme::StringModes> losslessStrings(const std::vector<double>& cents) 
     std::vector<pme::StringModes> out;
     for (const double c : cents) {
         ham::OracleString s;
-        REQUIRE(ham::makeString(262.0 * std::pow(2.0, c / 1200.0), 1.0e-3, 0.0, 0.0, kFs, kFMax,
-                                s));
+        REQUIRE(
+            ham::makeString(262.0 * std::pow(2.0, c / 1200.0), 1.0e-3, 0.0, 0.0, kFs, kFMax, s));
         // "all modes below 16 kHz": the largest kept mode frequency
         REQUIRE(s.modes.omega.back() / (2.0 * ham::kPi) <= kFMax);
         out.push_back(s.modes);
@@ -193,13 +193,14 @@ EnergyRun runEnergy(const ham::NoteSetup& cfg) {
 }
 
 void reportEnergy(const std::string& label, const EnergyRun& r) {
-    str::report("ORC-09 " + label + ": " + std::to_string(r.modes) +
-                " modes, max |E - E0| / E0 before the first psi reset = " +
-                str::sci(r.maxRelBeforeReset) + ", with the reset energy added back = " +
-                str::sci(r.maxRelAccounted) + " (tolerance 1e-10); raw over the whole run = " +
-                str::sci(r.maxRelRaw) + ", energy removed by " + std::to_string(r.resets) +
-                " reset(s) = " + str::sci(r.resetLoss) + " E0; first contact " +
-                str::sci(r.contactTime) + " s, peak force " + str::sci(r.peakForce) + " N");
+    str::report(
+        "ORC-09 " + label + ": " + std::to_string(r.modes) +
+        " modes, max |E - E0| / E0 before the first psi reset = " + str::sci(r.maxRelBeforeReset) +
+        ", with the reset energy added back = " + str::sci(r.maxRelAccounted) +
+        " (tolerance 1e-10); raw over the whole run = " + str::sci(r.maxRelRaw) +
+        ", energy removed by " + std::to_string(r.resets) + " reset(s) = " + str::sci(r.resetLoss) +
+        " E0; first contact " + str::sci(r.contactTime) + " s, peak force " +
+        str::sci(r.peakForce) + " N");
 }
 
 template <class RigT>
@@ -270,7 +271,8 @@ TEST_CASE("ORC-09 hammer-string energy one string rigid bridge (SPEC scratch sch
 TEST_CASE("ORC-09 hammer-string energy trichord rigid bridge (SPEC scratch scheme)") {
     orc09Trichord<ham::ScratchRig<double>>();
 }
-TEST_CASE("ORC-09 hammer-string energy trichord mass-spring bridge reported (SPEC scratch scheme)") {
+TEST_CASE(
+    "ORC-09 hammer-string energy trichord mass-spring bridge reported (SPEC scratch scheme)") {
     orc09TrichordBridge<ham::ScratchRig<double>>(0.0, kBridgeMassOrc09);
     orc09TrichordBridge<ham::ScratchRig<double>>(0.0, 3.0);
     orc09TrichordBridge<ham::ScratchRig<double>>(0.0, 30.0);
