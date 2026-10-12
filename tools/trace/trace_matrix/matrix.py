@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .ids import SYSTEMS
+from .ids import PHASE_SYSTEMS, SYSTEMS
 from .plan import Gate, OracleRow, PhaseCard
 from .results import TestResult
 from .sources import SourceTest, StepAnnotation
@@ -166,9 +166,10 @@ class Evaluator:
         """Every ID some test or step carries."""
         return set(self.by_id) | set(self.steps)
 
-    def status(self, item_id: str) -> IdStatus:
-        """State of one ID."""
-        cached = self._cache.get(item_id)
+    def status(self, item_id: str, phase: str | None = None) -> IdStatus:
+        """State of one ID; ``phase`` narrows the required systems for a Linux-only phase."""
+        cache_key = f"{phase or ''}/{item_id}"
+        cached = self._cache.get(cache_key)
         if cached is not None:
             return cached
         entries = self.by_id.get(item_id, [])
@@ -196,7 +197,11 @@ class Evaluator:
                 )
             )
         passed = sorted({r.system for r in results if r.outcome == "pass" and r.system})
-        missing_systems = [s for s in self.required if s not in passed]
+        narrowed = PHASE_SYSTEMS.get(phase or "")
+        required = (
+            self.required if narrowed is None else [s for s in self.required if s in narrowed]
+        )
+        missing_systems = [s for s in required if s not in passed]
         failed = any(r.outcome == "fail" for r in results) or any(
             s.conclusion == "fail" for s in steps
         )
@@ -222,7 +227,7 @@ class Evaluator:
         result = IdStatus(
             item_id, status, unverified, passed, missing_systems, jobs, failed_jobs, evidence
         )
-        self._cache[item_id] = result
+        self._cache[cache_key] = result
         return result
 
     def oracle_label_problems(self, item_id: str) -> list[str]:
@@ -285,7 +290,7 @@ def build_matrix(inputs: Inputs) -> dict[str, Any]:
         requirements: list[dict[str, Any]] = []
         for req in card.requirements:
             plan_ids.add(req.id)
-            st = ev.status(req.id)
+            st = ev.status(req.id, card.id)
             requirements.append(
                 {
                     "id": req.id,
@@ -304,14 +309,14 @@ def build_matrix(inputs: Inputs) -> dict[str, Any]:
         tests: list[dict[str, Any]] = []
         for test in card.tests:
             plan_ids.add(test.id)
-            st = ev.status(test.id)
+            st = ev.status(test.id, card.id)
             tests.append({"id": test.id, "criterion": test.criterion, **as_dict(st)})
             if st.status != "pass":
                 add_gap(test.id, f"test_{_GAP_KIND[st.status]}", card.id, _gap_detail(st))
         oracle_tests: list[dict[str, Any]] = []
         for orc in card.oracle_ids:
             plan_ids.add(orc)
-            st = ev.status(orc)
+            st = ev.status(orc, card.id)
             oracle_tests.append({"id": orc, **as_dict(st)})
             if st.status != "pass":
                 add_gap(orc, f"oracle_{_GAP_KIND[st.status]}", card.id, _gap_detail(st))

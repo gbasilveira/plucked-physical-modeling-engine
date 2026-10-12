@@ -20,6 +20,13 @@ PHASE_ID_RE = re.compile(PHASE_ID_PATTERN)
 
 SYSTEMS = ("linux", "macos", "windows")
 
+# Phases whose tests exist on fewer systems than SYSTEMS; every other phase needs all of them.
+PHASE_SYSTEMS: dict[str, tuple[str, ...]] = {
+    # D3 card (docs/plan/phasing-plan.md): "a native LV2 build for Linux hosts"; its tests run only
+    # in the `lv2 (linux)` job.
+    "D3": ("linux",),
+}
+
 
 def python_name_to_id(function_name: str) -> str | None:
     """Return the ID a Python test function name encodes, or None."""
