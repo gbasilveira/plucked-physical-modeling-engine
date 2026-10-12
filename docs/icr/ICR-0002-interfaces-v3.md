@@ -92,8 +92,8 @@ These are new optional fields, so no schema-version migration is needed.
 
 | Phase | Impact | Must rebase |
 | --- | --- | --- |
-| A5 (in flight) | Implements the shank internally (A5-R6) against an internal `ShankParams` mirror. Switches to the public type when v3 lands. | yes, once v3 is applied |
-| A7 (in flight) | Exposes `GeometricTier` internally (`Exact` returns `NotImplemented` until A10); uses internal longitudinal loss parameters until `SegmentDesc::longitudinalB1/B3` land; B6 adds the matching schema fields. | yes |
+| A5 (in flight) | Implements the shank internally (A5-R6) against an internal `ShankParams` {mass, frequency, sigma} mirror (confirmed by the A5 implementer, 2026-10-12). Switches to the public type when v3 lands. | yes, once v3 is applied |
+| A7 (in flight) | Exposes `GeometricTier` (Auto, Default, Exact) and `EngineQuality` (Realtime, HighQuality) as internal enums with the v3 names and values (`Exact` returns `NotImplemented` until A10); uses internal longitudinal loss parameters until `SegmentDesc::longitudinalB1/B3` (default 0) land; switches to the public types when v3 is applied (confirmed by the A7 implementer, 2026-10-12); B6 adds the matching schema fields. | yes |
 | A9 (new) | Implements the bridge options internally first, then reads `EngineConfig` through C1. | yes |
 | A10 (new) | Uses `GeometricTier::Exact`. | starts after v3 |
 | B6 (new) | Adds the schema fields and loader mapping for `moistureRef`, `prestress` and `shank`. | starts after v3 |
@@ -112,6 +112,6 @@ Test names follow docs/icr/README.md: the owning phase's ID, then the ICR ID.
 
 ## Decision
 
-**Approved by the orchestrator, 2026-10-12,** under owner decision D-13. The owner stated (orchestrator's paraphrase) that options and settings are preferable to leaving alternatives unimplemented, and that the owner will approve everything at the end given detailed documentation. The ICR protocol (docs/icr/README.md, step 2) gives the approval to the orchestrator, so no separate owner approval is required to apply it; the change is listed for the owner's final review. Next: one interface agent (implementer, Sonnet) applies the change and the interfaces-v3 tag; the planner updates SPEC-API where it changes; A5, A7, A9 rebase; B6 and A10 are briefed against v3.
+**Approved by the orchestrator, 2026-10-12,** under owner decision D-13. The owner stated (orchestrator's paraphrase) that options and settings are preferable to leaving alternatives unimplemented, and that the owner will approve everything at the end given detailed documentation. The ICR protocol (docs/icr/README.md, step 2) gives the approval to the orchestrator, so no separate owner approval is required to apply it; the change is listed for the owner's final review. Next: one interface agent (implementer, Sonnet) applies the change and the interfaces-v3 tag, **after A5, A7, A8 and A9 have merged** (orchestrator scheduling decision, 2026-10-12); the planner updates SPEC-API where it changes; A5, A7, A9 switch from their internal mirrors to the public types in follow-ups; B6 and A10 are briefed against v3.
 
 Earlier note: Physics review: the prestress field changes body modes and was approved in principle by the owner (2026-10-12). The B2 reviewer checks the prestress computation (B2-R4). Interfaces tag after applying: interfaces-v3.

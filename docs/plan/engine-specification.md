@@ -551,11 +551,13 @@ f_m^{L} = -\frac{(EA - T)\,K_m}{2\rho A\sqrt{2L}}\sum_{P}\ \sum_{i,j\ge 1} k_i k
 
 The pair sum costs O(N) per longitudinal mode and MUST be used for M\_L ≤ 16 modes (default M\_L = 8 within f\_max). Larger M\_L MAY evaluate y\_x on a grid with a fast cosine transform, square it and project. Longitudinal modes use the modal oscillator with this explicit force at step n; their losses use their own b₁, b₃.
 
-**Longitudinal force at the bridge.**
+**Longitudinal force at the bridge.** F\_L is the axial tension excess at the segment's bridge end. For a bridge at x = L (BridgeEnd AtL):
 
 ```math
 F_L = EA\sum_m \sqrt{2/L}\,K_m\,(-1)^m\,\xi_m + \frac{EA - T}{2}\,y_x(L)^2
 ```
+
+For a bridge at x = 0 (rear segments, BridgeEnd At0) the same quantity is evaluated at x = 0: F\_L = EA Σ\_m √(2/L) K\_m ξ\_m + (EA − T)/2 · y\_x(0)², without the factor (−1)^m. The direction of the pull on the bridge is carried by κ\_L ([SI-0026](../spec-issues/SI-0026-geo-longitudinal-force-at-x0.md)).
 
 **Transmission to the body.** Longitudinal force and tension modulation reach the bridge's vertical axis through geometry: the downbearing angle, bridge tilt, and for bridgeless or knotted terminations (kantele, tanbur) the termination angle. The engine adds both to the bridge force:
 
@@ -567,7 +569,7 @@ Typical κ\_L = sin 1.5° ≈ 0.026 for a piano; κ\_T is 0 for a piano and set 
 
 **Neglected in the default tier.** Back-coupling from longitudinal motion to the transverse modes, and spatially varying tension.
 
-*Energy balance of the default tier* (SI-0015). Because the coupling is one-way, the default tier does not conserve total energy: the longitudinal modes gain energy from the transverse motion and the transverse modes lose none. The transverse energy (modes, bridge and ψ, including V\_KC) obeys the usual balance; the longitudinal energy E\_L = Σ\_m ρA H\_m^L is extra and scales as the fourth power of the transverse amplitude (its ratio to the transverse energy as the square). In the P0.5 reference's large-amplitude test case it reached about 3 % of the transverse energy. Energy monitors therefore MUST check conservation and passivity on the transverse energy only and report E\_L separately; the sympathetic guard (SPEC-BODY "Sympathetic path") tests the transverse energy only, and sleep decisions use the transverse energy plus E\_L. The high-quality tier conserves the total energy and has no such allowance.
+*Energy balance of the default tier* (SI-0015). Because the coupling is one-way, the default tier does not conserve total energy: the longitudinal modes gain energy from the transverse motion and the transverse modes lose none. The transverse energy (modes, bridge and ψ, including V\_KC) obeys the usual balance; the longitudinal energy E\_L = Σ\_m ρA H\_m^L is extra and scales as the fourth power of the transverse amplitude (its ratio to the transverse energy as the square). Its size therefore depends strongly on amplitude: in A7's measurements (time mean of E\_L / E\_T for one test string) it was 0.8 % at 1 mm, 3.3 % at 2 mm and 14 % at 4 mm initial displacement ([SI-0015](../spec-issues/SI-0015-geo-one-way-energy-balance.md), amended 2026-10-12). Energy monitors therefore MUST check conservation and passivity on the transverse energy only and report E\_L separately; the sympathetic guard (SPEC-BODY "Sympathetic path") tests the transverse energy only, and sleep decisions use the transverse energy plus E\_L. The high-quality tier conserves the total energy and has no such allowance.
 
 **High-quality tier (D-13: MUST, selected by `numerics.geometricTier`; default in HighQuality, phase A10).** Replace both parts with the geometrically exact string, whose potential couples transverse and longitudinal motion fully, integrated with the same SAV framework. [Ducceschi, Bilbao and Webb](https://cris.unibo.it/handle/11585/883682) report running this below real time for typical struck piano strings in C++; [Ducceschi & Bilbao (2022)](https://www.research.ed.ac.uk/en/publications/simulation-of-the-geometrically-exact-nonlinear-string-via-energy/) give the energy-quadratised scheme.
 
@@ -594,7 +596,7 @@ Plucked instruments add exciters that hold and release the string, and barriers 
 - *Angle.* A Pluck event's θ\_p replaces the description's; the description's θ\_p applies to NoteOn launches.
 - *NoteOn on a plucked group* † (harpsichord jack). NoteOn on a group whose exciter is a force pulse, plectrum, finger or initial displacement starts it with ν = velocity at the description's x\_p and θ\_p on every speaking segment (BridgeEnd AtL) of the group.
 - *Finger structure* †. The finger has the plectrum's structure: tip mass m\_f on a driver spring K\_f to a driver moving at v\_d; flesh contact with stiffness K\_c,f and exponent α\_f, a Hunt–Crossley dashpot R = K\_c,f μ\_f \[δ\]₊^α\_f, spread over a raised-cosine window of width b\_f; release threshold h\_slip,f. Its parameters are therefore m\_f, K\_f, v\_d,max, h\_slip,f, K\_c,f, α\_f, μ\_f, b\_f.
-- *Initial displacement* †. At the event's sample the segment's modal state is replaced by the closed-form triangle below (q\_n at both stored time levels, so the string starts at rest), split into the polarisations by θ\_p: vertical A cos θ\_p, horizontal A sin θ\_p.
+- *Initial displacement* †. At the event's sample the segment's modal state is replaced by the closed-form triangle below (q\_n at both stored time levels, so the string starts at rest), split into the polarisations by θ\_p: vertical A cos θ\_p, horizontal A sin θ\_p. The segment's longitudinal modes restart from rest with the Taylor start of Execution order, "Starting a forced mode from rest" (SI-0024).
 
 The triangle start is closed-form (checked against quadrature for this spec):
 
@@ -713,6 +715,8 @@ With the implicit bridge scheme (Bridge coupling, "Bridge scheme"), steps 3 to 7
 - (5′) each segment completes qⁿ⁺¹, its ψ update and the reset and drift rules.
 
 Steps 1, 2 and 8 to 10 are unchanged. The order of segments and bridge points stays fixed.
+
+**Starting a forced mode from rest** ([SI-0024](../spec-issues/SI-0024-exec-taylor-start-forced-modes.md); flagged for owner review). When a mode starts from rest (q⁰ = 0, at rest) while its explicit force f⁰ at the first step is not zero, as the longitudinal modes do at an initial displacement, its state is set to q⁰ = 0, u⁰ = −γ f⁰ / 2. Then q¹ = β u⁰ + γ f⁰ ≈ ½ f⁰ Δt², the second-order Taylor value of a mode at rest under a force, instead of f⁰ Δt², which would make a longitudinal front arrive Δt/2 early. A mode whose force is zero at its first step starts with u⁰ = 0 as before.
 
 Small-body instruments run this loop with the full body as the bridge model and have no Phase B except radiation, computed per sub-block from recorded body accelerations and velocities.
 
@@ -875,7 +879,7 @@ Each block has an analytic or reference answer that the code MUST reproduce befo
 | Impact time ✓ | Mass 8 g at 3 m/s on rigid felt contact, p = 2.5 | t\_c from the hammer oracle; rebound −v | max(1%, 1 sample); rebound 0.1% (run: 0.4%, exact rebound) |
 | Hammer–string energy ✓ | Lossless string and felt, float64 | Total energy including ½ψ² constant | 10⁻¹⁰ relative (run: 7 × 10⁻¹⁴) |
 | Triangle pluck ✓ | q\_n(0) formula vs quadrature | Same value | 10⁻⁹ relative |
-| Longitudinal forcing ✓ | Pair sum vs quadrature of −(EA − T)/(2ρA) ∫ y\_x² χ\_m' dx | Same value | 10⁻⁹ relative |
+| Longitudinal forcing ✓ | Pair sum vs quadrature of −(EA − T)/(2ρA) ∫ y\_x² χ\_m' dx | Same value | 10⁻⁹ relative, with the engine's forcing function evaluated in float64 (instantiated with double state; the float32 instantiation cannot reach 10⁻⁹; [SI-0023](../spec-issues/SI-0023-orc11-float64-evaluation.md)) |
 | Tension modulation ✓ | Σ k\_n² q\_n² vs ∫ y\_x² dx | Same value | 10⁻¹² relative |
 | Damper (diagonal) | e = 1, single mode | σ\_n + e R\_d φ̄² / (2ρA) | σ passed to the oscillator compiler: 10⁻⁹ relative (float64). Measured decay rate: 0.1% in float64; in float32 0.1% + 2⁻²⁴/(2σΔt), the β quantisation bound with a factor-2 margin ([SI-0017](../spec-issues/SI-0017-orc13-float32-decay-resolution.md)) |
 | Fretted pitch | Finger stop at fret k on a low-stiffness string | Open pitch × 2^(k/12) | 2 cents |
