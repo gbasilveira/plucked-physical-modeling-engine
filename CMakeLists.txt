@@ -124,3 +124,7 @@ target_include_directories(pme_dampers PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/
 target_link_libraries(pme_dampers PUBLIC pme_string pme_nonlinear pme_osc)
 add_subdirectory(engine/tests/dampers)
 # ---- end A6 ----
+
+# ---- A7: geometric nonlinearity ----
+add_subdirectory(engine/tests/geometric)
+# ---- end A7 ----
