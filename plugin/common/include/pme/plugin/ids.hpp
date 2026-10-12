@@ -41,4 +41,14 @@ inline constexpr const char* kLv2BundleDir = "pme.lv2";
 /// LV2 module base name, without prefix or suffix (provisional, D-3).
 inline constexpr const char* kLv2BinaryName = "pme_lv2";
 
+// ---- Library (D5) ---------------------------------------------------------------------------
+// Names of the instrument and preset library (plugin/common/library). Provisional until D-3.
+
+/// Directory name under the per-system data, cache and factory roots (provisional, D-3).
+inline constexpr const char* kDataDirName = "pme";
+/// Preset file extension, with the dot (provisional, D-3).
+inline constexpr const char* kPresetExtension = ".pmepreset";
+/// Value of the `format` member of a preset file (provisional, D-3).
+inline constexpr const char* kPresetFormat = "pme-preset";
+
 }  // namespace pme::plugin

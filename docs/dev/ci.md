@@ -203,6 +203,7 @@ is verified against a SHA-256 before it is unpacked. The release page lists no c
 values in `pr.yml` were computed from the downloaded assets (D1 report). To change the pin, update
 the tag, the three asset names and the three checksums together. `PME_CLAP_VALIDATOR` (environment
 or CMake cache variable) points `D1-T1` at a local validator; without it the test is skipped.
+The job also runs the D5 tests (`ctest -R "^D[15]-"`): the instrument and preset library in `plugin/common/library/`.
 <!-- ---- end D1 ---- -->
 
 <!-- P0.5: reference-python -->

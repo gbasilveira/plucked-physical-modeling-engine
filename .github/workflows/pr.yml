@@ -488,9 +488,9 @@ jobs:
       - name: "${{ matrix.preset }} (plug-ins): build"
         shell: bash
         run: cmake --build --preset "${{ matrix.preset }}"
-      - name: D1 tests (D1-T1 runs clap-validator on the built .clap)
+      - name: D1 and D5 tests (D1-T1 runs clap-validator on the built .clap)
         shell: bash
-        run: ctest --preset "${{ matrix.preset }}" -R "^D1-" --no-tests=error --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-plugin-${{ matrix.system }}.xml"
+        run: ctest --preset "${{ matrix.preset }}" -R "^D[15]-" --no-tests=error --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-plugin-${{ matrix.system }}.xml"
       - name: clap-validator (all tests) on the built .clap
         shell: bash
         run: '"$PME_CLAP_VALIDATOR" validate "build/${{ matrix.preset }}/plugin/clap/pme.clap"'
