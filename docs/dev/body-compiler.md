@@ -178,18 +178,34 @@ written bytes bit-identically.
 `pme_compiler.materials.library` loads `library.json`: constants (E\_L, E\_R, G\_LR, ν\_LR, ν\_RL, ρ at
 MC\_ref = 0.12), a constant loss factor or an η(f) table, the four moisture slopes, and a mandatory
 `source` (author, title, year, locator, licence, and a `derivation` for every constant and for the
-slopes). `validate_entry` rejects an entry without them (tested). `apply(material, plate)` fills the
-wood fields of a `PlateParams`.
+slopes). `validate_entry` rejects an entry without them (tested). `apply(material, plate,
+loss_factor=None)` fills the wood fields of a `PlateParams`.
 
-**The library contains no tonewood yet.** The values of the species named in the card (Sitka, Norway
-and Engelmann spruce, western red cedar, maple, mahogany, Indian rosewood) must come from a published
-source that the author has read, and none was reachable from the build environment (no network access
-to the USDA Forest Products Laboratory Wood Handbook, FPL-GTR-282 (2021), the candidate source: a US
-government work, public domain). Writing them from memory would break the rule that no number is
-invented, so they are omitted and listed in the file's `omissions` and in the handoff report. The one
-entry is `p0_5_reference_plate` (`kind: test-reference`), the spruce-like constants stated in
-docs/dev/reference-solver.md, with zero moisture slopes. The B2-T5 slopes are illustrative values stated
-in the test, not wood data.
+**Tonewoods.** Six entries come from the USDA Forest Products Laboratory Wood Handbook, FPL-GTR-282
+(March 2021; US government work, public domain), read from the PDF: `sitka_spruce`,
+`engelmann_spruce`, `western_redcedar`, `sugar_maple`, `african_mahogany` (Khaya spp.) and
+`american_mahogany` (Swietenia macrophylla; the handbook's "Mahogany, Honduras" rows of Tables 5-1 and
+5-2 are matched to Table 5-5a's "Mahogany, true" through Chapter 2, p. 2-29). Each entry's `source`
+holds `raw` (the table numbers as printed), `derivation` (the arithmetic per field) and `locators`
+(table, printed page and PDF page per field); `test_b2_r2_*` recomputes every value from `raw`.
+Derivations: E\_L = 1.10 × the static-bending modulus at 12 % MC (Table 5-3a / 5-5a; the 10 %
+shear-deflection correction is the handbook's own, p. 5-2 and Table 5-3a footnote c); E\_R and G\_LR =
+Table 5-1 ratio × that E\_L; ν from Table 5-2 (ν\_RL of western red cedar by the reciprocity
+relation Eq. 5-1, since the table is blank); ρ at 12 % from the tabulated G\_12 (or, for the Table 5-5a
+species, from the green-volume specific gravity with Eqs. 4-9, 4-11, 4-14) as 1000 G\_12 × 1.12;
+dE\_L/dMC and dρ/dMC are the analytic derivatives at MC = 0.12 of the handbook's moisture-adjustment
+equation 5-3 (M\_p = 27 % for Sitka from Table 5-13, else the handbook's default 25 %) and of
+Eqs. 4-9/4-11/4-14, converted to Pa and kg/m³ per unit MC fraction. All values are US-grown (Table
+5-3a) or world-literature (Table 5-5a) averages for clear wood and carry the handbook's variability.
+
+**What the handbook does not give, and the library therefore omits (see `omissions`).** Norway spruce,
+Indian rosewood (no elastic ratios) and ebony; any loss factor (the handbook has only a range of the
+logarithmic decrement, p. 5-21), so `constants.lossFactor` is `null`, `Material.loss_factor` and
+`apply` raise `ValueError` unless the caller passes `loss_factor`; and the slopes dE\_R/dMC and
+dG\_LR/dMC (null, applied as zero, listed in `Material.unsourced_slopes`). The entry
+`p0_5_reference_plate` (`kind: test-reference`) holds the spruce-like constants stated in
+docs/dev/reference-solver.md, with zero moisture slopes. The B2-T5 slopes are illustrative values
+stated in the test, not wood data.
 
 ## Tests and runtimes
 
