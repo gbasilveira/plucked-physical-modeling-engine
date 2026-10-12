@@ -16,5 +16,6 @@ Further records:
 - ADR-0005 — nlohmann/json for JSON in C++ tests and tools (Accepted; P0.3)
 - ADR-0006 — engine interface reports failure through a Status return (Accepted; P0.4)
 - ADR-0007 — CLAP host thread pool: shell side in D1, engine routing in D6 (Accepted by the orchestrator under the owner's proceed instruction; owner may reverse; defers D1-R6 engine routing to D6)
+- ADR-licence — the project is licensed AGPL-3.0-or-later (Accepted, owner decision D-1, 2026-10-12; applied by task H1-agpl after A5, A7, A8, A9 merge)
 
 Phase H1 adds the licence ADR that records decision D-1.
