@@ -3,7 +3,12 @@
 //
 // ORC-06 Bridge damping (SPEC-ORC, SPEC-BRG "Small-admittance results"): a flexible string on a
 // pure conductance G decays, in every kept mode, at
-//     sigma = -f0 ln[(1 - Z0 G) / (1 + Z0 G)],      tolerance 0.1% (run: 1e-4).
+//     sigma = -f0 ln[(1 - Z0 G) / (1 + Z0 G)].
+// Tolerance (SPEC-ORC after SI-0021): modes with omega_n dt <= 0.1, 0.1% against the formula (run:
+// 1e-4); every kept mode, the measured decay equals the decay of the exact eigenvalue of the
+// scheme's one-step coupled map within 1e-4 relative, and the deviation from the formula is
+// reported per mode, not bounded (the explicit partitioned order under-estimates the damping by
+// about (omega dt)^2).
 // ORC-07 Unison coupling: two identical strings on one conductance; in-phase motion decays at
 //     4 f0 Z0 G (SPEC's small-admittance value), anti-phase motion only at the intrinsic rate;
 //     tolerance 0.1%.
@@ -28,6 +33,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <complex>
 #include <cstddef>
 #include <map>
 #include <pme/test/tolerance.hpp>
@@ -71,16 +77,22 @@ std::vector<double> asDouble(const std::vector<float>& v) { return {v.begin(), v
 // ORC-06
 // ---------------------------------------------------------------------------------------------
 
-constexpr double kOrc06F1 = 110.0;      // Hz, A2; N = 206 modes at 48 kHz, f_max = +inf
-constexpr double kOrc06Duration = 2.0;  // s
-constexpr double kOrc06D = 1.0e-6;      // m: B below 1e-8
+constexpr double kOrc06F1 = 110.0;  // Hz, A2; N = 206 modes at 48 kHz, f_max = +inf
+// Run length: the record is cut where the formula's amplitude has fallen by e^-7, because the
+// float32 state noise (about 6e-8 of the state) would dominate a longer tail of the fast-decaying
+// modes and bias the fit.
+constexpr double kOrc06DecayExponents = 7.0;
+constexpr double kOrc06MaxDuration = 2.0;  // s
+constexpr double kOrc06D = 1.0e-6;         // m: B below 1e-8
 
 struct ModeResult {
     int n{};
     double omegaDt{};  // omega_n dt: the mode's discretisation parameter
     double sigmaMeasured{};
-    double sigmaExpected{};
-    double error{};  // sigma_measured / sigma_expected - 1
+    double sigmaExpected{};  // the SPEC formula
+    double sigmaExact{};     // decay rate of the exact eigenvalue of the scheme's one-step map
+    double error{};          // sigma_measured / sigma_expected - 1 (deviation from the formula)
+    double errorExact{};     // sigma_measured / sigma_exact - 1
 };
 
 struct Orc06Run {
@@ -89,6 +101,93 @@ struct Orc06Run {
     double f0{};
     std::vector<ModeResult> modes;
 };
+
+// Exact eigenvalues of the one-step coupled map (SI-0021). The scheme of SPEC-OSC "Difference
+// form" and SPEC-BRG "Discrete coupling order" for one string on a conductance G is linear, so a
+// solution q_i^n = Q_i z^n, w^n = W z^n exists iff z is a root of one scalar equation. With
+//   mode i:   u^(n+1) = beta u^n - kappa q^n + gamma f^n,  q^(n+1) = q^n + u^(n+1),  u^n = q^n -
+//   q^(n-1),
+//             f^n = -g delta_tt w^n,  delta_tt w^n = W (z - 1)^2 / (z dt^2) z^n,
+//   bridge:   w^(n+1) = w^n + dt G F^n,  F^n = sum a_i q_i^n - (T/L) w^n,
+// eliminating Q_i = -gamma_i g_i d / D_i(z), D_i(z) = (z - 1) - beta_i (1 - 1/z) + kappa_i gives
+//   h(z) = (z - 1) + dt G T/L + (G / dt) S(z) (z - 1)^2 / z = 0,   S(z) = sum a_i gamma_i g_i /
+//   D_i(z).
+// The root next to the uncoupled mode root (z^2 + (kappa - 1 - beta) z + beta = 0) is found by the
+// secant method; sigma_exact = -ln|z| / dt. beta, kappa, gamma follow SPEC-OSC (SI-0008 form),
+// g_n and a_n = rhoA omegaHat_n^2 g_n follow SPEC-BRG, all from the string's own SPEC-derived
+// omega_n, sigma_n, in float64. Nothing comes from the engine.
+struct SchemeCoeffs {
+    double beta, kappa, gamma, omegaHat2;
+};
+
+SchemeCoeffs schemeCoeffs(double omega, double sigma) {
+    const double dt = 1.0 / kFs;
+    const double x = sigma * dt;
+    const double wd = std::sqrt((omega - sigma) * (omega + sigma));
+    const double sh = std::tanh(x);
+    const double s2 = std::sin(0.5 * wd * dt);
+    const double sx = std::sinh(0.5 * x);
+    const double w2dt2 = 4.0 * (sx * sx + s2 * s2) / std::cosh(x);  // omegaHat^2 dt^2
+    return {(1.0 - sh) / (1.0 + sh), w2dt2 / (1.0 + sh), dt * dt / (1.0 + sh), w2dt2 / (dt * dt)};
+}
+
+struct ExactModes {
+    std::vector<double> sigma;  // decay rates (1/s)
+    std::vector<double> hz;     // damped frequencies (Hz), used as start values of the fits
+};
+
+ExactModes exactConductanceDecay(const brg::OracleString& s, double conductance) {
+    using cplx = std::complex<double>;
+    const double dt = 1.0 / kFs;
+    const std::size_t count = s.modes.omega.size();
+    std::vector<SchemeCoeffs> c(count);
+    std::vector<double> g(count);
+    std::vector<double> a(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        c[i] = schemeCoeffs(s.modes.omega[i], s.modes.sigma[i]);
+        const double kn = static_cast<double>(i + 1) * kPi / brg::kLength;
+        g[i] = std::sqrt(2.0 / brg::kLength) * ((i % 2 == 0) ? 1.0 : -1.0) / kn;  // SPEC-BRG
+        a[i] = s.rhoA * c[i].omegaHat2 * g[i];
+    }
+    const double tOverL = s.tension / brg::kLength;
+    // h_k(z) = D_k(z) h(z): the pole of mode k removed, so the root next to its uncoupled root is
+    // a smooth, well-conditioned zero.
+    const auto hk = [&](std::size_t k, cplx z) {
+        cplx sum = 0.0;
+        for (std::size_t i = 0; i < count; ++i) {
+            if (i != k) {
+                const cplx d = (z - 1.0) - c[i].beta * (1.0 - 1.0 / z) + c[i].kappa;
+                sum += a[i] * c[i].gamma * g[i] / d;
+            }
+        }
+        const cplx coupling = (conductance / dt) * (z - 1.0) * (z - 1.0) / z;
+        const cplx dk = (z - 1.0) - c[k].beta * (1.0 - 1.0 / z) + c[k].kappa;
+        return dk * ((z - 1.0) + dt * conductance * tOverL + coupling * sum) +
+               coupling * a[k] * c[k].gamma * g[k];
+    };
+    ExactModes out;
+    out.sigma.resize(count);
+    out.hz.resize(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        // Uncoupled root: z^2 + (kappa - 1 - beta) z + beta = 0, the one with positive imaginary
+        // part.
+        const double bq = c[i].kappa - 1.0 - c[i].beta;
+        const cplx root = 0.5 * (-bq + std::sqrt(cplx(bq * bq - 4.0 * c[i].beta)));
+        cplx z = root.imag() >= 0.0 ? root : std::conj(root);
+        for (int it = 0; it < 30; ++it) {  // Newton with a central-difference derivative
+            const cplx step = z * 1.0e-6;
+            const cplx deriv = (hk(i, z + step) - hk(i, z - step)) / (2.0 * step);
+            const cplx dz = hk(i, z) / deriv;
+            z -= dz;
+            if (std::abs(dz) < 1.0e-15) {
+                break;
+            }
+        }
+        out.sigma[i] = -std::log(std::abs(z)) / dt;
+        out.hz[i] = std::arg(z) / (2.0 * kPi * dt);
+    }
+    return out;
+}
 
 const Orc06Run& orc06Run(double z0g) {
     static std::map<double, Orc06Run> cache;
@@ -114,20 +213,37 @@ const Orc06Run& orc06Run(double z0g) {
     for (std::size_t i = 0; i < count; ++i) {
         brg::startMode(rig, 0, i, s.modes, kQ0);
     }
-    const auto steps = static_cast<std::size_t>(std::llround(kOrc06Duration * kFs));
+    const double duration =
+        std::min(kOrc06MaxDuration, kOrc06DecayExponents / conductanceDecay(s.f0, z0g));
+    const auto steps = static_cast<std::size_t>(std::llround(duration * kFs));
     const auto series = runAndRecord(rig, count, steps);
 
     const double expected = conductanceDecay(s.f0, z0g);
+    const ExactModes exact = exactConductanceDecay(s, z0g / s.z0);
     for (std::size_t i = 0; i < count; ++i) {
         const int n = static_cast<int>(i) + 1;
         const double fStart = brg::dampedPartialHz(s, n, 0.0);
-        const auto fit = brg::fitOne(asDouble(series[i]), fStart);
+        // Joint fit of the mode and its two neighbours (present in q_n(t) through the coupling),
+        // so that their spectral leakage does not enter the estimate of mode n.
+        std::vector<double> starts;
+        std::size_t self = 0;
+        for (int m = n - 3; m <= n + 3; ++m) {
+            if (m >= 1 && static_cast<std::size_t>(m) <= count) {
+                if (m == n) {
+                    self = starts.size();
+                }
+                starts.push_back(exact.hz[static_cast<std::size_t>(m) - 1]);
+            }
+        }
+        const auto fit = brg::fitJoint(asDouble(series[i]), starts, self);
         ModeResult r;
         r.n = n;
         r.omegaDt = 2.0 * kPi * fStart / kFs;
         r.sigmaMeasured = fit.sigma_per_s;
         r.sigmaExpected = expected;
+        r.sigmaExact = exact.sigma[i];
         r.error = fit.sigma_per_s / expected - 1.0;
+        r.errorExact = fit.sigma_per_s / exact.sigma[i] - 1.0;
         run.modes.push_back(r);
     }
     return cache.emplace(z0g, std::move(run)).first->second;
@@ -150,6 +266,17 @@ void reportOrc06(double z0g, const Orc06Run& run, const char* what) {
         }
     }
     str::report("ORC-06 error profile sigma/sigma_SPEC - 1 at" + profile);
+    // Every mode, eight per line: deviation from the formula (reported, not bounded) and, after
+    // the slash, the deviation from the exact eigenvalue of the scheme.
+    std::string line;
+    for (const auto& m : run.modes) {
+        line += " " + std::to_string(m.n) + ":" + str::sci(m.error) + "/" + str::sci(m.errorExact);
+        if (m.n % 6 == 0 || static_cast<std::size_t>(m.n) == run.modes.size()) {
+            str::report("ORC-06 Z0G " + std::to_string(z0g) +
+                        " per-mode deviation formula/exact:" + line);
+            line.clear();
+        }
+    }
     str::report(std::string("ORC-06 ") + what + " Z0G = " + std::to_string(z0g) +
                 ": B = " + str::sci(run.b) + ", Z0 = " + str::sci(run.z0) +
                 ", sigma = " + str::sci(run.modes.front().sigmaExpected) + " 1/s, " +
@@ -191,21 +318,49 @@ void checkOrc06(double z0g, const char* what, const Pred& include) {
     CHECK(failing == 0);
 }
 
-}  // namespace
+constexpr double kExactTol = 1.0e-4;  // SPEC-ORC ORC-06 (SI-0021): exact one-step map, relative
 
-TEST_CASE("ORC-06 bridge damping every kept mode with Z0G = 0.01") {
-    // SPEC-ORC verbatim: every kept mode, 0.1%.
-    checkOrc06(0.01, "every kept mode", [](const ModeResult&) { return true; });
+/// Every kept mode: the measured decay rate equals the exact eigenvalue decay of the scheme.
+void checkExactMap(double z0g) {
+    const Orc06Run& run = orc06Run(z0g);
+    CHECK(run.b < 1.0e-8);
+    reportOrc06(z0g, run, "every kept mode vs exact map");
+    double worst = 0.0;
+    int worstN = 0;
+    int failing = 0;
+    for (const auto& m : run.modes) {
+        if (!(std::fabs(m.errorExact) <= kExactTol)) {  // also catches NaN
+            ++failing;
+        }
+        if (std::fabs(m.errorExact) > worst) {
+            worst = std::fabs(m.errorExact);
+            worstN = m.n;
+        }
+    }
+    str::report("ORC-06 Z0G " + std::to_string(z0g) +
+                ": worst |sigma_measured / sigma_exact - 1| = " + str::sci(worst) + " at mode " +
+                std::to_string(worstN) + " of " + std::to_string(run.modes.size()));
+    INFO("Z0 G = " << z0g << ": " << failing << " of " << run.modes.size()
+                   << " modes differ from the exact eigenvalue decay by more than " << kExactTol
+                   << "; worst mode " << worstN << " with " << worst);
+    CHECK(failing == 0);
 }
 
-TEST_CASE("ORC-06 bridge damping every kept mode with Z0G = 0.05") {
-    checkOrc06(0.05, "every kept mode", [](const ModeResult&) { return true; });
+}  // namespace
+
+TEST_CASE("ORC-06 bridge damping every kept mode against the exact one-step map with Z0G = 0.01") {
+    // SPEC-ORC ORC-06 (SI-0021): every kept mode within 1e-4 of the exact eigenvalues of the
+    // scheme's one-step coupled map; the deviation from the formula is reported per mode.
+    checkExactMap(0.01);
+}
+
+TEST_CASE("ORC-06 bridge damping every kept mode against the exact one-step map with Z0G = 0.05") {
+    checkExactMap(0.05);
 }
 
 TEST_CASE("ORC-06 bridge damping modes with omega dt up to 0.1 with Z0G = 0.01") {
-    // The part of the SPEC claim that the partitioned scheme of SPEC-BRG meets: the measured error
-    // grows as (omega dt)^2 (see the spec issue reported with A4), reaching 1e-3 at omega dt about
-    // 0.1. Same data as the case above, same 0.1% tolerance.
+    // SPEC-ORC ORC-06 (SI-0021): modes with omega_n dt <= 0.1 against the formula, 0.1%. Above
+    // that the explicit partitioned order under-estimates the damping by about (omega dt)^2.
     checkOrc06(0.01, "omega dt <= 0.1", [](const ModeResult& m) { return m.omegaDt <= 0.1; });
 }
 

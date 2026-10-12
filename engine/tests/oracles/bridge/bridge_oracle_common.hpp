@@ -88,4 +88,15 @@ inline pme::analysis::PartialEstimate fitOne(const std::vector<double>& y, doubl
     return res.partials.at(0);
 }
 
+/// Fits several damped sinusoids jointly and returns the one at `index` of `approxHz`.
+inline pme::analysis::PartialEstimate fitJoint(const std::vector<double>& y,
+                                               const std::vector<double>& approxHz,
+                                               std::size_t index) {
+    pme::analysis::PartialTrackingOptions opt;
+    opt.approx_frequencies_hz = approxHz;
+    opt.envelope_frame_s = 0.0;
+    const auto res = pme::analysis::track_partials(std::span<const double>(y), kFs, opt);
+    return res.partials.at(index);
+}
+
 }  // namespace pme::oracle::brg
