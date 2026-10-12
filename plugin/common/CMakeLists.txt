@@ -23,3 +23,4 @@ set_target_properties(pme_plugin_common PROPERTIES
   POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(tests)
+add_subdirectory(library)  # D5

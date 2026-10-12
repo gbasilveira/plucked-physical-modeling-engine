@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Test code builds JSON text and fixtures inline; each disabled check has a reason.
+InheritParentConfig: true
+Checks: >
+  -cppcoreguidelines-special-member-functions,
+  -hicpp-special-member-functions,
+  -modernize-raw-string-literal
+# special-member-functions: TempDir is a scope guard that is never copied or moved.
+# raw-string-literal: the escaped JSON strings read better next to the C++ expectations.
