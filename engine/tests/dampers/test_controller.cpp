@@ -215,6 +215,60 @@ TEST_CASE("A6-T2 table of key sustain and sostenuto sequences") {
     }
 }
 
+// Reviewer-written sequences, derived by hand from SPEC-DMP and SI-0016 (P0 = 0.35, P1 = 0.65),
+// independent of the implementer's table.
+TEST_CASE("A6-T2 reviewer sequences with sustain sostenuto and KeyDepth interleaved") {
+    const std::vector<Sequence> extra{
+        {"sustain half then latch then release in order",
+         {},
+         {{Op::Sustain, 0, 0.5, {{kA, 0.0, 0.5, 0.5, false}, {kB, 0.0, 0.5, 0.5, false}}},
+          {Op::On, kA, 0.0, {{kA, 1.0, 0.5, 1.0, false}}},
+          {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.5, 1.0, true}, {kB, 0.0, 0.5, 0.5, false}}},
+          {Op::Off, kA, 0.7, {{kA, 1.0, 0.5, 1.0, true}}},
+          {Op::Sustain, 0, 0.0, {{kA, 1.0, 0.0, 1.0, true}, {kB, 0.0, 0.0, 0.0, false}}},
+          {Op::Sostenuto, 0, 0.3, {{kA, 0.0, 0.0, 0.0, false}}}}},
+        {"KeyDepth 0.6 latches at 1 and the later depth is applied on release",
+         {},
+         {{Op::Depth, kA, 0.6, {{kA, 0.6, 0.0, 0.6, false}}},
+          {Op::Sostenuto, 0, 0.5, {{kA, 1.0, 0.0, 1.0, true}}},
+          {Op::Depth, kA, 0.0, {{kA, 1.0, 0.0, 1.0, true}}},
+          {Op::Sustain, 0, 0.65, {{kA, 1.0, 1.0, 1.0, true}}},
+          {Op::Sostenuto, 0, 0.499, {{kA, 0.0, 1.0, 1.0, false}}}}},
+        {"undamped key beside a latched key, key pressed after the latch",
+         {kTop},
+         {{Op::On, kA, 0.0, {}},
+          {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}, {kTop, 1.0, 0.0, 1.0, false}}},
+          {Op::On, kB, 0.0, {{kB, 1.0, 0.0, 1.0, false}}},
+          {Op::Sostenuto, 0, 0.0, {{kA, 1.0, 0.0, 1.0, false}, {kB, 1.0, 0.0, 1.0, false}}},
+          {Op::Off, kB, 0.0, {{kB, 0.0, 0.0, 0.0, false}}}}},
+        {"sostenuto pressed again after the key was released latches nothing",
+         {},
+         {{Op::On, kA, 0.0, {}},
+          {Op::Sostenuto, 0, 1.0, {{kA, 1.0, 0.0, 1.0, true}}},
+          {Op::Sostenuto, 0, 0.0, {{kA, 1.0, 0.0, 1.0, false}}},
+          {Op::Off, kA, 0.0, {{kA, 0.0, 0.0, 0.0, false}}},
+          {Op::Sostenuto, 0, 1.0, {{kA, 0.0, 0.0, 0.0, false}}}}},
+    };
+    for (const Sequence& seq : extra) {
+        CAPTURE(seq.name);
+        DamperController c = makeController(seq.undamped);
+        int index = 0;
+        for (const Step& step : seq.steps) {
+            CAPTURE(index);
+            apply(c, step);
+            for (const Expect& e : step.expect) {
+                CAPTURE(e.key);
+                const KeyLift got = c.lift(e.key);
+                CHECK(got.lKey == doctest::Approx(e.lKey).epsilon(1e-12));
+                CHECK(got.lPed == doctest::Approx(e.lPed).epsilon(1e-12));
+                CHECK(got.l == doctest::Approx(e.l).epsilon(1e-12));
+                CHECK(got.latched == e.latched);
+            }
+            ++index;
+        }
+    }
+}
+
 TEST_CASE("A6-R5 hasDamper false gives e = 0 whatever the inputs") {
     DamperController c = makeController({kTop});
     CHECK_FALSE(c.hasDamper(kTop));
