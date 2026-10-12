@@ -5,6 +5,7 @@
 // geometric tier selector (A7-R6, D-13).
 #include <doctest/doctest.h>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <iostream>
@@ -40,6 +41,7 @@ struct SpyPoint {
     int verticalCalls{0};
     [[nodiscard]] S wV() const { return wv; }
     [[nodiscard]] S wH() const { return wh; }
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): mirrors BridgePoint::addForce
     void addForce(S v, S h) {
         events.emplace_back("addForce");
         fv = v;
@@ -53,6 +55,7 @@ struct SpyPoint {
     void advance() { events.emplace_back("advance"); }
 };
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): mass, frequency
 pme::bridge::ParallelModel massModel(double mass, double hz) {
     pme::bridge::ParallelModel model;
     const double omega = 2.0 * kPi * hz;
@@ -209,14 +212,14 @@ TEST_CASE("A7-R5 the flags enable each part separately and a zero transmission c
         double kappaT;
         bool hookCalled;
     };
-    const Case cases[] = {
+    const std::array<Case, 6> cases{{
         {"nothing", false, 0, 0.026, 0.05, false},
         {"tension only, kappa_T = 0", true, 0, 0.026, 0.0, false},
         {"tension only, kappa_T set", true, 0, 0.026, 0.05, true},
         {"longitudinal only, kappa_L = 0", false, 5, 0.0, 0.05, false},
         {"longitudinal only, kappa_L set", false, 5, 0.026, 0.05, true},
         {"both", true, 5, 0.026, 0.05, true},
-    };
+    }};
     for (const Case& c : cases) {
         CAPTURE(c.name);
         GeometricConfig cfg;

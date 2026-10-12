@@ -127,6 +127,7 @@ inline void build(Built<S>& b, const StringParams& params, const string::Geometr
 /// `xp` (m), split into the polarisations by `theta`:
 /// q_n = sqrt(2/L) amp L sin(k_n xp) / (k_n^2 xp (L - xp)). `qV` and `qH` receive N values each.
 template <class S>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): amp, xp, theta in SPEC-PLK order
 inline void trianglePluck(const StringModes& m, double amp, double xp, double theta, S* qV, S* qH) {
     for (std::size_t i = 0; i < m.k.size(); ++i) {
         const double k = m.k[i];

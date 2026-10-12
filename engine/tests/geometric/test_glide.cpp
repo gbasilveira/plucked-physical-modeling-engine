@@ -56,6 +56,7 @@ std::vector<Window> measure(const std::vector<double>& x, double fs) {
 }
 
 /// Run the segment and return the trace of the vertical mode `mode`.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): test knobs
 std::vector<double> trace(const pme::StringParams& params, bool tension, double a, int samples,
                           const pme::StringModes** modesOut = nullptr) {
     static Built<double> keep;

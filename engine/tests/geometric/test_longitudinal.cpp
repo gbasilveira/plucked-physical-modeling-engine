@@ -316,7 +316,8 @@ TEST_CASE("A7-R3 the pair sum costs O(N) reads per longitudinal mode") {
     const std::size_t nFull = m.k.size();
     REQUIRE(nFull >= 50);
     std::vector<std::size_t> reads;
-    for (const std::size_t n : {nFull / 2, nFull}) {
+    const std::size_t nHalf = nFull / 2;
+    for (const std::size_t n : {nHalf, nFull}) {
         std::vector<Counted> q(n, Counted{1.0e-6});
         std::size_t worstPerMode = 0;
         std::size_t total = 0;
@@ -335,9 +336,8 @@ TEST_CASE("A7-R3 the pair sum costs O(N) reads per longitudinal mode") {
     }
     // Doubling N doubles the total (linear), it does not quadruple it.
     const double ratio = static_cast<double>(reads[1]) / static_cast<double>(reads[0]);
-    CHECK(
-        ratio ==
-        doctest::Approx(static_cast<double>(nFull) / static_cast<double>(nFull / 2)).epsilon(0.1));
+    CHECK(ratio ==
+          doctest::Approx(static_cast<double>(nFull) / static_cast<double>(nHalf)).epsilon(0.1));
 }
 
 TEST_CASE("A7-R3 the longitudinal modes are driven one way and leave the transverse modes alone") {

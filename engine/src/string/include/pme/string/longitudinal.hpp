@@ -142,6 +142,7 @@ template <class S>
 /// quadratic term (the PDE has y_x^2 + z_x^2); `qH` may be empty. Returns float64 (the
 /// engine casts at the hook). `xi` holds the kept longitudinal coordinates. Thread: audio.
 template <class S>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): xi, qV, qH in SPEC-GEO order
 [[nodiscard]] double longitudinalBridgeForce(const LongitudinalModes& lm, std::span<const S> xi,
                                              std::span<const S> qV,
                                              std::span<const S> qH) noexcept {
@@ -162,7 +163,7 @@ class LongitudinalBank {
 public:
     /// Allocate and zero the state; coefficients from `lm`. Thread: non-audio. Allocates: yes.
     void configure(const LongitudinalModes& lm) {
-        const std::size_t n = static_cast<std::size_t>(lm.kept());
+        const auto n = static_cast<std::size_t>(lm.kept());
         beta_.assign(n, S{});
         kappa_.assign(n, S{});
         gamma_.assign(n, S{});

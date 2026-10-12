@@ -34,6 +34,7 @@ struct Run {
 /// Lossless string on a lossless mass-spring bridge (m = 0.3 kg, 300 Hz), tension modulation and
 /// longitudinal modes on, both transmissions off (so the bridge receives no extra work from the
 /// one-way longitudinal field). `amp` is the pluck height.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): test knobs
 Run runEnergy(double amp, int samples, bool usePoint, bool slopeForce = false) {
     GeometricConfig cfg;
     cfg.tensionModulation = true;

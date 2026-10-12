@@ -427,6 +427,7 @@ private:
         return stored_[i];
     }
 
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): q, u of one polarisation
     [[nodiscard]] double polarisationEnergy(const S* q, const S* u, const double* omegaHat2,
                                             double wNext, double dw) const noexcept {
         double sum = 0.0;
