@@ -4,3 +4,4 @@
 add_subdirectory(osc)
 add_subdirectory(string)
 add_subdirectory(nonlinear)
+add_subdirectory(bridge)
