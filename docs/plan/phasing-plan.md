@@ -161,7 +161,7 @@ Engine core line coverage (engine/src excluding platform glue) MUST stay at or a
 
 **Branching and versioning.** Trunk-based: main is always releasable. Phase branches are named phase/\<ID>-\<slug>, and pull-request titles start with the phase ID. Releases follow semantic versioning. The instrument file format has its own schema version with migrations.
 
-**Licensing.** Engine, compiler and plug-in are MIT-licensed unless decision D-1 says otherwise. Every source file carries an SPDX header. A software bill of materials lists every third-party component and licence. Each instrument records the provenance and licence of its data. Instrument names contain no trademarks.
+**Licensing.** Engine, compiler and plug-in are licensed **AGPL-3.0-or-later** (decision D-1, answered 2026-10-12; docs/adr/ADR-licence.md). The repository changes from MIT when task H1-agpl lands, scheduled after A5, A7, A8 and A9 merge; until then files carry the MIT header and the bulk pass converts them. Every source file carries an SPDX header. A software bill of materials lists every third-party component and licence. Each instrument records the provenance and licence of its data. Instrument names contain no trademarks.
 
 ## Track 0 — Foundations
 
@@ -1167,9 +1167,9 @@ These items need a human answer or resource. Where a default exists, the orchest
 
 | ID | Decision or prerequisite | Needed by | Default if unanswered |
 | --- | --- | --- | --- |
-| D-1 | GUI technology and project licence: permissive web UI with MIT throughout, or JUCE with AGPLv3 for the plug-in | P0.1, D4, H1 | Web UI in a native WebView; MIT throughout (the repository LICENSE is already MIT). 2026-10-12: the owner is open to AGPL but has not decided; licence analysis for the owner in [decisions/D-1-licence-analysis.md](decisions/D-1-licence-analysis.md); MIT stays until the owner decides (needed before G5) |
+| D-1 | GUI technology and project licence: permissive web UI with MIT throughout, or JUCE with AGPLv3 for the plug-in | P0.1, D4, H1 | GUI: default in effect (web UI in a native WebView). **Licence answered 2026-10-12 by the owner: AGPL-3.0-or-later** (recorded as "or later" per the analysis' recommendation; the owner may still say "only"); analysis and consequences in [decisions/D-1-licence-analysis.md](decisions/D-1-licence-analysis.md) section 8; record [docs/adr/ADR-licence.md](../adr/ADR-licence.md). Applied by task H1-agpl after A5, A7, A8 and A9 merge; the standalone app is not distributed through the Mac App Store (accepted) |
 | D-2 | Repository host and organisation name | P0.1 | Answered: github.com/gbasilveira/plucked-physical-modeling-engine |
-| D-3 | Product name and frozen plug-in identifiers (CLAP ID, VST3 class IDs, AU manufacturer and subtype codes) | D2 | Internal codename "pme" until answered; blocks D2. 2026-10-12: the owner asked for a suggestion; proposal ready in [decisions/D-3-name-and-identifiers-proposal.md](decisions/D-3-name-and-identifiers-proposal.md), awaiting the owner's choice |
+| D-3 | Brand, product name and frozen plug-in identifiers (CLAP ID, VST3 class IDs, AU manufacturer and subtype codes, LV2 URI, data directory, preset format) | D2 | **Brand answered 2026-10-12 by the owner: Sympathon** (vendor of this and future products). **Product name open**: candidates and the brand-scoped identifier scheme in [decisions/D-3-name-and-identifiers-proposal.md](decisions/D-3-name-and-identifiers-proposal.md). Internal codename "pme" stays. D2 stays blocked until the product name is chosen; H1-R6 trademark search still applies before release |
 | D-4 | Reference machines for performance validation | V2 | One mid-range 2024 laptop per system plus the CI runners |
 | D-5 | Access to a concert grand and measurement equipment | E2 | No access: E2 is skipped and G4 passes without it |
 | D-6 | Listening-test participants and consent process | V4 | Skipped: G5 passes without V4 and the release notes say so |

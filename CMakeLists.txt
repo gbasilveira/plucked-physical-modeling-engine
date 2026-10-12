@@ -124,3 +124,13 @@ target_include_directories(pme_dampers PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/
 target_link_libraries(pme_dampers PUBLIC pme_string pme_nonlinear pme_osc)
 add_subdirectory(engine/tests/dampers)
 # ---- end A6 ----
+
+# ---- A5: hammer and felt ----
+target_include_directories(pme_exciters PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/exciters/include")
+target_link_libraries(pme_exciters PUBLIC pme_bridge pme_nonlinear pme_string pme_osc)
+add_subdirectory(engine/tests/exciters)
+# ---- end A5 ----
+
+# ---- A7: geometric nonlinearity ----
+add_subdirectory(engine/tests/geometric)
+# ---- end A7 ----

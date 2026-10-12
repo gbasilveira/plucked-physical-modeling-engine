@@ -132,9 +132,9 @@ All doctest, one `TEST_CASE` per case. Names start with the ID and a space and c
   - A5 hammer: m\_H = 8 g, K = 4.5 × 10⁹, p = 2.5, μ\_HC = 0, raised-cosine window b\_H = 10 mm at β\_c = 1/8, v\_H = 3 m/s;
   - `S = double`, 48 kHz, drift relaxation off (`SavParams::driftRelaxation = false`), run 0.1 s through the strike and rebound.
 - Total energy: ρA Σ H\_n (SPEC-OSC discrete energy) + m\_H H\_hammer + ½(ψ^(n+½))² − ε₀, computed in your test from the state accessors (or A3's `savEnergy`, whose formula you check against SPEC-NL in a comment).
-- Pass: max |E − E₀|/E₀ ≤ 10⁻¹⁰.
+- Pass (amended 2026-10-12, SI-0027): up to the first ψ reset, max |E − E₀|/E₀ ≤ 10⁻¹⁰; over the whole run, max |E + E\_removed − E₀|/E₀ ≤ 10⁻¹⁰ with E\_removed the cumulative energy the resets removed (A5's `resetEnergyRemoved()`, checked against ½ψ² − ε₀ at each reset in your test), and every reset's removed energy ≥ 0.
 - Second case: a trichord (three strings detuned by 0, +0.5, −0.5 cent, w = 1 each) on the same rigid bridge, same pass criterion.
-- Report (not bounded) a third case: the trichord on a lossless mass–spring bridge (A4 `BridgePoint`, m = 0.3 kg, 300 Hz), with the energy of docs/dev/bridge.md plus the hammer and ψ terms. If its deviation exceeds 10⁻¹⁰, report the value; the planner decides whether it is a spec issue.
+- Report (not bounded) a third case: the trichord on a lossless mass–spring bridge (A4 `BridgePoint`, m = 0.3 kg, 300 Hz), with the energy of docs/dev/bridge.md plus the hammer and ψ terms. If its deviation exceeds 10⁻¹⁰, report the value (2.4 × 10⁻⁵ at 0.3 kg, ∝ 1/m, was measured: SI-0028, open for the owner; keep it reported, not bounded).
 
 **ORC-19.**
 
@@ -146,9 +146,9 @@ All doctest, one `TEST_CASE` per case. Names start with the ID and a space and c
 - Observable: the passive string's own bridge force F\_b,0(t) (vertical, from its modes and w).
 - Qualitative checks:
   1. |F\_b,0| is exactly 0 until the first sample at which the bridge moves (it starts at zero; its own modes start at rest);
-  2. its RMS envelope over 50 ms windows rises during the first 0.5 s (at least 20 dB above the first window's level by 0.5 s, and the envelope's maximum lies after 0.1 s);
+  2. its RMS envelope over 50 ms windows starts at least 60 dB below the struck strings' first window and rises by at least 6 dB above its own first window within 0.5 s, with the envelope's maximum after 0.1 s (amended 2026-10-12, SI-0030: the earlier 20 dB figure had no source and is not met at Z₀|Y| ≈ 0.02; report the measured rise; do not keep a 20 dB expected-failure case). SHOULD, reported and not gating: the rise within the first 100 ms grows monotonically with Z₀|Y| over 0.005, 0.01 and 0.02;
   3. the struck strings' bridge forces start immediately.
-- Regression: write the envelope (window centre times and RMS values, the first 3 s) as a golden feature JSON `engine/tests/oracles/exciters/data/orc19_envelope.json` from your first run, and compare later runs with `pme_golden_compare`-style tolerances: 0.5 dB per window, which allows cross-platform float32 differences. Say in the file header that it is "the first accepted run" pending the orchestrator's acceptance.
+- Regression: write the envelope (window centre times and RMS values, the first 3 s) as a golden feature JSON `engine/tests/oracles/exciters/data/orc19_envelope.json` from your first run, and compare later runs with `pme_golden_compare`-style tolerances: 0.5 dB per window, which allows cross-platform float32 differences. Say in the file header that it is "the first accepted run", provisional until the owner accepts it after a re-run on the merged A5 code (SI-0030).
 - Cite Miranda Valiente et al. (2024) in a comment.
 
 **A5-T2** (engine/tests/oracles/exciters/, label `integration`; reference part compiled only into optimised builds, as A4-T3 does; each case under 60 s in its preset):

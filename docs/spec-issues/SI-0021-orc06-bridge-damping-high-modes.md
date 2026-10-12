@@ -48,3 +48,15 @@ The implicit update alone does **not** fix the high-mode deficit. The error come
 **Owner review needed (numerics):** the matched coupling and the averaged bridge force are the planner's proposal. They are normative in SPEC-BRG "Bridge scheme" but flagged for the owner's review of the numerics before A9 merges. A9 proves the energy balance and runs the tests. If a test fails, A9 stops and files a spec issue.
 
 Implemented by phase **A9**. Cost: one extra dot product (aᵀb) per segment and axis per sample, plus one solve of size 1 or 2 per bridge point; A9 measures it.
+
+## Independent reproduction (A9 test author, 2026-10-12)
+
+The A9 test author built a rig from SPEC alone (SPEC-BRG "Bridge scheme", SPEC-ORC "Bridge damping") and reproduces the matched-coupling numbers above, within the acceptance criterion:
+
+| Case | Measure | Result | Criterion |
+| --- | --- | --- | --- |
+| Z₀G = 0.01 | worst kept mode, exact discrete map vs formula | 7.4 × 10⁻⁵ | ≤ 10⁻³ |
+| Z₀G = 0.05 | every kept mode | 3.71 × 10⁻³ | ≤ 5 × 10⁻³ |
+| Z₀G = 0.05 | modes with ω\_nΔt ≤ 2.4 | 1.9 × 10⁻⁵ | ≤ 10⁻³ |
+
+A9-T5 against P0.5 passes on the same scratch rig: θ = 0, 2.7 × 10⁻³ cent and 1.5 × 10⁻³ relative; θ = 0.3, 9.9 × 10⁻³ cent and 3.1 × 10⁻³ relative. This is the test author's rig, not the A9 implementation, which is still in progress; the owner's numerics review before A9 merges still applies.
