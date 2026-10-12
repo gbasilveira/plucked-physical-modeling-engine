@@ -71,8 +71,7 @@ inline std::vector<StringModes> unison(std::size_t n, bool lossless, double fs =
     std::vector<StringModes> out;
     for (std::size_t i = 0; i < n; ++i) {
         out.push_back(compile(
-            plainSteel(0.65, 262.0 * (1.0 + 4.0e-4 * static_cast<double>(i)), lossless), fMax,
-            fs));
+            plainSteel(0.65, 262.0 * (1.0 + 4.0e-4 * static_cast<double>(i)), lossless), fMax, fs));
     }
     return out;
 }

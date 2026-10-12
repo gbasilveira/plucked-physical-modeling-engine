@@ -16,7 +16,8 @@ using namespace pme;
 using namespace pme::exciters;
 using namespace pme::exciters_test;
 
-TEST_CASE("A5-R4 the hammer leaves after rebound and the strings then equal a free run bit for bit") {
+TEST_CASE(
+    "A5-R4 the hammer leaves after rebound and the strings then equal a free run bit for bit") {
     const std::vector<StringModes> modes = unison(1, false);
     StruckNote<double> note;
     REQUIRE(note.configure(describe(modes, pianoHammer()), kFs, nullptr) == Status::Ok);
@@ -51,8 +52,8 @@ TEST_CASE("A5-R4 the hammer leaves after rebound and the strings then equal a fr
     }
     for (int s = 0; s < 600; ++s) {
         note.step();
-        osc::stepModes<double, double>(q.data(), u.data(), beta.data(), kappa.data(),
-                                       gamma.data(), force.data(), n);
+        osc::stepModes<double, double>(q.data(), u.data(), beta.data(), kappa.data(), gamma.data(),
+                                       force.data(), n);
     }
     for (std::size_t i = 0; i < n; ++i) {
         CHECK(note.segment().q()[i] == q[i]);  // bit-identical

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Covers: A5-T1
-// A5-T1: contact time of an elastic felt against a rigid wall scales as v^((1-p)/(1+p)), matches the
-// SPEC-HAM closed form, and the hammer rebounds at -v.
+// A5-T1: contact time of an elastic felt against a rigid wall scales as v^((1-p)/(1+p)), matches
+// the SPEC-HAM closed form, and the hammer rebounds at -v.
 #include <doctest/doctest.h>
 
 #include <array>
@@ -26,6 +26,7 @@ struct Impact {
 };
 
 // A free mass launched at v against RigidFeltPotential: m = 8 g, K = 4.5e9 N/m^p, mu_HC = 0.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): fs, p, v
 Impact runRigidImpact(double fs, double p, double v) {
     const double dt = 1.0 / fs;
     nl::SavSegment<double> seg;
@@ -81,8 +82,8 @@ TEST_CASE("A5-T1 contact time scales as v^((1-p)/(1+p)) within 2 percent at 48 a
             const Impact r = runRigidImpact(c.fs, c.p, v);
             const double ratio = r.contactTime / ref.contactTime / std::pow(v, exponent);
             MESSAGE("fs " << c.fs << " p " << c.p << " v " << v << " t_c " << sci(r.contactTime, 6)
-                          << " s ratio-1 " << sci(ratio - 1.0)
-                          << " rebound/v+1 " << sci(r.reboundSpeed / v + 1.0));
+                          << " s ratio-1 " << sci(ratio - 1.0) << " rebound/v+1 "
+                          << sci(r.reboundSpeed / v + 1.0));
             CHECK(std::abs(ratio - 1.0) <= 0.02);
             CHECK(r.reboundSpeed / (-v) == doctest::Approx(1.0).epsilon(1e-3));  // rebounds at -v
         }

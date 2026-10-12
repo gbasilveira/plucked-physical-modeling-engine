@@ -22,20 +22,18 @@ constexpr int kSamplesPerCall = 64;
 
 struct Fixture {
     std::vector<StringModes> modes;
+    bool contactMode;
     bridge::BridgePoint<float> point;
     StruckNote<float> note;
-    double coordinates{0.0};
 
     // `contact`: hold the hammer in contact (it is re-launched when it has left); otherwise the
-    // hammer is never launched and the segment takes the skip path.
-    Fixture(bool contact, bool withBridge) {
+    // hammer has left and the segment takes the skip path.
+    Fixture(bool contact, bool withBridge) : contactMode(contact) {
         modes = unison(3, false, kFs, 16000.0);
         // fMax 16 kHz keeps 61 modes per string: 3 x 61 + 1 = 184 coordinates.
         StruckNoteDesc d = describe(modes, pianoHammer());
         static_cast<void>(configureBridge(point));
         static_cast<void>(note.configure(d, kFs, withBridge ? &point : nullptr));
-        coordinates = static_cast<double>(note.segment().size());
-        contactMode = contact;
         static_cast<void>(note.launch(0.6, 0.0));
         if (contact) {
             for (int i = 0; i < 40; ++i) {
@@ -57,8 +55,6 @@ struct Fixture {
         }
         pme::bench::do_not_optimize(note.segment().q()[0]);
     }
-
-    bool contactMode{false};
 };
 
 }  // namespace

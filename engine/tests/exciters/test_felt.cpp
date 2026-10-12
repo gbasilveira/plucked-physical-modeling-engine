@@ -40,6 +40,7 @@ std::size_t rankOf(double v, std::span<const nl::Dashpot<double>> dashpots) {
 }
 
 // Strike a note with `nu` and walk `steps` samples, checking the energy balance of every step.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): nu, shift
 Balance walk(StruckNote<double>& note, double nu, double shift, int steps) {
     Balance b;
     REQUIRE(note.launch(nu, shift) == Status::Ok);
@@ -163,8 +164,9 @@ TEST_CASE("A5-R3 Stulov hereditary balance including the work of the explicit fo
                           << " (E_end + released - E_0)/E_0 = "
                           << sci((b.eEnd + note.releasedEnergy() - b.e0) / b.e0, 6));
         CHECK(b.resetLoss >= -1e-14);  // SPEC-NL: the reset only removes energy
-        CHECK(std::abs((b.eEnd + note.releasedEnergy() - b.e0) / b.e0 - b.totalWork + b.resetLoss) <=
-              1e-12);
+        CHECK(note.resetEnergyRemoved() / b.e0 == doctest::Approx(b.resetLoss).epsilon(1e-6));
+        CHECK(std::abs((b.eEnd + note.releasedEnergy() - b.e0) / b.e0 - b.totalWork +
+                       b.resetLoss) <= 1e-12);
         CHECK(b.contactSteps > 10);
         CHECK(b.worstError <= 1e-12);
         CHECK(std::isfinite(b.eEnd));

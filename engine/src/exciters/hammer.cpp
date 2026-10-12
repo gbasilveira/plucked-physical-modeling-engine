@@ -100,8 +100,9 @@ Status strikeMap(const HammerParams& hammer, const UnaCordaParams& una, SoftPeda
     return Status::Ok;
 }
 
-Status launchVelocity(double nu, double shift, const HammerParams& hammer, const UnaCordaParams& una,
-                      SoftPedal pedal, double& vH) noexcept {
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): nu then shift, as SPEC-HAM launchHammer
+Status launchVelocity(double nu, double shift, const HammerParams& hammer,
+                      const UnaCordaParams& una, SoftPedal pedal, double& vH) noexcept {
     if (!std::isfinite(shift)) {
         return Status::InvalidArgument;
     }
@@ -120,6 +121,7 @@ Status launchVelocity(double nu, double shift, const HammerParams& hammer, const
 // ---- A5-R2: potential ------------------------------------------------------------------------
 
 template <class S>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): lever then approach sign
 Status HammerPotential<S>::configure(std::vector<StringSlice> strings, std::size_t hammerIndex,
                                      double lever, double approachSign) {
     if (strings.empty() || strings.size() > kMaxStruckStrings || !std::isfinite(lever) ||
@@ -149,7 +151,7 @@ Status HammerPotential<S>::configure(std::vector<StringSlice> strings, std::size
 template <class S>
 double HammerPotential<S>::headPosition(std::span<const S> z) const noexcept {
     // SPEC-HAM Flexible shank: x_H = X + lever Y (lever = 0 for a rigid hammer).
-    double x = static_cast<double>(z[hammerIndex_]);
+    auto x = static_cast<double>(z[hammerIndex_]);
     if (lever_ != 0.0) {
         x += lever_ * static_cast<double>(z[hammerIndex_ + 1]);
     }
@@ -480,7 +482,8 @@ Status StruckNote<S>::configure(const StruckNoteDesc& desc, double fs,
     if (shank) {
         const ShankParams& sp = *desc.shank;
         // SPEC-HAM Flexible shank: normal coordinates of the head-shank pair. X = (m_H x_H + m_S
-        // x_S) / M (free, mass M), Y = x_H - x_S (internal, reduced mass mu); x_H = X + (m_S / M) Y.
+        // x_S) / M (free, mass M), Y = x_H - x_S (internal, reduced mass mu); x_H = X + (m_S / M)
+        // Y.
         mRigid = mHead + sp.mass;
         mInternal = mHead * sp.mass / mRigid;
         lever = sp.mass / mRigid;
@@ -510,7 +513,8 @@ Status StruckNote<S>::configure(const StruckNoteDesc& desc, double fs,
             c.gamma = dt * dt / denom;
             c.omegaHat2 = m.oscV[i].omegaHat2;
             c.sigmaHat = m.oscV[i].sigmaHat;
-            if (const Status e = seg.setCoordinate(strings[s].off + i, c, m.rhoA); e != Status::Ok) {
+            if (const Status e = seg.setCoordinate(strings[s].off + i, c, m.rhoA);
+                e != Status::Ok) {
                 return e;
             }
         }
@@ -525,7 +529,8 @@ Status StruckNote<S>::configure(const StruckNoteDesc& desc, double fs,
         }
     }
     HammerPotential<S> potential;
-    if (const Status e = potential.configure(std::move(slices), totalModes, lever, desc.approachSign);
+    if (const Status e =
+            potential.configure(std::move(slices), totalModes, lever, desc.approachSign);
         e != Status::Ok) {
         return e;
     }
@@ -563,6 +568,7 @@ Status StruckNote<S>::configure(const StruckNoteDesc& desc, double fs,
     peak_ = 0.0;
     sample_ = 0;
     releasedEnergy_ = 0.0;
+    resetEnergyRemoved_ = 0.0;
     diag_ = HammerDiagnostics{};
     return Status::Ok;
 }
@@ -605,7 +611,7 @@ double StruckNote<S>::headPosition() const noexcept {
 
 template <class S>
 double StruckNote<S>::headVelocity() const noexcept {
-    double u = static_cast<double>(seg_.u()[hammerIdx_]);
+    auto u = static_cast<double>(seg_.u()[hammerIdx_]);
     if (hasShank_) {
         u += shankLever_ * static_cast<double>(seg_.u()[hammerIdx_ + 1]);
     }
@@ -712,10 +718,10 @@ void StruckNote<S>::release() noexcept {
     S* const u = seg_.u();
     // The energy the hammer carries away (kinetic energy and the shank's internal energy).
     for (std::size_t i = hammerIdx_; i < seg_.size(); ++i) {
-        releasedEnergy_ +=
-            seg_.mass()[i] *
-            osc::modeEnergy(seg_.omegaHat2()[i], static_cast<double>(seg_.qPrev()[i]),
-                            static_cast<double>(q[i]), static_cast<double>(u[i]), dt_);
+        releasedEnergy_ += seg_.mass()[i] * osc::modeEnergy(seg_.omegaHat2()[i],
+                                                            static_cast<double>(seg_.qPrev()[i]),
+                                                            static_cast<double>(q[i]),
+                                                            static_cast<double>(u[i]), dt_);
     }
     u[hammerIdx_] = S{};
     if (hasShank_) {
@@ -740,10 +746,10 @@ void StruckNote<S>::step() noexcept {
         const S wv = bridge_->wV();
         const S wh = bridge_->wH();
         for (const String& st : strings_) {
-            bridge_->addForce(bridge::bridgeForce<S, S>(std::span<const S>(st.aV), st.tOverL,
-                                                        seg_.q() + st.off, wv),
-                              bridge::bridgeForce<S, S>(std::span<const S>(st.aH), st.tOverL,
-                                                        st.qH.data(), wh));
+            bridge_->addForce(
+                bridge::bridgeForce<S, S>(std::span<const S>(st.aV), st.tOverL, seg_.q() + st.off,
+                                          wv),
+                bridge::bridgeForce<S, S>(std::span<const S>(st.aH), st.tOverL, st.qH.data(), wh));
         }
         for (const auto& p : passive_) {
             bridge_->addForce(p.forceV(wv), p.forceH(wh));
@@ -775,8 +781,14 @@ void StruckNote<S>::step() noexcept {
     // SPEC-EXEC step 6: the low-rank solve over the vertical modes of every struck string and the
     // hammer (SPEC-NL: one shared psi).
     const std::array<const nl::Potential<S>*, 1> pots{&potential_};
+    const double psiPre = seg_.psi();
+    const std::uint32_t resetsPre = seg_.counters().resets;
     nl::savStep<S>(seg_, pots, felt_.dashpots(), std::span<const S>(force_));
 
+    if (seg_.counters().resets != resetsPre) {
+        // SPEC-NL drift control 1: on the reset step V = 0, so psi only changed by the reset.
+        resetEnergyRemoved_ += 0.5 * (psiPre * psiPre - seg_.psi() * seg_.psi());
+    }
     if (inFlight_) {
         if (vNow > 0.0) {
             // Force actually applied to x_H: g_H (psi^{n+1/2} + psi^{n-1/2}) / 2 (SPEC-NL).

@@ -37,7 +37,8 @@ namespace pme::exciters {
 inline constexpr std::size_t kMaxStruckStrings = nl::kMaxDashpots;
 
 /// Flexible shank (SPEC-HAM "Flexible shank", ICR-0002): the head of mass `HammerParams::mass`
-/// is joined to a shank mass by a linear spring and dashpot. Absent (`std::nullopt`) = rigid hammer.
+/// is joined to a shank mass by a linear spring and dashpot. Absent (`std::nullopt`) = rigid
+/// hammer.
 struct ShankParams {
     double mass{};       ///< Shank mass m_S (kg), > 0.
     double frequency{};  ///< Internal-mode frequency f_S (Hz), > 0.
@@ -64,10 +65,10 @@ enum class SoftPedal : std::uint8_t {
 
 /// Per-string strike weights and felt values of one strike (SPEC-HAM "Una corda (grand)").
 struct StrikeMap {
-    std::size_t strings{0};              ///< Number of struck strings (1 to 3).
-    std::array<double, 3> weight{};      ///< w_s in [0, 1].
-    std::array<double, 3> stiffness{};   ///< K_s(s) in N/m^p.
-    std::array<double, 3> exponent{};    ///< p_s(s).
+    std::size_t strings{0};             ///< Number of struck strings (1 to 3).
+    std::array<double, 3> weight{};     ///< w_s in [0, 1].
+    std::array<double, 3> stiffness{};  ///< K_s(s) in N/m^p.
+    std::array<double, 3> exponent{};   ///< p_s(s).
 };
 
 /// Strike map for `nStrings` (1 to 3) at shift `shift` (clamped to [0, 1]; not finite is an
@@ -81,6 +82,7 @@ struct StrikeMap {
 
 /// v_H of a launch: the velocity map times (1 - s rho_up) for the upright pedal (SPEC-HAM "Soft
 /// pedal (upright)"). Errors as `hammerVelocity`. Thread: any. Allocates: no.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): nu then shift, as SPEC-HAM launchHammer
 [[nodiscard]] Status launchVelocity(double nu, double shift, const HammerParams& hammer,
                                     const UnaCordaParams& una, SoftPedal pedal,
                                     double& vH) noexcept;
@@ -113,6 +115,7 @@ public:
     /// lever Y, or 0 for a rigid hammer; `approachSign` is s_E (+1 or -1). `InvalidArgument` for 0
     /// or more than 3 strings, empty or non-finite shape vectors, or a bad sign. The strike map
     /// starts with all weights 0 and the potential inactive. Thread: non-audio. Allocates: yes.
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): lever then approach sign
     [[nodiscard]] Status configure(std::vector<StringSlice> strings, std::size_t hammerIndex,
                                    double lever, double approachSign);
 
@@ -157,6 +160,7 @@ private:
 template <class S>
 class RigidFeltPotential final : public nl::Potential<S> {
 public:
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): K, p, index, target as SPEC-HAM
     RigidFeltPotential(double k, double p, std::size_t index, double target = 0.0) noexcept
         : k_(k), p_(p), index_(index), target_(target) {}
     [[nodiscard]] double value(std::span<const S> z) const noexcept override;
@@ -317,6 +321,10 @@ public:
     /// Energy carried away by released hammers so far (J, float64): their kinetic energy and the
     /// shank's internal energy at the release (SPEC-HAM "Release and check").
     [[nodiscard]] double releasedEnergy() const noexcept { return releasedEnergy_; }
+    /// Energy removed so far by the reset-at-separation rule (SPEC-NL drift control 1, MUST), J,
+    /// float64: sum of (psi_before^2 - psi_after^2) / 2 over the reset steps. Add it back to
+    /// check conservation across a separation.
+    [[nodiscard]] double resetEnergyRemoved() const noexcept { return resetEnergyRemoved_; }
     /// Conserved energy of the SAV segment (strings' vertical modes, hammer, psi), float64.
     [[nodiscard]] double energy() const noexcept { return nl::savEnergy(seg_); }
 
@@ -360,6 +368,7 @@ private:
     double peak_{0.0};
     std::uint64_t sample_{0};
     double releasedEnergy_{0.0};
+    double resetEnergyRemoved_{0.0};
     HammerDiagnostics diag_{};
 };
 

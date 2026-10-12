@@ -36,9 +36,9 @@ TEST_CASE("A5-R1 velocity map follows the SPEC-HAM formula at nu = 0.01 0.5 and 
 
 TEST_CASE("A5-R1 invalid key velocity returns InvalidArgument and leaves the output unchanged") {
     const HammerParams h = pianoHammer();
-    for (const double nu : {0.0, -0.5, std::numeric_limits<double>::quiet_NaN(),
-                            std::numeric_limits<double>::infinity(),
-                            -std::numeric_limits<double>::infinity()}) {
+    for (const double nu :
+         {0.0, -0.5, std::numeric_limits<double>::quiet_NaN(),
+          std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()}) {
         double v = 123.0;
         CHECK(hammerVelocity(nu, h, v) == Status::InvalidArgument);
         CHECK(v == 123.0);

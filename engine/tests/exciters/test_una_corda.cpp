@@ -89,7 +89,8 @@ TEST_CASE("A5-T3 the leaving string is string 0 or 2 of a trichord and none for 
           Status::InvalidArgument);
 }
 
-TEST_CASE("A5-T3 the upright soft pedal scales v_H by 1 - s rho_up and leaves the strike unchanged") {
+TEST_CASE(
+    "A5-T3 the upright soft pedal scales v_H by 1 - s rho_up and leaves the strike unchanged") {
     HammerParams h = pianoHammer();
     UnaCordaParams u;
     u.rhoUpright = 0.3;
@@ -122,7 +123,8 @@ TEST_CASE("A5-R5 the smoothstep is the cubic 3t^2 - 2t^3 between s0 and s1") {
     CHECK(smoothstep(0.45, 0.3, 0.9) == doctest::Approx(0.15625).epsilon(1e-15));
 }
 
-TEST_CASE("A5-R5 the strike map follows the shift per sample and a string with weight zero is unloaded") {
+TEST_CASE(
+    "A5-R5 the strike map follows the shift per sample and a string with weight zero is unloaded") {
     const std::vector<StringModes> modes = unison(3, true);
     StruckNote<double> note;
     REQUIRE(note.configure(describe(modes, pianoHammer()), kFs, nullptr) == Status::Ok);

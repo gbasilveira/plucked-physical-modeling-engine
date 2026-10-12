@@ -45,9 +45,9 @@ TEST_CASE("A5-R6 the shank normal modes reproduce the two-mass free response") {
         y.push_back(note.segment().q()[hi + 1]);
         // Head position against the analytic two-mass solution (u = 0 at the start means the
         // discrete cosine is shifted by half a sample).
-        const double expect = mHead / mTot * displ +
-                              sp.mass / mTot * displ * std::cos(theta * (n + 0.5)) /
-                                  std::cos(0.5 * theta);
+        const double expect = mHead / mTot * displ + sp.mass / mTot * displ *
+                                                         std::cos(theta * (n + 0.5)) /
+                                                         std::cos(0.5 * theta);
         worst = std::max(worst, std::abs(note.headPosition() - expect) / displ);
         note.step();
     }

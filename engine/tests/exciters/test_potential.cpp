@@ -28,6 +28,7 @@ struct Rig {
 };
 
 // Random geometry: `ns` strings of 8 modes, hammer coordinate(s) after them.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): ns, sE
 Rig makeRig(std::size_t ns, double sE, bool shank, std::uint64_t seed) {
     std::mt19937_64 eng(seed);
     std::uniform_real_distribution<double> uni(-1.0, 1.0);
@@ -79,7 +80,8 @@ void checkGradient(Rig& r) {
         zm[i] -= h;
         const double fd = (r.pot.value(zp) - r.pot.value(zm)) / (2.0 * h);
         const double scale = std::max(std::abs(fd), std::abs(grad[i]));
-        INFO("coordinate " << i << " analytic " << sci(grad[i]) << " finite difference " << sci(fd));
+        INFO("coordinate " << i << " analytic " << sci(grad[i]) << " finite difference "
+                           << sci(fd));
         CHECK(std::abs(grad[i] - fd) <= 1e-6 * std::max(scale, 1e-3));
     }
 }
@@ -146,8 +148,8 @@ TEST_CASE("A5-R2 a string with weight zero adds no potential") {
     r.pot.setStrikeMap(map);
     const double d1 = r.pot.penetration(r.z, 1);
     REQUIRE(d1 > 0.0);
-    const double expected =
-        map.weight[1] * map.stiffness[1] / (map.exponent[1] + 1.0) * std::pow(d1, map.exponent[1] + 1.0);
+    const double expected = map.weight[1] * map.stiffness[1] / (map.exponent[1] + 1.0) *
+                            std::pow(d1, map.exponent[1] + 1.0);
     CHECK(r.pot.value(r.z) == doctest::Approx(expected).epsilon(1e-13));
     std::vector<double> grad(r.nz, 0.0);
     r.pot.gradient(r.z, grad);
