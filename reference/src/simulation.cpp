@@ -339,7 +339,7 @@ void Sim::build_interface() {
     perp_index_.assign(nb, std::numeric_limits<std::size_t>::max());
     if (has_plate_) {
         plate_c_ = derive_plate(sc_.plate->params);
-        plate_op_ = build_plate_operator(plate_c_, sc_.plate->nx, sc_.plate->ny);
+        plate_op_ = build_plate_operator(plate_c_, sc_.plate->params.ribs, sc_.plate->nx, sc_.plate->ny);
         plate_dofs_ = plate_op_.grid.count;
         nq_ = plate_dofs_ + nb;
     } else {
@@ -367,7 +367,7 @@ void Sim::build_interface() {
                  ++j) {
                 kq_.at(i, j) = plate_op_.stiffness.get(i, j);
             }
-            mq_.at(i, i) = plate_op_.mass;
+            mq_.at(i, i) = plate_op_.node_mass[i];
         }
         // Rayleigh loss sigma(omega) = b1 + b3 omega^2 -> C = 2 b1 M + 2 b3 K.
         double b1 = sc_.plate->loss_b1;

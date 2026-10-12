@@ -167,7 +167,23 @@
         "f_max": { "type": "number", "minimum": 0, "default": 0 },
         "outline": { "type": "array", "maxItems": 0, "description": "Not modelled: must be empty." },
         "thickness_grid": { "type": "null", "description": "Not modelled." },
-        "ribs": { "type": "array", "maxItems": 0, "description": "Not modelled: must be empty." },
+        "ribs": {
+          "type": "array",
+          "description": "Axis-parallel Euler-Bernoulli beams on the mid-surface (z = 0); the line and end points must fall on grid nodes of grid {nx, ny}. Torsion, rotary inertia, the beam/plate mid-surface offset and moisture dependence are neglected.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["start", "end", "width", "height", "youngs", "density"],
+            "properties": {
+              "start": { "$ref": "#/$defs/point" },
+              "end": { "$ref": "#/$defs/point" },
+              "width": { "type": "number", "exclusiveMinimum": 0, "description": "m" },
+              "height": { "type": "number", "exclusiveMinimum": 0, "description": "m, normal to the plate" },
+              "youngs": { "type": "number", "exclusiveMinimum": 0, "description": "Pa, along the beam" },
+              "density": { "type": "number", "exclusiveMinimum": 0, "description": "kg/m^3" }
+            }
+          }
+        },
         "bridges": { "type": "array", "maxItems": 0, "description": "Not modelled: must be empty." },
         "grid": {
           "type": "object",

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "name": "ribbed-plate",
+  "fs": 12000,
+  "oversampling": 1,
+  "duration": 0.1,
+  "plate": {
+    "length_x": 0.6, "length_y": 0.4, "thickness": 0.003,
+    "youngs_l": 1.0e10, "youngs_r": 5.0e8, "shear_lr": 6.0e8,
+    "poisson_lr": 0.37, "poisson_rl": 0.0185, "density": 400,
+    "grid": { "nx": 24, "ny": 16 },
+    "ribs": [
+      { "start": { "x": 0.15, "y": 0.0 }, "end": { "x": 0.15, "y": 0.4 },
+        "width": 0.02, "height": 0.015, "youngs": 1.0e10, "density": 400 },
+      { "start": { "x": 0.30, "y": 0.0 }, "end": { "x": 0.30, "y": 0.4 },
+        "width": 0.02, "height": 0.015, "youngs": 1.0e10, "density": 400 },
+      { "start": { "x": 0.45, "y": 0.0 }, "end": { "x": 0.45, "y": 0.4 },
+        "width": 0.02, "height": 0.015, "youngs": 1.0e10, "density": 400 }
+    ],
+    "initial_displacement": { "x": 0.21, "y": 0.13, "amplitude": 0.001 }
+  },
+  "observations": [
+    { "name": "w", "kind": "plate_displacement", "point": { "x": 0.43, "y": 0.27 } }
+  ]
+}

@@ -5,6 +5,8 @@
 //                            [--energy out.json] [--normalise]
 //   pme_reference_cli refine <scenario.json> --grids N1,N2,N3 --quantity partial-frequencies
 //                            [--partials K] [--json out.json]
+//   pme_reference_cli plate-modes <scenario.json> --count N [--points x1,y1,x2,y2,...]
+//                            [--grid nx,ny]
 //
 // Exit status: 0 success, 1 a rendering or refinement error (message on stderr, names the offending
 // field), 2 usage error.
@@ -15,13 +17,16 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "pme/analysis/golden.hpp"
 #include "pme/analysis/wav.hpp"
 #include "pme/ref/common.hpp"
 #include "pme/ref/features.hpp"
+#include "pme/ref/plate.hpp"
 #include "pme/ref/refine.hpp"
 #include "pme/ref/scenario.hpp"
 
@@ -34,6 +39,8 @@ void usage(std::ostream& os) {
        << "  pme_reference_cli refine <scenario.json> --grids N1,N2,N3 --quantity "
           "partial-frequencies\n"
        << "                           [--partials K] [--json out.json]\n"
+       << "  pme_reference_cli plate-modes <scenario.json> --count N [--points x1,y1,x2,y2,...]\n"
+       << "                           [--grid nx,ny]\n"
        << "  pme_reference_cli --version\n";
 }
 
@@ -193,6 +200,84 @@ int refine(int argc, char** argv) {
     return 0;
 }
 
+// Prints the JSON of plate_modes() for the scenario's plate (grid, ribs and all).
+int plate_modes_command(int argc, char** argv) {
+    std::string scenario_path;
+    int count = 0;
+    std::vector<std::pair<double, double>> points;
+    int nx = 0;
+    int ny = 0;
+    for (int i = 2; i < argc; ++i) {
+        const std::string a = argv[i];
+        auto value = [&]() -> std::string {
+            if (i + 1 >= argc) {
+                throw pme::ref::RefError(a + " needs a value");
+            }
+            return argv[++i];
+        };
+        if (a == "--count") {
+            count = std::atoi(value().c_str());
+        } else if (a == "--points" || a == "--grid") {
+            const std::string text = value();
+            std::vector<double> nums;
+            std::stringstream ss(text);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                try {
+                    std::size_t used = 0;
+                    nums.push_back(std::stod(item, &used));
+                    if (used != item.size()) {
+                        throw std::invalid_argument(item);
+                    }
+                } catch (const std::exception&) {
+                    throw pme::ref::RefError(a + ": '" + item + "' is not a number");
+                }
+            }
+            if (a == "--points") {
+                if (nums.size() % 2 != 0) {
+                    throw pme::ref::RefError("--points: expected x,y pairs");
+                }
+                for (std::size_t k = 0; k < nums.size(); k += 2) {
+                    points.emplace_back(nums[k], nums[k + 1]);
+                }
+            } else {
+                if (nums.size() != 2) {
+                    throw pme::ref::RefError("--grid: expected nx,ny");
+                }
+                nx = static_cast<int>(nums[0]);
+                ny = static_cast<int>(nums[1]);
+            }
+        } else if (!a.empty() && a[0] == '-') {
+            std::cerr << "pme_reference_cli: unknown option " << a << '\n';
+            usage(std::cerr);
+            return 2;
+        } else if (scenario_path.empty()) {
+            scenario_path = a;
+        } else {
+            usage(std::cerr);
+            return 2;
+        }
+    }
+    if (scenario_path.empty() || count < 1) {
+        usage(std::cerr);
+        return 2;
+    }
+    const pme::ref::Scenario sc = pme::ref::read_scenario_file(scenario_path);
+    if (!sc.plate.has_value()) {
+        throw pme::ref::RefError("scenario.plate: plate-modes needs a plate");
+    }
+    const pme::ref::PlateSpec& ps = *sc.plate;
+    if (nx == 0) {
+        nx = ps.nx;
+        ny = ps.ny;
+    }
+    const pme::ref::PlateConstants pc = pme::ref::derive_plate(ps.params);
+    const pme::ref::PlateModes modes =
+        pme::ref::plate_modes(pc, ps.params.ribs, nx, ny, count, points);
+    std::cout << pme::ref::plate_modes_to_json(modes, nx, ny, points) << '\n';
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -211,6 +296,9 @@ int main(int argc, char** argv) {
         }
         if (cmd == "refine") {
             return refine(argc, argv);
+        }
+        if (cmd == "plate-modes") {
+            return plate_modes_command(argc, argv);
         }
         usage(std::cerr);
         return 2;
