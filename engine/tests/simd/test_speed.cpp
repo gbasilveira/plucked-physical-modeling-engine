@@ -32,7 +32,8 @@ struct Bank {
 
 // Median over `reps` repetitions of the time of one call, each repetition looping for ~10 ms.
 template <class F>
-double medianNsPerCall(F&& call, int reps = 11, double repMs = 10.0) {
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): repetitions then milliseconds
+double medianNsPerCall(F call, int reps = 11, double repMs = 10.0) {
     for (int i = 0; i < 200; ++i) {  // warm-up
         call();
     }
@@ -66,7 +67,7 @@ TEST_CASE("A8-T3 AVX2 mode-bank update is at least 4x the scalar throughput on 1
                                         bank.co.kappa.data(), bank.co.gamma.data(),
                                         bank.force.data(), n);
     });
-    std::printf("[simd] A8-T3 scalar reference: %.1f ns per 1024-mode step\n", scalarNs);
+    simdtest::log("[simd] A8-T3 scalar reference: ", scalarNs, " ns per 1024-mode step");
 
     double bestRatio = 0.0;
     double avx2Ratio = 0.0;
@@ -80,7 +81,7 @@ TEST_CASE("A8-T3 AVX2 mode-bank update is at least 4x the scalar throughput on 1
         });
         const double ratio = scalarNs / ns;
         const char* name = pme::simd::testTargetName(t);
-        std::printf("[simd] A8-T3 %s: %.1f ns per step, ratio %.2f\n", name, ns, ratio);
+        simdtest::log("[simd] A8-T3 ", name, ": ", ns, " ns per step, ratio ", ratio);
         if (ratio > bestRatio) {
             bestRatio = ratio;
             bestName = name;
@@ -91,7 +92,7 @@ TEST_CASE("A8-T3 AVX2 mode-bank update is at least 4x the scalar throughput on 1
         }
     }
     pme::simd::testResetTarget();
-    std::printf("[simd] A8-T3 best target %s, ratio %.2f\n", bestName, bestRatio);
+    simdtest::log("[simd] A8-T3 best target ", bestName, ", ratio ", bestRatio);
 
     if (!haveAvx2) {
         MESSAGE("AVX2 not available; best target " << bestName << " ratio " << bestRatio);

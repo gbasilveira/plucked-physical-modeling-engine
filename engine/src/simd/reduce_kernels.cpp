@@ -12,18 +12,18 @@
 // the result does not depend on N. MulAdd is fused on AVX2, AVX-512 and arm64 and split elsewhere
 // (ADR-0001); targets differ only through that contraction.
 #include "highway_config.hpp"  // first: defines HWY_DISABLED_TARGETS
-
 #include "pme/simd/canonical.hpp"
 #include "pme/simd/kernels.hpp"
 
 // clang-format off
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "../reduce_kernels.cpp"  // relative to engine/src/simd/include
+#define HWY_TARGET_INCLUDE "../reduce_kernels.cpp"  // NOLINT(cppcoreguidelines-macro-usage) relative to engine/src/simd/include
 #include "hwy/foreach_target.h"  // IWYU pragma: keep; must come before highway.h
 #include "hwy/highway.h"
 #include "block-inl.h"
 // clang-format on
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-loop-convert)
 HWY_BEFORE_NAMESPACE();
 namespace pme::simd::HWY_NAMESPACE {
 namespace {
@@ -44,7 +44,8 @@ HWY_INLINE T DotCanonical(const T* HWY_RESTRICT a, const T* HWY_RESTRICT b, std:
     constexpr std::size_t kN = LanesOf<decltype(d)>();
     static_assert(kLanes % kN == 0, "the vector width divides the virtual lane count");
     constexpr std::size_t kV = kLanes / kN;
-    hn::VFromD<decltype(d)> acc[kV];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    hn::VFromD<decltype(d)>
+        acc[kV];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
     for (std::size_t j = 0; j < kV; ++j) {
         acc[j] = hn::Zero(d);
     }
@@ -58,11 +59,12 @@ HWY_INLINE T DotCanonical(const T* HWY_RESTRICT a, const T* HWY_RESTRICT b, std:
         const std::size_t rem = n - i;
         for (std::size_t j = 0; j < kV && j * kN < rem; ++j) {
             const std::size_t cnt = (rem - j * kN < kN) ? (rem - j * kN) : kN;
-            acc[j] = hn::MulAdd(hn::LoadN(d, a + i + j * kN, cnt), hn::LoadN(d, b + i + j * kN, cnt),
-                                acc[j]);
+            acc[j] = hn::MulAdd(hn::LoadN(d, a + i + j * kN, cnt),
+                                hn::LoadN(d, b + i + j * kN, cnt), acc[j]);
         }
     }
-    alignas(64) T lanes[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    alignas(64)
+        T lanes[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
     for (std::size_t j = 0; j < kV; ++j) {
         hn::Store(acc[j], d, lanes + j * kN);
     }
@@ -78,8 +80,10 @@ HWY_INLINE void Dot2Canonical(const T* HWY_RESTRICT w, const T* HWY_RESTRICT a,
     constexpr std::size_t kN = LanesOf<decltype(d)>();
     static_assert(kLanes % kN == 0, "the vector width divides the virtual lane count");
     constexpr std::size_t kV = kLanes / kN;
-    hn::VFromD<decltype(d)> accA[kV];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
-    hn::VFromD<decltype(d)> accH[kV];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    hn::VFromD<decltype(d)>
+        accA[kV];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    hn::VFromD<decltype(d)>
+        accH[kV];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
     for (std::size_t j = 0; j < kV; ++j) {
         accA[j] = hn::Zero(d);
         accH[j] = hn::Zero(d);
@@ -101,11 +105,13 @@ HWY_INLINE void Dot2Canonical(const T* HWY_RESTRICT w, const T* HWY_RESTRICT a,
             accH[j] = hn::MulAdd(wv, hn::LoadN(d, h + i + j * kN, cnt), accH[j]);
         }
     }
-    alignas(64) T lanesA[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
-    alignas(64) T lanesH[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    alignas(64)
+        T lanesA[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    alignas(64)
+        T lanesH[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
     for (std::size_t j = 0; j < kV; ++j) {
-        hn::Store(accA[j], d, lanesA + j * kN);
-        hn::Store(accH[j], d, lanesH + j * kN);
+        hn::Store(accA[j], d, &lanesA[j * kN]);
+        hn::Store(accH[j], d, &lanesH[j * kN]);
     }
     wa = combineLanes<T, kLanes>(lanesA);
     wh = combineLanes<T, kLanes>(lanesH);
@@ -122,7 +128,8 @@ HWY_INLINE double DotMixed(const float* HWY_RESTRICT a, const float* HWY_RESTRIC
     constexpr std::size_t kN = LanesOf<decltype(dd)>();
     static_assert(kLanes % kN == 0, "the vector width divides the virtual lane count");
     constexpr std::size_t kV = kLanes / kN;
-    hn::VFromD<decltype(dd)> acc[kV];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    hn::VFromD<decltype(dd)>
+        acc[kV];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
     for (std::size_t j = 0; j < kV; ++j) {
         acc[j] = hn::Zero(dd);
     }
@@ -143,7 +150,8 @@ HWY_INLINE double DotMixed(const float* HWY_RESTRICT a, const float* HWY_RESTRIC
             acc[j] = hn::MulAdd(x, y, acc[j]);
         }
     }
-    alignas(64) double lanes[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    alignas(64) double
+        lanes[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
     for (std::size_t j = 0; j < kV; ++j) {
         hn::Store(acc[j], dd, lanes + j * kN);
     }
@@ -281,3 +289,5 @@ double rankOneUpdate(double* z, const double* a, const double* h, const double* 
 
 }  // namespace pme::simd
 #endif  // HWY_ONCE
+
+// NOLINTEND(bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-loop-convert)

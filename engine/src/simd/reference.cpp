@@ -7,16 +7,19 @@
 //
 // SPEC sections implemented: SPEC-OSC "Difference form", SPEC-BRG "Bridge force", SPEC-NL
 // "Explicit low-rank solve", SPEC-EXEC "Threading contract" (fixed reduction order).
+#include <array>
 #include <cstddef>
 
 #include "pme/simd/canonical.hpp"
 #include "pme/simd/kernels.hpp"
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-loop-convert)
 namespace pme::simd::reference {
 
 namespace {
 
-// SPEC-OSC difference form, same operation order as pme::osc::stepModes: (beta u - kappa q) + gamma f.
+// SPEC-OSC difference form, same operation order as pme::osc::stepModes: (beta u - kappa q) + gamma
+// f.
 template <class S, class C>
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): SoA pointers in SPEC order
 void stepModesImpl(S* q, S* u, const C* beta, const C* kappa, const C* gamma, const S* force,
@@ -43,24 +46,24 @@ void stepModesImpl(S* q, S* u, const C* beta, const C* kappa, const C* gamma, co
 // pairwise tree of combineLanes.
 template <class T, std::size_t Lanes>
 T dotImpl(const T* a, const T* b, std::size_t n) noexcept {
-    T lanes[Lanes] = {};  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    std::array<T, Lanes> lanes{};
     for (std::size_t i = 0; i < n; ++i) {
         lanes[i % Lanes] = lanes[i % Lanes] + a[i] * b[i];
     }
-    return combineLanes<T, Lanes>(lanes);
+    return combineLanes(lanes);
 }
 
 template <class T, std::size_t Lanes>
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): w, a, h in SPEC order
 void dot2Impl(const T* w, const T* a, const T* h, std::size_t n, T& wa, T& wh) noexcept {
-    T la[Lanes] = {};  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
-    T lh[Lanes] = {};  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    std::array<T, Lanes> la{};
+    std::array<T, Lanes> lh{};
     for (std::size_t i = 0; i < n; ++i) {
         la[i % Lanes] = la[i % Lanes] + w[i] * a[i];
         lh[i % Lanes] = lh[i % Lanes] + w[i] * h[i];
     }
-    wa = combineLanes<T, Lanes>(la);
-    wh = combineLanes<T, Lanes>(lh);
+    wa = combineLanes(la);
+    wh = combineLanes(lh);
 }
 
 // SPEC-NL explicit low-rank solve, r = 1: z = a - h (w^T a) / (1 + w^T h).
@@ -101,12 +104,12 @@ double dot(const double* a, const double* b, std::size_t n) noexcept {
 }
 
 double dotF64(const float* a, const float* b, std::size_t n) noexcept {
-    double lanes[kCanonicalLanesF64] = {};  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+    std::array<double, kCanonicalLanesF64> lanes{};
     for (std::size_t i = 0; i < n; ++i) {
         const std::size_t lane = i % kCanonicalLanesF64;
         lanes[lane] = lanes[lane] + static_cast<double>(a[i]) * static_cast<double>(b[i]);
     }
-    return combineLanes<double, kCanonicalLanesF64>(lanes);
+    return combineLanes(lanes);
 }
 
 void dot2(const float* w, const float* a, const float* h, std::size_t n, float& wa,
@@ -149,13 +152,12 @@ void matmul(const float* A, std::size_t lda, const float* B, std::size_t ldb, fl
             float total = 0.0F;
             for (std::size_t k0 = 0; k0 < K; k0 += kMatmulChunk) {
                 const std::size_t len = (K - k0 < kMatmulChunk) ? (K - k0) : kMatmulChunk;
-                float lanes[kCanonicalLanesF32] = {};  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+                std::array<float, kCanonicalLanesF32> lanes{};
                 for (std::size_t kk = 0; kk < len; ++kk) {
                     const std::size_t lane = kk % kCanonicalLanesF32;
-                    lanes[lane] =
-                        lanes[lane] + A[m * lda + k0 + kk] * B[(k0 + kk) * ldb + n];
+                    lanes[lane] = lanes[lane] + A[m * lda + k0 + kk] * B[(k0 + kk) * ldb + n];
                 }
-                total = total + combineLanes<float, kCanonicalLanesF32>(lanes);
+                total = total + combineLanes(lanes);
             }
             C[m * ldc + n] = total;
         }
@@ -163,3 +165,5 @@ void matmul(const float* A, std::size_t lda, const float* B, std::size_t ldb, fl
 }
 
 }  // namespace pme::simd::reference
+
+// NOLINTEND(bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-loop-convert)

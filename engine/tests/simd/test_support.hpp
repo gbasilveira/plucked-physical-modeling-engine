@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <numbers>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -29,9 +30,7 @@ public:
     [[nodiscard]] std::size_t size() const noexcept { return n_; }
     T& operator[](std::size_t i) noexcept { return mem_.data()[i]; }
     const T& operator[](std::size_t i) const noexcept { return mem_.data()[i]; }
-    void copyFrom(const Buf& o) {
-        std::copy(o.data(), o.data() + o.size(), data());
-    }
+    void copyFrom(const Buf& o) { std::copy(o.data(), o.data() + o.size(), data()); }
 
 private:
     pme::osc::AlignedArray<T> mem_;
@@ -70,6 +69,7 @@ inline const std::vector<std::size_t>& sizes() {
 struct Coefficients {
     Buf<float> beta, kappa, gamma;
     Buf<double> beta64, kappa64, gamma64;
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): count then seed
     explicit Coefficients(std::size_t n, std::uint64_t seed = 1)
         : beta(n), kappa(n), gamma(n), beta64(n), kappa64(n), gamma64(n) {
         Rng rng(seed);
@@ -100,6 +100,15 @@ void fillRandom(Buf<T>& b, Rng& rng, double lo, double hi) {
     }
 }
 
+/// Prints one line to standard output (the test report collects these lines).
+template <class... Args>
+void log(const Args&... args) {
+    std::ostringstream out;
+    (out << ... << args);  // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    out << '\n';
+    std::fputs(out.str().c_str(), stdout);
+}
+
 /// Runs `fn(index, name, fused)` once per supported and compiled target, restoring the default
 /// dispatch afterwards. Prints the targets that ran (A8-T1 reporting).
 template <class F>
@@ -112,7 +121,7 @@ void forEachTarget(const char* label, F fn) {
         ran += std::string(" ") + pme::simd::testTargetName(t);
     }
     pme::simd::testResetTarget();
-    std::printf("[simd] %s: targets that ran:%s\n", label, ran.c_str());
+    log("[simd] ", label, ": targets that ran:", ran);
 }
 
 /// Relative error of a reduction against `ref`: |x - ref| / max(|ref|, sumAbs / 4). The second

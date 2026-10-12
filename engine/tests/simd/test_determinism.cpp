@@ -83,12 +83,12 @@ TEST_CASE("A8-T2 repeated runs and aligned copies give bit-identical results") {
                 }
             }
             // stepModes on copies at different aligned addresses
-            Copies<float> qc(q, kCopies, 16 * 3);
-            Copies<float> uc(u, kCopies, 16 * 5);
-            Copies<float> bc(co.beta, kCopies, 16 * 7);
-            Copies<float> kc(co.kappa, kCopies, 16 * 11);
-            Copies<float> gc(co.gamma, kCopies, 16 * 13);
-            Copies<float> fc(f, kCopies, 16 * 2);
+            Copies<float> qc(q, kCopies, 48U);
+            Copies<float> uc(u, kCopies, 80U);
+            Copies<float> bc(co.beta, kCopies, 112U);
+            Copies<float> kc(co.kappa, kCopies, 176U);
+            Copies<float> gc(co.gamma, kCopies, 208U);
+            Copies<float> fc(f, kCopies, 32U);
             for (std::size_t c = 0; c < kCopies; ++c) {
                 pme::simd::stepModes(qc.at(c), uc.at(c), bc.at(c), kc.at(c), gc.at(c), fc.at(c), n);
                 REQUIRE(sameBits(qc.at(c), q1.data(), n));
@@ -124,10 +124,10 @@ TEST_CASE("A8-T2 repeated runs and aligned copies give bit-identical results") {
                 REQUIRE(pme::simd::rankOneUpdate(r.data(), r.data(), h.data(), w.data(), n) == c0);
                 REQUIRE(sameBits(r.data(), r0.data(), n));
             }
-            Copies<float> ac(a, kCopies, 16 * 3);
-            Copies<float> hc(h, kCopies, 16 * 5);
-            Copies<double> adc(ad, kCopies, 16 * 7);
-            Copies<double> bdc(bd, kCopies, 16 * 9);
+            Copies<float> ac(a, kCopies, 48U);
+            Copies<float> hc(h, kCopies, 80U);
+            Copies<double> adc(ad, kCopies, 112U);
+            Copies<double> bdc(bd, kCopies, 144U);
             for (std::size_t c = 0; c < kCopies; ++c) {
                 REQUIRE(pme::simd::dot(ac.at(c), hc.at(c), n) == d0);
                 REQUIRE(pme::simd::dot(adc.at(c), bdc.at(c), n) == e0);
@@ -151,8 +151,8 @@ TEST_CASE("A8-T2 repeated runs and aligned copies give bit-identical results") {
             pme::simd::matmul(A.data(), k, B.data(), nn, C.data(), nn, m, nn, k);
             REQUIRE(sameBits(C.data(), C0.data(), m * nn));
         }
-        Copies<float> Ac(A, 3, 16 * 3);
-        Copies<float> Bc(B, 3, 16 * 5);
+        Copies<float> Ac(A, 3, 48U);
+        Copies<float> Bc(B, 3, 80U);
         for (std::size_t c = 0; c < 3; ++c) {
             Buf<float> C(m * nn);
             pme::simd::matmul(Ac.at(c), k, Bc.at(c), nn, C.data(), nn, m, nn, k);

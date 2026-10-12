@@ -34,9 +34,9 @@ constexpr double kFs = 48000.0;
 
 struct Bank {
     simdtest::Buf<float> q{kModes}, u{kModes}, beta{kModes}, kappa{kModes}, gamma{kModes};
-    simdtest::Buf<float> a{kModes};      // force coefficients a_n
-    simdtest::Buf<float> g{kModes};      // lifting overlaps g_n
-    simdtest::Buf<float> hTilde{kModes}; // gamma g / dt^2 (implicit scheme)
+    simdtest::Buf<float> a{kModes};       // force coefficients a_n
+    simdtest::Buf<float> g{kModes};       // lifting overlaps g_n
+    simdtest::Buf<float> hTilde{kModes};  // gamma g / dt^2 (implicit scheme)
     simdtest::Buf<float> force{kModes};
     simdtest::Buf<float> zero{kModes};
     float aH{0.0F};  // a^T h~
@@ -114,7 +114,8 @@ void explicitSample(Point& p) {
     }
     fb -= 0.05F * static_cast<float>(p.w) * static_cast<float>(kBanks);
     // 2. bridge advance (scalar mass-spring-damper): w^{n+1}
-    p.wNext = 2.0 * p.w - p.wPrev + 0.5 * static_cast<double>(fb) - 1e-3 * p.w - 1e-3 * (p.w - p.wPrev);
+    p.wNext =
+        2.0 * p.w - p.wPrev + 0.5 * static_cast<double>(fb) - 1e-3 * p.w - 1e-3 * (p.w - p.wPrev);
     const double dtt = (p.wNext - 2.0 * p.w + p.wPrev) / (p.dt * p.dt);
     // 3. modal force -g delta_tt w by axpyNeg(zero - c g), then the difference-form update
     for (Bank& b : p.banks) {
@@ -136,10 +137,11 @@ void implicitSample(Point& p) {
         hSum += b.aH;
     }
     // 4'. scalar solve: F^{n+1} is affine in w^{n+1}; one scalar equation for w^{n+1}
-    const double denom = 1.0 + 1e-9 * static_cast<double>(hSum) + 0.05 * static_cast<double>(kBanks) * 1e-3;
+    const double denom =
+        1.0 + 1e-9 * static_cast<double>(hSum) + 0.05 * static_cast<double>(kBanks) * 1e-3;
     p.wNext = (0.9 * p.w + 1e-3 * static_cast<double>(s)) / denom;
     // 5'. complete q^{n+1} = b - h~ w^{n+1} and u^{n+1} = u_b - h~ w^{n+1}
-    const float wn = static_cast<float>(p.wNext * 1e-9);
+    const auto wn = static_cast<float>(p.wNext * 1e-9);
     for (Bank& b : p.banks) {
         K::axpyNeg(b.q.data(), b.q.data(), b.hTilde.data(), wn);
         K::axpyNeg(b.u.data(), b.u.data(), b.hTilde.data(), wn);

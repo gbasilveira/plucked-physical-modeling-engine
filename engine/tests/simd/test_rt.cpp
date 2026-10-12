@@ -24,9 +24,9 @@ TEST_CASE("A8-R5 dispatch and every kernel allocate nothing under ScopedRealtime
     simdtest::Buf<float> z(n);
     simdtest::Buf<double> ad(n);
     simdtest::Buf<double> bd(n);
-    simdtest::Buf<float> A(8 * 100);
-    simdtest::Buf<float> B(100 * 32);
-    simdtest::Buf<float> C(8 * 32);
+    simdtest::Buf<float> A(std::size_t{800});
+    simdtest::Buf<float> B(std::size_t{3200});
+    simdtest::Buf<float> C(std::size_t{256});
     simdtest::fillRandom(q, rng, -1.0, 1.0);
     simdtest::fillRandom(f, rng, -1.0, 1.0);
     simdtest::fillRandom(w, rng, 0.0, 1.0);
@@ -50,7 +50,8 @@ TEST_CASE("A8-R5 dispatch and every kernel allocate nothing under ScopedRealtime
             pme::simd::dot2(w.data(), q.data(), h.data(), n, wa, wh);
             sink += static_cast<double>(wa + wh);
             pme::simd::axpyNeg(z.data(), q.data(), h.data(), 0.1F, n);
-            sink += static_cast<double>(pme::simd::rankOneUpdate(z.data(), q.data(), h.data(), w.data(), n));
+            sink += static_cast<double>(
+                pme::simd::rankOneUpdate(z.data(), q.data(), h.data(), w.data(), n));
             pme::simd::matmul(A.data(), 100, B.data(), 32, C.data(), 32, 8, 32, 100);
             sink += static_cast<double>(C[0]) + pme::simd::activeTargetIsFused() +
                     (pme::simd::activeTargetName() != nullptr ? 1.0 : 0.0);

@@ -4,6 +4,7 @@
 // reduction is the same code on every target.
 #pragma once
 
+#include <array>
 #include <cstddef>
 
 namespace pme::simd {
@@ -19,6 +20,12 @@ template <class T, std::size_t Lanes>
         }
     }
     return lanes[0];
+}
+
+/// Same, for a std::array of lane sums.
+template <class T, std::size_t Lanes>
+[[nodiscard]] inline T combineLanes(std::array<T, Lanes>& lanes) noexcept {
+    return combineLanes<T, Lanes>(lanes.data());
 }
 
 }  // namespace pme::simd

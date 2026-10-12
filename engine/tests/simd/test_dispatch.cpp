@@ -11,9 +11,7 @@
 #include "test_support.hpp"
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__aarch64__) || defined(_M_ARM64)
-#define PME_TEST_HAS_FTZ 1
-#else
-#define PME_TEST_HAS_FTZ 0
+#define PME_TEST_HAS_FTZ
 #endif
 
 TEST_CASE("A8-R5 initialise returns the name of the chosen target") {
@@ -22,8 +20,8 @@ TEST_CASE("A8-R5 initialise returns the name of the chosen target") {
     CHECK(std::strlen(name) > 0);
     CHECK(std::strcmp(name, pme::simd::activeTargetName()) == 0);
     CHECK(std::strcmp(name, pme::simd::initialise()) == 0);  // idempotent
-    std::printf("[simd] A8-R5 chosen target: %s (fused multiply-add: %s)\n", name,
-                pme::simd::activeTargetIsFused() ? "yes" : "no");
+    simdtest::log("[simd] A8-R5 chosen target: ", name,
+                  " (fused multiply-add: ", pme::simd::activeTargetIsFused() ? "yes" : "no", ")");
     // The chosen target is the best supported one.
     REQUIRE(pme::simd::testTargetCount() >= 1);
     CHECK(std::strcmp(name, pme::simd::testTargetName(0)) == 0);
@@ -36,7 +34,7 @@ TEST_CASE("A8-R5 the test hook selects each supported target in turn") {
     for (std::size_t t = 0; t < count; ++t) {
         REQUIRE(pme::simd::testSelectTarget(t));
         CHECK(std::strcmp(pme::simd::activeTargetName(), pme::simd::testTargetName(t)) == 0);
-        std::printf("[simd] A8-R5 supported target %zu: %s\n", t, pme::simd::testTargetName(t));
+        simdtest::log("[simd] A8-R5 supported target ", t, ": ", pme::simd::testTargetName(t));
     }
     CHECK_FALSE(pme::simd::testSelectTarget(count));
     pme::simd::testResetTarget();
@@ -44,17 +42,17 @@ TEST_CASE("A8-R5 the test hook selects each supported target in turn") {
 }
 
 TEST_CASE("A8-R5 ScopedFlushDenormals flushes inside the guard and restores the mode") {
-#if PME_TEST_HAS_FTZ
+#if defined(PME_TEST_HAS_FTZ)
     // volatile keeps the compiler from folding the products at compile time
-    volatile float denormalIn = 1e-40F;   // below the smallest normal float (1.18e-38)
+    volatile float denormalIn = 1e-40F;  // below the smallest normal float (1.18e-38)
     volatile float one = 1.0F;
     volatile float small = 1e-30F;
     volatile float tinyFactor = 1e-10F;
 
     const float before = denormalIn * one;
     const float producedBefore = small * tinyFactor;  // a denormal result
-    CHECK(before != 0.0F);          // default mode: denormal input survives
-    CHECK(producedBefore != 0.0F);  // and denormal results are produced
+    CHECK(before != 0.0F);                            // default mode: denormal input survives
+    CHECK(producedBefore != 0.0F);                    // and denormal results are produced
     {
         const pme::simd::ScopedFlushDenormals guard;
         const float inside = denormalIn * one;
@@ -97,7 +95,7 @@ TEST_CASE("A8-R5 the kernels stay correct under the flush-denormals guard") {
     for (std::size_t i = 0; i < n; ++i) {
         CHECK(std::fpclassify(q[i]) != FP_SUBNORMAL);
         CHECK(std::fpclassify(u[i]) != FP_SUBNORMAL);
-#if PME_TEST_HAS_FTZ
+#if defined(PME_TEST_HAS_FTZ)
         CHECK(u[i] == 0.0F);  // flushed rather than left denormal
 #endif
     }

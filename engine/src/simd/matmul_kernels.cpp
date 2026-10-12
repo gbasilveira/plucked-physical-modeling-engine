@@ -13,17 +13,17 @@
 // combineLanes; the chunk sums are added to C in chunk order. MulAdd is fused on AVX2, AVX-512 and
 // arm64 and split elsewhere (ADR-0001).
 #include "highway_config.hpp"  // first: defines HWY_DISABLED_TARGETS
-
 #include "pme/simd/kernels.hpp"
 
 // clang-format off
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "../matmul_kernels.cpp"  // relative to engine/src/simd/include
+#define HWY_TARGET_INCLUDE "../matmul_kernels.cpp"  // NOLINT(cppcoreguidelines-macro-usage) relative to engine/src/simd/include
 #include "hwy/foreach_target.h"  // IWYU pragma: keep; must come before highway.h
 #include "hwy/highway.h"
 #include "block-inl.h"
 // clang-format on
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-loop-convert)
 HWY_BEFORE_NAMESPACE();
 namespace pme::simd::HWY_NAMESPACE {
 namespace {
@@ -42,8 +42,8 @@ HWY_INLINE void MatmulColumns(D d, const float* HWY_RESTRICT A, std::size_t lda,
         const std::size_t len = (K - k0 < kMatmulChunk) ? (K - k0) : kMatmulChunk;
         for (std::size_t m = 0; m < M; ++m) {
             V acc[kLanes];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
-            for (std::size_t l = 0; l < kLanes; ++l) {
-                acc[l] = hn::Zero(d);
+            for (V& a : acc) {
+                a = hn::Zero(d);
             }
             const float* arow = A + m * lda + k0;
             const float* bcol = B + k0 * ldb + n0;
@@ -59,7 +59,8 @@ HWY_INLINE void MatmulColumns(D d, const float* HWY_RESTRICT A, std::size_t lda,
                     acc[l] = hn::Add(acc[l], acc[l + half]);
                 }
             }
-            // chunk sums are added in chunk order, starting from zero (as the scalar reference does)
+            // chunk sums are added in chunk order, starting from zero (as the scalar reference
+            // does)
             float* crow = C + m * ldc + n0;
             const V prev = (k0 == 0) ? hn::Zero(d) : LoadBlock<kPartial>(d, crow, cnt);
             StoreBlock<kPartial>(hn::Add(prev, acc[0]), d, crow, cnt);
@@ -100,6 +101,7 @@ namespace pme::simd {
 
 HWY_EXPORT(MatmulF32);
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): BLAS-style argument order
 void matmul(const float* A, std::size_t lda, const float* B, std::size_t ldb, float* C,
             std::size_t ldc, std::size_t M, std::size_t N, std::size_t K) noexcept {
     PME_SIMD_ASSERT_ALIGNED(A);
@@ -110,3 +112,5 @@ void matmul(const float* A, std::size_t lda, const float* B, std::size_t ldb, fl
 
 }  // namespace pme::simd
 #endif  // HWY_ONCE
+
+// NOLINTEND(bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-loop-convert)

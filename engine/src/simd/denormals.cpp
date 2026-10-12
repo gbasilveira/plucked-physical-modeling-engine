@@ -10,9 +10,9 @@
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
 #include <xmmintrin.h>
-#define PME_SIMD_DENORMALS_X86 1
+#define PME_SIMD_DENORMALS_X86
 #elif defined(__aarch64__) || defined(_M_ARM64)
-#define PME_SIMD_DENORMALS_ARM64 1
+#define PME_SIMD_DENORMALS_ARM64
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 #endif

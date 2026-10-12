@@ -4,14 +4,14 @@
 //
 // SPEC sections implemented: PLAN-COMP "SIMD" (runtime dispatch); Real-time rules (no CPU
 // detection inside `process`).
-#include "highway_config.hpp"  // first: defines HWY_DISABLED_TARGETS
-
 #include "pme/simd/dispatch.hpp"
+
+#include "highway_config.hpp"  // first: defines HWY_DISABLED_TARGETS
 #include "target_description.hpp"
 
 // clang-format off
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "../dispatch.cpp"  // relative to engine/src/simd/include
+#define HWY_TARGET_INCLUDE "../dispatch.cpp"  // NOLINT(cppcoreguidelines-macro-usage) relative to engine/src/simd/include
 #include "hwy/foreach_target.h"  // IWYU pragma: keep; must come before highway.h
 #include "hwy/highway.h"
 #include "block-inl.h"
@@ -20,7 +20,9 @@
 HWY_BEFORE_NAMESPACE();
 namespace pme::simd::HWY_NAMESPACE {
 
-TargetDescription Describe() { return TargetDescription{hwy::TargetName(HWY_TARGET), kFusedMulAdd}; }
+TargetDescription Describe() {
+    return TargetDescription{hwy::TargetName(HWY_TARGET), kFusedMulAdd};
+}
 
 }  // namespace pme::simd::HWY_NAMESPACE
 HWY_AFTER_NAMESPACE();

@@ -7,17 +7,17 @@
 // The operation order is that of pme::osc::stepModes: ((beta u) - (kappa q)) + (gamma f), with
 // separate multiplies and adds (never MulAdd), so every target is bit-identical to the scalar loop.
 #include "highway_config.hpp"  // first: defines HWY_DISABLED_TARGETS
-
 #include "pme/simd/kernels.hpp"
 
 // clang-format off
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "../mode_kernels.cpp"  // relative to engine/src/simd/include
+#define HWY_TARGET_INCLUDE "../mode_kernels.cpp"  // NOLINT(cppcoreguidelines-macro-usage) relative to engine/src/simd/include
 #include "hwy/foreach_target.h"  // IWYU pragma: keep; must come before highway.h
 #include "hwy/highway.h"
 #include "block-inl.h"
 // clang-format on
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-loop-convert)
 HWY_BEFORE_NAMESPACE();
 namespace pme::simd::HWY_NAMESPACE {
 namespace {
@@ -27,8 +27,8 @@ template <bool kPartial, bool kForce, bool kQPrev, bool kUPrev, class D, class S
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): SoA pointers in SPEC order
 HWY_INLINE void StepBlock(D d, S* HWY_RESTRICT q, S* HWY_RESTRICT u, const C* HWY_RESTRICT beta,
                           const C* HWY_RESTRICT kappa, const C* HWY_RESTRICT gamma,
-                          const S* HWY_RESTRICT force, S* HWY_RESTRICT qPrev,
-                          S* HWY_RESTRICT uPrev, std::size_t off, std::size_t cnt) {
+                          const S* HWY_RESTRICT force, S* HWY_RESTRICT qPrev, S* HWY_RESTRICT uPrev,
+                          std::size_t off, std::size_t cnt) {
     const auto qn = LoadBlock<kPartial>(d, q + off, cnt);
     const auto un = LoadBlock<kPartial>(d, u + off, cnt);
     if constexpr (kQPrev) {
@@ -131,6 +131,7 @@ HWY_EXPORT(StepModesF32);
 HWY_EXPORT(StepModesF64);
 HWY_EXPORT(StepModesF64Coef32);
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): SoA pointers in SPEC order
 void stepModes(float* q, float* u, const float* beta, const float* kappa, const float* gamma,
                const float* force, std::size_t n, float* qPrevOut, float* uPrevOut) noexcept {
     PME_SIMD_ASSERT_ALIGNED(q);
@@ -142,6 +143,7 @@ void stepModes(float* q, float* u, const float* beta, const float* kappa, const 
     HWY_DYNAMIC_DISPATCH(StepModesF32)(q, u, beta, kappa, gamma, force, n, qPrevOut, uPrevOut);
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): SoA pointers in SPEC order
 void stepModes(double* q, double* u, const double* beta, const double* kappa, const double* gamma,
                const double* force, std::size_t n, double* qPrevOut, double* uPrevOut) noexcept {
     PME_SIMD_ASSERT_ALIGNED(q);
@@ -153,6 +155,7 @@ void stepModes(double* q, double* u, const double* beta, const double* kappa, co
     HWY_DYNAMIC_DISPATCH(StepModesF64)(q, u, beta, kappa, gamma, force, n, qPrevOut, uPrevOut);
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): SoA pointers in SPEC order
 void stepModes(double* q, double* u, const float* beta, const float* kappa, const float* gamma,
                const double* force, std::size_t n, double* qPrevOut, double* uPrevOut) noexcept {
     PME_SIMD_ASSERT_ALIGNED(q);
@@ -161,9 +164,11 @@ void stepModes(double* q, double* u, const float* beta, const float* kappa, cons
     PME_SIMD_ASSERT_ALIGNED(kappa);
     PME_SIMD_ASSERT_ALIGNED(gamma);
     PME_SIMD_ASSERT_ALIGNED(force);
-    HWY_DYNAMIC_DISPATCH(StepModesF64Coef32)(q, u, beta, kappa, gamma, force, n, qPrevOut,
-                                             uPrevOut);
+    HWY_DYNAMIC_DISPATCH(StepModesF64Coef32)
+    (q, u, beta, kappa, gamma, force, n, qPrevOut, uPrevOut);
 }
 
 }  // namespace pme::simd
 #endif  // HWY_ONCE
+
+// NOLINTEND(bugprone-easily-swappable-parameters,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-pro-bounds-array-to-pointer-decay,modernize-loop-convert)

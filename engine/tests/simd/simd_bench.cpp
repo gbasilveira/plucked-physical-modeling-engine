@@ -127,8 +127,12 @@ int main(int argc, char** argv) {
          [&] { sinkF += ps::rankOneUpdate(f.z.data(), f.a.data(), f.h.data(), f.w.data(), kN); },
          [&] { sinkF += ref::rankOneUpdate(f.z.data(), f.a.data(), f.h.data(), f.w.data(), kN); }},
         {"matmul_KxP_PxS_4096x100x32", "multiply-adds", static_cast<double>(kK * kP * kS),
-         [&] { ps::matmul(f.projA.data(), kP, f.projB.data(), kS, f.projC.data(), kS, kK, kS, kP); },
-         [&] { ref::matmul(f.projA.data(), kP, f.projB.data(), kS, f.projC.data(), kS, kK, kS, kP); }},
+         [&] {
+             ps::matmul(f.projA.data(), kP, f.projB.data(), kS, f.projC.data(), kS, kK, kS, kP);
+         },
+         [&] {
+             ref::matmul(f.projA.data(), kP, f.projB.data(), kS, f.projC.data(), kS, kK, kS, kP);
+         }},
         {"matmul_PxK_KxS_100x4096x32", "multiply-adds", static_cast<double>(kP * kK * kS),
          [&] { ps::matmul(f.velA.data(), kK, f.velB.data(), kS, f.velC.data(), kS, kP, kS, kK); },
          [&] { ref::matmul(f.velA.data(), kK, f.velB.data(), kS, f.velC.data(), kS, kP, kS, kK); }},
@@ -136,19 +140,19 @@ int main(int argc, char** argv) {
 
     auto& registry = pme::bench::registry();
     for (const Kernel& k : kernels) {
-        registry.push_back(pme::bench::Benchmark{std::string(k.name) + "_scalar", k.unit, k.work,
-                                                 [fn = k.scalar] {
-                                                     fn();
-                                                     pme::bench::do_not_optimize(fx().z[0]);
-                                                 }});
+        registry.push_back(
+            pme::bench::Benchmark{std::string(k.name) + "_scalar", k.unit, k.work, [fn = k.scalar] {
+                                      fn();
+                                      pme::bench::do_not_optimize(fx().z[0]);
+                                  }});
         for (std::size_t t = 0; t < pme::simd::testTargetCount(); ++t) {
-            registry.push_back(pme::bench::Benchmark{
-                std::string(k.name) + "_" + pme::simd::testTargetName(t), k.unit, k.work,
-                [fn = k.simd, t] {
-                    select(static_cast<int>(t));
-                    fn();
-                    pme::bench::do_not_optimize(fx().z[0]);
-                }});
+            registry.push_back(
+                pme::bench::Benchmark{std::string(k.name) + "_" + pme::simd::testTargetName(t),
+                                      k.unit, k.work, [fn = k.simd, t] {
+                                          select(static_cast<int>(t));
+                                          fn();
+                                          pme::bench::do_not_optimize(fx().z[0]);
+                                      }});
         }
     }
     const int rc = pme::bench::run_main(argc, argv);

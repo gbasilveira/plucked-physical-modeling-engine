@@ -31,7 +31,7 @@ public:
     }
     void print(const char* label) const {
         for (const auto& [key, e] : worst_) {
-            std::printf("[simd] %s worst error %s: %.3g\n", label, key.c_str(), e);
+            simdtest::log("[simd] ", label, " worst error ", key, ": ", e);
         }
     }
 
@@ -74,10 +74,9 @@ TEST_CASE("A8-T1 stepModes equals the scalar reference on every target") {
                     pme::simd::stepModes(qa.data(), ua.data(), c.beta.data(), c.kappa.data(),
                                          c.gamma.data(), f, n, withPrev ? qpa.data() : nullptr,
                                          withPrev ? upa.data() : nullptr);
-                    pme::simd::reference::stepModes(qb.data(), ub.data(), c.beta.data(),
-                                                    c.kappa.data(), c.gamma.data(), f, n,
-                                                    withPrev ? qpb.data() : nullptr,
-                                                    withPrev ? upb.data() : nullptr);
+                    pme::simd::reference::stepModes(
+                        qb.data(), ub.data(), c.beta.data(), c.kappa.data(), c.gamma.data(), f, n,
+                        withPrev ? qpb.data() : nullptr, withPrev ? upb.data() : nullptr);
                 }
                 double err = 0.0;
                 for (std::size_t i = 0; i < n; ++i) {
@@ -167,7 +166,8 @@ TEST_CASE("A8-R1 stepModes equals ModeBank step bit for bit") {
             twin.resize(n);
             Rng rng(300 + n);
             for (std::size_t i = 0; i < n; ++i) {
-                const double f = 20.0 * std::pow(1000.0, static_cast<double>(i) / static_cast<double>(n));
+                const double f =
+                    20.0 * std::pow(1000.0, static_cast<double>(i) / static_cast<double>(n));
                 pme::OscCoeffs c;
                 REQUIRE(pme::compileOscillator(2.0 * std::numbers::pi * f, rng.uniform(0.5, 50.0),
                                                48000.0, c) == pme::Status::Ok);
@@ -248,8 +248,8 @@ TEST_CASE("A8-T1 dot products equal the scalar reference on every target") {
                 CHECK(ex <= kTol);
                 CHECK(ey <= kTol);
                 // the float32 result is also close to the true sum (float64 reference)
-                CHECK(simdtest::reductionError(x, pme::simd::reference::dotF64(a.data(), b.data(), n),
-                                               sumAbs) <= kTol);
+                CHECK(simdtest::reductionError(
+                          x, pme::simd::reference::dotF64(a.data(), b.data(), n), sumAbs) <= kTol);
             }
         }
     });
@@ -348,7 +348,8 @@ TEST_CASE("A8-T1 rank-one operations equal the scalar reference on every target"
                 CHECK(wad == wadr);
                 CHECK(whd == whdr);
             }
-            // dot2 equals dot, element for element of the same order (fused or not: same kernel family)
+            // dot2 equals dot, element for element of the same order (fused or not: same kernel
+            // family)
             CHECK(simdtest::reductionError(wa, pme::simd::dot(w.data(), a.data(), n), sa) <= kTol);
 
             // axpyNeg, also in place
@@ -366,8 +367,9 @@ TEST_CASE("A8-T1 rank-one operations equal the scalar reference on every target"
             pme::simd::reference::axpyNeg(zdr.data(), ad.data(), hd.data(), 0.37, n);
             double ez = 0.0;
             for (std::size_t i = 0; i < n; ++i) {
-                const double scale = std::max(std::abs(static_cast<double>(zr[i])),
-                                              (std::abs(static_cast<double>(a[i])) + c * h[i]) / 16.0);
+                const double scale =
+                    std::max(std::abs(static_cast<double>(zr[i])),
+                             (std::abs(static_cast<double>(a[i])) + c * h[i]) / 16.0);
                 ez = std::max(ez, std::abs(static_cast<double>(z[i]) - zr[i]) / scale);
                 CHECK(inPlace[i] == z[i]);
                 if (!fused) {
@@ -385,15 +387,17 @@ TEST_CASE("A8-T1 rank-one operations equal the scalar reference on every target"
             r.copyFrom(a);
             rr.copyFrom(a);
             const float cc = pme::simd::rankOneUpdate(r.data(), r.data(), h.data(), w.data(), n);
-            const float ccr = pme::simd::reference::rankOneUpdate(rr.data(), rr.data(), h.data(), w.data(), n);
+            const float ccr =
+                pme::simd::reference::rankOneUpdate(rr.data(), rr.data(), h.data(), w.data(), n);
             CHECK(std::abs(cc - ccr) <= kTol * std::max(std::abs(ccr), 1e-3F));
             Buf<double> rd(n);
             Buf<double> rdr(n);
             rd.copyFrom(ad);
             rdr.copyFrom(ad);
-            const double cd = pme::simd::rankOneUpdate(rd.data(), rd.data(), hd.data(), wd.data(), n);
-            const double cdr =
-                pme::simd::reference::rankOneUpdate(rdr.data(), rdr.data(), hd.data(), wd.data(), n);
+            const double cd =
+                pme::simd::rankOneUpdate(rd.data(), rd.data(), hd.data(), wd.data(), n);
+            const double cdr = pme::simd::reference::rankOneUpdate(rdr.data(), rdr.data(),
+                                                                   hd.data(), wd.data(), n);
             CHECK(std::abs(cd - cdr) <= 1e-12 * std::max(std::abs(cdr), 1.0));
         }
     });
@@ -415,19 +419,21 @@ TEST_CASE("A8-R3 rankOneUpdate equals the A3 lowRankSolve with r = 1 in float64"
                 Buf<double> zSimd(n);
                 Buf<double> zA3(n);
                 zSimd.copyFrom(a);
-                const double c = pme::simd::rankOneUpdate(zSimd.data(), zSimd.data(), h.data(), w.data(), n);
+                const double c =
+                    pme::simd::rankOneUpdate(zSimd.data(), zSimd.data(), h.data(), w.data(), n);
                 const double* hp = h.data();
                 const double* wp = w.data();
                 pme::nl::lowRankSolve(zA3.data(), a.data(), n, 1, &hp, &wp);
                 CHECK(std::isfinite(c));
                 for (std::size_t i = 0; i < n; ++i) {
                     const double scale = std::abs(a[i]) + std::abs(h[i] * c) + 1e-300;
-                    const double err = std::abs(zSimd[i] - zA3[i]) / std::max(std::abs(zA3[i]), scale / 16.0);
+                    const double err =
+                        std::abs(zSimd[i] - zA3[i]) / std::max(std::abs(zA3[i]), scale / 16.0);
                     worst = std::max(worst, err);
                     CHECK(err <= 1e-12);
                 }
             }
         }
-        std::printf("[simd] A8-R3 worst relative error vs lowRankSolve on %s: %.3g\n", name, worst);
+        simdtest::log("[simd] A8-R3 worst relative error vs lowRankSolve on ", name, ": ", worst);
     });
 }

@@ -17,6 +17,6 @@
 
 /// Debug check of the 64-byte alignment precondition of the 1-D kernels (a null pointer passes).
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage): assert-like macro, expands to nothing in release
-#define PME_SIMD_ASSERT_ALIGNED(p)                                                          \
+#define PME_SIMD_ASSERT_ALIGNED(p)                                                             \
     assert(((p) == nullptr || reinterpret_cast<std::uintptr_t>(p) % 64U == 0U) && /* NOLINT */ \
            "pme::simd kernel pointers must be 64-byte aligned")

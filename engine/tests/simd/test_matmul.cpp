@@ -41,6 +41,7 @@ std::vector<Shape> shapes() {
 
 // Independent restatement of the SPEC-EXEC order in float32 (no fused arithmetic): chunks of 64
 // along K in chunk order, each chunk in 16 virtual lanes (k mod 16) combined pairwise.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 float orderedElement(const float* A, std::size_t lda, const float* B, std::size_t ldb,
                      std::size_t m, std::size_t n, std::size_t K) {
     float total = 0.0F;
@@ -58,85 +59,100 @@ float orderedElement(const float* A, std::size_t lda, const float* B, std::size_
     }
     return total;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+// Everything that does not depend on the target, computed once: inputs, the scalar reference,
+// the float64 truth, the sum of absolute terms and the instrumented chunk-order value.
+struct Case {
+    Shape sh;
+    bool cancelling;
+    Buf<float> A, B, ref, ordered;
+    std::vector<double> exact, sumAbs;
+    Case(Shape s, bool canc)
+        : sh(s),
+          cancelling(canc),
+          A(s.m * s.k),
+          B(s.k * s.n),
+          ref(s.m * s.n),
+          ordered(s.m * s.n),
+          exact(s.m * s.n),
+          sumAbs(s.m * s.n) {
+        Rng rng(800 + s.m * 31 + s.n * 7 + s.k + (canc ? 1 : 0));
+        const double lo = canc ? -1.0 : 0.0;
+        simdtest::fillRandom(A, rng, lo, 1.0);
+        simdtest::fillRandom(B, rng, lo, 1.0);
+        pme::simd::reference::matmul(A.data(), s.k, B.data(), s.n, ref.data(), s.n, s.m, s.n, s.k);
+        for (std::size_t m = 0; m < s.m; ++m) {
+            for (std::size_t n = 0; n < s.n; ++n) {
+                double e = 0.0;
+                double sa = 0.0;
+                for (std::size_t k = 0; k < s.k; ++k) {
+                    const double t = static_cast<double>(A[m * s.k + k]) * B[k * s.n + n];
+                    e += t;
+                    sa += std::abs(t);
+                }
+                exact[m * s.n + n] = e;
+                sumAbs[m * s.n + n] = sa;
+                ordered[m * s.n + n] = orderedElement(A.data(), s.k, B.data(), s.n, m, n, s.k);
+            }
+        }
+    }
+};
+
+const std::vector<Case>& cases() {
+    static const std::vector<Case> all = [] {
+        std::vector<Case> v;
+        for (const Shape& sh : shapes()) {
+            v.emplace_back(sh, false);
+            v.emplace_back(sh, true);
+        }
+        return v;
+    }();
+    return all;
+}
 
 }  // namespace
 
 TEST_CASE("A8-T1 matmul equals the scalar reference on every target") {
     simdtest::forEachTarget("A8-T1 matmul", [&](std::size_t, const char* name, bool fused) {
         double worst = 0.0;
-        for (const Shape& sh : shapes()) {
-            Rng rng(800 + sh.m * 31 + sh.n * 7 + sh.k);
-            Buf<float> A(sh.m * sh.k);
-            Buf<float> B(sh.k * sh.n);
+        for (const Case& c : cases()) {
+            const Shape& sh = c.sh;
             Buf<float> C(sh.m * sh.n);
-            Buf<float> R(sh.m * sh.n);
-            simdtest::fillRandom(A, rng, -1.0, 1.0);
-            simdtest::fillRandom(B, rng, -1.0, 1.0);
-            pme::simd::matmul(A.data(), sh.k, B.data(), sh.n, C.data(), sh.n, sh.m, sh.n, sh.k);
-            pme::simd::reference::matmul(A.data(), sh.k, B.data(), sh.n, R.data(), sh.n, sh.m, sh.n, sh.k);
-            for (std::size_t m = 0; m < sh.m; ++m) {
-                for (std::size_t n = 0; n < sh.n; ++n) {
-                    double sumAbs = 0.0;
-                    for (std::size_t k = 0; k < sh.k; ++k) {
-                        sumAbs += std::abs(static_cast<double>(A[m * sh.k + k]) * B[k * sh.n + n]);
-                    }
-                    const float c = C[m * sh.n + n];
-                    const float r = R[m * sh.n + n];
-                    if (!fused) {
-                        REQUIRE(c == r);
-                    }
-                    const double e = simdtest::reductionError(c, r, sumAbs);
-                    worst = std::max(worst, e);
-                    REQUIRE(e <= 1e-6);
+            pme::simd::matmul(c.A.data(), sh.k, c.B.data(), sh.n, C.data(), sh.n, sh.m, sh.n, sh.k);
+            for (std::size_t i = 0; i < sh.m * sh.n; ++i) {
+                if (!fused) {
+                    REQUIRE(C[i] == c.ref[i]);
                 }
+                const double e = simdtest::reductionError(C[i], c.ref[i], c.sumAbs[i]);
+                worst = std::max(worst, e);
+                REQUIRE(e <= 1e-6);
             }
         }
-        std::printf("[simd] A8-T1 matmul worst error vs reference on %s: %.3g\n", name, worst);
+        simdtest::log("[simd] A8-T1 matmul worst error vs reference on ", name, ": ", worst);
     });
 }
 
 TEST_CASE("A8-R4 matmul against a float64 reference and the SPEC-EXEC chunk order") {
     simdtest::forEachTarget("A8-R4 matmul", [&](std::size_t, const char* name, bool fused) {
-        double worstPositive = 0.0;  // cancellation-free: relative to |C|
-        double worstCancelling = 0.0;  // relative to max(|C|, sum|terms| / 16)
-        for (const Shape& sh : shapes()) {
-            for (int cancelling = 0; cancelling < 2; ++cancelling) {
-                Rng rng(900 + sh.m * 31 + sh.n * 7 + sh.k);
-                Buf<float> A(sh.m * sh.k);
-                Buf<float> B(sh.k * sh.n);
-                Buf<float> C(sh.m * sh.n);
-                const double lo = cancelling != 0 ? -1.0 : 0.0;
-                simdtest::fillRandom(A, rng, lo, 1.0);
-                simdtest::fillRandom(B, rng, lo, 1.0);
-                pme::simd::matmul(A.data(), sh.k, B.data(), sh.n, C.data(), sh.n, sh.m, sh.n, sh.k);
-                for (std::size_t m = 0; m < sh.m; ++m) {
-                    for (std::size_t n = 0; n < sh.n; ++n) {
-                        double exact = 0.0;
-                        double sumAbs = 0.0;
-                        for (std::size_t k = 0; k < sh.k; ++k) {
-                            const double t = static_cast<double>(A[m * sh.k + k]) * B[k * sh.n + n];
-                            exact += t;
-                            sumAbs += std::abs(t);
-                        }
-                        const double c = C[m * sh.n + n];
-                        const double e = simdtest::reductionError(c, exact, sumAbs);
-                        if (cancelling != 0) {
-                            worstCancelling = std::max(worstCancelling, e);
-                        } else {
-                            worstPositive = std::max(worstPositive, e);
-                        }
-                        REQUIRE(e <= 1e-5);
-                        if (!fused) {
-                            // the chunk order reproduces bit for bit
-                            REQUIRE(c == orderedElement(A.data(), sh.k, B.data(), sh.n, m, n, sh.k));
-                        }
-                    }
+        double worstPositive = 0.0;    // cancellation-free: relative to |C|
+        double worstCancelling = 0.0;  // relative to max(|C|, sum|terms| / 4)
+        for (const Case& c : cases()) {
+            const Shape& sh = c.sh;
+            Buf<float> C(sh.m * sh.n);
+            pme::simd::matmul(c.A.data(), sh.k, c.B.data(), sh.n, C.data(), sh.n, sh.m, sh.n, sh.k);
+            for (std::size_t i = 0; i < sh.m * sh.n; ++i) {
+                const double e = simdtest::reductionError(C[i], c.exact[i], c.sumAbs[i]);
+                (c.cancelling ? worstCancelling : worstPositive) =
+                    std::max(c.cancelling ? worstCancelling : worstPositive, e);
+                REQUIRE(e <= 1e-5);
+                if (!fused) {
+                    REQUIRE(C[i] == c.ordered[i]);  // the chunk order reproduces bit for bit
                 }
             }
         }
-        std::printf("[simd] A8-R4 matmul worst relative error vs float64 on %s: %.3g (positive), "
-                    "%.3g (cancelling)\n",
-                    name, worstPositive, worstCancelling);
+        simdtest::log("[simd] A8-R4 matmul worst relative error vs float64 on ", name, ": ",
+                      worstPositive, " (positive), ", worstCancelling, " (cancelling)");
     });
 }
 
