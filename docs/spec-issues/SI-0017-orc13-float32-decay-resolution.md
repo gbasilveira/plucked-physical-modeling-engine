@@ -31,3 +31,16 @@ SPEC-OSC "Difference form", after the β, κ, γ formulas, add: "Stored in float
 
 ## Resolution
 Resolved 2026-10-12 by the orchestrator's default, as proposed (the float32-aware tolerance rather than restricting the oracle to σΔt ≥ 2 × 10⁻⁴, so the bass case stays covered). Test criterion and documentation only; engine behaviour is unchanged. Flagged for owner review because it widens an oracle tolerance. SPEC updated in the `PLAN: file SI-0017 to SI-0020 …` commit. Affected phases: A6 (ORC-13 test-author: apply the float32 term; keep the float64 check), V1 (registry text). engine/tests/oracles.md is updated by the A6 test-author.
+
+## Owner decision (2026-10-12)
+
+The owner asked for a plain explanation and our best decision. **Decision: keep the ruling. No setting is added.**
+
+**In plain words:**
+
+- The engine stores each vibrating mode's state in 32-bit floating point, as SPEC requires so that the real-time loops are fast and vectorisable.
+- A mode that decays very slowly (a bass string with a damper barely touching it) loses only a tiny fraction of its amplitude per sample. 32-bit numbers cannot represent that per-sample factor more finely than about one part in 16 million.
+- A *measured* decay rate can therefore be off by a small, predictable amount. This is a limit of the number format, not a bug in the damper.
+- The test tolerance now includes exactly that amount (with a factor-2 margin). The 64-bit check of the coefficient (10⁻⁹) still proves the formula is right.
+
+**Why no setting:** this ruling changes how a test judges the result, not what the engine computes, so there is nothing to select. The only engine-side alternative would be 64-bit mode states. That is a real quality-for-speed option, and it is recorded as a D-13 candidate for the HighQuality level (phasing plan, D-13), to be evaluated with the V2 performance data. It is not scheduled now.

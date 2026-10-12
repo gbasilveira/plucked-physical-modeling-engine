@@ -1,6 +1,6 @@
 # SI-0018 SPEC-BRG explicit coupling order is unstable for very light bridges
 
-Status: open · Raised by: A4, implementer · Date: 2026-10-12
+Status: resolved (owner decision 2026-10-12: both schemes, selectable) · Raised by: A4, implementer · Date: 2026-10-12
 SPEC section: SPEC-BRG "Discrete coupling order (normative, per sample)"; SPEC-BODY "Local bridge model"
 
 ## Failing test
@@ -26,3 +26,21 @@ This changes numerics: human review is needed before SPEC changes. It does not b
 
 ## Resolution
 Open. Recommended default: Option A.
+
+## Owner decision (2026-10-12)
+
+**Implement both, selectable (decision D-13).**
+
+- The explicit order stays as the Realtime default.
+- The implicit bridge step is added (Option C above). It is stable for any bridge mass. The planner checked it on this issue's configuration: spectral radius 1 within 3 × 10⁻¹⁴ down to m = 10⁻⁶ kg with 8 strings, where the explicit order diverges (m = 10⁻⁴ kg with 3 strings: spectral radius 1.19).
+- In explicit mode `configure` runs Option A's stability check. The engine setting `numerics.unstableBridge` then decides:
+  - **SwitchToImplicit** (default): that bridge point alone uses the implicit step, and a Diagnostic says so. Instruments never fail to load because of it.
+  - **Reject:** loading fails with `Rejected`, naming the point.
+
+**Why SwitchToImplicit is the default:**
+
+- A real-time instrument must load.
+- The implicit step costs about one extra dot product per segment and axis per sample at the affected point only, so the price is small and local.
+- Option B (dropping modes) changes the instrument's sound silently and is not offered.
+
+SPEC-BRG "Bridge scheme" and "Stability of the explicit order", SPEC-CONV "Quality and numerical options". Implemented by phase **A9** (engine/src/bridge). Interface members: ICR-0002.

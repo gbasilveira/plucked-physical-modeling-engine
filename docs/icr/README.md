@@ -34,6 +34,8 @@ P0.3-R1 requires every test name to begin with a requirement or test ID of a pha
 
 ## Carried to the next ICR
 
+**2026-10-12:** every item below is now part of [ICR-0002](ICR-0002-interfaces-v3.md) (proposed). The list stays for history.
+
 Non-blocking items from the ICR-0001 review (see [ICR-0001 "Application"](ICR-0001-interfaces-v2.md#application)); the next ICR includes them as documentation-only items:
 
 - Stale "interfaces-v1" comments in `engine/include/pme/nonlinear.hpp` (lines 7, 16) and `engine/include/pme/pme.hpp` (line 5).
@@ -50,3 +52,4 @@ Non-blocking items from the ICR-0001 review (see [ICR-0001 "Application"](ICR-00
 | ID | Title | Status | Interfaces | Spec issues |
 | --- | --- | --- | --- | --- |
 | [ICR-0001](ICR-0001-interfaces-v2.md) | interfaces-v2: instrument retirement, plucked exciters, tuning keys, body geometry, registry clean-up | applied (300b995; tag push pending owner) | v1 → v2 | SI-0003 to SI-0007; SI-0001 and SI-0002 follow-ups |
+| [ICR-0002](ICR-0002-interfaces-v3.md) | interfaces-v3: engine quality and numerical options (D-13), bridge-switch diagnostic, flexible shank, plate prestress and moistureRef, carried items | proposed | v2 → v3 | SI-0010, SI-0013, SI-0018, SI-0020, SI-0021 |

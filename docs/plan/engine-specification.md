@@ -43,6 +43,20 @@ This document defines how the engine computes sound: the physics, the discrete-t
 
 **Precision.** All compile-time quantities (mode tables, coefficients, fits) MUST be computed in float64. Real-time states MAY be float32 only in the difference form of the modal oscillator; energy monitors MUST accumulate in float64.
 
+**Quality and numerical options (decision D-13).** Where SPEC defines more than one valid scheme or model for the same thing, the engine MUST implement each of them behind a setting, unless they are incompatible with one another, and the default MUST be the fastest option that still plays in real time. Two kinds of setting exist:
+
+- **Engine settings** (`EngineConfig::quality` and `EngineConfig::numerics`, Engine interfaces): engine-wide numerical choices. `quality` is `Realtime` (default) or `HighQuality`. HighQuality trades CPU for accuracy and is meant for offline rendering, bouncing or a slower "quality" plug-in mode. Each per-feature option in `numerics` defaults to `Auto`, which takes the value the quality level implies; an explicit value overrides it. Engine settings are applied when an instrument is compiled (`compileInstrument` receives the `EngineConfig`). A change is a structural change: it recompiles off the audio thread and swaps at a block start (Execution order, "Parameter changes"). They are not automatable; plug-ins persist them in their state and expose them as configuration.
+- **Instrument options**: modelling choices that belong to one instrument, in its description, for example the felt law (`HammerParams::law`), the damper mode (`DamperParams::mode`) and the flexible shank (`HammerParams::shank`).
+
+| Option | Values (default first) | Realtime | HighQuality | Section |
+| --- | --- | --- | --- | --- |
+| `numerics.bridgeScheme` | Auto, Explicit, Implicit | Explicit | Implicit | Bridge coupling, "Bridge scheme" |
+| `numerics.unstableBridge` | SwitchToImplicit, Reject | SwitchToImplicit | (not used: the implicit step is always stable) | Bridge coupling, "Stability of the explicit order" |
+| `numerics.overdampedBridgeModes` | Accept, Reject | Accept | Accept | The modal oscillator, "Bandwidth" |
+| `numerics.geometricTier` | Auto, Default, Exact | Default | Exact | Geometric nonlinearity, "High-quality tier" |
+
+A choice that changes only test tolerances, or that SPEC fixes for correctness, is not an option.
+
 ## Engine at a glance
 
 The engine is a set of note groups that each advance exactly every sample, plus one shared body that advances once per sub-block. Everything inside a note group couples implicitly or exactly; the only approximation, a one-sub-block delay, sits on the sympathetic path between groups.
@@ -120,7 +134,18 @@ This is algebraically identical to the scheme above but keeps the small quantity
 H^{n+1/2} = \tfrac12\left(\frac{u^{n+1}}{\Delta t}\right)^2 + \tfrac12\,\hat\omega^2\, q^n q^{n+1}, \qquad H^{n+1/2}-H^{n-1/2} = \Delta t\left[-2\hat\sigma\,(\delta_{t\cdot}q^n)^2 + f^n\,\delta_{t\cdot}q^n\right]
 ```
 
-**Bandwidth.** A mode MUST be dropped if ω\_dΔt > 0.95π, if its frequency exceeds the instrument's f\_max, or if σ ≥ ω (overdamped). Only modes kept by this rule exist; nothing in the engine aliases from modal truncation. The overdamped exclusion applies to string and body modes. A lumped bridge mode (SPEC-BRG mass–spring–damper) with Ω = 0 is kept and compiled with the limit coefficients ω̂² = 0, κ = 0, σ̂Δt = tanh(σΔt), β = (1 − σ̂Δt)/(1 + σ̂Δt), γ = Δt²/(1 + σ̂Δt); a lumped bridge mode with σ ≥ Ω > 0 is refused at configure time (`Rejected`) until an instrument needs it ([SI-0020](../spec-issues/SI-0020-bridge-modes-bandwidth-rule.md)).
+**Bandwidth.** A mode MUST be dropped if ω\_dΔt > 0.95π, if its frequency exceeds the instrument's f\_max, or if σ ≥ ω (overdamped). Only modes kept by this rule exist; nothing in the engine aliases from modal truncation. The overdamped exclusion applies to string and body modes. A lumped bridge mode (SPEC-BRG mass–spring–damper) with Ω = 0 is kept and compiled with the limit coefficients ω̂² = 0, κ = 0, σ̂Δt = tanh(σΔt), β = (1 − σ̂Δt)/(1 + σ̂Δt), γ = Δt²/(1 + σ̂Δt) ([SI-0020](../spec-issues/SI-0020-bridge-modes-bandwidth-rule.md)). A lumped bridge mode with σ ≥ Ω > 0 (an overdamped bridge: it returns to rest without oscillating) is handled by the engine setting `numerics.overdampedBridgeModes` (D-13):
+
+- **Accept (default).** Compile it with the real-pole continuation of the formulas above. The discrete poles are exactly e^((−σ ± μ)Δt), μ = √(σ² − Ω²), with σ̂Δt = tanh(σΔt) and, cancellation-free:
+
+```math
+\hat\omega^2\Delta t^2 = \frac{4\,\sinh\!\left(\tfrac{(\sigma-\mu)\Delta t}{2}\right)\sinh\!\left(\tfrac{(\sigma+\mu)\Delta t}{2}\right)}{\cosh(\sigma\Delta t)}, \qquad \sigma - \mu = \frac{\Omega^2}{\sigma + \mu}
+```
+
+  This value lies in (0, 2), so ω̂Δt < 2, σ̂ ≥ 0 and the discrete energy below stays non-negative and non-increasing. The mode is stable and passive like any other. β, κ and γ follow from σ̂ and ω̂² as usual. σ = Ω (critical damping) gives μ = 0.
+- **Reject.** `configure` returns `Rejected`, as before SI-0020 was revisited.
+
+String and body modes are never affected: their overdamped exclusion stays.
 
 **Coefficient resolution.** Stored in float32, β resolves the decay rate only to a relative 2⁻²⁵/(2σΔt) (1.6 × 10⁻³ at σΔt = 10⁻⁵); tests of measured decay in float32 MUST allow for it ([SI-0017](../spec-issues/SI-0017-orc13-float32-decay-resolution.md)).
 
@@ -234,6 +259,24 @@ The discrete ω̂ₙ² MUST be used, not ωₙ². The engine simulates dynamic d
 
 This partitioned order is explicit: no solve is needed for the bridge itself. When a segment also has implicit nonlinear terms (hammer, damper, collisions), step 3 is part of that segment's low-rank solve, with the bridge term known.
 
+**Bridge scheme (D-13; SI-0018, SI-0021).** The engine setting `numerics.bridgeScheme` selects one of two schemes per bridge point. Both MUST be implemented.
+
+- **Explicit (Realtime default):** the order above, unchanged. It is the cheapest. Its known limits:
+  - It under-estimates bridge damping above ωΔt ≈ 0.1 (SI-0021; introduction of this section).
+  - It is only conditionally stable for light bridges (next paragraph).
+- **Implicit (HighQuality default; the fallback for unstable points).** One linear solve per bridge point and sample, of size 1 per axis (2 × 2 when θ\_b ≠ 0 and the two polarisations' terms differ). Two changes to the explicit order:
+  1. *Matched coupling.* Each segment uses g̃\_n = g\_n ω\_n / ω̂\_n in place of g\_n. Here ω\_n is the mode's undamped angular frequency, and ω̂\_n = √ω̂²\_n uses the compiled value of the coupled polarisation. g̃\_n is used both in the modal force −g̃\_n δ\_tt w and in the force coefficients a\_n = ρA ω̂²\_n g̃\_n. Because the same vector appears on both sides, the coupled system stays symmetric and keeps the discrete energy structure of the explicit scheme with g replaced by g̃.
+  2. *Implicit bridge update.* Conductances (G, G\_h and a modal set's G\_hf) use the trapezoidal update w\_Rⁿ⁺¹ = w\_Rⁿ + Δt G (Fⁿ⁺¹ + Fⁿ)/2. Bridge modes take the averaged modal force Φ\_k (Fⁿ⁺¹ + 2Fⁿ + Fⁿ⁻¹)/4 in place of Φ\_k Fⁿ. Each segment's qⁿ⁺¹ is affine in wⁿ⁺¹: qⁿ⁺¹ = **b** − **h̃** wⁿ⁺¹ per polarisation. A linear segment has **h̃** = γ ⊙ g̃ / Δt², which is constant. A segment with an active nonlinearity applies its low-rank solve to two right-hand sides, its own **a** and the bridge column γ ⊙ g̃ / Δt² (the solve is linear in the right-hand side at fixed H and W). F\_bⁿ⁺¹ is therefore affine in wⁿ⁺¹ too. The bridge point solves for wⁿ⁺¹, then each segment completes qⁿ⁺¹ and its ψ update. The SPEC-GEO terms κ\_L F\_L + κ\_T ΔT enter at step n in both schemes.
+
+  In exact arithmetic the implicit scheme has a discrete energy that is conserved without losses and non-increasing with them; the implementing phase derives it and tests it (A9). In the planner's check the decay rate of every kept mode was within 1.7 × 10⁻⁴ of σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\] at Z₀G = 0.01 (explicit: up to 0.42). The check used the exact eigenvalues of the one-step map, for a flexible string at 48 kHz with every mode below 20 kHz. At Z₀G = 0.05 the worst mode was within 4.3 × 10⁻³, and modes with ω\_nΔt ≤ 2.4 within 10⁻³. Against the continuous-time coupled modal system the errors are the same for a stiff string (B = 10⁻³). The scheme was neutrally stable (spectral radius 1 within 3 × 10⁻¹⁴) for a lossless mass–spring bridge down to m = 10⁻⁶ kg with 8 strings. The matched coupling alone, with the explicit order, does not help: its worst error is 0.10 at Z₀G = 0.01 and 0.66 at 0.05. Neither does the implicit update with g: 0.45. This scheme is a planner proposal pending the owner's review of the numerics (SI-0021); A9 implements and verifies it.
+
+**Stability of the explicit order (SI-0018).** The explicit order is stable only while the generalised eigenvalues of the bridge point's coupled (K, M) pencil (strings and bridge modes; Bridge coupling energy in docs/dev/bridge.md) stay below 4/Δt². A rule of thumb: each bridge mode's effective mass Φ\_k(x\_b)⁻² must exceed a few times Σ\_s Z₀,s Δt. In explicit mode, `configure` (non-audio) MUST estimate the largest eigenvalue, for example by power iteration on the point's linear update, and treat the point as unstable when it exceeds (1 − 10⁻³)·4/Δt². The engine setting `numerics.unstableBridge` decides what follows:
+
+- **SwitchToImplicit (default):** that bridge point alone uses the implicit scheme, so an instrument always loads. The engine reports it once per compile as a Diagnostic of kind "bridge scheme switched".
+- **Reject:** compileInstrument returns `Rejected` naming the bridge point.
+
+The implicit scheme needs no such check.
+
 **Unison coupling.** All strings of a note, plus its rear and duplex segments, share one bridge point and one w\_b. Weinreich's coupled-string effects (double decay, beating, una corda aftersound) then emerge without extra code. Real unison strings attach at slightly different points; the engine SHOULD treat them as one point.
 
 **Polarisation coupling.** The bridge has a 2×2 admittance in its own frame, rotated by an angle θ\_b from the string polarisations:
@@ -276,7 +319,7 @@ Moisture content MC changes E\_L, E\_R, G\_LR and density through linear coeffic
 E_L(\mathrm{MC}) = E_L + \frac{dE_L}{d\mathrm{MC}}\,(\mathrm{MC} - \mathrm{MC}_{\mathrm{ref}}), \quad \text{and likewise for } E_R,\ G_{LR},\ \rho, \qquad \mathrm{MC}_{\mathrm{ref}} = 0.12 \text{ (default)}
 ```
 
-MC\_ref is a field of the wood data (`PlateParams::moistureRef`, default 0.12, on the next-ICR list); until that ICR is applied, compileBody uses the constant 0.12. MC\_ref = 0.12 is the usual equilibrium moisture content at about 20 °C and 65 % relative humidity at which tonewood constants are tabulated. Crown and downbearing MAY be included as a static prestress (geometric stiffness) in the eigen-solve.
+MC\_ref is a field of the wood data (`PlateParams::moistureRef`, default 0.12; ICR-0002, phase B6); until that ICR is applied, compileBody uses the constant 0.12. MC\_ref = 0.12 is the usual equilibrium moisture content at about 20 °C and 65 % relative humidity at which tonewood constants are tabulated. Crown and downbearing MAY be included as a static prestress (geometric stiffness) in the eigen-solve. The instrument file carries it as an optional field (`PlateParams::prestress`, in-plane membrane stress resultants N\_x, N\_y, N\_xy in N/m; absent means none; ICR-0002, phase B6).
 
 *Body frame.* Points are given in the body frame: x and y span the plate's mid-surface in the instrument's case frame defined by the body outline; the grain (L axis) lies at angle θ\_g from +x; z is normal to the plate and points towards the strings, matching the +y polarisation axis. Bridge points, outline vertices, ribs and bridges use z = 0; radiation channels use the same frame. (SI-0003)
 
@@ -386,7 +429,9 @@ v_H = v_{\min} + (v_{\max} - v_{\min})\,\nu^{\gamma_v}
 
 Typical v\_min = 0.3 m/s, v\_max = 6 m/s, γ\_v = 1.5. The engine MUST NOT add action latency by default: the hammer is launched at a gap of v\_H Δt from the string, so contact starts on the next sample.
 
-**Hammer coordinate.** x\_H is measured along the hammer's travel, positive towards the string; s\_E is the instrument's approach sign. The hammer has mass m\_H (typical 4–12 g, heavier in the bass), no stiffness and no damping of its own. A flexible shank MAY be added as one extra oscillator between drive and head.
+**Hammer coordinate.** x\_H is measured along the hammer's travel, positive towards the string; s\_E is the instrument's approach sign. The hammer has mass m\_H (typical 4–12 g, heavier in the bass), no stiffness and no damping of its own.
+
+**Flexible shank (instrument option `HammerParams::shank`, D-13; absent = rigid hammer, the default).** The head (mass m\_H) is joined to a lumped shank mass m\_S by a linear spring and dashpot. The pair is advanced as two decoupled oscillators in its normal coordinates: a free rigid-body mode (Ω = 0) and one internal mode with Ω\_S = 2π f\_S, set by the fitted shank frequency f\_S, and decay σ\_S. The head displacement is a fixed linear combination of the two, so the contact direction on the hammer is a two-entry vector instead of the single +1. Both coordinates are lumped coordinates of the segment's SAV, so the solve rank does not change. At launch both masses move at v\_H with zero spring deflection. Parameters: m\_S (kg), f\_S (Hz), σ\_S (s⁻¹).
 
 **Contact with each struck string.** The hammer meets string s over a raised-cosine window of width b\_H (typical 5–15 mm) centred at the strike point x\_c = β\_c L (typical β\_c ≈ 1/7–1/9 mid-keyboard, smaller in the treble). The penetration uses the window-averaged displacement along the hammer direction:
 
@@ -524,7 +569,7 @@ Typical κ\_L = sin 1.5° ≈ 0.026 for a piano; κ\_T is 0 for a piano and set 
 
 *Energy balance of the default tier* (SI-0015). Because the coupling is one-way, the default tier does not conserve total energy: the longitudinal modes gain energy from the transverse motion and the transverse modes lose none. The transverse energy (modes, bridge and ψ, including V\_KC) obeys the usual balance; the longitudinal energy E\_L = Σ\_m ρA H\_m^L is extra and scales as the fourth power of the transverse amplitude (its ratio to the transverse energy as the square). In the P0.5 reference's large-amplitude test case it reached about 3 % of the transverse energy. Energy monitors therefore MUST check conservation and passivity on the transverse energy only and report E\_L separately; the sympathetic guard (SPEC-BODY "Sympathetic path") tests the transverse energy only, and sleep decisions use the transverse energy plus E\_L. The high-quality tier conserves the total energy and has no such allowance.
 
-**High-quality tier (MAY).** Replace both parts with the geometrically exact string, whose potential couples transverse and longitudinal motion fully, integrated with the same SAV framework. [Ducceschi, Bilbao and Webb](https://cris.unibo.it/handle/11585/883682) report running this below real time for typical struck piano strings in C++; [Ducceschi & Bilbao (2022)](https://www.research.ed.ac.uk/en/publications/simulation-of-the-geometrically-exact-nonlinear-string-via-energy/) give the energy-quadratised scheme.
+**High-quality tier (D-13: MUST, selected by `numerics.geometricTier`; default in HighQuality, phase A10).** Replace both parts with the geometrically exact string, whose potential couples transverse and longitudinal motion fully, integrated with the same SAV framework. [Ducceschi, Bilbao and Webb](https://cris.unibo.it/handle/11585/883682) report running this below real time for typical struck piano strings in C++; [Ducceschi & Bilbao (2022)](https://www.research.ed.ac.uk/en/publications/simulation-of-the-geometrically-exact-nonlinear-string-via-energy/) give the energy-quadratised scheme.
 
 **Contracts.** `TensionModulationPotential : Potential`. `void longitudinalForce(const Segment&, span<float> fL)` computes f\_m^L by pair sums. `float longitudinalBridgeForce(const Segment&)` returns F\_L.
 
@@ -661,6 +706,14 @@ The engine runs host block → sub-block → sample. Note groups advance in para
 9. Record F\_bⁿ into the force buffer and the local bridge velocity (w\_localⁿ⁺¹ − w\_localⁿ)/Δt.
 10. Advance damper engagement ramps and refresh coefficients if any ramp is active.
 
+With the implicit bridge scheme (Bridge coupling, "Bridge scheme"), steps 3 to 7 become:
+
+- (3′) each segment computes its affine response qⁿ⁺¹ = **b** − **h̃** wⁿ⁺¹ (steps 5–7 with wⁿ⁺¹ unknown);
+- (4′) each bridge point solves for wⁿ⁺¹, adds w\_ext, rotates back and forms δ\_tt wⁿ;
+- (5′) each segment completes qⁿ⁺¹, its ψ update and the reset and drift rules.
+
+Steps 1, 2 and 8 to 10 are unchanged. The order of segments and bridge points stays fixed.
+
 Small-body instruments run this loop with the full body as the bridge model and have no Phase B except radiation, computed per sub-block from recorded body accelerations and velocities.
 
 **Threading contract.**
@@ -706,7 +759,8 @@ struct StringParams   { double L, dCore, rhoCore, ECore, dOuter, rhoWind, packin
                         BridgeEnd bridgeEnd; };        // AtL (speaking) | At0 (rear, duplex)
 struct HammerParams   { double mass, K, p, muHC, width, strikeRatio;
                         FeltLaw law; double stulovEps, stulovTau;
-                        double vMin, vMax, gammaV, dCheck; };
+                        double vMin, vMax, gammaV, dCheck;
+                        std::optional<ShankParams> shank; };   // ShankParams { mass, frequency, sigma } (ICR-0002)
 struct UnaCordaParams { double s0, s1, kappaUC, deltaPUC, rhoUpright; int leavingString; };
 struct DamperParams   { double xRatio, width, Kd, Rd, tau0, kRelease, tauUp, etaD;
                         bool hasDamper; DamperMode mode; };   // Diagonal | RankOne
@@ -729,7 +783,9 @@ struct InstrumentDesc { std::string name; std::vector<NoteGroupDesc> groups;
                         std::vector<BridgePointDesc> bridgePoints; BodyParams body;
                         std::vector<ChannelDesc> channels; TuningCurve tuning; Defaults defaults; };
 struct EngineConfig   { double fs; int maxBlock; int subBlock; int channels; int threads;
-                        double fMaxStrings; bool referenceMode; };
+                        double fMaxStrings; bool referenceMode;
+                        EngineQuality quality;       // Realtime (default) | HighQuality (D-13, ICR-0002)
+                        NumericsOptions numerics; }; // bridgeScheme, unstableBridge, overdampedBridgeModes, geometricTier
 ```
 
 **Compile functions (non-audio threads; may allocate).**
@@ -758,9 +814,11 @@ Compiled data is immutable once built. Recompiling one string MUST NOT rebuild t
 | BodyModes | K, the number of bridge points and channels; Ω\_k, σ\_k; Φ\_k(x\_b); α\_c,k, β\_c,k; τ\_c; per bridge point the residual mobility from which G\_hf,b is derived |
 | LocalBridge | Bridge point index, kept mode indices with their Ω\_k, σ\_k, Φ\_k(x\_b), G\_hf,b and the f\_split used; no oscillator coefficients (Soundboard and bodies, "Contracts") |
 | AudioOut | Non-interleaved float32 output: one host-owned pointer per channel, each to at least `frames` samples |
-| Diagnostic | Kind (group energy, active contact count, κ\_s halving, SAV reset), note group index (position in InstrumentDesc::groups, not the key), the engine sample counter at the sub-block boundary that produced it, and one value (J, count, or the new κ\_s) |
+| Diagnostic | Kind (group energy, active contact count, κ\_s halving, SAV reset, bridge scheme switched (ICR-0002)), note group index (position in InstrumentDesc::groups, not the key), the engine sample counter at the sub-block boundary that produced it, and one value (J, count, or the new κ\_s) |
 
 **EngineConfig.threads** is the total number of threads that run Phase A, the audio thread included; 1 means no worker threads. Output MUST NOT depend on it (Execution order, "Threading contract").
+
+**EngineConfig.quality and EngineConfig.numerics** (D-13) are engine settings, defined in Scope, conventions and notation, "Quality and numerical options". `compileInstrument` applies them. Changing either after `prepare` is a structural change: recompile off the audio thread and swap at a block start. They are configuration, not parameters: they are not in the automatable parameter registry, and plug-ins persist them in their state (D6). Until ICR-0002 is applied, the modules that own an option (A9 bridge, A7 and A10 geometric tier) expose it through internal enums with the same names and values.
 
 **Real-time interface.**
 
@@ -812,7 +870,7 @@ Each block has an analytic or reference answer that the code MUST reproduce befo
 | Stiff-string frequencies | Compiled table vs n f₀ √(1 + B n²) | Exact formula | 10⁻⁹ relative |
 | Tension for pitch ✓ | Closed-form T, then first partial | f₁ target | 10⁻⁹ relative |
 | Window shape ✓ | Raised-cosine W(k) vs quadrature, n up to 60 | Same value | 10⁻⁹ relative |
-| Bridge damping ✓ | Flexible string on a pure conductance G, every kept mode | σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\] | Modes with ω\_nΔt ≤ 0.1: 0.1% against the formula (run: 10⁻⁴). Every kept mode: measured decay rate equals that of the exact eigenvalues of the scheme's one-step coupled map within 10⁻⁴ relative; the deviation from the formula is reported per mode, not bounded ([SI-0021](../spec-issues/SI-0021-orc06-bridge-damping-high-modes.md)) |
+| Bridge damping ✓ | Flexible string on a pure conductance G, every kept mode | σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\] | Modes with ω\_nΔt ≤ 0.1: 0.1% against the formula (run: 10⁻⁴). Every kept mode: measured decay rate equals that of the exact eigenvalues of the scheme's one-step coupled map within 10⁻⁴ relative; the deviation from the formula is reported per mode, not bounded ([SI-0021](../spec-issues/SI-0021-orc06-bridge-damping-high-modes.md)). Implicit bridge scheme (D-13): every kept mode within 0.1% of the formula at Z₀G = 0.01; at Z₀G = 0.05 within 0.1% for ω\_nΔt ≤ 2.4 and 0.5% for every kept mode |
 | Unison coupling ✓ | Two identical strings, one conductance | In-phase 4 f₀ Z₀ G; anti-phase intrinsic | 0.1% |
 | Impact time ✓ | Mass 8 g at 3 m/s on rigid felt contact, p = 2.5 | t\_c from the hammer oracle; rebound −v | max(1%, 1 sample); rebound 0.1% (run: 0.4%, exact rebound) |
 | Hammer–string energy ✓ | Lossless string and felt, float64 | Total energy including ½ψ² constant | 10⁻¹⁰ relative (run: 7 × 10⁻¹⁴) |

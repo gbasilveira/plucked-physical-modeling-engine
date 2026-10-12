@@ -1,6 +1,6 @@
 # SI-0021 ORC-06 "every kept mode within 0.1%" is not met by the SPEC-BRG partitioned scheme above ωΔt ≈ 0.1
 
-Status: resolved (oracle criterion) · open (scheme question, owner) · Raised by: A4, test-author · Date: 2026-10-12
+Status: resolved (oracle criterion 2026-10-12; scheme: owner decision 2026-10-12, both schemes selectable; numerics of the implicit scheme pending owner review) · Raised by: A4, test-author · Date: 2026-10-12
 SPEC section: SPEC-ORC row "Bridge damping" (ORC-06); SPEC-BRG introduction ("reproduces wave theory's bridge damping to 1 part in 10⁴"), "Bridge force", "Discrete coupling order"
 
 ## Failing test
@@ -27,3 +27,24 @@ Z₀G = 0.05 is similar (worst −0.96). The error is within 10⁻³ only for ω
 
 ## Resolution
 Items 1 and 2 resolved 2026-10-12 by the orchestrator's default, as proposed; SPEC updated in the `PLAN: file SI-0021 …` commit. They change a test criterion and a documentation claim, not engine behaviour; flagged for owner review with item 3. Item 3 stays open for the owner (recommended default: A now, with B evaluated together with SI-0018 before G1). Affected phases: A4 (ORC-06 test-author: add the exact-map comparison for every mode, keep the 0.1% check for ωΔt ≤ 0.1, report per-mode deviations; update the engine/tests/oracles.md row), B5 (fitted intrinsic losses absorb the deficit; B5-T2 uses ORC-06), V4.
+
+## Owner decision on item 3 (2026-10-12)
+
+**Implement both schemes, selectable (decision D-13).** Explicit stays the Realtime default (fastest). An implicit scheme is the HighQuality default and the fallback for unstable bridge points (SI-0018).
+
+**Planner's check before planning the work (eigenvalues of the exact one-step map, flexible string, 48 kHz, all modes below 20 kHz):**
+
+| Scheme | Worst mode, Z₀G = 0.01 | Worst mode, Z₀G = 0.05 |
+| --- | --- | --- |
+| Explicit (SPEC order) | −0.42 | −0.32 |
+| Option B as written here: implicit (trapezoidal) bridge update, coupling g\_n unchanged | −0.45 | −0.46 |
+| Matched coupling g̃\_n = g\_n ω\_n/ω̂\_n with the explicit order | +0.10 | +0.66 |
+| **Implicit bridge update + matched coupling g̃\_n** | **1.7 × 10⁻⁴** | **4.3 × 10⁻³** (10⁻³ up to ω\_nΔt ≈ 2.4) |
+
+The implicit update alone does **not** fix the high-mode deficit. The error comes from the discrete second difference δ\_tt w seen by each mode, not from the bridge update. Combined with the matched coupling it does: every kept mode is within 0.1% at Z₀G = 0.01. Against the continuous-time coupled modal system, a stiff string (B = 10⁻³) shows the same errors. The same scheme, with the bridge modes taking the averaged force (Fⁿ⁺¹ + 2Fⁿ + Fⁿ⁻¹)/4, also removes SI-0018's light-bridge instability.
+
+**Acceptance (SPEC-ORC row "Bridge damping", implicit scheme):** every kept mode within 0.1% of the formula at Z₀G = 0.01; at Z₀G = 0.05 within 0.1% for ω\_nΔt ≤ 2.4 and within 0.5% for every kept mode. The explicit-scheme criterion above stays.
+
+**Owner review needed (numerics):** the matched coupling and the averaged bridge force are the planner's proposal. They are normative in SPEC-BRG "Bridge scheme" but flagged for the owner's review of the numerics before A9 merges. A9 proves the energy balance and runs the tests. If a test fails, A9 stops and files a spec issue.
+
+Implemented by phase **A9**. Cost: one extra dot product (aᵀb) per segment and axis per sample, plus one solve of size 1 or 2 per bridge point; A9 measures it.

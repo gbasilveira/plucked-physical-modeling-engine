@@ -22,6 +22,8 @@ flowchart LR
     A6["A6 Dampers and pedals"]
     A7["A7 Geometric nonlinearity and longitudinal waves"]
     A8["A8 SIMD kernels"]
+    A9["A9 Implicit bridge step and bridge numerics options"]
+    A10["A10 Geometrically exact string tier"]
   end
   subgraph T_B["Track B: Bodies and offline toolchain"]
     B1["B1 Instrument description schema and loader"]
@@ -29,6 +31,7 @@ flowchart LR
     B3["B3 Radiation, mobility and local bridge builder"]
     B4["B4 Modal data import"]
     B5["B5 Parameter fitting toolkit"]
+    B6["B6 Instrument-file prestress, moisture reference and shank"]
   end
   subgraph T_C["Track C: Engine runtime"]
     C1["C1 Note group runtime"]
@@ -121,6 +124,8 @@ flowchart LR
   A1 --> A8
   A2 --> A8
   A4 --> A8
+  A4 --> A9
+  A7 --> A10
   G0 --> B1
   B1 --> B2
   B2 --> B3
@@ -128,6 +133,8 @@ flowchart LR
   B1 --> B5
   A5 --> B5
   C8 --> B5
+  B1 --> B6
+  B2 --> B6
   G1 --> C1
   B1 --> C1
   G1 --> C2
@@ -230,6 +237,7 @@ flowchart LR
   A6 --> G1
   A7 --> G1
   A8 --> G1
+  A9 --> G1
   P0_5 --> G1
   C1 --> G2
   C2 --> G2
@@ -242,6 +250,8 @@ flowchart LR
   B1 --> G2
   B2 --> G2
   B3 --> G2
+  B6 --> G2
+  A10 --> G2
   D1 --> G3
   D2 --> G3
   D3 --> G3

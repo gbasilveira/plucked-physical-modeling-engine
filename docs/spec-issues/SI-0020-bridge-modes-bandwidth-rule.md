@@ -1,6 +1,6 @@
 # SI-0020 SPEC-OSC bandwidth rule rejects free-mass (Ω = 0) and overdamped lumped bridge modes
 
-Status: resolved · Raised by: A4, implementer · Date: 2026-10-12
+Status: resolved (owner decision 2026-10-12: overdamped bridge modes accepted by default, selectable) · Raised by: A4, implementer · Date: 2026-10-12
 SPEC section: SPEC-OSC "Bandwidth", "Difference form"; SPEC-BRG bridge models; SPEC-BODY "Local bridge model"
 
 ## Failing test
@@ -16,3 +16,23 @@ SPEC-OSC "Bandwidth", append: "The overdamped exclusion applies to string and bo
 
 ## Resolution
 Resolved 2026-10-12 by the orchestrator's default, ratifying A4's behaviour as proposed. Numerics (a new coefficient case): flagged for owner review. SPEC updated in the `PLAN: file SI-0017 to SI-0020 …` commit. Affected phases: A4 (already conforms; docs/dev/bridge.md may cite SI-0020), A8 (SIMD kernels keep the Ω = 0 case), B3 (modal-set bridges keep dropping σ ≥ Ω body modes).
+
+## Owner decision (2026-10-12)
+
+The owner asked for a plain explanation and our best decision.
+
+**In plain words:**
+
+- A bridge modelled as a mass on a spring with a damper either rings (oscillates while it settles) or, if the damper is strong enough, creeps back to rest without ringing. The second case is "overdamped".
+- The oscillator formulas in SPEC were written for ringing modes, so overdamped bridge modes were refused.
+- A free mass (no spring) was already accepted.
+
+**Decision (standing policy D-13: implement alternatives as options):**
+
+- Overdamped lumped bridge modes are now compiled with the exact non-ringing version of the same formulas: two real decay rates instead of a frequency and one decay rate. SPEC-OSC "Bandwidth" gives the cancellation-free formula.
+- The planner checked numerically that the resulting discrete poles equal the exact ones, e^((−σ ± μ)Δt), to round-off. The coefficient ω̂²Δt² stays between 0 and 2, so the mode is stable and its energy can only fall.
+- The engine setting `numerics.overdampedBridgeModes` selects **Accept** (default) or **Reject** (the previous behaviour).
+- Accept is the default because it costs nothing extra and lets more instruments load.
+- String and body modes are not affected: an overdamped string or soundboard mode is still dropped, because such modes are not physical there.
+
+Implemented by phase **A9** (`compileBridgeMode` in engine/src/bridge). A8's kernels need no change (the difference form is the same). Interface member: ICR-0002.
