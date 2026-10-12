@@ -35,7 +35,7 @@ columns, which are copied verbatim; if they drift, SPEC wins and this file is co
 | ORC-10 | Triangle pluck | q\_n(0) formula vs quadrature | Same value | 10⁻⁹ relative | P1 | G6 | not implemented | - |
 | ORC-11 | Longitudinal forcing | Pair sum vs quadrature of −(EA − T)/(2ρA) ∫ y\_x² χ\_m' dx | Same value | 10⁻⁹ relative | A7 | G1 | not implemented | - |
 | ORC-12 | Tension modulation | Σ k\_n² q\_n² vs ∫ y\_x² dx | Same value | 10⁻¹² relative | A7 | G1 | not implemented | - |
-| ORC-13 | Damper (diagonal) | e = 1, single mode | σ\_n + e R\_d φ̄² / (2ρA) | 0.1% | A6 | G1 | not implemented | - |
+| ORC-13 | Damper (diagonal) | e = 1, single mode | σ\_n + e R\_d φ̄² / (2ρA) | 0.1% | A6 | G1 | implemented | engine/tests/oracles/dampers/test_orc13_damper_diagonal.cpp |
 | ORC-14 | Fretted pitch | Finger stop at fret k on a low-stiffness string | Open pitch × 2^(k/12) | 2 cents | P3 | G6 | not implemented | - |
 | ORC-15 | Collision passivity | String released onto a flat barrier | Energy constant without contact damping; non-increasing with it | 10⁻⁹ relative per step in float64 | P2 | G6 | not implemented | - |
 | ORC-16 | Sample-rate independence | Same instrument at 44.1, 48 and 96 kHz | Identical partial frequencies; matching decays | 0.01 cent; 0.5% | C1 | G2 | not implemented | - |
