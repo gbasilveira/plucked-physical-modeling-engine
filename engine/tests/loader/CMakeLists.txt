@@ -4,7 +4,7 @@
 # instruments/examples.
 
 pme_add_doctest(pme_loader_tests
-  SOURCES test_sha256.cpp test_roundtrip.cpp test_malformed.cpp test_migration.cpp test_robustness.cpp
+  SOURCES test_sha256.cpp test_roundtrip.cpp test_malformed.cpp test_migration.cpp test_robustness.cpp test_compiled_body.cpp
   LIBRARIES pme_loader pme_runtime nlohmann_json::nlohmann_json
   LABELS unit)
 # pme::toString(Status) is found by ADL and would hijack doctest's toString (see engine/tests/interfaces).
@@ -12,6 +12,7 @@ target_compile_definitions(pme_loader_tests PRIVATE
   DOCTEST_CONFIG_DOUBLE_STRINGIFY
   DOCTEST_CONFIG_USE_STD_HEADERS
   "PME_B1_FIXTURES=\"${PROJECT_SOURCE_DIR}/compiler/tests/data/b1\""
+  "PME_B2_FIXTURES=\"${PROJECT_SOURCE_DIR}/compiler/tests/data/b2\""
   "PME_B1_EXAMPLES=\"${PROJECT_SOURCE_DIR}/instruments/examples\"")
 # formatDouble and the other internals are tested directly.
 target_include_directories(pme_loader_tests PRIVATE "${PROJECT_SOURCE_DIR}/engine/src/runtime/loader")

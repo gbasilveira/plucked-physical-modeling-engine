@@ -35,12 +35,31 @@ class Modes:
     windows: int
 
 
+# Components within this relative margin of the largest magnitude count as tied (lowest index wins).
+SIGN_TIE_REL = 1.0e-9
+
+
+def fix_signs(vectors: Array) -> Array:
+    """Make the sign of every column deterministic (B2-R5).
+
+    The sign of an eigenvector is arbitrary and differs between LAPACK/ARPACK builds. Each column
+    is multiplied by -1 if needed so that its largest-magnitude component is positive; components
+    within ``SIGN_TIE_REL`` of the largest magnitude are tied and the lowest index decides.
+    """
+    mag = np.abs(vectors)
+    peak = mag.max(axis=0)
+    first = np.argmax(mag >= peak * (1.0 - SIGN_TIE_REL), axis=0)  # first True per column
+    sign = np.where(vectors[first, np.arange(vectors.shape[1])] < 0.0, -1.0, 1.0)
+    return np.asarray(vectors * sign, dtype=np.float64)
+
+
 def mass_normalise(vectors: Array, mass: sp.spmatrix) -> Array:
     """M-orthonormalise the columns of ``vectors`` so that Phi^T M Phi = I.
 
     # SPEC-BODY: mass normalisation, int rho h Phi_k Phi_l dA = delta_kl, with the full mass matrix.
     Each eigenvector is already M-orthogonal in exact arithmetic except inside degenerate clusters
-    split across windows; a Cholesky re-orthonormalisation removes that residual.
+    split across windows; a Cholesky re-orthonormalisation removes that residual. The dense and the
+    windowed solver both end here, so the sign of every mode is fixed here (``fix_signs``).
     """
     gram = vectors.T @ (mass @ vectors)
     gram = 0.5 * (gram + gram.T)
@@ -52,7 +71,7 @@ def mass_normalise(vectors: Array, mass: sp.spmatrix) -> Array:
     if off > 1.0e-13:
         lower = np.linalg.cholesky(gram)
         vectors = np.linalg.solve(lower, vectors.T).T
-    return np.asarray(vectors, dtype=np.float64)
+    return fix_signs(np.asarray(vectors, dtype=np.float64))
 
 
 def _dense(k: sp.spmatrix, m: sp.spmatrix, lam_max: float) -> tuple[Array, Array, int]:
