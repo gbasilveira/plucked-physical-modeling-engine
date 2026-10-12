@@ -562,6 +562,7 @@ Status StruckNote<S>::configure(const StruckNoteDesc& desc, double fs,
     contactOpen_ = false;
     peak_ = 0.0;
     sample_ = 0;
+    releasedEnergy_ = 0.0;
     diag_ = HammerDiagnostics{};
     return Status::Ok;
 }
@@ -709,6 +710,13 @@ void StruckNote<S>::release() noexcept {
     // position); the shank's internal state is dropped (this only removes energy).
     S* const q = seg_.q();
     S* const u = seg_.u();
+    // The energy the hammer carries away (kinetic energy and the shank's internal energy).
+    for (std::size_t i = hammerIdx_; i < seg_.size(); ++i) {
+        releasedEnergy_ +=
+            seg_.mass()[i] *
+            osc::modeEnergy(seg_.omegaHat2()[i], static_cast<double>(seg_.qPrev()[i]),
+                            static_cast<double>(q[i]), static_cast<double>(u[i]), dt_);
+    }
     u[hammerIdx_] = S{};
     if (hasShank_) {
         q[hammerIdx_ + 1] = S{};

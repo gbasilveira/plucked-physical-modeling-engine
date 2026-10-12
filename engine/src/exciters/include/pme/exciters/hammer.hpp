@@ -314,6 +314,9 @@ public:
     void clearDiagnostics() noexcept { diag_ = HammerDiagnostics{}; }
     /// Una corda shift in effect (clamped to [0, 1]).
     [[nodiscard]] double shift() const noexcept { return shift_; }
+    /// Energy carried away by released hammers so far (J, float64): their kinetic energy and the
+    /// shank's internal energy at the release (SPEC-HAM "Release and check").
+    [[nodiscard]] double releasedEnergy() const noexcept { return releasedEnergy_; }
     /// Conserved energy of the SAV segment (strings' vertical modes, hammer, psi), float64.
     [[nodiscard]] double energy() const noexcept { return nl::savEnergy(seg_); }
 
@@ -356,6 +359,7 @@ private:
     bool contactOpen_{false};
     double peak_{0.0};
     std::uint64_t sample_{0};
+    double releasedEnergy_{0.0};
     HammerDiagnostics diag_{};
 };
 
