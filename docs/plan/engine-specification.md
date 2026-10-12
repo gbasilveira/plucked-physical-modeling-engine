@@ -204,7 +204,7 @@ W(k) = \frac{\sin(kb/2)}{kb/2}\cdot\frac{\pi^2}{\pi^2 - (kb/2)^2}
 
 ## Bridge coupling
 
-The bridge end of every string moves with the bridge. A lifting function turns that motion into a modal force, and the force the string puts on the bridge is a dot product over its modes. Checked numerically for this spec, the scheme below reproduces wave theory's bridge damping to 1 part in 10⁴, and two strings on one bridge show the expected in-phase and anti-phase decays.
+The bridge end of every string moves with the bridge. A lifting function turns that motion into a modal force, and the force the string puts on the bridge is a dot product over its modes. Checked numerically for this spec, the scheme below reproduces wave theory's bridge damping to 1 part in 10⁴ for modes with ωΔt ≲ 0.05 and within 0.1% for ωΔt ≤ 0.1; above that the explicit order under-estimates the bridge damping by a relative error growing as (ωΔt)² (about 1.7% at ωΔt = 0.4, up to 50% near the bandwidth limit at Z₀G = 0.01; [SI-0021](../spec-issues/SI-0021-orc06-bridge-damping-high-modes.md)), and two strings on one bridge show the expected in-phase and anti-phase decays.
 
 **Decomposition.** The bridge displacement w\_b(t) enters through a static lifting function ψ(x) that satisfies the pinned conditions (ψ'' = 0), so the stiffness term adds nothing:
 
@@ -812,7 +812,7 @@ Each block has an analytic or reference answer that the code MUST reproduce befo
 | Stiff-string frequencies | Compiled table vs n f₀ √(1 + B n²) | Exact formula | 10⁻⁹ relative |
 | Tension for pitch ✓ | Closed-form T, then first partial | f₁ target | 10⁻⁹ relative |
 | Window shape ✓ | Raised-cosine W(k) vs quadrature, n up to 60 | Same value | 10⁻⁹ relative |
-| Bridge damping ✓ | Flexible string on a pure conductance G, every kept mode | σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\] | 0.1% (run: 10⁻⁴) |
+| Bridge damping ✓ | Flexible string on a pure conductance G, every kept mode | σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\] | Modes with ω\_nΔt ≤ 0.1: 0.1% against the formula (run: 10⁻⁴). Every kept mode: measured decay rate equals that of the exact eigenvalues of the scheme's one-step coupled map within 10⁻⁴ relative; the deviation from the formula is reported per mode, not bounded ([SI-0021](../spec-issues/SI-0021-orc06-bridge-damping-high-modes.md)) |
 | Unison coupling ✓ | Two identical strings, one conductance | In-phase 4 f₀ Z₀ G; anti-phase intrinsic | 0.1% |
 | Impact time ✓ | Mass 8 g at 3 m/s on rigid felt contact, p = 2.5 | t\_c from the hammer oracle; rebound −v | max(1%, 1 sample); rebound 0.1% (run: 0.4%, exact rebound) |
 | Hammer–string energy ✓ | Lossless string and felt, float64 | Total energy including ½ψ² constant | 10⁻¹⁰ relative (run: 7 × 10⁻¹⁴) |

@@ -43,10 +43,16 @@ class Material:
     slopes: dict[str, float]  # per unit MC; zero when the entry gives none
     loss_table: tuple[tuple[float, float], ...]  # (frequency Hz, eta); empty = constant eta
     source: dict[str, Any]
+    unsourced_slopes: tuple[str, ...] = ()  # slope fields the source lacks (applied as zero)
 
     def loss_factor(self, frequency_hz: float) -> float:
-        """eta(f): the constant, or the table interpolated linearly in log f (clamped)."""
+        """eta(f): the constant, or the table interpolated linearly in log f (clamped).
+
+        Raises ``ValueError`` for an entry without a sourced loss factor (``lossFactor`` null).
+        """
         if not self.loss_table:
+            if "lossFactor" not in self.constants:
+                raise ValueError(f"{self.name}: no sourced loss factor; supply one explicitly")
             return self.constants["lossFactor"]
         f0, e0 = self.loss_table[0]
         if frequency_hz <= f0:
@@ -67,6 +73,8 @@ def validate_entry(entry: dict[str, Any]) -> list[str]:
     consts = entry.get("constants", {})
     for f in CONSTANT_FIELDS:
         v = consts.get(f)
+        if v is None and f == "lossFactor" and entry.get("kind") == "tonewood":
+            continue  # not in the source; derivation.lossFactor must say so (checked below)
         if not isinstance(v, (int, float)) or not math.isfinite(v):
             problems.append(f"{name}: constants.{f} missing or not finite")
         elif f != "lossFactor" and not f.startswith("poisson") and v <= 0:
@@ -74,7 +82,10 @@ def validate_entry(entry: dict[str, Any]) -> list[str]:
     slopes = entry.get("moistureSlopes")
     if slopes is not None:
         for f in SLOPE_FIELDS:
-            if not isinstance(slopes.get(f), (int, float)):
+            v = slopes.get(f)
+            if v is None and f in slopes and entry.get("kind") == "tonewood":
+                continue  # null = not in the source; derivation.moistureSlopes.<f> says so
+            if not isinstance(v, (int, float)) or not math.isfinite(v):
                 problems.append(f"{name}: moistureSlopes.{f} missing")
     src = entry.get("source")
     if not isinstance(src, dict):
@@ -87,19 +98,28 @@ def validate_entry(entry: dict[str, Any]) -> list[str]:
     for f in needed:
         if not isinstance(deriv, dict) or not deriv.get(f):
             problems.append(f"{name}: source.derivation.{f} missing (how was the value obtained?)")
+    slope_deriv = deriv.get("moistureSlopes") if isinstance(deriv, dict) else None
+    if isinstance(slope_deriv, dict) and slopes is not None:
+        for f in SLOPE_FIELDS:
+            if not slope_deriv.get(f):
+                problems.append(f"{name}: source.derivation.moistureSlopes.{f} missing")
     return problems
 
 
 def _parse(entry: dict[str, Any]) -> Material:
     slopes_raw = entry.get("moistureSlopes") or {}
+    consts = {
+        f: entry["constants"][f] for f in CONSTANT_FIELDS if entry["constants"][f] is not None
+    }
     return Material(
         name=entry["name"],
         kind=entry["kind"],
         description=entry.get("description", ""),
-        constants={f: float(entry["constants"][f]) for f in CONSTANT_FIELDS},
-        slopes={f: float(slopes_raw.get(f, 0.0)) for f in SLOPE_FIELDS},
+        constants={f: float(v) for f, v in consts.items()},
+        slopes={f: float(slopes_raw.get(f) or 0.0) for f in SLOPE_FIELDS},
         loss_table=tuple((float(f), float(e)) for f, e in (entry.get("lossFactorTable") or [])),
         source=entry["source"],
+        unsourced_slopes=tuple(f for f in SLOPE_FIELDS if slopes_raw.get(f) is None),
     )
 
 
@@ -129,12 +149,20 @@ def omissions() -> list[str]:
     return [str(s) for s in load_raw().get("omissions", [])]
 
 
-def apply(material: Material, plate: models.PlateParams) -> models.PlateParams:
+def apply(
+    material: Material, plate: models.PlateParams, loss_factor: float | None = None
+) -> models.PlateParams:
     """Copy of ``plate`` with the wood fields (constants, slopes) of ``material``.
 
-    Geometry, moisture, rim support and fMax of ``plate`` are kept. ``lossFactor`` is the entry's
-    constant value (for an eta(f) table pass ``material.loss_factor`` to ``compile_plate``).
+    Geometry, moisture, rim support and fMax of ``plate`` are kept. ``lossFactor`` is
+    ``loss_factor`` if given, else the entry's constant value (for an eta(f) table pass
+    ``material.loss_factor`` to ``compile_plate``). An entry whose source has no loss factor (the
+    Wood Handbook tonewoods) requires the argument; otherwise ``ValueError``.
     """
+    if loss_factor is None:
+        if "lossFactor" not in material.constants:
+            raise ValueError(f"{material.name}: the source has no loss factor; pass loss_factor")
+        loss_factor = material.constants["lossFactor"]
     return dataclasses.replace(
         plate,
         youngsL=material.constants["youngsL"],
@@ -143,7 +171,7 @@ def apply(material: Material, plate: models.PlateParams) -> models.PlateParams:
         poissonLR=material.constants["poissonLR"],
         poissonRL=material.constants["poissonRL"],
         density=material.constants["density"],
-        lossFactor=material.constants["lossFactor"],
+        lossFactor=loss_factor,
         dEdMcL=material.slopes["dEdMcL"],
         dEdMcR=material.slopes["dEdMcR"],
         dGdMc=material.slopes["dGdMc"],

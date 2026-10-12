@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "mcRef": 0.12,
-  "note": "Every entry records its source (B2-R2). No published tonewood value is included because none could be consulted when this file was written (no network access to the USDA Forest Products Laboratory Wood Handbook, FPL-GTR-282); see 'omissions'. Add species only from a source that has been read, with the table or page and the derivation of every field.",
+  "note": "Every entry records its source (B2-R2). Tonewood entries come from the USDA Forest Products Laboratory Wood Handbook, FPL-GTR-282 (2021), read from the PDF; every number is traceable through source.raw, source.derivation and source.locators (printed page and PDF page). Fields the handbook does not provide are null and listed in 'omissions'.",
   "materials": [
     {
       "name": "p0_5_reference_plate",
       "kind": "test-reference",
       "description": "Spruce-like orthotropic plate material of the P0.5 reference solver (P0.5-T4). Not a measurement of any wood.",
       "constants": {
-        "youngsL": 10.0e9,
-        "youngsR": 0.5e9,
-        "shearLR": 0.6e9,
+        "youngsL": 10000000000.0,
+        "youngsR": 500000000.0,
+        "shearLR": 600000000.0,
         "poissonLR": 0.37,
         "poissonRL": 0.0185,
         "density": 400.0,
@@ -35,10 +35,471 @@
           "moistureSlopes": "not available: all four slopes are taken as zero"
         }
       }
+    },
+    {
+      "name": "sitka_spruce",
+      "kind": "tonewood",
+      "description": "Sitka spruce (Picea sitchensis), softwood grown in the United States (soundboard wood); Table 5-3a.",
+      "constants": {
+        "youngsL": 11880000000.000002,
+        "youngsR": 926640000.0000001,
+        "shearLR": 760320000.0000001,
+        "poissonLR": 0.372,
+        "poissonRL": 0.04,
+        "density": 448.00000000000006,
+        "lossFactor": null
+      },
+      "lossFactorTable": null,
+      "moistureSlopes": {
+        "dEdMcL": -18966813674.20513,
+        "dEdMcR": null,
+        "dGdMc": null,
+        "dRhodMc": 214.14976754453266
+      },
+      "source": {
+        "author": "Forest Products Laboratory (USDA Forest Service), Madison, WI",
+        "title": "Wood handbook - wood as an engineering material, General Technical Report FPL-GTR-282 (March 2021)",
+        "year": 2021,
+        "locator": "Row 'Spruce, Sitka': Table 5-3a (metric), printed p. 5-8, PDF p. 124; Table 5-1 (printed p. 5-2, PDF p. 118); Table 5-2 (printed p. 5-3, PDF p. 119); Chapter 4 Eqs. 4-9, 4-11, 4-14; Chapter 5 Eq. 5-3. Per-field locators in source.locators.",
+        "licence": "Public domain (work of the United States government, 17 U.S.C. 105); no restriction on reuse or redistribution of the numbers.",
+        "derivation": {
+          "youngsL": "E_L = 1.10 x E_bending(12 %) = 1.10 x 10800 MPa = 11880 MPa = 1.188e+10 Pa. E_bending(12 %) = 10800 MPa from Table 5-3a (metric), printed p. 5-8, PDF p. 124, row Spruce, Sitka, 12 % line, modulus of elasticity. The tabulated value is a static-bending modulus that includes shear deflection; the 1.10 factor is the handbook's own correction (Table 5-3a footnote c, printed p. 5-8: 'To correct for shear deflection, the modulus can be increased by 10%'; Table 5-1 footnote a, printed p. 5-2, PDF p. 118: 'EL may be approximated by increasing modulus of elasticity values in Table 5-3 by 10%'; text on printed p. 5-2: 'EL from bending can be increased by 10% to remove this effect approximately'). For Table 5-5a species the handbook states no span/depth ratio; the same 10 % rule of the text is applied.",
+          "youngsR": "E_R = (E_R/E_L) x E_L = 0.078 x 11880 MPa = 926.64 MPa = 9.2664e+08 Pa; E_R/E_L = 0.078 from Table 5-1 (printed p. 5-2, PDF p. 118); applied to the shear-corrected E_L as the handbook directs (printed p. 5-2: 'This adjusted bending EL can be used to determine ER and ET based on the ratios in Table 5-1').",
+          "shearLR": "G_LR = (G_LR/E_L) x E_L = 0.064 x 11880 MPa = 760.32 MPa = 7.6032e+08 Pa; G_LR/E_L = 0.064 from Table 5-1 (printed p. 5-2, PDF p. 118), same shear-corrected E_L.",
+          "poissonLR": "nu_LR = 0.372 from Table 5-2 (printed p. 5-3, PDF p. 119), column muLR.",
+          "poissonRL": "nu_RL = 0.04 from Table 5-2 (printed p. 5-3, PDF p. 119), column muRL.",
+          "density": "Tabulated G12 = 0.4 (Table 5-3a (metric), printed p. 5-8, PDF p. 124, row Spruce, Sitka, 12 % line; footnote b: ovendry mass, volume at 12 % MC). rho12 = 1000 kg/m^3 x G12 x (1 + 12/100) = 448 kg/m^3 (Eq. 4-14 with x = 12; Table 4-5: rho12 is mass and volume both at 12 % MC).",
+          "lossFactor": "Not available. The handbook gives no species value of internal friction or loss factor. Its only statement (Chapter 5, internal friction, printed p. 5-21, PDF p. 137) is that 'the value of internal friction, expressed by logarithmic decrement, ranges from about 0.1 for hot, moist wood to less than 0.02 for hot, dry wood', with cool wood intermediate. That is a range over temperature and moisture, not a value for this species at 12 % MC and room temperature, so no number is recorded (constants.lossFactor is null). The caller must supply the loss factor to library.apply.",
+          "moistureSlopes": {
+            "dEdMcL": "Eq. 5-3 (printed p. 5-34, PDF p. 150): P(M) = P12 (P12/Pg)^((12 - M)/(Mp - 12)), M in %. P12 = 10800 MPa and Pg = 8500 MPa (green line) from Table 5-3a (metric), printed p. 5-8, PDF p. 124, row Spruce, Sitka; Mp = 27 % (Table 5-13 (printed p. 5-34, PDF p. 150) row Spruce, Sitka). Derivative at M = 12: dP/dM = -P12 ln(P12/Pg)/(Mp - 12) = -10800 x ln(10800/8500)/(27 - 12) = -172.426 MPa per % MC. Times the 1.10 shear correction of E_L: -189.668 MPa per % MC = -1.89668e+10 Pa per unit MC fraction (x 100 for % to fraction, x 1e6 for MPa to Pa). The handbook excludes work to maximum load, impact bending and tension perpendicular from Eq. 5-3; the modulus of elasticity is not excluded.",
+            "dEdMcR": "Not available. The handbook gives E_R/E_L only at about 12 % MC (Table 5-1) and no green values or moisture adjustment for E_R, so no slope is derived; stored as null (applied as 0). Scaling E_R with the E_L slope would be an assumption the handbook does not make.",
+            "dGdMc": "Not available. The handbook gives G_LR/E_L only at about 12 % MC (Table 5-1) and no moisture adjustment for G_LR; stored as null (applied as 0).",
+            "dRhodMc": "rho(M) = 1000 x Gb x (1 + M/100)/(1 - S0/100 (1 - M/30)) from Eq. 4-14 with Gx = Gb/(1 - Sx/100) (Eq. 4-11) and Sx = S0 (1 - M/MCfs), MCfs = 30 % (Eq. 4-9), M <= 30. Gb = 0.37 (Table 5-3a (metric), printed p. 5-8, PDF p. 124), S0 = 11.5 % (Table 4-3 (printed p. 4-8, PDF p. 102) row Spruce, Sitka (volumetric)). Derivative at M = 12: u = 1 - S0/100 (1 - 12/30) = 0.931000; du/dM = S0/(100 x 30) = 0.00383333; d(rho)/dM = 1000 Gb [u/100 - (1 + 12/100) du/dM]/u^2 = 2.1415 kg/m^3 per % MC = 214.15 kg/m^3 per unit MC fraction."
+          }
+        },
+        "locators": {
+          "youngsL": "Table 5-3a (metric), printed p. 5-8, PDF p. 124 (modulus of elasticity, 12 % MC); shear correction: Table 5-3a footnote c, printed p. 5-8; Table 5-1 footnote a, printed p. 5-2 (PDF p. 118)",
+          "youngsR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "shearLR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "poissonLR": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "poissonRL": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "density": "Table 5-3a (metric), printed p. 5-8, PDF p. 124 (specific gravity); Chapter 4 Eqs. 4-9, 4-11, 4-14 (printed pp. 4-10 to 4-12, PDF pp. 104-106); Table 4-3 (printed p. 4-8, PDF p. 102) row Spruce, Sitka (volumetric)",
+          "lossFactor": "none; Chapter 5 internal friction, printed p. 5-21, PDF p. 137 (range only)",
+          "dEdMcL": "Eq. 5-3, printed p. 5-34, PDF p. 150; Mp: Table 5-13 (printed p. 5-34, PDF p. 150) row Spruce, Sitka; Table 5-3a (metric), printed p. 5-8, PDF p. 124 (green and 12 % MOE)",
+          "dEdMcR": "none",
+          "dGdMc": "none",
+          "dRhodMc": "Eqs. 4-9, 4-11, 4-14, printed pp. 4-10 to 4-12, PDF pp. 104-106; Table 4-3 (printed p. 4-8, PDF p. 102) row Spruce, Sitka (volumetric); Gb from Table 5-3a (metric), printed p. 5-8, PDF p. 124"
+        },
+        "raw": {
+          "EbendingMPa12": 10800.0,
+          "EbendingMPaGreen": 8500.0,
+          "MpPercent": 27.0,
+          "shearDeflectionFactor": 1.1,
+          "basicSpecificGravity": 0.37,
+          "specificGravity12": 0.4,
+          "volumetricShrinkagePercent": 11.5,
+          "fiberSaturationPercent": 30.0,
+          "ratios": {
+            "ET": 0.043,
+            "ER": 0.078,
+            "GLR": 0.064,
+            "GLT": 0.061,
+            "GRT": 0.003
+          },
+          "poissonLR": 0.372,
+          "poissonRL": 0.04,
+          "waterDensity": 1000.0
+        }
+      }
+    },
+    {
+      "name": "engelmann_spruce",
+      "kind": "tonewood",
+      "description": "Engelmann spruce, softwood grown in the United States (soundboard wood); Table 5-3a.",
+      "constants": {
+        "youngsL": 9790000000.0,
+        "youngsR": 1253120000.0,
+        "shearLR": 1213960000.0,
+        "poissonLR": 0.422,
+        "poissonRL": 0.083,
+        "density": 392.00000000000006,
+        "lossFactor": null
+      },
+      "lossFactorTable": null,
+      "moistureSlopes": {
+        "dEdMcL": -17016262026.485939,
+        "dEdMcR": null,
+        "dGdMc": null,
+        "dRhodMc": 197.9696362494211
+      },
+      "source": {
+        "author": "Forest Products Laboratory (USDA Forest Service), Madison, WI",
+        "title": "Wood handbook - wood as an engineering material, General Technical Report FPL-GTR-282 (March 2021)",
+        "year": 2021,
+        "locator": "Row 'Spruce, Engelmann': Table 5-3a (metric), printed p. 5-8, PDF p. 124; Table 5-1 (printed p. 5-2, PDF p. 118); Table 5-2 (printed p. 5-3, PDF p. 119); Chapter 4 Eqs. 4-9, 4-11, 4-14; Chapter 5 Eq. 5-3. Per-field locators in source.locators.",
+        "licence": "Public domain (work of the United States government, 17 U.S.C. 105); no restriction on reuse or redistribution of the numbers.",
+        "derivation": {
+          "youngsL": "E_L = 1.10 x E_bending(12 %) = 1.10 x 8900 MPa = 9790 MPa = 9.79e+09 Pa. E_bending(12 %) = 8900 MPa from Table 5-3a (metric), printed p. 5-8, PDF p. 124, row Spruce, Engelmann, 12 % line, modulus of elasticity. The tabulated value is a static-bending modulus that includes shear deflection; the 1.10 factor is the handbook's own correction (Table 5-3a footnote c, printed p. 5-8: 'To correct for shear deflection, the modulus can be increased by 10%'; Table 5-1 footnote a, printed p. 5-2, PDF p. 118: 'EL may be approximated by increasing modulus of elasticity values in Table 5-3 by 10%'; text on printed p. 5-2: 'EL from bending can be increased by 10% to remove this effect approximately'). For Table 5-5a species the handbook states no span/depth ratio; the same 10 % rule of the text is applied.",
+          "youngsR": "E_R = (E_R/E_L) x E_L = 0.128 x 9790 MPa = 1253.12 MPa = 1.25312e+09 Pa; E_R/E_L = 0.128 from Table 5-1 (printed p. 5-2, PDF p. 118); applied to the shear-corrected E_L as the handbook directs (printed p. 5-2: 'This adjusted bending EL can be used to determine ER and ET based on the ratios in Table 5-1').",
+          "shearLR": "G_LR = (G_LR/E_L) x E_L = 0.124 x 9790 MPa = 1213.96 MPa = 1.21396e+09 Pa; G_LR/E_L = 0.124 from Table 5-1 (printed p. 5-2, PDF p. 118), same shear-corrected E_L.",
+          "poissonLR": "nu_LR = 0.422 from Table 5-2 (printed p. 5-3, PDF p. 119), column muLR.",
+          "poissonRL": "nu_RL = 0.083 from Table 5-2 (printed p. 5-3, PDF p. 119), column muRL.",
+          "density": "Tabulated G12 = 0.35 (Table 5-3a (metric), printed p. 5-8, PDF p. 124, row Spruce, Engelmann, 12 % line; footnote b: ovendry mass, volume at 12 % MC). rho12 = 1000 kg/m^3 x G12 x (1 + 12/100) = 392 kg/m^3 (Eq. 4-14 with x = 12; Table 4-5: rho12 is mass and volume both at 12 % MC).",
+          "lossFactor": "Not available. The handbook gives no species value of internal friction or loss factor. Its only statement (Chapter 5, internal friction, printed p. 5-21, PDF p. 137) is that 'the value of internal friction, expressed by logarithmic decrement, ranges from about 0.1 for hot, moist wood to less than 0.02 for hot, dry wood', with cool wood intermediate. That is a range over temperature and moisture, not a value for this species at 12 % MC and room temperature, so no number is recorded (constants.lossFactor is null). The caller must supply the loss factor to library.apply.",
+          "moistureSlopes": {
+            "dEdMcL": "Eq. 5-3 (printed p. 5-34, PDF p. 150): P(M) = P12 (P12/Pg)^((12 - M)/(Mp - 12)), M in %. P12 = 8900 MPa and Pg = 7100 MPa (green line) from Table 5-3a (metric), printed p. 5-8, PDF p. 124, row Spruce, Engelmann; Mp = 25 % (Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (Engelmann spruce is not in Table 5-13 (printed p. 5-34, PDF p. 150))). Derivative at M = 12: dP/dM = -P12 ln(P12/Pg)/(Mp - 12) = -8900 x ln(8900/7100)/(25 - 12) = -154.693 MPa per % MC. Times the 1.10 shear correction of E_L: -170.163 MPa per % MC = -1.70163e+10 Pa per unit MC fraction (x 100 for % to fraction, x 1e6 for MPa to Pa). The handbook excludes work to maximum load, impact bending and tension perpendicular from Eq. 5-3; the modulus of elasticity is not excluded.",
+            "dEdMcR": "Not available. The handbook gives E_R/E_L only at about 12 % MC (Table 5-1) and no green values or moisture adjustment for E_R, so no slope is derived; stored as null (applied as 0). Scaling E_R with the E_L slope would be an assumption the handbook does not make.",
+            "dGdMc": "Not available. The handbook gives G_LR/E_L only at about 12 % MC (Table 5-1) and no moisture adjustment for G_LR; stored as null (applied as 0).",
+            "dRhodMc": "rho(M) = 1000 x Gb x (1 + M/100)/(1 - S0/100 (1 - M/30)) from Eq. 4-14 with Gx = Gb/(1 - Sx/100) (Eq. 4-11) and Sx = S0 (1 - M/MCfs), MCfs = 30 % (Eq. 4-9), M <= 30. Gb = 0.33 (Table 5-3a (metric), printed p. 5-8, PDF p. 124), S0 = 11.0 % (Table 4-3 (printed p. 4-8, PDF p. 102) row Spruce, Engelmann (volumetric)). Derivative at M = 12: u = 1 - S0/100 (1 - 12/30) = 0.934000; du/dM = S0/(100 x 30) = 0.00366667; d(rho)/dM = 1000 Gb [u/100 - (1 + 12/100) du/dM]/u^2 = 1.9797 kg/m^3 per % MC = 197.97 kg/m^3 per unit MC fraction."
+          }
+        },
+        "locators": {
+          "youngsL": "Table 5-3a (metric), printed p. 5-8, PDF p. 124 (modulus of elasticity, 12 % MC); shear correction: Table 5-3a footnote c, printed p. 5-8; Table 5-1 footnote a, printed p. 5-2 (PDF p. 118)",
+          "youngsR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "shearLR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "poissonLR": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "poissonRL": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "density": "Table 5-3a (metric), printed p. 5-8, PDF p. 124 (specific gravity); Chapter 4 Eqs. 4-9, 4-11, 4-14 (printed pp. 4-10 to 4-12, PDF pp. 104-106); Table 4-3 (printed p. 4-8, PDF p. 102) row Spruce, Engelmann (volumetric)",
+          "lossFactor": "none; Chapter 5 internal friction, printed p. 5-21, PDF p. 137 (range only)",
+          "dEdMcL": "Eq. 5-3, printed p. 5-34, PDF p. 150; Mp: Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (Engelmann spruce is not in Table 5-13 (printed p. 5-34, PDF p. 150)); Table 5-3a (metric), printed p. 5-8, PDF p. 124 (green and 12 % MOE)",
+          "dEdMcR": "none",
+          "dGdMc": "none",
+          "dRhodMc": "Eqs. 4-9, 4-11, 4-14, printed pp. 4-10 to 4-12, PDF pp. 104-106; Table 4-3 (printed p. 4-8, PDF p. 102) row Spruce, Engelmann (volumetric); Gb from Table 5-3a (metric), printed p. 5-8, PDF p. 124"
+        },
+        "raw": {
+          "EbendingMPa12": 8900.0,
+          "EbendingMPaGreen": 7100.0,
+          "MpPercent": 25.0,
+          "shearDeflectionFactor": 1.1,
+          "basicSpecificGravity": 0.33,
+          "specificGravity12": 0.35,
+          "volumetricShrinkagePercent": 11.0,
+          "fiberSaturationPercent": 30.0,
+          "ratios": {
+            "ET": 0.059,
+            "ER": 0.128,
+            "GLR": 0.124,
+            "GLT": 0.12,
+            "GRT": 0.01
+          },
+          "poissonLR": 0.422,
+          "poissonRL": 0.083,
+          "waterDensity": 1000.0
+        }
+      }
+    },
+    {
+      "name": "western_redcedar",
+      "kind": "tonewood",
+      "description": "Western red cedar (Thuja plicata), softwood grown in the United States (soundboard wood); Table 5-3a. Tables 5-1 and 5-2 call it 'Cedar, western red'.",
+      "constants": {
+        "youngsL": 8470000000.0,
+        "youngsR": 686070000.0,
+        "shearLR": 736890000.0,
+        "poissonLR": 0.378,
+        "poissonRL": 0.030618000000000003,
+        "density": 358.40000000000003,
+        "lossFactor": null
+      },
+      "lossFactorTable": null,
+      "moistureSlopes": {
+        "dEdMcL": -11038244208.34351,
+        "dEdMcR": null,
+        "dGdMc": null,
+        "dRhodMc": 237.6499691731804
+      },
+      "source": {
+        "author": "Forest Products Laboratory (USDA Forest Service), Madison, WI",
+        "title": "Wood handbook - wood as an engineering material, General Technical Report FPL-GTR-282 (March 2021)",
+        "year": 2021,
+        "locator": "Row 'Western redcedar': Table 5-3a (metric), printed p. 5-7, PDF p. 123; Table 5-1 (printed p. 5-2, PDF p. 118); Table 5-2 (printed p. 5-3, PDF p. 119); Chapter 4 Eqs. 4-9, 4-11, 4-14; Chapter 5 Eq. 5-3. Per-field locators in source.locators.",
+        "licence": "Public domain (work of the United States government, 17 U.S.C. 105); no restriction on reuse or redistribution of the numbers.",
+        "derivation": {
+          "youngsL": "E_L = 1.10 x E_bending(12 %) = 1.10 x 7700 MPa = 8470 MPa = 8.47e+09 Pa. E_bending(12 %) = 7700 MPa from Table 5-3a (metric), printed p. 5-7, PDF p. 123, row Western redcedar, 12 % line, modulus of elasticity. The tabulated value is a static-bending modulus that includes shear deflection; the 1.10 factor is the handbook's own correction (Table 5-3a footnote c, printed p. 5-8: 'To correct for shear deflection, the modulus can be increased by 10%'; Table 5-1 footnote a, printed p. 5-2, PDF p. 118: 'EL may be approximated by increasing modulus of elasticity values in Table 5-3 by 10%'; text on printed p. 5-2: 'EL from bending can be increased by 10% to remove this effect approximately'). For Table 5-5a species the handbook states no span/depth ratio; the same 10 % rule of the text is applied.",
+          "youngsR": "E_R = (E_R/E_L) x E_L = 0.081 x 8470 MPa = 686.07 MPa = 6.8607e+08 Pa; E_R/E_L = 0.081 from Table 5-1 (printed p. 5-2, PDF p. 118); applied to the shear-corrected E_L as the handbook directs (printed p. 5-2: 'This adjusted bending EL can be used to determine ER and ET based on the ratios in Table 5-1').",
+          "shearLR": "G_LR = (G_LR/E_L) x E_L = 0.087 x 8470 MPa = 736.89 MPa = 7.3689e+08 Pa; G_LR/E_L = 0.087 from Table 5-1 (printed p. 5-2, PDF p. 118), same shear-corrected E_L.",
+          "poissonLR": "nu_LR = 0.378 from Table 5-2 (printed p. 5-3, PDF p. 119), column muLR.",
+          "poissonRL": "Table 5-2 gives no muRL for this species ('-'). nu_RL = nu_LR x E_R/E_L = 0.378 x 0.081 = 0.030618, from the reciprocity relation mu_ij/E_i = mu_ji/E_j (Eq. 5-1, printed p. 5-2, PDF p. 118) with E_R/E_L from Table 5-1 (printed p. 5-2, PDF p. 118). The handbook notes (printed p. 5-2) that Eq. 5-1 'is not always closely met' and that muRL is the least precisely determined ratio.",
+          "density": "Tabulated G12 = 0.32 (Table 5-3a (metric), printed p. 5-7, PDF p. 123, row Western redcedar, 12 % line; footnote b: ovendry mass, volume at 12 % MC). rho12 = 1000 kg/m^3 x G12 x (1 + 12/100) = 358.4 kg/m^3 (Eq. 4-14 with x = 12; Table 4-5: rho12 is mass and volume both at 12 % MC).",
+          "lossFactor": "Not available. The handbook gives no species value of internal friction or loss factor. Its only statement (Chapter 5, internal friction, printed p. 5-21, PDF p. 137) is that 'the value of internal friction, expressed by logarithmic decrement, ranges from about 0.1 for hot, moist wood to less than 0.02 for hot, dry wood', with cool wood intermediate. That is a range over temperature and moisture, not a value for this species at 12 % MC and room temperature, so no number is recorded (constants.lossFactor is null). The caller must supply the loss factor to library.apply.",
+          "moistureSlopes": {
+            "dEdMcL": "Eq. 5-3 (printed p. 5-34, PDF p. 150): P(M) = P12 (P12/Pg)^((12 - M)/(Mp - 12)), M in %. P12 = 7700 MPa and Pg = 6500 MPa (green line) from Table 5-3a (metric), printed p. 5-7, PDF p. 123, row Western redcedar; Mp = 25 % (Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (western redcedar is not in Table 5-13 (printed p. 5-34, PDF p. 150))). Derivative at M = 12: dP/dM = -P12 ln(P12/Pg)/(Mp - 12) = -7700 x ln(7700/6500)/(25 - 12) = -100.348 MPa per % MC. Times the 1.10 shear correction of E_L: -110.382 MPa per % MC = -1.10382e+10 Pa per unit MC fraction (x 100 for % to fraction, x 1e6 for MPa to Pa). The handbook excludes work to maximum load, impact bending and tension perpendicular from Eq. 5-3; the modulus of elasticity is not excluded.",
+            "dEdMcR": "Not available. The handbook gives E_R/E_L only at about 12 % MC (Table 5-1) and no green values or moisture adjustment for E_R, so no slope is derived; stored as null (applied as 0). Scaling E_R with the E_L slope would be an assumption the handbook does not make.",
+            "dGdMc": "Not available. The handbook gives G_LR/E_L only at about 12 % MC (Table 5-1) and no moisture adjustment for G_LR; stored as null (applied as 0).",
+            "dRhodMc": "rho(M) = 1000 x Gb x (1 + M/100)/(1 - S0/100 (1 - M/30)) from Eq. 4-14 with Gx = Gb/(1 - Sx/100) (Eq. 4-11) and Sx = S0 (1 - M/MCfs), MCfs = 30 % (Eq. 4-9), M <= 30. Gb = 0.31 (Table 5-3a (metric), printed p. 5-7, PDF p. 123), S0 = 6.8 % (Table 4-3 (printed p. 4-8, PDF p. 102) row Western redcedar (volumetric)). Derivative at M = 12: u = 1 - S0/100 (1 - 12/30) = 0.959200; du/dM = S0/(100 x 30) = 0.00226667; d(rho)/dM = 1000 Gb [u/100 - (1 + 12/100) du/dM]/u^2 = 2.3765 kg/m^3 per % MC = 237.65 kg/m^3 per unit MC fraction."
+          }
+        },
+        "locators": {
+          "youngsL": "Table 5-3a (metric), printed p. 5-7, PDF p. 123 (modulus of elasticity, 12 % MC); shear correction: Table 5-3a footnote c, printed p. 5-8; Table 5-1 footnote a, printed p. 5-2 (PDF p. 118)",
+          "youngsR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "shearLR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "poissonLR": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "poissonRL": "Table 5-2 (printed p. 5-3, PDF p. 119) (blank) with Eq. 5-1 (printed p. 5-2, PDF p. 118) and Table 5-1 (printed p. 5-2, PDF p. 118)",
+          "density": "Table 5-3a (metric), printed p. 5-7, PDF p. 123 (specific gravity); Chapter 4 Eqs. 4-9, 4-11, 4-14 (printed pp. 4-10 to 4-12, PDF pp. 104-106); Table 4-3 (printed p. 4-8, PDF p. 102) row Western redcedar (volumetric)",
+          "lossFactor": "none; Chapter 5 internal friction, printed p. 5-21, PDF p. 137 (range only)",
+          "dEdMcL": "Eq. 5-3, printed p. 5-34, PDF p. 150; Mp: Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (western redcedar is not in Table 5-13 (printed p. 5-34, PDF p. 150)); Table 5-3a (metric), printed p. 5-7, PDF p. 123 (green and 12 % MOE)",
+          "dEdMcR": "none",
+          "dGdMc": "none",
+          "dRhodMc": "Eqs. 4-9, 4-11, 4-14, printed pp. 4-10 to 4-12, PDF pp. 104-106; Table 4-3 (printed p. 4-8, PDF p. 102) row Western redcedar (volumetric); Gb from Table 5-3a (metric), printed p. 5-7, PDF p. 123"
+        },
+        "raw": {
+          "EbendingMPa12": 7700.0,
+          "EbendingMPaGreen": 6500.0,
+          "MpPercent": 25.0,
+          "shearDeflectionFactor": 1.1,
+          "basicSpecificGravity": 0.31,
+          "specificGravity12": 0.32,
+          "volumetricShrinkagePercent": 6.8,
+          "fiberSaturationPercent": 30.0,
+          "ratios": {
+            "ET": 0.055,
+            "ER": 0.081,
+            "GLR": 0.087,
+            "GLT": 0.086,
+            "GRT": 0.005
+          },
+          "poissonLR": 0.378,
+          "poissonRL": null,
+          "waterDensity": 1000.0
+        }
+      }
+    },
+    {
+      "name": "sugar_maple",
+      "kind": "tonewood",
+      "description": "Sugar (hard) maple (Acer saccharum), hardwood grown in the United States (backs, sides, necks); Table 5-3a. Bigleaf maple has Table 5-3a data but no row in Tables 5-1/5-2.",
+      "constants": {
+        "youngsL": 13860000000.000002,
+        "youngsR": 1829520000.0000005,
+        "shearLR": 1538460000.0000002,
+        "poissonLR": 0.424,
+        "poissonRL": 0.065,
+        "density": 705.6,
+        "lossFactor": null
+      },
+      "lossFactorTable": null,
+      "moistureSlopes": {
+        "dEdMcL": -17426612190.042034,
+        "dEdMcR": null,
+        "dGdMc": null,
+        "dRhodMc": 244.50935291576442
+      },
+      "source": {
+        "author": "Forest Products Laboratory (USDA Forest Service), Madison, WI",
+        "title": "Wood handbook - wood as an engineering material, General Technical Report FPL-GTR-282 (March 2021)",
+        "year": 2021,
+        "locator": "Row 'Maple, Sugar': Table 5-3a (metric), printed p. 5-5, PDF p. 121; Table 5-1 (printed p. 5-2, PDF p. 118); Table 5-2 (printed p. 5-3, PDF p. 119); Chapter 4 Eqs. 4-9, 4-11, 4-14; Chapter 5 Eq. 5-3. Per-field locators in source.locators.",
+        "licence": "Public domain (work of the United States government, 17 U.S.C. 105); no restriction on reuse or redistribution of the numbers.",
+        "derivation": {
+          "youngsL": "E_L = 1.10 x E_bending(12 %) = 1.10 x 12600 MPa = 13860 MPa = 1.386e+10 Pa. E_bending(12 %) = 12600 MPa from Table 5-3a (metric), printed p. 5-5, PDF p. 121, row Maple, Sugar, 12 % line, modulus of elasticity. The tabulated value is a static-bending modulus that includes shear deflection; the 1.10 factor is the handbook's own correction (Table 5-3a footnote c, printed p. 5-8: 'To correct for shear deflection, the modulus can be increased by 10%'; Table 5-1 footnote a, printed p. 5-2, PDF p. 118: 'EL may be approximated by increasing modulus of elasticity values in Table 5-3 by 10%'; text on printed p. 5-2: 'EL from bending can be increased by 10% to remove this effect approximately'). For Table 5-5a species the handbook states no span/depth ratio; the same 10 % rule of the text is applied.",
+          "youngsR": "E_R = (E_R/E_L) x E_L = 0.132 x 13860 MPa = 1829.52 MPa = 1.82952e+09 Pa; E_R/E_L = 0.132 from Table 5-1 (printed p. 5-2, PDF p. 118); applied to the shear-corrected E_L as the handbook directs (printed p. 5-2: 'This adjusted bending EL can be used to determine ER and ET based on the ratios in Table 5-1').",
+          "shearLR": "G_LR = (G_LR/E_L) x E_L = 0.111 x 13860 MPa = 1538.46 MPa = 1.53846e+09 Pa; G_LR/E_L = 0.111 from Table 5-1 (printed p. 5-2, PDF p. 118), same shear-corrected E_L.",
+          "poissonLR": "nu_LR = 0.424 from Table 5-2 (printed p. 5-3, PDF p. 119), column muLR.",
+          "poissonRL": "nu_RL = 0.065 from Table 5-2 (printed p. 5-3, PDF p. 119), column muRL.",
+          "density": "Tabulated G12 = 0.63 (Table 5-3a (metric), printed p. 5-5, PDF p. 121, row Maple, Sugar, 12 % line; footnote b: ovendry mass, volume at 12 % MC). rho12 = 1000 kg/m^3 x G12 x (1 + 12/100) = 705.6 kg/m^3 (Eq. 4-14 with x = 12; Table 4-5: rho12 is mass and volume both at 12 % MC).",
+          "lossFactor": "Not available. The handbook gives no species value of internal friction or loss factor. Its only statement (Chapter 5, internal friction, printed p. 5-21, PDF p. 137) is that 'the value of internal friction, expressed by logarithmic decrement, ranges from about 0.1 for hot, moist wood to less than 0.02 for hot, dry wood', with cool wood intermediate. That is a range over temperature and moisture, not a value for this species at 12 % MC and room temperature, so no number is recorded (constants.lossFactor is null). The caller must supply the loss factor to library.apply.",
+          "moistureSlopes": {
+            "dEdMcL": "Eq. 5-3 (printed p. 5-34, PDF p. 150): P(M) = P12 (P12/Pg)^((12 - M)/(Mp - 12)), M in %. P12 = 12600 MPa and Pg = 10700 MPa (green line) from Table 5-3a (metric), printed p. 5-5, PDF p. 121, row Maple, Sugar; Mp = 25 % (Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (sugar maple is not in Table 5-13 (printed p. 5-34, PDF p. 150))). Derivative at M = 12: dP/dM = -P12 ln(P12/Pg)/(Mp - 12) = -12600 x ln(12600/10700)/(25 - 12) = -158.424 MPa per % MC. Times the 1.10 shear correction of E_L: -174.266 MPa per % MC = -1.74266e+10 Pa per unit MC fraction (x 100 for % to fraction, x 1e6 for MPa to Pa). The handbook excludes work to maximum load, impact bending and tension perpendicular from Eq. 5-3; the modulus of elasticity is not excluded.",
+            "dEdMcR": "Not available. The handbook gives E_R/E_L only at about 12 % MC (Table 5-1) and no green values or moisture adjustment for E_R, so no slope is derived; stored as null (applied as 0). Scaling E_R with the E_L slope would be an assumption the handbook does not make.",
+            "dGdMc": "Not available. The handbook gives G_LR/E_L only at about 12 % MC (Table 5-1) and no moisture adjustment for G_LR; stored as null (applied as 0).",
+            "dRhodMc": "rho(M) = 1000 x Gb x (1 + M/100)/(1 - S0/100 (1 - M/30)) from Eq. 4-14 with Gx = Gb/(1 - Sx/100) (Eq. 4-11) and Sx = S0 (1 - M/MCfs), MCfs = 30 % (Eq. 4-9), M <= 30. Gb = 0.56 (Table 5-3a (metric), printed p. 5-5, PDF p. 121), S0 = 14.7 % (Table 4-3 (printed p. 4-8, PDF p. 102) row Maple, Sugar (volumetric)). Derivative at M = 12: u = 1 - S0/100 (1 - 12/30) = 0.911800; du/dM = S0/(100 x 30) = 0.0049; d(rho)/dM = 1000 Gb [u/100 - (1 + 12/100) du/dM]/u^2 = 2.44509 kg/m^3 per % MC = 244.509 kg/m^3 per unit MC fraction."
+          }
+        },
+        "locators": {
+          "youngsL": "Table 5-3a (metric), printed p. 5-5, PDF p. 121 (modulus of elasticity, 12 % MC); shear correction: Table 5-3a footnote c, printed p. 5-8; Table 5-1 footnote a, printed p. 5-2 (PDF p. 118)",
+          "youngsR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "shearLR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "poissonLR": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "poissonRL": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "density": "Table 5-3a (metric), printed p. 5-5, PDF p. 121 (specific gravity); Chapter 4 Eqs. 4-9, 4-11, 4-14 (printed pp. 4-10 to 4-12, PDF pp. 104-106); Table 4-3 (printed p. 4-8, PDF p. 102) row Maple, Sugar (volumetric)",
+          "lossFactor": "none; Chapter 5 internal friction, printed p. 5-21, PDF p. 137 (range only)",
+          "dEdMcL": "Eq. 5-3, printed p. 5-34, PDF p. 150; Mp: Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (sugar maple is not in Table 5-13 (printed p. 5-34, PDF p. 150)); Table 5-3a (metric), printed p. 5-5, PDF p. 121 (green and 12 % MOE)",
+          "dEdMcR": "none",
+          "dGdMc": "none",
+          "dRhodMc": "Eqs. 4-9, 4-11, 4-14, printed pp. 4-10 to 4-12, PDF pp. 104-106; Table 4-3 (printed p. 4-8, PDF p. 102) row Maple, Sugar (volumetric); Gb from Table 5-3a (metric), printed p. 5-5, PDF p. 121"
+        },
+        "raw": {
+          "EbendingMPa12": 12600.0,
+          "EbendingMPaGreen": 10700.0,
+          "MpPercent": 25.0,
+          "shearDeflectionFactor": 1.1,
+          "basicSpecificGravity": 0.56,
+          "specificGravity12": 0.63,
+          "volumetricShrinkagePercent": 14.7,
+          "fiberSaturationPercent": 30.0,
+          "ratios": {
+            "ET": 0.065,
+            "ER": 0.132,
+            "GLR": 0.111,
+            "GLT": 0.063,
+            "GRT": null
+          },
+          "poissonLR": 0.424,
+          "poissonRL": 0.065,
+          "waterDensity": 1000.0
+        }
+      }
+    },
+    {
+      "name": "african_mahogany",
+      "kind": "tonewood",
+      "description": "African mahogany (Khaya spp.), imported hardwood; Table 5-5a (world-literature data, not FPL tests).",
+      "constants": {
+        "youngsL": 10670000000.0,
+        "youngsR": 1184370000.0,
+        "shearLR": 938959999.9999999,
+        "poissonLR": 0.297,
+        "poissonRL": 0.033,
+        "density": 496.6216216216216,
+        "lossFactor": null
+      },
+      "lossFactorTable": null,
+      "moistureSlopes": {
+        "dEdMcL": -16847365806.215202,
+        "dEdMcR": null,
+        "dGdMc": null,
+        "dRhodMc": 289.61605186267343
+      },
+      "source": {
+        "author": "Forest Products Laboratory (USDA Forest Service), Madison, WI",
+        "title": "Wood handbook - wood as an engineering material, General Technical Report FPL-GTR-282 (March 2021)",
+        "year": 2021,
+        "locator": "Row 'Mahogany, African (Khaya spp.)': Table 5-5a (metric), printed p. 5-19, PDF p. 135; Table 5-1 (printed p. 5-2, PDF p. 118); Table 5-2 (printed p. 5-3, PDF p. 119); Chapter 4 Eqs. 4-9, 4-11, 4-14; Chapter 5 Eq. 5-3. Per-field locators in source.locators.",
+        "licence": "Public domain (work of the United States government, 17 U.S.C. 105); no restriction on reuse or redistribution of the numbers.",
+        "derivation": {
+          "youngsL": "E_L = 1.10 x E_bending(12 %) = 1.10 x 9700 MPa = 10670 MPa = 1.067e+10 Pa. E_bending(12 %) = 9700 MPa from Table 5-5a (metric), printed p. 5-19, PDF p. 135, row Mahogany, African (Khaya spp.), 12 % line, modulus of elasticity. The tabulated value is a static-bending modulus that includes shear deflection; the 1.10 factor is the handbook's own correction (Table 5-3a footnote c, printed p. 5-8: 'To correct for shear deflection, the modulus can be increased by 10%'; Table 5-1 footnote a, printed p. 5-2, PDF p. 118: 'EL may be approximated by increasing modulus of elasticity values in Table 5-3 by 10%'; text on printed p. 5-2: 'EL from bending can be increased by 10% to remove this effect approximately'). For Table 5-5a species the handbook states no span/depth ratio; the same 10 % rule of the text is applied.",
+          "youngsR": "E_R = (E_R/E_L) x E_L = 0.111 x 10670 MPa = 1184.37 MPa = 1.18437e+09 Pa; E_R/E_L = 0.111 from Table 5-1 (printed p. 5-2, PDF p. 118); applied to the shear-corrected E_L as the handbook directs (printed p. 5-2: 'This adjusted bending EL can be used to determine ER and ET based on the ratios in Table 5-1').",
+          "shearLR": "G_LR = (G_LR/E_L) x E_L = 0.088 x 10670 MPa = 938.96 MPa = 9.3896e+08 Pa; G_LR/E_L = 0.088 from Table 5-1 (printed p. 5-2, PDF p. 118), same shear-corrected E_L.",
+          "poissonLR": "nu_LR = 0.297 from Table 5-2 (printed p. 5-3, PDF p. 119), column muLR.",
+          "poissonRL": "nu_RL = 0.033 from Table 5-2 (printed p. 5-3, PDF p. 119), column muRL.",
+          "density": "Table 5-5a gives specific gravity only on the green-volume basis (Gb = 0.42, row Mahogany, African (Khaya spp.)); no 12 % value. S12 = S0 (1 - 12/30) = 5.28 % (Eq. 4-9, MCfs = 30, S0 = 8.8 % from Table 4-4 (printed p. 4-9, PDF p. 103) row Mahogany, African (Khaya spp.) (volumetric)); G12 = Gb / (1 - S12/100) = 0.443412 (Eq. 4-11); rho12 = 1000 x G12 x (1 + 12/100) = 496.622 kg/m^3 (Eq. 4-14).",
+          "lossFactor": "Not available. The handbook gives no species value of internal friction or loss factor. Its only statement (Chapter 5, internal friction, printed p. 5-21, PDF p. 137) is that 'the value of internal friction, expressed by logarithmic decrement, ranges from about 0.1 for hot, moist wood to less than 0.02 for hot, dry wood', with cool wood intermediate. That is a range over temperature and moisture, not a value for this species at 12 % MC and room temperature, so no number is recorded (constants.lossFactor is null). The caller must supply the loss factor to library.apply.",
+          "moistureSlopes": {
+            "dEdMcL": "Eq. 5-3 (printed p. 5-34, PDF p. 150): P(M) = P12 (P12/Pg)^((12 - M)/(Mp - 12)), M in %. P12 = 9700 MPa and Pg = 7900 MPa (green line) from Table 5-5a (metric), printed p. 5-19, PDF p. 135, row Mahogany, African (Khaya spp.); Mp = 25 % (Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (African mahogany is not in Table 5-13 (printed p. 5-34, PDF p. 150))). Derivative at M = 12: dP/dM = -P12 ln(P12/Pg)/(Mp - 12) = -9700 x ln(9700/7900)/(25 - 12) = -153.158 MPa per % MC. Times the 1.10 shear correction of E_L: -168.474 MPa per % MC = -1.68474e+10 Pa per unit MC fraction (x 100 for % to fraction, x 1e6 for MPa to Pa). The handbook excludes work to maximum load, impact bending and tension perpendicular from Eq. 5-3; the modulus of elasticity is not excluded.",
+            "dEdMcR": "Not available. The handbook gives E_R/E_L only at about 12 % MC (Table 5-1) and no green values or moisture adjustment for E_R, so no slope is derived; stored as null (applied as 0). Scaling E_R with the E_L slope would be an assumption the handbook does not make.",
+            "dGdMc": "Not available. The handbook gives G_LR/E_L only at about 12 % MC (Table 5-1) and no moisture adjustment for G_LR; stored as null (applied as 0).",
+            "dRhodMc": "rho(M) = 1000 x Gb x (1 + M/100)/(1 - S0/100 (1 - M/30)) from Eq. 4-14 with Gx = Gb/(1 - Sx/100) (Eq. 4-11) and Sx = S0 (1 - M/MCfs), MCfs = 30 % (Eq. 4-9), M <= 30. Gb = 0.42 (Table 5-5a (metric), printed p. 5-19, PDF p. 135), S0 = 8.8 % (Table 4-4 (printed p. 4-9, PDF p. 103) row Mahogany, African (Khaya spp.) (volumetric)). Derivative at M = 12: u = 1 - S0/100 (1 - 12/30) = 0.947200; du/dM = S0/(100 x 30) = 0.00293333; d(rho)/dM = 1000 Gb [u/100 - (1 + 12/100) du/dM]/u^2 = 2.89616 kg/m^3 per % MC = 289.616 kg/m^3 per unit MC fraction."
+          }
+        },
+        "locators": {
+          "youngsL": "Table 5-5a (metric), printed p. 5-19, PDF p. 135 (modulus of elasticity, 12 % MC); shear correction: Table 5-3a footnote c, printed p. 5-8; Table 5-1 footnote a, printed p. 5-2 (PDF p. 118)",
+          "youngsR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "shearLR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "poissonLR": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "poissonRL": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "density": "Table 5-5a (metric), printed p. 5-19, PDF p. 135 (specific gravity); Chapter 4 Eqs. 4-9, 4-11, 4-14 (printed pp. 4-10 to 4-12, PDF pp. 104-106); Table 4-4 (printed p. 4-9, PDF p. 103) row Mahogany, African (Khaya spp.) (volumetric)",
+          "lossFactor": "none; Chapter 5 internal friction, printed p. 5-21, PDF p. 137 (range only)",
+          "dEdMcL": "Eq. 5-3, printed p. 5-34, PDF p. 150; Mp: Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (African mahogany is not in Table 5-13 (printed p. 5-34, PDF p. 150)); Table 5-5a (metric), printed p. 5-19, PDF p. 135 (green and 12 % MOE)",
+          "dEdMcR": "none",
+          "dGdMc": "none",
+          "dRhodMc": "Eqs. 4-9, 4-11, 4-14, printed pp. 4-10 to 4-12, PDF pp. 104-106; Table 4-4 (printed p. 4-9, PDF p. 103) row Mahogany, African (Khaya spp.) (volumetric); Gb from Table 5-5a (metric), printed p. 5-19, PDF p. 135"
+        },
+        "raw": {
+          "EbendingMPa12": 9700.0,
+          "EbendingMPaGreen": 7900.0,
+          "MpPercent": 25.0,
+          "shearDeflectionFactor": 1.1,
+          "basicSpecificGravity": 0.42,
+          "specificGravity12": null,
+          "volumetricShrinkagePercent": 8.8,
+          "fiberSaturationPercent": 30.0,
+          "ratios": {
+            "ET": 0.05,
+            "ER": 0.111,
+            "GLR": 0.088,
+            "GLT": 0.059,
+            "GRT": 0.021
+          },
+          "poissonLR": 0.297,
+          "poissonRL": 0.033,
+          "waterDensity": 1000.0
+        }
+      }
+    },
+    {
+      "name": "american_mahogany",
+      "kind": "tonewood",
+      "description": "True / American / Honduras mahogany (Swietenia macrophylla), imported hardwood; Table 5-5a (world-literature data). Elastic ratios and Poisson ratios are the rows 'Mahogany, Honduras' of Tables 5-1 and 5-2; the identification rests on Chapter 2, printed p. 2-29, PDF p. 57: 'Mahogany, American: True, American, or Honduras mahogany (Swietenia macrophylla)'.",
+      "constants": {
+        "youngsL": 11330000000.000002,
+        "youngsR": 1212310000.0000002,
+        "shearLR": 747780000.0000002,
+        "poissonLR": 0.314,
+        "poissonRL": 0.033,
+        "density": 528.7452790600084,
+        "lossFactor": null
+      },
+      "lossFactorTable": null,
+      "moistureSlopes": {
+        "dEdMcL": -9843191220.58575,
+        "dEdMcR": null,
+        "dGdMc": null,
+        "dRhodMc": 327.87057012630913
+      },
+      "source": {
+        "author": "Forest Products Laboratory (USDA Forest Service), Madison, WI",
+        "title": "Wood handbook - wood as an engineering material, General Technical Report FPL-GTR-282 (March 2021)",
+        "year": 2021,
+        "locator": "Row 'Mahogany, true (Swietenia macrophylla)': Table 5-5a (metric), printed p. 5-19, PDF p. 135; Table 5-1 (printed p. 5-2, PDF p. 118); Table 5-2 (printed p. 5-3, PDF p. 119); Chapter 4 Eqs. 4-9, 4-11, 4-14; Chapter 5 Eq. 5-3. Per-field locators in source.locators.",
+        "licence": "Public domain (work of the United States government, 17 U.S.C. 105); no restriction on reuse or redistribution of the numbers.",
+        "derivation": {
+          "youngsL": "E_L = 1.10 x E_bending(12 %) = 1.10 x 10300 MPa = 11330 MPa = 1.133e+10 Pa. E_bending(12 %) = 10300 MPa from Table 5-5a (metric), printed p. 5-19, PDF p. 135, row Mahogany, true (Swietenia macrophylla), 12 % line, modulus of elasticity. The tabulated value is a static-bending modulus that includes shear deflection; the 1.10 factor is the handbook's own correction (Table 5-3a footnote c, printed p. 5-8: 'To correct for shear deflection, the modulus can be increased by 10%'; Table 5-1 footnote a, printed p. 5-2, PDF p. 118: 'EL may be approximated by increasing modulus of elasticity values in Table 5-3 by 10%'; text on printed p. 5-2: 'EL from bending can be increased by 10% to remove this effect approximately'). For Table 5-5a species the handbook states no span/depth ratio; the same 10 % rule of the text is applied.",
+          "youngsR": "E_R = (E_R/E_L) x E_L = 0.107 x 11330 MPa = 1212.31 MPa = 1.21231e+09 Pa; E_R/E_L = 0.107 from Table 5-1 (printed p. 5-2, PDF p. 118); applied to the shear-corrected E_L as the handbook directs (printed p. 5-2: 'This adjusted bending EL can be used to determine ER and ET based on the ratios in Table 5-1').",
+          "shearLR": "G_LR = (G_LR/E_L) x E_L = 0.066 x 11330 MPa = 747.78 MPa = 7.4778e+08 Pa; G_LR/E_L = 0.066 from Table 5-1 (printed p. 5-2, PDF p. 118), same shear-corrected E_L.",
+          "poissonLR": "nu_LR = 0.314 from Table 5-2 (printed p. 5-3, PDF p. 119), column muLR.",
+          "poissonRL": "nu_RL = 0.033 from Table 5-2 (printed p. 5-3, PDF p. 119), column muRL.",
+          "density": "Table 5-5a gives specific gravity only on the green-volume basis (Gb = 0.45, row Mahogany, true (Swietenia macrophylla)); no 12 % value. S12 = S0 (1 - 12/30) = 4.68 % (Eq. 4-9, MCfs = 30, S0 = 7.8 % from Table 4-4 (printed p. 4-9, PDF p. 103) row Mahogany, true (Swietenia macrophylla) (volumetric)); G12 = Gb / (1 - S12/100) = 0.472094 (Eq. 4-11); rho12 = 1000 x G12 x (1 + 12/100) = 528.745 kg/m^3 (Eq. 4-14).",
+          "lossFactor": "Not available. The handbook gives no species value of internal friction or loss factor. Its only statement (Chapter 5, internal friction, printed p. 5-21, PDF p. 137) is that 'the value of internal friction, expressed by logarithmic decrement, ranges from about 0.1 for hot, moist wood to less than 0.02 for hot, dry wood', with cool wood intermediate. That is a range over temperature and moisture, not a value for this species at 12 % MC and room temperature, so no number is recorded (constants.lossFactor is null). The caller must supply the loss factor to library.apply.",
+          "moistureSlopes": {
+            "dEdMcL": "Eq. 5-3 (printed p. 5-34, PDF p. 150): P(M) = P12 (P12/Pg)^((12 - M)/(Mp - 12)), M in %. P12 = 10300 MPa and Pg = 9200 MPa (green line) from Table 5-5a (metric), printed p. 5-19, PDF p. 135, row Mahogany, true (Swietenia macrophylla); Mp = 25 % (Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (true mahogany is not in Table 5-13 (printed p. 5-34, PDF p. 150))). Derivative at M = 12: dP/dM = -P12 ln(P12/Pg)/(Mp - 12) = -10300 x ln(10300/9200)/(25 - 12) = -89.4836 MPa per % MC. Times the 1.10 shear correction of E_L: -98.4319 MPa per % MC = -9.84319e+09 Pa per unit MC fraction (x 100 for % to fraction, x 1e6 for MPa to Pa). The handbook excludes work to maximum load, impact bending and tension perpendicular from Eq. 5-3; the modulus of elasticity is not excluded.",
+            "dEdMcR": "Not available. The handbook gives E_R/E_L only at about 12 % MC (Table 5-1) and no green values or moisture adjustment for E_R, so no slope is derived; stored as null (applied as 0). Scaling E_R with the E_L slope would be an assumption the handbook does not make.",
+            "dGdMc": "Not available. The handbook gives G_LR/E_L only at about 12 % MC (Table 5-1) and no moisture adjustment for G_LR; stored as null (applied as 0).",
+            "dRhodMc": "rho(M) = 1000 x Gb x (1 + M/100)/(1 - S0/100 (1 - M/30)) from Eq. 4-14 with Gx = Gb/(1 - Sx/100) (Eq. 4-11) and Sx = S0 (1 - M/MCfs), MCfs = 30 % (Eq. 4-9), M <= 30. Gb = 0.45 (Table 5-5a (metric), printed p. 5-19, PDF p. 135), S0 = 7.8 % (Table 4-4 (printed p. 4-9, PDF p. 103) row Mahogany, true (Swietenia macrophylla) (volumetric)). Derivative at M = 12: u = 1 - S0/100 (1 - 12/30) = 0.953200; du/dM = S0/(100 x 30) = 0.0026; d(rho)/dM = 1000 Gb [u/100 - (1 + 12/100) du/dM]/u^2 = 3.27871 kg/m^3 per % MC = 327.871 kg/m^3 per unit MC fraction."
+          }
+        },
+        "locators": {
+          "youngsL": "Table 5-5a (metric), printed p. 5-19, PDF p. 135 (modulus of elasticity, 12 % MC); shear correction: Table 5-3a footnote c, printed p. 5-8; Table 5-1 footnote a, printed p. 5-2 (PDF p. 118)",
+          "youngsR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "shearLR": "Table 5-1 (printed p. 5-2, PDF p. 118); E_L as above",
+          "poissonLR": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "poissonRL": "Table 5-2 (printed p. 5-3, PDF p. 119)",
+          "density": "Table 5-5a (metric), printed p. 5-19, PDF p. 135 (specific gravity); Chapter 4 Eqs. 4-9, 4-11, 4-14 (printed pp. 4-10 to 4-12, PDF pp. 104-106); Table 4-4 (printed p. 4-9, PDF p. 103) row Mahogany, true (Swietenia macrophylla) (volumetric)",
+          "lossFactor": "none; Chapter 5 internal friction, printed p. 5-21, PDF p. 137 (range only)",
+          "dEdMcL": "Eq. 5-3, printed p. 5-34, PDF p. 150; Mp: Section 'Moisture Content', printed p. 5-34, PDF p. 150: 'for other species, Mp = 25 may be assumed' (true mahogany is not in Table 5-13 (printed p. 5-34, PDF p. 150)); Table 5-5a (metric), printed p. 5-19, PDF p. 135 (green and 12 % MOE)",
+          "dEdMcR": "none",
+          "dGdMc": "none",
+          "dRhodMc": "Eqs. 4-9, 4-11, 4-14, printed pp. 4-10 to 4-12, PDF pp. 104-106; Table 4-4 (printed p. 4-9, PDF p. 103) row Mahogany, true (Swietenia macrophylla) (volumetric); Gb from Table 5-5a (metric), printed p. 5-19, PDF p. 135"
+        },
+        "raw": {
+          "EbendingMPa12": 10300.0,
+          "EbendingMPaGreen": 9200.0,
+          "MpPercent": 25.0,
+          "shearDeflectionFactor": 1.1,
+          "basicSpecificGravity": 0.45,
+          "specificGravity12": null,
+          "volumetricShrinkagePercent": 7.8,
+          "fiberSaturationPercent": 30.0,
+          "ratios": {
+            "ET": 0.064,
+            "ER": 0.107,
+            "GLR": 0.066,
+            "GLT": 0.086,
+            "GRT": 0.028
+          },
+          "poissonLR": 0.314,
+          "poissonRL": 0.033,
+          "waterDensity": 1000.0
+        }
+      }
     }
   ],
   "omissions": [
-    "Sitka spruce, Norway (European) spruce, Engelmann spruce, western red cedar, maple, mahogany, Indian rosewood, ebony: not included. The constants (E_L, E_R, G_LR, nu, rho at 12 % MC), the loss factors and the moisture slopes must come from a published source that the author has read (candidate: USDA FPL Wood Handbook FPL-GTR-282 (2021), Chapter 5 Table 5-1 and Chapter 4; a US government work, public domain). The source was not reachable from the build environment, and values must not be written from memory.",
-    "Moisture slopes dE_L/dMC, dE_R/dMC, dG_LR/dMC, drho/dMC: no source consulted for any species."
+    "Norway (European) spruce (Picea abies): not in the handbook's property tables (Tables 5-1 to 5-5, 4-3, 4-4 have no Picea abies row; it appears only in text and references). Not included.",
+    "Indian rosewood (Dalbergia latifolia): Table 5-5a (printed p. 5-20, PDF p. 136) and Table 4-4 give bending MOE (12 %: 12,300 MPa), green specific gravity 0.75 and volumetric shrinkage 8.5 %, but Tables 5-1 and 5-2 have no rosewood row, so E_R, G_LR, nu_LR and nu_RL are unavailable and the entry cannot be completed without borrowing another species. Not included.",
+    "Ebony (Diospyros spp.): Table 4-4 has shrinkage only; no stiffness, density or elastic ratios in Tables 5-1 to 5-5. Not included (optional in the card).",
+    "Bigleaf maple: Table 5-3a has bending properties but Tables 5-1 and 5-2 have no bigleaf row; sugar maple (complete in all tables) is the maple entry. Red maple has elastic ratios but was not added.",
+    "Loss factor eta, all tonewood entries: the handbook gives no species value, only a range of the logarithmic decrement (about 0.1 for hot moist wood to less than 0.02 for hot dry wood, printed p. 5-21, PDF p. 137). constants.lossFactor is null; library.apply requires a loss_factor argument. No eta(f) table.",
+    "Moisture slopes dE_R/dMC and dG_LR/dMC, all tonewood entries: the handbook gives E_R/E_L and G_LR/E_L only at about 12 % MC and no moisture adjustment for these moduli; stored as null and applied as zero (Material.unsourced_slopes lists them). dE_L/dMC and drho/dMC are derived from Eq. 5-3 and Eqs. 4-9/4-11/4-14.",
+    "E_T, G_LT, G_RT: not library fields (the plate model uses the LR plane); the handbook ratios are kept in source.raw.ratios for reference."
   ]
 }
