@@ -378,3 +378,29 @@ TEST_CASE("A7-R6 the Exact tier reports NotImplemented until A10 provides it") {
     pme::string::GeometricSegment<float> linear;
     CHECK(linear.configure(m, params, coupling, linearCfg) == Status::Ok);
 }
+
+TEST_CASE("A7-R3 the Taylor start gives the longitudinal modes u0 = -gamma f0 / 2") {
+    GeometricConfig cfg;
+    cfg.longitudinalModes = 5;
+    Built<double> b;
+    build(b, plainSteel(0.65, 262.0), cfg);
+    REQUIRE(b.status == Status::Ok);
+    trianglePluck<double>(b.modes, 5.0e-3, 0.12 * b.modes.L, 0.0, b.seg.qV(), b.seg.qH());
+    b.seg.startLongitudinal();
+    const auto& lm = b.seg.longitudinalModes();
+    std::vector<double> f0(b.seg.longitudinalCount());
+    pme::string::longitudinalForce<double>(
+        lm, std::span<const double>(b.seg.qV(), b.seg.modeCount()),
+        std::span<const double>(b.seg.qH(), b.seg.modeCount()), f0);
+    const double dt = 1.0 / kFs;
+    for (std::size_t m = 0; m < f0.size(); ++m) {
+        CHECK(b.seg.longitudinalUs()[m] ==
+              doctest::Approx(-0.5 * lm.osc[m].gamma * f0[m]).epsilon(1e-14));
+        CHECK(lm.osc[m].gamma == doctest::Approx(dt * dt).epsilon(1e-3));
+    }
+    b.seg.advance(0.0, 0.0);
+    // After one step xi^1 is about the exact start value dt^2 f0 / 2.
+    for (std::size_t m = 0; m < f0.size(); ++m) {
+        CHECK(b.seg.xi()[m] == doctest::Approx(0.5 * dt * dt * f0[m]).epsilon(2e-3));
+    }
+}

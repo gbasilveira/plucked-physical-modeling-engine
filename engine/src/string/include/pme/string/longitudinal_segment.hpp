@@ -218,6 +218,18 @@ public:
         sav_.initialisePsi(std::span<const nl::Potential<S>* const>(pots.data(), np));
     }
 
+    /// Start the longitudinal modes from rest with the Taylor start u^0 = -gamma f^0 / 2, f^0
+    /// the pair-sum forcing of the present transverse state (call once, after setting the
+    /// initial pluck). No-op without longitudinal modes. Thread: any. Allocates: no.
+    void startLongitudinal() noexcept {
+        if (!longitudinal_) {
+            return;
+        }
+        string::longitudinalForce<S>(lm_, std::span<const S>(qV(), n_),
+                                     std::span<const S>(qH(), n_), std::span<S>(fl_));
+        bank_.startFromRest(std::span<const S>(fl_));
+    }
+
     // ---- state ---------------------------------------------------------------------------
     /// Mode states of the vertical and horizontal polarisation (N entries each). With SAV the
     /// storage is the SAV segment's; `u` = q^{n+1} - q^n of the last step.
@@ -232,6 +244,7 @@ public:
     /// Longitudinal coordinates xi_m (kept modes).
     [[nodiscard]] S* xi() noexcept { return bank_.q(); }
     [[nodiscard]] const S* xi() const noexcept { return bank_.q(); }
+    [[nodiscard]] const S* longitudinalUs() const noexcept { return bank_.u(); }
     [[nodiscard]] std::size_t modeCount() const noexcept { return n_; }
     [[nodiscard]] std::size_t longitudinalCount() const noexcept { return bank_.size(); }
     [[nodiscard]] bool usesSav() const noexcept { return useSav_; }

@@ -193,6 +193,18 @@ public:
     [[nodiscard]] const S* q() const noexcept { return q_.data(); }
     [[nodiscard]] const S* u() const noexcept { return u_.data(); }
 
+    /// Taylor start from rest (A7 start convention): with xi^0 = 0 and zero velocity, xi^-1 =
+    /// dt^2 f^0 / 2 to second order, so u^0 = xi^0 - xi^-1 = -gamma f^0 / 2 (gamma = dt^2 to
+    /// first order). Without it a start with u^0 = 0 makes the front arrive dt/2 early.
+    /// `f0` is the pair-sum forcing of the initial transverse state. Thread: audio.
+    void startFromRest(std::span<const S> f0) noexcept {
+        for (std::size_t i = 0; i < q_.size() && i < f0.size(); ++i) {
+            q_[i] = S{};
+            u_[i] =
+                static_cast<S>(-0.5 * static_cast<double>(gamma_[i]) * static_cast<double>(f0[i]));
+        }
+    }
+
     /// One difference-form sample with the explicit force `f` (per unit mass, size() entries)
     /// computed from the transverse state at step n (SPEC-EXEC step 8). Thread: audio.
     void step(std::span<const S> f) noexcept {
