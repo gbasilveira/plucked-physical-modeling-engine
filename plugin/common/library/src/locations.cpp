@@ -17,9 +17,11 @@
 #endif
 // <windows.h> must come first: <knownfolders.h> (pulled in by <shlobj.h>) needs EXTERN_C and GUID.
 // The FOLDERID_* GUIDs are defined in uuid.lib, which CMakeLists.txt links explicitly.
+// clang-format off
+#include <windows.h>
 #include <objbase.h>
 #include <shlobj.h>
-#include <windows.h>
+// clang-format on
 #endif
 
 #include "pme/plugin/ids.hpp"
@@ -48,48 +50,55 @@ namespace {
 #endif
 }
 
-/// A non-empty variable holding an absolute path, or nothing.
-std::optional<std::filesystem::path> absoluteVariable(const EnvLookup& env, std::string_view name) {
-    const std::optional<std::string> value = env(name);
-    if (!value || value->empty()) {
-        return std::nullopt;
+/// The Linux and macOS tables use POSIX rules on every host: std::filesystem::is_absolute() would
+/// reject "/home/u" on Windows and accept "C:\\x", so absoluteness is tested on the text.
+bool isPosixAbsolute(std::string_view text) { return !text.empty() && text.front() == '/'; }
+
+/// POSIX join on text: the result keeps '/' on every host (no host separator is inserted).
+std::string posixJoin(std::string base, std::string_view part) {
+    if (base.empty() || base.back() != '/') {
+        base += '/';
     }
-    std::filesystem::path path = pathFromUtf8(*value);
-    if (!path.is_absolute()) {
-        return std::nullopt;
-    }
-    return path;
+    base += part;
+    return base;
 }
 
-bool homeDirectory(const EnvLookup& env, std::filesystem::path& home, Report& report) {
+/// A non-empty variable holding a POSIX absolute path, or nothing.
+std::optional<std::string> absoluteVariable(const EnvLookup& env, std::string_view name) {
+    std::optional<std::string> value = env(name);
+    if (!value || !isPosixAbsolute(*value)) {
+        return std::nullopt;
+    }
+    return value;
+}
+
+bool homeDirectory(const EnvLookup& env, std::string& home, Report& report) {
     const std::optional<std::string> value = env("HOME");
     if (!value || value->empty()) {
         report.error("HOME", code::kIo, "HOME is not set; no user directory can be chosen");
         return false;
     }
-    std::filesystem::path path = pathFromUtf8(*value);
-    if (!path.is_absolute()) {
+    if (!isPosixAbsolute(*value)) {
         report.error("HOME", code::kIo, "HOME is not an absolute path: " + *value);
         return false;
     }
-    home = std::move(path);
+    home = *value;
     return true;
 }
 
-std::vector<std::filesystem::path> splitDataDirs(const std::string& text) {
-    std::vector<std::filesystem::path> dirs;
+/// XDG_DATA_DIRS entries: the non-empty absolute ones (relative entries are ignored per the XDG
+/// Base Directory specification).
+std::vector<std::string> splitDataDirs(const std::string& text) {
+    std::vector<std::string> dirs;
     std::size_t start = 0;
     while (start <= text.size()) {
         std::size_t end = text.find(':', start);
         if (end == std::string::npos) {
             end = text.size();
         }
-        const std::string part = text.substr(start, end - start);
-        if (!part.empty()) {
-            std::filesystem::path path = pathFromUtf8(part);
-            if (path.is_absolute()) {
-                dirs.push_back(std::move(path));
-            }
+        std::string part = text.substr(start, end - start);
+        if (isPosixAbsolute(part)) {
+            dirs.push_back(std::move(part));
         }
         start = end + 1;
     }
@@ -97,58 +106,61 @@ std::vector<std::filesystem::path> splitDataDirs(const std::string& text) {
 }
 
 bool linuxLocations(const EnvLookup& env, Locations& out, Report& report) {
-    const std::filesystem::path dataName = pathFromUtf8(kDataDirName);
-    // Factory: first existing <dir>/<data dir> in XDG_DATA_DIRS.
+    const std::string dataName(kDataDirName);
+    // Factory: first existing <dir>/<data dir> in XDG_DATA_DIRS. An empty or invalid value means
+    // the XDG default.
     const std::optional<std::string> dataDirsVar = env("XDG_DATA_DIRS");
-    std::vector<std::filesystem::path> dirs = splitDataDirs(
-        dataDirsVar && !dataDirsVar->empty() ? *dataDirsVar : "/usr/local/share:/usr/share");
-    if (dirs.empty()) {
-        // Literal defaults: POSIX paths are not "absolute" under Windows path rules, so they must
-        // not pass through splitDataDirs' absoluteness filter (an empty list would be UB below).
-        dirs = {std::filesystem::path("/usr/local/share"), std::filesystem::path("/usr/share")};
+    std::vector<std::string> dirs;
+    if (dataDirsVar && !dataDirsVar->empty()) {
+        dirs = splitDataDirs(*dataDirsVar);
     }
-    std::filesystem::path factory = dirs.front() / dataName;
+    if (dirs.empty()) {
+        dirs = {"/usr/local/share", "/usr/share"};
+    }
+    std::string factory = posixJoin(dirs.front(), dataName);
     for (const auto& dir : dirs) {
         std::error_code ec;
-        if (std::filesystem::is_directory(dir / dataName, ec)) {
-            factory = dir / dataName;
+        const std::string candidate = posixJoin(dir, dataName);
+        if (std::filesystem::is_directory(pathFromUtf8(candidate), ec)) {
+            factory = candidate;
             break;
         }
     }
-    std::filesystem::path home;
-    std::filesystem::path userBase;
-    if (const auto xdg = absoluteVariable(env, "XDG_DATA_HOME")) {
-        userBase = *xdg;
+    std::string home;
+    std::string userBase;
+    if (auto xdg = absoluteVariable(env, "XDG_DATA_HOME")) {
+        userBase = std::move(*xdg);
     } else {
         if (!homeDirectory(env, home, report)) {
             return false;
         }
-        userBase = home / ".local" / "share";
+        userBase = posixJoin(posixJoin(home, ".local"), "share");
     }
-    std::filesystem::path cacheBase;
-    if (const auto xdg = absoluteVariable(env, "XDG_CACHE_HOME")) {
-        cacheBase = *xdg;
+    std::string cacheBase;
+    if (auto xdg = absoluteVariable(env, "XDG_CACHE_HOME")) {
+        cacheBase = std::move(*xdg);
     } else {
         if (home.empty() && !homeDirectory(env, home, report)) {
             return false;
         }
-        cacheBase = home / ".cache";
+        cacheBase = posixJoin(home, ".cache");
     }
-    out.factory = std::move(factory);
-    out.user = userBase / dataName;
-    out.cache = cacheBase / dataName;
+    out.factory = pathFromUtf8(factory);
+    out.user = pathFromUtf8(posixJoin(userBase, dataName));
+    out.cache = pathFromUtf8(posixJoin(cacheBase, dataName));
     return true;
 }
 
 bool macLocations(const EnvLookup& env, Locations& out, Report& report) {
-    std::filesystem::path home;
+    std::string home;
     if (!homeDirectory(env, home, report)) {
         return false;
     }
-    const std::filesystem::path dataName = pathFromUtf8(kDataDirName);
-    out.factory = std::filesystem::path("/Library") / "Application Support" / dataName;
-    out.user = home / "Library" / "Application Support" / dataName;
-    out.cache = home / "Library" / "Caches" / dataName;
+    const std::string dataName(kDataDirName);
+    const std::string support = posixJoin(posixJoin(home, "Library"), "Application Support");
+    out.factory = pathFromUtf8(posixJoin("/Library/Application Support", dataName));
+    out.user = pathFromUtf8(posixJoin(support, dataName));
+    out.cache = pathFromUtf8(posixJoin(posixJoin(posixJoin(home, "Library"), "Caches"), dataName));
     return true;
 }
 

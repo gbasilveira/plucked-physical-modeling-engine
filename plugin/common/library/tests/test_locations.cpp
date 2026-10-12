@@ -27,8 +27,6 @@ lib::EnvLookup envOf(std::map<std::string, std::string> vars) {
 
 }  // namespace
 
-// The POSIX tables use POSIX absolute paths (/home/u), which are not absolute on Windows.
-#ifndef _WIN32
 TEST_CASE("D5-R1 linux locations follow the XDG table") {
     TempDir tmp;
     const fs::path dataA = tmp.path() / "dataA";
@@ -88,7 +86,30 @@ TEST_CASE("D5-R1 macos locations follow the table") {
     CHECK(loc.cache == fs::path("/Users/u/Library/Caches") / pme::plugin::kDataDirName);
 }
 
-#endif
+TEST_CASE("D5-R1 POSIX tables reject Windows-looking values on every host") {
+    for (const auto platform : {lib::Platform::Linux, lib::Platform::MacOs}) {
+        lib::Locations loc;
+        lib::Report report;
+        CHECK(lib::locationsFromEnvironment(platform, envOf({{"HOME", "C:\\Users\\u"}}), loc,
+                                            report) == pme::Status::InvalidArgument);
+        CHECK(hasCode(report.errors, lib::code::kIo));
+    }
+    // Windows-looking XDG values are ignored; the HOME-based defaults apply.
+    lib::Locations loc;
+    lib::Report report;
+    REQUIRE(lib::locationsFromEnvironment(lib::Platform::Linux,
+                                          envOf({{"HOME", "/home/u"},
+                                                 {"XDG_DATA_HOME", "C:\\data"},
+                                                 {"XDG_CACHE_HOME", "D:/cache"},
+                                                 {"XDG_DATA_DIRS", "C:\\a:rel"}}),
+                                          loc, report) == pme::Status::Ok);
+    CHECK(loc.user.generic_string() ==
+          "/home/u/.local/share/" + std::string(pme::plugin::kDataDirName));
+    CHECK(loc.cache.generic_string() == "/home/u/.cache/" + std::string(pme::plugin::kDataDirName));
+    // An invalid XDG_DATA_DIRS falls back to the XDG default.
+    CHECK(loc.factory.generic_string() ==
+          "/usr/local/share/" + std::string(pme::plugin::kDataDirName));
+}
 
 TEST_CASE("D5-R1 a missing or relative HOME is an error") {
     for (const auto platform : {lib::Platform::Linux, lib::Platform::MacOs}) {
