@@ -213,7 +213,7 @@ One job per system (`reference-python (linux)`, `(macos)`, `(windows)`), part of
 checks. It configures the `<system>-release` preset with `-DPME_BUILD_PYTHON_BINDINGS=ON` and the
 `Python_EXECUTABLE` of the `uv sync --locked` environment (so the module matches the interpreter
 that runs pytest), builds the nanobind module `pme_reference` and `pme_reference_cli`, and runs
-`tools/tests/test_p0_5_*.py` with `PME_REFERENCE_PYDIR` pointing at `build/<system>-release/reference/python`.
+`tools/tests/test_p0_5_*.py` and the B2 comparisons `compiler/tests/test_b2_t4_*.py` and `compiler/tests/test_b2_r5_reference_*.py` (the Linux job installs the gmsh shared libraries for them) with `PME_REFERENCE_PYDIR` pointing at `build/<system>-release/reference/python`.
 `PME_REFERENCE_REQUIRED=1` turns a missing module or CLI into a failure instead of a skip. JUnit
 is uploaded as `junit-reference-python-<system>`. The C++ tests of the reference solver
 (`ctest -R "P0.5"`) run in the `build` jobs like every other test; the default build leaves the

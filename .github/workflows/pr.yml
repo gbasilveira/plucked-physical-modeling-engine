@@ -543,7 +543,7 @@ jobs:
         if: matrix.system == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build
+          sudo apt-get install -y ninja-build libglu1-mesa libgl1 libxrender1 libxcursor1 libxft2 libxinerama1 libfontconfig1
       - name: Install Ninja (macOS)
         if: matrix.system == 'macos'
         run: brew install ninja
@@ -565,7 +565,7 @@ jobs:
           PME_REFERENCE_REQUIRED: "1"
         run: |
           mkdir -p reports
-          uv run pytest tools/tests/test_p0_5_*.py -rs --junitxml="reports/pytest-reference-python-${{ matrix.system }}.xml"
+          uv run pytest tools/tests/test_p0_5_*.py compiler/tests/test_b2_t4_*.py compiler/tests/test_b2_r5_reference_*.py -rs --junitxml="reports/pytest-reference-python-${{ matrix.system }}.xml"
       - name: Job summary
         if: ${{ always() }}
         shell: bash
