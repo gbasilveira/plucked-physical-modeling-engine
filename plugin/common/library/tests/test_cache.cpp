@@ -586,9 +586,9 @@ TEST_CASE("D5-R5 any byte flip, truncation or extension of a cache entry is neve
     };
     for (int round = 0; round < 150; ++round) {
         std::string bad = good;
-        const unsigned mode = static_cast<unsigned>(next() % 3U);
+        const auto mode = static_cast<unsigned>(next() % 3U);
         if (mode == 0U) {
-            const std::size_t at = static_cast<std::size_t>(next() % bad.size());
+            const auto at = static_cast<std::size_t>(next() % bad.size());
             bad[at] = static_cast<char>(bad[at] ^ static_cast<char>(1U + next() % 255U));
         } else if (mode == 1U) {
             bad.resize(static_cast<std::size_t>(next() % bad.size()));

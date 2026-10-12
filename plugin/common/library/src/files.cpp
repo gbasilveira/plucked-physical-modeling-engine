@@ -82,7 +82,7 @@ bool renameWithRetry(const std::filesystem::path& from, const std::filesystem::p
     // Windows: a virus scanner or indexer may hold the file briefly. Back off 10, 20, 40, 80, 160,
     // 320 and 400 ms, about 1 s in total, before giving up.
     constexpr int kAttempts = 8;
-    std::chrono::milliseconds delay{10};
+    [[maybe_unused]] std::chrono::milliseconds delay{10};
     for (int attempt = 0; attempt < kAttempts; ++attempt) {
         std::filesystem::rename(from, to, ec);
         if (!ec) {
