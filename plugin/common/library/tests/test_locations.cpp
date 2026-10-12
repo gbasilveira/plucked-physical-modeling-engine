@@ -28,11 +28,21 @@ lib::EnvLookup envOf(std::map<std::string, std::string> vars) {
 }  // namespace
 
 TEST_CASE("D5-R1 linux locations follow the XDG table") {
+    // The POSIX table accepts only POSIX-absolute values on every host, so the factory selection
+    // among XDG_DATA_DIRS entries (first existing, else first) is exercised against the real
+    // file system only where a temporary directory has a POSIX-absolute path. On Windows the
+    // temporary directory has a drive letter, which the POSIX table rightly rejects; there the
+    // same selection is checked with directories that do not exist (the first entry wins).
     TempDir tmp;
+    std::string dirs = "/xdg/a:/xdg/b";
+    std::string expectedFactory = "/xdg/a/" + std::string(pme::plugin::kDataDirName);
+#ifndef _WIN32
     const fs::path dataA = tmp.path() / "dataA";
     const fs::path dataB = tmp.path() / "dataB";
     fs::create_directories(dataB / pme::plugin::kDataDirName);  // only the second one exists
-    const std::string dirs = lib::pathToUtf8(dataA) + ":" + lib::pathToUtf8(dataB);
+    dirs = lib::pathToUtf8(dataA) + ":" + lib::pathToUtf8(dataB);
+    expectedFactory = lib::pathToUtf8(dataB / pme::plugin::kDataDirName);
+#endif
     lib::Locations loc;
     lib::Report report;
     REQUIRE(lib::locationsFromEnvironment(lib::Platform::Linux,
@@ -41,9 +51,9 @@ TEST_CASE("D5-R1 linux locations follow the XDG table") {
                                                  {"XDG_DATA_HOME", "/xdg/data"},
                                                  {"XDG_CACHE_HOME", "/xdg/cache"}}),
                                           loc, report) == pme::Status::Ok);
-    CHECK(loc.factory == dataB / pme::plugin::kDataDirName);
-    CHECK(loc.user == fs::path("/xdg/data") / pme::plugin::kDataDirName);
-    CHECK(loc.cache == fs::path("/xdg/cache") / pme::plugin::kDataDirName);
+    CHECK(loc.factory.generic_string() == expectedFactory);
+    CHECK(loc.user.generic_string() == "/xdg/data/" + std::string(pme::plugin::kDataDirName));
+    CHECK(loc.cache.generic_string() == "/xdg/cache/" + std::string(pme::plugin::kDataDirName));
     CHECK(loc.userInstruments() == loc.user / "instruments");
     CHECK(loc.factoryPresets() == loc.factory / "presets");
     CHECK(loc.cacheBody() == loc.cache / "body");
