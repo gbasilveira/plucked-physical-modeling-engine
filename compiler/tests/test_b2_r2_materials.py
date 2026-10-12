@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import warnings
 
 import pytest
 from test_b2_common import p05_plate
 
+from pme_compiler.body import compile as plate_compile
 from pme_compiler.body import geometry
 from pme_compiler.materials import library
 
@@ -224,3 +226,45 @@ def test_b2_r2_missing_species_are_listed_as_omissions() -> None:
     for key in ("Norway", "Indian rosewood", "Ebony", "Loss factor", "dE_R/dMC"):
         assert key in text
     assert "norway_spruce" not in _entries()
+
+
+def test_b2_r2_unsourced_slopes_warn_when_moisture_differs_from_reference() -> None:
+    """B2-R2: apply() warns, naming material and slopes, when MC differs and slopes are null."""
+    spruce = library.load_library()["sitka_spruce"]
+    wet = dataclasses.replace(p05_plate(), moisture=0.18)
+    with pytest.warns(library.UnsourcedMoistureSlopeWarning) as rec:
+        plate = library.apply(spruce, wet, loss_factor=0.012)
+    msg = str(rec[0].message)
+    assert "sitka_spruce" in msg
+    for f in spruce.unsourced_slopes:
+        assert f in msg
+    assert plate.dEdMcR == 0.0 and plate.dGdMc == 0.0
+
+
+def test_b2_r2_no_unsourced_slope_warning_at_reference_moisture() -> None:
+    """B2-R2: no warning at MC_ref, or when the entry sources every slope."""
+    lib = library.load_library()
+    base = p05_plate()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        library.apply(lib["sitka_spruce"], base, loss_factor=0.012)
+        sourced = dataclasses.replace(lib["sitka_spruce"], unsourced_slopes=())
+        library.apply(sourced, dataclasses.replace(base, moisture=0.2), loss_factor=0.012)
+
+
+def test_b2_r2_apply_validates_the_loss_factor() -> None:
+    """B2-R2: apply() rejects a non-finite or non-positive explicit loss factor."""
+    spruce = library.load_library()["sitka_spruce"]
+    for bad in (0.0, -0.01, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="loss_factor"):
+            library.apply(spruce, p05_plate(), loss_factor=bad)
+
+
+def test_b2_r2_compile_notes_zero_slopes_when_moisture_differs() -> None:
+    """B2-R2: CompileInfo.notes reports zero moisture slopes when moisture != MC_ref."""
+    base = p05_plate()
+    dry = plate_compile.compile_plate(base, [], mesh_size=0.1, grid_order=0)
+    assert dry.info.notes == ()
+    wet = dataclasses.replace(base, moisture=0.2, dEdMcR=0.0)
+    notes = plate_compile.compile_plate(wet, [], mesh_size=0.1, grid_order=0).info.notes
+    assert len(notes) == 1 and "dEdMcR" in notes[0]

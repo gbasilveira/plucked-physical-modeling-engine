@@ -12,6 +12,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import math
+import warnings
 from dataclasses import dataclass
 from importlib import resources
 from typing import Any
@@ -30,6 +31,14 @@ CONSTANT_FIELDS = (
 )
 SLOPE_FIELDS = ("dEdMcL", "dEdMcR", "dGdMc", "dRhodMc")
 SOURCE_FIELDS = ("author", "title", "year", "locator", "licence", "derivation")
+
+
+class UnsourcedMoistureSlopeWarning(UserWarning):
+    """A material's source gives no value for a moisture slope and ``plate.moisture`` != MC_ref.
+
+    The slope is applied as zero, so moisture changes only the properties that do have a sourced
+    slope (B2-R2).
+    """
 
 
 @dataclass(frozen=True)
@@ -157,8 +166,23 @@ def apply(
     Geometry, moisture, rim support and fMax of ``plate`` are kept. ``lossFactor`` is
     ``loss_factor`` if given, else the entry's constant value (for an eta(f) table pass
     ``material.loss_factor`` to ``compile_plate``). An entry whose source has no loss factor (the
-    Wood Handbook tonewoods) requires the argument; otherwise ``ValueError``.
+    Wood Handbook tonewoods) requires the argument; otherwise ``ValueError``. An explicit
+    ``loss_factor`` must be finite and > 0.
+
+    When ``plate.moisture`` differs from MC_ref and the entry lacks sourced slopes
+    (``material.unsourced_slopes``), those slopes are applied as zero and an
+    ``UnsourcedMoistureSlopeWarning`` names the material and each such slope.
     """
+    if loss_factor is not None and not (math.isfinite(loss_factor) and loss_factor > 0.0):
+        raise ValueError(f"loss_factor: expected finite and > 0, got {loss_factor}")
+    if material.unsourced_slopes and plate.moisture != MC_REF:
+        warnings.warn(
+            f"{material.name}: no sourced value for moisture slope(s) "
+            f"{', '.join(material.unsourced_slopes)}; applied as 0 at moisture "
+            f"{plate.moisture} (MC_ref {MC_REF}), so moisture changes only the other properties",
+            UnsourcedMoistureSlopeWarning,
+            stacklevel=2,
+        )
     if loss_factor is None:
         if "lossFactor" not in material.constants:
             raise ValueError(f"{material.name}: the source has no loss factor; pass loss_factor")

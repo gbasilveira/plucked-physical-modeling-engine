@@ -40,6 +40,7 @@ class CompileInfo:
     windows: int
     boundary: str
     seconds: float
+    notes: tuple[str, ...] = ()  # non-fatal conditions, printed by the CLI
 
 
 @dataclass(frozen=True)
@@ -152,6 +153,14 @@ def compile_plate(
             grid_weights=gw,
             grid_phi=np.ascontiguousarray((ev @ modes.vectors).T),
         )
+    notes: list[str] = []
+    if plate.moisture != geometry.MC_REF:
+        zero = [f for f in ("dEdMcL", "dEdMcR", "dGdMc", "dRhodMc") if getattr(plate, f) == 0.0]
+        if zero:
+            notes.append(
+                f"plate.moisture {plate.moisture} differs from MC_ref {geometry.MC_REF} but "
+                f"moisture slope(s) {', '.join(zero)} are 0, so moisture does not change them"
+            )
     info = CompileInfo(
         n_modes=int(modes.omega.size),
         n_rigid_dropped=modes.n_rigid,
@@ -161,5 +170,6 @@ def compile_plate(
         windows=modes.windows,
         boundary=boundary,
         seconds=time.perf_counter() - t0,
+        notes=tuple(notes),
     )
     return Compiled(table=table, info=info, modes=modes, system=system, geometry=geom)

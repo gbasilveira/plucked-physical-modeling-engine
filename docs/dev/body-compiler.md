@@ -179,7 +179,13 @@ written bytes bit-identically.
 MC\_ref = 0.12), a constant loss factor or an η(f) table, the four moisture slopes, and a mandatory
 `source` (author, title, year, locator, licence, and a `derivation` for every constant and for the
 slopes). `validate_entry` rejects an entry without them (tested). `apply(material, plate,
-loss_factor=None)` fills the wood fields of a `PlateParams`.
+loss_factor=None)` fills the wood fields of a `PlateParams`; an explicit `loss_factor` must be finite
+and > 0. Where the source lacks a moisture slope (null in `library.json`, listed in
+`Material.unsourced_slopes`; E\_R and G\_LR for the Wood Handbook woods) the slope is applied as zero,
+and when `plate.moisture` differs from MC\_ref `apply` emits `UnsourcedMoistureSlopeWarning` naming
+the material and each slope. `compile_plate` independently records a note in `CompileInfo.notes` when
+moisture differs from MC\_ref and any slope of the plate is 0; the CLI prints it to stderr as
+`warning: ...`.
 
 **Tonewoods.** Six entries come from the USDA Forest Products Laboratory Wood Handbook, FPL-GTR-282
 (March 2021; US government work, public domain), read from the PDF: `sitka_spruce`,

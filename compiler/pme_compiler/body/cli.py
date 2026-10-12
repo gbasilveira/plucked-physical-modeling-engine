@@ -87,6 +87,8 @@ def main(argv: list[str] | None = None) -> int:
     dump(compiled, out_dir / "instrument.json")
     load(out_dir / "instrument.json", verify_blobs=True)  # round trip
     info = result.info
+    for note in info.notes:
+        print(f"warning: {note}", file=sys.stderr)
     print(
         f"compiled {file.desc.name}: {info.n_modes} modes ({info.n_rigid_dropped} rigid-body "
         f"dropped), {info.n_dofs} dofs, {info.n_elements} elements of {info.mesh_size:.4g} m, "
