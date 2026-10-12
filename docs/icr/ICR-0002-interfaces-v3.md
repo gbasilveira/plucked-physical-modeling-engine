@@ -61,6 +61,10 @@ struct PlateParams {
 // engine/include/pme/instrument.hpp (Defaults)
 double muteFeltSigma{20.0};                     // sigma_felt, 1/s, SI-0010
 
+// engine/include/pme/instrument.hpp (SegmentDesc) — added 2026-10-12 for A7 (SPEC-GEO "their losses use their own b1, b3")
+double longitudinalB1{0.0};                     // 1/s
+double longitudinalB3{0.0};                     // s
+
 // engine/include/pme/bridge.hpp
 struct SegmentBridgeTerms { /* existing */ std::vector<float> aH; };       // horizontal a_n (A4)
 ```
@@ -89,7 +93,7 @@ These are new optional fields, so no schema-version migration is needed.
 | Phase | Impact | Must rebase |
 | --- | --- | --- |
 | A5 (in flight) | Implements the shank internally (A5-R6) against an internal `ShankParams` mirror. Switches to the public type when v3 lands. | yes, once v3 is applied |
-| A7 (in flight) | Exposes `GeometricTier` internally. `Exact` returns `NotImplemented` until A10. | yes |
+| A7 (in flight) | Exposes `GeometricTier` internally (`Exact` returns `NotImplemented` until A10); uses internal longitudinal loss parameters until `SegmentDesc::longitudinalB1/B3` land; B6 adds the matching schema fields. | yes |
 | A9 (new) | Implements the bridge options internally first, then reads `EngineConfig` through C1. | yes |
 | A10 (new) | Uses `GeometricTier::Exact`. | starts after v3 |
 | B6 (new) | Adds the schema fields and loader mapping for `moistureRef`, `prestress` and `shank`. | starts after v3 |
