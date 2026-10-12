@@ -103,7 +103,9 @@ bool linuxLocations(const EnvLookup& env, Locations& out, Report& report) {
     std::vector<std::filesystem::path> dirs = splitDataDirs(
         dataDirsVar && !dataDirsVar->empty() ? *dataDirsVar : "/usr/local/share:/usr/share");
     if (dirs.empty()) {
-        dirs = splitDataDirs("/usr/local/share:/usr/share");
+        // Literal defaults: POSIX paths are not "absolute" under Windows path rules, so they must
+        // not pass through splitDataDirs' absoluteness filter (an empty list would be UB below).
+        dirs = {std::filesystem::path("/usr/local/share"), std::filesystem::path("/usr/share")};
     }
     std::filesystem::path factory = dirs.front() / dataName;
     for (const auto& dir : dirs) {
