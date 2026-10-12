@@ -2,6 +2,7 @@
 // File helpers of the instrument and preset library (D5). Non-real-time.
 #include "pme/plugin/library/files.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -78,14 +79,20 @@ std::string uniqueToken() {
 
 bool renameWithRetry(const std::filesystem::path& from, const std::filesystem::path& to,
                      std::error_code& ec) {
-    constexpr int kAttempts = 5;
+    // Windows: a virus scanner or indexer may hold the file briefly. Back off 10, 20, 40, 80, 160,
+    // 320 and 400 ms, about 1 s in total, before giving up.
+    constexpr int kAttempts = 8;
+    std::chrono::milliseconds delay{10};
     for (int attempt = 0; attempt < kAttempts; ++attempt) {
         std::filesystem::rename(from, to, ec);
         if (!ec) {
             return true;
         }
 #ifdef _WIN32
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        if (attempt + 1 < kAttempts) {
+            std::this_thread::sleep_for(delay);
+            delay = std::min(delay * 2, std::chrono::milliseconds(400));
+        }
 #else
         break;  // POSIX: a failed rename is not transient.
 #endif

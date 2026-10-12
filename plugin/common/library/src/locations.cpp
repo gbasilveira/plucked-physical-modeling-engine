@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifdef _WIN32
@@ -14,7 +15,8 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <knownfolders.h>
+// <windows.h> must come first: <knownfolders.h> (pulled in by <shlobj.h>) needs EXTERN_C and GUID.
+// The FOLDERID_* GUIDs are defined in uuid.lib, which CMakeLists.txt links explicitly.
 #include <objbase.h>
 #include <shlobj.h>
 #include <windows.h>

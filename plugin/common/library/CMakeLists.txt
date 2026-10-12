@@ -16,7 +16,7 @@ target_link_libraries(pme_plugin_library
   PUBLIC pme::engine pme_loader pme_plugin_common
   PRIVATE pme_build_options nlohmann_json::nlohmann_json)
 if(WIN32)
-  target_link_libraries(pme_plugin_library PRIVATE shell32 ole32)
+  target_link_libraries(pme_plugin_library PRIVATE shell32 ole32 uuid)
 endif()
 set_target_properties(pme_plugin_library PROPERTIES
   CXX_STANDARD 20

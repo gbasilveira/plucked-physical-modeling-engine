@@ -5,6 +5,7 @@
 #include <limits>
 #include <string>
 
+#include "pme/plugin/ids.hpp"
 #include "pme/plugin/library/instruments.hpp"
 #include "pme/plugin/library/preset.hpp"
 #include "test_support.hpp"
@@ -12,6 +13,14 @@
 using namespace d5test;  // NOLINT(google-build-using-namespace)
 
 namespace {
+
+// D-3 is open: the format string and file extension come from ids.hpp, not from literals. The
+// fixture file data/preset-v0.pmepreset is the one exception (see docs/dev/library.md).
+const std::string kFormatField = std::string("\"format\":\"") + pme::plugin::kPresetFormat + "\"";
+
+std::string presetFile(const char* stem) {
+    return std::string(stem) + pme::plugin::kPresetExtension;
+}
 
 const std::string kHash = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
@@ -32,7 +41,7 @@ std::string serialize(const lib::Preset& p) {
     return text;
 }
 
-fs::path v0Fixture() { return fs::path(PME_D5_DATA) / "preset-v0.pmepreset"; }
+fs::path v0Fixture() { return fs::path(PME_D5_DATA) / presetFile("preset-v0"); }
 
 }  // namespace
 
@@ -40,7 +49,7 @@ TEST_CASE("D5-R2 canonical preset text is compact sorted and ends with a newline
     lib::Preset p = samplePreset();
     p.params = {{2001, -6.5}, {4101, 0.4}};
     CHECK(serialize(p) ==
-          "{\"format\":\"pme-preset\",\"instrument\":{\"hash\":\"" + kHash +
+          "{" + kFormatField + ",\"instrument\":{\"hash\":\"" + kHash +
               "\",\"id\":\"factory/generic-grand-88\"},\"name\":\"Bright grand\","
               "\"params\":{\"2001\":-6.5,\"4101\":0.4},\"presetSchemaVersion\":1}\n");
     p.instrumentHash.clear();
@@ -66,11 +75,11 @@ TEST_CASE("D5-T1 presets round-trip") {
         CHECK(serialize(loaded) == first);
         CHECK(report.diagnostics.empty());
 
-        const fs::path file = tmp.path() / "bright.pmepreset";
+        const fs::path file = tmp.path() / presetFile("bright");
         REQUIRE(lib::savePresetFile(file, original, report) == pme::Status::Ok);
         lib::Preset fromFile;
         REQUIRE(lib::loadPresetFile(file, fromFile, version, report) == pme::Status::Ok);
-        const fs::path file2 = tmp.path() / "again.pmepreset";
+        const fs::path file2 = tmp.path() / presetFile("again");
         REQUIRE(lib::savePresetFile(file2, fromFile, report) == pme::Status::Ok);
         CHECK(slurp(file) == slurp(file2));
         CHECK(slurp(file) == first);
@@ -80,17 +89,17 @@ TEST_CASE("D5-T1 presets round-trip") {
         TempDir other;
         const lib::Locations a = tmp.locations();
         const lib::Locations b = other.locations();
-        const fs::path source = tmp.path() / "source.pmepreset";
+        const fs::path source = tmp.path() / presetFile("source");
         lib::Report report;
         REQUIRE(lib::savePresetFile(source, original, report) == pme::Status::Ok);
         std::string idA;
         REQUIRE(lib::importPreset(a, source, idA, report) == pme::Status::Ok);
         CHECK(idA == "user/bright-grand");
-        const fs::path out1 = tmp.path() / "out1.pmepreset";
+        const fs::path out1 = tmp.path() / presetFile("out1");
         REQUIRE(lib::exportPreset(a, idA, out1, report) == pme::Status::Ok);
         std::string idB;
         REQUIRE(lib::importPreset(b, out1, idB, report) == pme::Status::Ok);
-        const fs::path out2 = other.path() / "out2.pmepreset";
+        const fs::path out2 = other.path() / presetFile("out2");
         REQUIRE(lib::exportPreset(b, idB, out2, report) == pme::Status::Ok);
         CHECK(slurp(out1) == slurp(out2));
         CHECK(slurp(out1) == serialize(original));
@@ -113,7 +122,8 @@ TEST_CASE("D5-T1 presets round-trip") {
     SUBCASE(
         "d: unknown ids are ignored and out-of-range values are clamped, each with a diagnostic") {
         const std::string text =
-            "{\"format\":\"pme-preset\",\"instrument\":{\"id\":\"user/x\"},\"name\":\"n\","
+            "{" + kFormatField +
+            ",\"instrument\":{\"id\":\"user/x\"},\"name\":\"n\","
             "\"params\":{\"1010\":0.5,\"2001\":100,\"3001\":-3,\"4101\":0.4,\"99999\":1},"
             "\"presetSchemaVersion\":1}";
         lib::Preset p;
@@ -174,15 +184,17 @@ TEST_CASE("D5-T2 an old preset migrates") {
         lib::Preset p;
         int version = 0;
         lib::Report report;
-        REQUIRE(lib::parsePreset("{\"format\":\"pme-preset\",\"presetSchemaVersion\":0,"
-                                 "\"instrument\":\"user/a\",\"name\":\"Old\",\"params\":{}}",
+        REQUIRE(lib::parsePreset("{" + kFormatField +
+                                     ",\"presetSchemaVersion\":0,"
+                                     "\"instrument\":\"user/a\",\"name\":\"Old\",\"params\":{}}",
                                  "stem", p, version, report) == pme::Status::Ok);
         CHECK(p.name == "Old");
         lib::Report bad;
         lib::Preset unchanged;
         unchanged.name = "unchanged";
-        CHECK(lib::parsePreset("{\"format\":\"pme-preset\",\"presetSchemaVersion\":0,"
-                               "\"instrument\":{\"id\":\"user/a\"},\"params\":{}}",
+        CHECK(lib::parsePreset("{" + kFormatField +
+                                   ",\"presetSchemaVersion\":0,"
+                                   "\"instrument\":{\"id\":\"user/a\"},\"params\":{}}",
                                "stem", unchanged, version, bad) == pme::Status::InvalidArgument);
         CHECK(hasCode(bad.errors, lib::code::kType));
         CHECK(unchanged.name == "unchanged");
@@ -191,10 +203,10 @@ TEST_CASE("D5-T2 an old preset migrates") {
     SUBCASE("b: a newer version fails with version and loads nothing") {
         TempDir tmp;
         const lib::Locations loc = tmp.locations();
-        const fs::path source = tmp.path() / "future.pmepreset";
-        spit(source,
-             "{\"format\":\"pme-preset\",\"instrument\":{\"id\":\"user/x\"},\"name\":\"n\","
-             "\"params\":{},\"presetSchemaVersion\":2}\n");
+        const fs::path source = tmp.path() / presetFile("future");
+        spit(source, "{" + kFormatField +
+                         ",\"instrument\":{\"id\":\"user/x\"},\"name\":\"n\","
+                         "\"params\":{},\"presetSchemaVersion\":2}\n");
         lib::Preset p;
         p.name = "unchanged";
         int version = 0;
@@ -227,11 +239,10 @@ TEST_CASE("D5-R2 malformed presets report B1-style errors") {
     CHECK(hasCode(errorsOf("[]"), "parse"));
     CHECK(hasCode(errorsOf("{}"), "missing"));
     CHECK(hasCode(errorsOf("{\"format\":\"other\",\"presetSchemaVersion\":1}"), "enum"));
-    CHECK(hasCode(errorsOf("{\"format\":\"pme-preset\"}"), "missing"));
-    CHECK(
-        hasCode(errorsOf("{\"format\":\"pme-preset\",\"presetSchemaVersion\":\"1\"}"), "version"));
-    CHECK(hasCode(errorsOf("{\"format\":\"pme-preset\",\"presetSchemaVersion\":-1}"), "version"));
-    const std::string head = "{\"format\":\"pme-preset\",\"presetSchemaVersion\":1,";
+    CHECK(hasCode(errorsOf("{" + kFormatField + "}"), "missing"));
+    CHECK(hasCode(errorsOf("{" + kFormatField + ",\"presetSchemaVersion\":\"1\"}"), "version"));
+    CHECK(hasCode(errorsOf("{" + kFormatField + ",\"presetSchemaVersion\":-1}"), "version"));
+    const std::string head = "{" + kFormatField + ",\"presetSchemaVersion\":1,";
     CHECK(hasCode(errorsOf(head + "\"params\":{}}"), "missing"));  // instrument
     CHECK(hasCode(errorsOf(head + "\"instrument\":\"user/a\"}"), "type"));
     CHECK(hasCode(errorsOf(head + "\"instrument\":{\"id\":\"../a\"}}"), "invalid-id"));
@@ -261,7 +272,7 @@ TEST_CASE("D5-R3 preset import is idempotent and a name clash gets a suffix") {
     const lib::Locations loc = tmp.locations();
     lib::Report report;
     lib::Preset a = samplePreset();
-    const fs::path fileA = tmp.path() / "a.pmepreset";
+    const fs::path fileA = tmp.path() / presetFile("a");
     REQUIRE(lib::savePresetFile(fileA, a, report) == pme::Status::Ok);
     std::string id1;
     std::string id2;
@@ -272,7 +283,7 @@ TEST_CASE("D5-R3 preset import is idempotent and a name clash gets a suffix") {
 
     lib::Preset b = a;
     b.params = {{2001, -3.0}};  // same name, different content
-    const fs::path fileB = tmp.path() / "b.pmepreset";
+    const fs::path fileB = tmp.path() / presetFile("b");
     REQUIRE(lib::savePresetFile(fileB, b, report) == pme::Status::Ok);
     std::string id3;
     REQUIRE(lib::importPreset(loc, fileB, id3, report) == pme::Status::Ok);
@@ -280,7 +291,7 @@ TEST_CASE("D5-R3 preset import is idempotent and a name clash gets a suffix") {
 
     lib::Preset c = samplePreset();
     c.name = "Flügel Ünïcode ♪";
-    const fs::path fileC = tmp.path() / "c.pmepreset";
+    const fs::path fileC = tmp.path() / presetFile("c");
     REQUIRE(lib::savePresetFile(fileC, c, report) == pme::Status::Ok);
     std::string id4;
     REQUIRE(lib::importPreset(loc, fileC, id4, report) == pme::Status::Ok);
@@ -293,7 +304,7 @@ TEST_CASE("D5-R3 preset import is idempotent and a name clash gets a suffix") {
     CHECK(loaded.name == c.name);  // the display name keeps its characters
 
     // A bad file does not break the listing.
-    spit(loc.userPresets() / "broken.pmepreset", "{");
+    spit(loc.userPresets() / presetFile("broken"), "{");
     const auto list = lib::listPresets(loc);
     REQUIRE(list.size() == 4);
     int broken = 0;
@@ -315,7 +326,7 @@ TEST_CASE("D5-R3 a preset whose instrument does not resolve imports and then fai
     TempDir tmp;
     const lib::Locations loc = tmp.locations();
     lib::Report report;
-    const fs::path file = tmp.path() / "dangling.pmepreset";
+    const fs::path file = tmp.path() / presetFile("dangling");
     REQUIRE(lib::savePresetFile(file, samplePreset(), report) == pme::Status::Ok);
     std::string id;
     REQUIRE(lib::importPreset(loc, file, id, report) == pme::Status::Ok);
@@ -342,7 +353,7 @@ TEST_CASE("D5-R2 a changed instrument is a diagnostic and not an error") {
     lib::Preset preset = samplePreset();
     preset.instrumentId = imported.id;
     REQUIRE(lib::instrumentHash(instrument, preset.instrumentHash, report) == pme::Status::Ok);
-    const fs::path file = tmp.path() / "p.pmepreset";
+    const fs::path file = tmp.path() / presetFile("p");
     REQUIRE(lib::savePresetFile(file, preset, report) == pme::Status::Ok);
     std::string presetId;
     lib::Report importReport;

@@ -277,6 +277,12 @@ Decision D-3 (product name and identifiers) is open. These live only in `ids.hpp
 them when D-3 is answered; the `.pmepreset` extension and format string are then part of the preset
 contract, so change them before any preset is shipped.
 
+The tests build these names from `kDataDirName`, `kPresetExtension` and `kPresetFormat`, so D2 needs no
+test edits. One manual step remains: the fixture `plugin/common/library/tests/data/preset-v0.pmepreset`
+is a frozen sample of an old file. Its file name and its `"format"` value are literals; when D-3
+changes the extension or the format string, rename the fixture and edit its `format` member by hand
+(`test_presets.cpp` finds it as `preset-v0` plus `kPresetExtension`).
+
 ## What D6 must do to connect it
 
 1. Build `Locations` once at start-up with `defaultLocations()` (main thread, never in `process`).
