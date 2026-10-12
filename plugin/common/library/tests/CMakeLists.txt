@@ -13,4 +13,5 @@ target_include_directories(pme_plugin_library_tests PRIVATE "${CMAKE_CURRENT_SOU
 target_compile_definitions(pme_plugin_library_tests PRIVATE
   DOCTEST_CONFIG_DOUBLE_STRINGIFY DOCTEST_CONFIG_USE_STD_HEADERS
   "PME_B1_FIXTURES=\"${PROJECT_SOURCE_DIR}/compiler/tests/data/b1\""
+  "PME_D5_DATA=\"${CMAKE_CURRENT_SOURCE_DIR}/data\""
   "PME_B1_EXAMPLES=\"${PROJECT_SOURCE_DIR}/instruments/examples\"")
