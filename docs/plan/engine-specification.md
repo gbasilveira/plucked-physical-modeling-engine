@@ -427,7 +427,7 @@ The hammer is a lumped mass launched at the string with a velocity set by the ke
 v_H = v_{\min} + (v_{\max} - v_{\min})\,\nu^{\gamma_v}
 ```
 
-Typical v\_min = 0.3 m/s, v\_max = 6 m/s, γ\_v = 1.5. The engine MUST NOT add action latency by default: the hammer is launched at a gap of v\_H Δt from the string, so contact starts on the next sample.
+Typical v\_min = 0.3 m/s, v\_max = 6 m/s, γ\_v = 1.5. The engine MUST NOT add action latency by default: the hammer is launched at a gap of v\_H Δt from the string, so it touches the string (δ = 0) on the next sample and the contact force is non-zero from the sample after ([SI-0029](../spec-issues/SI-0029-ham-stulov-and-launch-wording.md)).
 
 **Hammer coordinate.** x\_H is measured along the hammer's travel, positive towards the string; s\_E is the instrument's approach sign. The hammer has mass m\_H (typical 4–12 g, heavier in the bass), no stiffness and no damping of its own.
 
@@ -455,7 +455,7 @@ R_s^n = w_s K_s\,\mu_{HC}\,[\delta_s^n]_+^{\,p_s}
 h^n = a\,h^{n-1} + (1-a)\,[\delta^n]_+^{\,p}, \quad a = e^{-\Delta t/\tau}, \qquad F_{\text{hered}}^n = -K\varepsilon\,h^n \ \text{along } c_s
 ```
 
-This variant is not provably passive; energy monitors MUST check it.
+The hereditary force of string s acts only while δ\_s > 0 and is scaled by its strike weight w\_s, like the elastic part; h keeps evolving while out of contact. This variant is not provably passive (A5 measured a gain of 2.4 % of the hammer energy for one string and 3.8 % for a trichord at ν = 0.8, ε = 0.3, τ = 0.5 ms); energy monitors MUST check it ([SI-0029](../spec-issues/SI-0029-ham-stulov-and-launch-wording.md)).
 
 **Release and check.** After rebound the hammer leaves the coordinate set when it is farther than d\_check (default 5 mm) from the string and moving away. A double strike in the bass needs no special code: the contact law handles it.
 
@@ -877,7 +877,7 @@ Each block has an analytic or reference answer that the code MUST reproduce befo
 | Bridge damping ✓ | Flexible string on a pure conductance G, every kept mode | σ = −f₀ ln\[(1 − Z₀G)/(1 + Z₀G)\] | Modes with ω\_nΔt ≤ 0.1: 0.1% against the formula (run: 10⁻⁴). Every kept mode: measured decay rate equals that of the exact eigenvalues of the scheme's one-step coupled map within 10⁻⁴ relative; the deviation from the formula is reported per mode, not bounded ([SI-0021](../spec-issues/SI-0021-orc06-bridge-damping-high-modes.md)). Implicit bridge scheme (D-13): every kept mode within 0.1% of the formula at Z₀G = 0.01; at Z₀G = 0.05 within 0.1% for ω\_nΔt ≤ 2.4 and 0.5% for every kept mode |
 | Unison coupling ✓ | Two identical strings, one conductance | In-phase 4 f₀ Z₀ G; anti-phase intrinsic | 0.1% |
 | Impact time ✓ | Mass 8 g at 3 m/s on rigid felt contact, p = 2.5 | t\_c from the hammer oracle; rebound −v | max(1%, 1 sample); rebound 0.1% (run: 0.4%, exact rebound) |
-| Hammer–string energy ✓ | Lossless string and felt, float64 | Total energy including ½ψ² constant | 10⁻¹⁰ relative (run: 7 × 10⁻¹⁴) |
+| Hammer–string energy ✓ | Lossless string and felt, float64, rigid bridge | Total energy including ½ψ² constant up to the first ψ reset (SPEC-NL drift control 1); from then on, total energy plus the cumulative energy the resets removed is constant, and every reset removes energy (never adds). On a movable bridge the deviation is reported, not bounded (SI-0028) | 10⁻¹⁰ relative (run: 7 × 10⁻¹⁴; up to the first reset about 10⁻¹⁴) ([SI-0027](../spec-issues/SI-0027-orc09-reset-energy.md)) |
 | Triangle pluck ✓ | q\_n(0) formula vs quadrature | Same value | 10⁻⁹ relative |
 | Longitudinal forcing ✓ | Pair sum vs quadrature of −(EA − T)/(2ρA) ∫ y\_x² χ\_m' dx | Same value | 10⁻⁹ relative, with the engine's forcing function evaluated in float64 (instantiated with double state; the float32 instantiation cannot reach 10⁻⁹; [SI-0023](../spec-issues/SI-0023-orc11-float64-evaluation.md)) |
 | Tension modulation ✓ | Σ k\_n² q\_n² vs ∫ y\_x² dx | Same value | 10⁻¹² relative |
