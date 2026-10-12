@@ -86,8 +86,7 @@ Counts loadThroughCache(const lib::Locations& loc, const pme::InstrumentDesc& de
     (void)config;
     lib::BodyCacheKeys keys;
     lib::Report report;
-    REQUIRE(lib::bodyCacheKeys(desc, overrides, producerVersion, keys, report) ==
-            pme::Status::Ok);
+    REQUIRE(lib::bodyCacheKeys(desc, overrides, producerVersion, keys, report) == pme::Status::Ok);
     Counts counts;
     const int points = static_cast<int>(desc.bridgePoints.size());
     pme::BodyModes body;
@@ -175,7 +174,12 @@ TEST_CASE("D5-T3 a structural edit invalidates exactly the affected cache entrie
     }
     SUBCASE("a hammer mass") {
         pme::InstrumentDesc edited = start;
-        std::get<pme::HammerParams>(edited.groups.at(0).exciter->e).mass *= 2.0;
+        auto& exciter = edited.groups.at(0).exciter;
+        if (exciter.has_value()) {
+            std::get<pme::HammerParams>(exciter->e).mass *= 2.0;
+        } else {
+            FAIL("group 0 has no exciter");
+        }
         check(edited, noOverrides, kVersion, config(48000.0), 0, 0);
     }
     SUBCASE("the tuning") {
@@ -262,8 +266,9 @@ TEST_CASE("D5-R4 keys are deterministic and independent of the unused bridge-poi
 
 TEST_CASE("D5-R4 the key encoding is stable") {
     // Golden values, computed independently with the byte layout of docs/dev/library.md (a
-    // Python re-implementation of the encoding), guard the explicit field-by-field encoding documented in docs/dev/library.md.
-    // If this fails after a deliberate change, bump kCacheFormatVersion and update the value.
+    // Python re-implementation of the encoding), guard the explicit field-by-field encoding
+    // documented in docs/dev/library.md. If this fails after a deliberate change, bump
+    // kCacheFormatVersion and update the value.
     const pme::BodyParams params;
     const std::vector<pme::Point> points = {{1.0, 2.0, 3.0}};
     const std::vector<pme::Point> channels = {{0.5, -0.5, 0.25}, {0.0, 0.0, 0.0}};
@@ -336,8 +341,8 @@ TEST_CASE("D5-R4 a producer that fails stores nothing") {
     TempDir tmp;
     const lib::Locations loc = tmp.locations();
     const lib::CacheKey key = lib::bodyKey(pme::BodyParams{}, {}, {}, "v");
-    for (const auto status : {pme::Status::NotImplemented, pme::Status::InvalidArgument,
-                              pme::Status::Rejected}) {
+    for (const auto status :
+         {pme::Status::NotImplemented, pme::Status::InvalidArgument, pme::Status::Rejected}) {
         lib::Report report;
         pme::BodyModes body;
         body.numModes = 42;
@@ -365,6 +370,7 @@ TEST_CASE("D5-R4 concurrent getOrCompute from 4 threads leaves one valid entry")
     std::vector<pme::Status> statuses(kThreads, pme::Status::InvalidArgument);
     std::atomic<bool> go{false};
     std::vector<std::thread> threads;
+    threads.reserve(kThreads);
     for (int t = 0; t < kThreads; ++t) {
         threads.emplace_back([&, t] {
             while (!go.load()) {
@@ -399,9 +405,8 @@ TEST_CASE("D5-R4 concurrent getOrCompute from 4 threads leaves one valid entry")
     pme::BodyModes again;
     bool hit = false;
     REQUIRE(lib::getOrCompute(
-                loc, key, again,
-                [](pme::BodyModes&) { return pme::Status::InvalidArgument; }, report,
-                &hit) == pme::Status::Ok);
+                loc, key, again, [](pme::BodyModes&) { return pme::Status::InvalidArgument; },
+                report, &hit) == pme::Status::Ok);
     CHECK(hit);
     CHECK(report.diagnostics.empty());
     CHECK(same(again, fakeBody(2)));
@@ -411,6 +416,7 @@ TEST_CASE("D5-R4 pruneCache keeps the most recently used entries") {
     TempDir tmp;
     const lib::Locations loc = tmp.locations();
     std::vector<lib::CacheKey> keys;
+    keys.reserve(4);
     lib::Report report;
     std::string payload;
     lib::encodePayload(fakeBody(2), payload);

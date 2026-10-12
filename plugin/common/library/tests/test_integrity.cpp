@@ -2,6 +2,7 @@
 // D5-R5 (blob and cache integrity by hash) and D5-T4 (corruption is detected and reported).
 #include <doctest/doctest.h>
 
+#include <cstdint>
 #include <string>
 
 #include "pme/plugin/library/cache.hpp"
@@ -123,21 +124,21 @@ TEST_CASE("D5-T4 a corrupted blob is detected and reported") {
         CHECK_FALSE(fs::exists(tmp.path() / "out" / id.substr(5) / "instrument.json"));
     }
     SUBCASE("c: damaged cache entries are reported deleted and recomputed") {
-        enum class Damage { Payload, Truncated, Key };
+        enum class Damage : std::uint8_t { Payload, Truncated, Key };
         for (const Damage damage : {Damage::Payload, Damage::Truncated, Damage::Key}) {
             const std::string tag = "damage-" + std::to_string(static_cast<int>(damage));
             const lib::CacheKey key = fillOne(loc, tag);
             const fs::path file = lib::cacheEntryPath(loc, key);
             switch (damage) {
-            case Damage::Payload:
-                flipByte(file, 88 + 5);
-                break;
-            case Damage::Truncated:
-                fs::resize_file(file, 100);
-                break;
-            case Damage::Key:
-                flipByte(file, 16 + 7);  // the stored key
-                break;
+                case Damage::Payload:
+                    flipByte(file, 88 + 5);
+                    break;
+                case Damage::Truncated:
+                    fs::resize_file(file, 100);
+                    break;
+                case Damage::Key:
+                    flipByte(file, 16 + 7);  // the stored key
+                    break;
             }
             int calls = 0;
             pme::BodyModes result;
@@ -179,7 +180,8 @@ TEST_CASE("D5-R5 blob hashes are checked on every library load") {
 
     // A manifest hash that no longer matches the (intact) blob file is also an error.
     std::string text = slurp(json);
-    const std::string hash = "sha256:9904ef62b0fd276a5a6e92e307d59c1ba1e6db066fbf3dd30f27b5f0b2944f3a";
+    const std::string hash =
+        "sha256:9904ef62b0fd276a5a6e92e307d59c1ba1e6db066fbf3dd30f27b5f0b2944f3a";
     std::string changed = hash;
     changed[7] = changed[7] == '9' ? '8' : '9';
     std::size_t replaced = 0;

@@ -52,9 +52,9 @@ void put(ByteWriter& w, const PlateParams& plate) {
                  poissonRL, density, moisture, dEdMcL, dEdMcR, dGdMc, dRhodMc, lossFactor,
                  rimStiffness, fMax, ribs, outline, thicknessNx, thicknessNy, thicknessGrid,
                  bridges, rimRotationalStiffness] = plate;
-    for (const double v : {lengthX, lengthY, thickness, grainAngle, youngsL, youngsR, shearLR,
-                           poissonLR, poissonRL, density, moisture, dEdMcL, dEdMcR, dGdMc, dRhodMc,
-                           lossFactor, rimStiffness, fMax}) {
+    for (const double v :
+         {lengthX, lengthY, thickness, grainAngle, youngsL, youngsR, shearLR, poissonLR, poissonRL,
+          density, moisture, dEdMcL, dEdMcR, dGdMc, dRhodMc, lossFactor, rimStiffness, fMax}) {
         w.f64(v);
     }
     w.u64(ribs.size());
@@ -150,7 +150,8 @@ Status bodyCacheKeys(const InstrumentDesc& desc, const ParamOverrides& overrides
                 continue;
             }
             if (const ParamInfo* info = findParam(id); info != nullptr && std::isfinite(value)) {
-                keys.maxModes = static_cast<int>(std::lround(std::clamp(value, info->min, info->max)));
+                keys.maxModes =
+                    static_cast<int>(std::lround(std::clamp(value, info->min, info->max)));
             }
         }
         keys.fSplit = desc.defaults.localBridgeFSplit;

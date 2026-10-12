@@ -2,6 +2,8 @@
 // SPEC sections implemented: SPEC-INST "Instrument file" (only sample-rate-independent data is
 // stored), SPEC-BODY "Modal data (offline output)" and "Local bridge model" (the stored structs).
 // D5-R4, D5-R5.
+#include "pme/plugin/library/cache.hpp"
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -10,7 +12,6 @@
 
 #include "byte_io.hpp"
 #include "pme/loader/sha256.hpp"
-#include "pme/plugin/library/cache.hpp"
 #include "pme/plugin/library/files.hpp"
 
 namespace pme::plugin::library {
@@ -19,8 +20,8 @@ namespace {
 using detail::ByteReader;
 using detail::ByteWriter;
 
-constexpr std::string_view kMagic = "PMECACHE";                 // 8 bytes
-constexpr std::size_t kHeaderSize = 8 + 4 + 4 + 32 + 8 + 32;    // 88 bytes
+constexpr std::string_view kMagic = "PMECACHE";               // 8 bytes
+constexpr std::size_t kHeaderSize = 8 + 4 + 4 + 32 + 8 + 32;  // 88 bytes
 constexpr std::string_view kEntrySuffix = ".bin";
 
 std::array<std::uint8_t, 32> payloadDigest(std::string_view payload) {
@@ -237,7 +238,8 @@ Status pruneCache(const Locations& locations, std::uint64_t maxBytes, PruneResul
         }
         std::vector<Entry> entries;
         std::uint64_t total = 0;
-        const auto staleLimit = std::filesystem::file_time_type::clock::now() - std::chrono::hours(1);
+        const auto staleLimit =
+            std::filesystem::file_time_type::clock::now() - std::chrono::hours(1);
         for (std::filesystem::directory_iterator it(root, ec), end; !ec && it != end;
              it.increment(ec)) {
             std::error_code fileEc;

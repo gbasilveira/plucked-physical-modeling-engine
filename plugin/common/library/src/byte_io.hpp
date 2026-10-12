@@ -11,15 +11,12 @@
 
 namespace pme::plugin::library::detail {
 
-static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big,
-              "mixed-endian targets are not supported");
-
 /// Appends fixed-width little-endian values to a string used as a byte buffer.
 class ByteWriter {
 public:
-    explicit ByteWriter(std::string& buffer) : buffer_(buffer) {}
+    explicit ByteWriter(std::string& buffer) : buffer_(&buffer) {}
 
-    void u8(std::uint8_t v) { buffer_.push_back(static_cast<char>(v)); }
+    void u8(std::uint8_t v) { buffer_->push_back(static_cast<char>(v)); }
     void u32(std::uint32_t v) {
         for (unsigned i = 0; i < 4; ++i) {
             u8(static_cast<std::uint8_t>((v >> (8U * i)) & 0xFFU));
@@ -36,10 +33,10 @@ public:
     /// Length (u64) followed by the bytes.
     void str(std::string_view s) {
         u64(s.size());
-        buffer_.append(s.data(), s.size());
+        buffer_->append(s.data(), s.size());
     }
     void raw(const std::uint8_t* data, std::size_t n) {
-        buffer_.append(reinterpret_cast<const char*>(data), n);  // NOLINT(*-reinterpret-cast)
+        buffer_->append(reinterpret_cast<const char*>(data), n);  // NOLINT(*-reinterpret-cast)
     }
     /// Count (u64) followed by the values.
     void f64s(const std::vector<double>& v) {
@@ -56,7 +53,7 @@ public:
     }
 
 private:
-    std::string& buffer_;
+    std::string* buffer_;
 };
 
 /// Reads what `ByteWriter` wrote. Any overrun clears `ok()` and returns zeros.

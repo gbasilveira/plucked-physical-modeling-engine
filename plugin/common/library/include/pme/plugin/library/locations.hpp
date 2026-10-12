@@ -26,7 +26,9 @@ struct Locations {
     std::filesystem::path user;     ///< User instruments and presets.
     std::filesystem::path cache;    ///< Compiled body data (cache/body/<key>.bin).
 
-    [[nodiscard]] std::filesystem::path factoryInstruments() const { return factory / "instruments"; }
+    [[nodiscard]] std::filesystem::path factoryInstruments() const {
+        return factory / "instruments";
+    }
     [[nodiscard]] std::filesystem::path factoryPresets() const { return factory / "presets"; }
     [[nodiscard]] std::filesystem::path userInstruments() const { return user / "instruments"; }
     [[nodiscard]] std::filesystem::path userPresets() const { return user / "presets"; }

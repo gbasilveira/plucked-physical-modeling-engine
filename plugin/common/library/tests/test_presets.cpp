@@ -13,8 +13,7 @@ using namespace d5test;  // NOLINT(google-build-using-namespace)
 
 namespace {
 
-const std::string kHash =
-    "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const std::string kHash = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 lib::Preset samplePreset() {
     lib::Preset p;
@@ -111,7 +110,8 @@ TEST_CASE("D5-T1 presets round-trip") {
         CHECK(serialize(back) == serialize(original));
     }
 
-    SUBCASE("d: unknown ids are ignored and out-of-range values are clamped, each with a diagnostic") {
+    SUBCASE(
+        "d: unknown ids are ignored and out-of-range values are clamped, each with a diagnostic") {
         const std::string text =
             "{\"format\":\"pme-preset\",\"instrument\":{\"id\":\"user/x\"},\"name\":\"n\","
             "\"params\":{\"1010\":0.5,\"2001\":100,\"3001\":-3,\"4101\":0.4,\"99999\":1},"
@@ -228,7 +228,8 @@ TEST_CASE("D5-R2 malformed presets report B1-style errors") {
     CHECK(hasCode(errorsOf("{}"), "missing"));
     CHECK(hasCode(errorsOf("{\"format\":\"other\",\"presetSchemaVersion\":1}"), "enum"));
     CHECK(hasCode(errorsOf("{\"format\":\"pme-preset\"}"), "missing"));
-    CHECK(hasCode(errorsOf("{\"format\":\"pme-preset\",\"presetSchemaVersion\":\"1\"}"), "version"));
+    CHECK(
+        hasCode(errorsOf("{\"format\":\"pme-preset\",\"presetSchemaVersion\":\"1\"}"), "version"));
     CHECK(hasCode(errorsOf("{\"format\":\"pme-preset\",\"presetSchemaVersion\":-1}"), "version"));
     const std::string head = "{\"format\":\"pme-preset\",\"presetSchemaVersion\":1,";
     CHECK(hasCode(errorsOf(head + "\"params\":{}}"), "missing"));  // instrument
@@ -236,11 +237,13 @@ TEST_CASE("D5-R2 malformed presets report B1-style errors") {
     CHECK(hasCode(errorsOf(head + "\"instrument\":{\"id\":\"../a\"}}"), "invalid-id"));
     CHECK(hasCode(errorsOf(head + "\"instrument\":{\"id\":\"user/a\",\"hash\":\"abc\"}}"), "type"));
     CHECK(hasCode(errorsOf(head + "\"instrument\":{\"id\":\"user/a\",\"x\":1}}"), "unknown_key"));
-    CHECK(hasCode(errorsOf(head + "\"instrument\":{\"id\":\"user/a\"},\"extra\":1}"), "unknown_key"));
+    CHECK(
+        hasCode(errorsOf(head + "\"instrument\":{\"id\":\"user/a\"},\"extra\":1}"), "unknown_key"));
     CHECK(hasCode(errorsOf(head + "\"instrument\":{\"id\":\"user/a\"},\"params\":{\"x\":1}}"),
                   "type"));
-    CHECK(hasCode(errorsOf(head + "\"instrument\":{\"id\":\"user/a\"},\"params\":{\"2001\":\"1\"}}"),
-                  "type"));
+    CHECK(
+        hasCode(errorsOf(head + "\"instrument\":{\"id\":\"user/a\"},\"params\":{\"2001\":\"1\"}}"),
+                "type"));
     CHECK(hasCode(
         errorsOf(head + "\"instrument\":{\"id\":\"user/a\"},\"params\":{\"2001\":1,\"02001\":2}}"),
         "duplicate"));
@@ -349,8 +352,7 @@ TEST_CASE("D5-R2 a changed instrument is a diagnostic and not an error") {
     lib::Preset loaded;
     pme::loader::InstrumentFile loadedInstrument;
     lib::Report ok;
-    REQUIRE(lib::loadLibraryPreset(loc, presetId, loaded, loadedInstrument, ok) ==
-            pme::Status::Ok);
+    REQUIRE(lib::loadLibraryPreset(loc, presetId, loaded, loadedInstrument, ok) == pme::Status::Ok);
     CHECK(ok.diagnostics.empty());
     CHECK(loaded == preset);
     CHECK(loadedInstrument.desc.name == instrument.desc.name);

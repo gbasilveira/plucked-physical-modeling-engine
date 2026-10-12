@@ -36,13 +36,12 @@ TEST_CASE("D5-R1 linux locations follow the XDG table") {
     const std::string dirs = lib::pathToUtf8(dataA) + ":" + lib::pathToUtf8(dataB);
     lib::Locations loc;
     lib::Report report;
-    REQUIRE(lib::locationsFromEnvironment(
-                lib::Platform::Linux,
-                envOf({{"HOME", "/home/u"},
-                       {"XDG_DATA_DIRS", dirs},
-                       {"XDG_DATA_HOME", "/xdg/data"},
-                       {"XDG_CACHE_HOME", "/xdg/cache"}}),
-                loc, report) == pme::Status::Ok);
+    REQUIRE(lib::locationsFromEnvironment(lib::Platform::Linux,
+                                          envOf({{"HOME", "/home/u"},
+                                                 {"XDG_DATA_DIRS", dirs},
+                                                 {"XDG_DATA_HOME", "/xdg/data"},
+                                                 {"XDG_CACHE_HOME", "/xdg/cache"}}),
+                                          loc, report) == pme::Status::Ok);
     CHECK(loc.factory == dataB / "pme");
     CHECK(loc.user == fs::path("/xdg/data") / "pme");
     CHECK(loc.cache == fs::path("/xdg/cache") / "pme");
@@ -155,7 +154,8 @@ TEST_CASE("D5-R1 defaultLocations reads the process environment or the known fol
 TEST_CASE("D5-R1 ids resolve and never escape their root") {
     TempDir tmp;
     const lib::Locations loc = tmp.locations();
-    const fs::path factoryFile = installExample("test-monochord", loc.factoryInstruments() / "mono");
+    const fs::path factoryFile =
+        installExample("test-monochord", loc.factoryInstruments() / "mono");
     const fs::path userFile = installExample("test-unison-pair", loc.userInstruments() / "pair");
 
     fs::path out;
@@ -172,14 +172,14 @@ TEST_CASE("D5-R1 ids resolve and never escape their root") {
     REQUIRE(lib::resolveInstrument(loc, "user/mono", out, report) == pme::Status::Ok);
     CHECK(out == loc.userInstruments() / "mono" / "instrument.json");
 
-    for (const char* bad : {"../x", "user/../x", "user/..", "user/a/b", "/etc/passwd", "user//x",
-                            "user/.hidden", "user/a\\b", "user/c:d", "user/", "", "mono",
-                            "factory/../../etc", "other/mono"}) {
+    for (const char* bad :
+         {"../x", "user/../x", "user/..", "user/a/b", "/etc/passwd", "user//x", "user/.hidden",
+          "user/a\\b", "user/c:d", "user/", "", "mono", "factory/../../etc", "other/mono"}) {
         lib::Report badReport;
         fs::path unchanged = "unchanged";
-        CHECK_MESSAGE(lib::resolveInstrument(loc, bad, unchanged, badReport) ==
-                          pme::Status::InvalidArgument,
-                      bad);
+        CHECK_MESSAGE(
+            lib::resolveInstrument(loc, bad, unchanged, badReport) == pme::Status::InvalidArgument,
+            bad);
         CHECK_MESSAGE(hasCode(badReport.errors, lib::code::kInvalidId), bad);
         CHECK(unchanged == fs::path("unchanged"));
     }

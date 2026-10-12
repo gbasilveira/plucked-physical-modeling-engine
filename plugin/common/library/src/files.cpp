@@ -15,9 +15,12 @@
 #include "pme/loader/sha256.hpp"
 
 namespace pme::plugin::library {
+namespace {
+constexpr std::size_t kChunkSize = std::size_t{64} * 1024;
+}  // namespace
 
 std::filesystem::path pathFromUtf8(std::string_view utf8) {
-    return std::filesystem::path(std::u8string(utf8.begin(), utf8.end()));
+    return {std::u8string(utf8.begin(), utf8.end())};
 }
 
 std::string pathToUtf8(const std::filesystem::path& path) {
@@ -57,8 +60,8 @@ std::string uniqueToken() {
         std::random_device device;
         entropy = (static_cast<std::uint64_t>(device()) << 32U) | device();
     } catch (...) {
-        entropy = static_cast<std::uint64_t>(
-            std::chrono::steady_clock::now().time_since_epoch().count());
+        entropy =
+            static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
     }
     const std::uint64_t thread = std::hash<std::thread::id>{}(std::this_thread::get_id());
     const std::uint64_t n = counter.fetch_add(1, std::memory_order_relaxed);
@@ -137,8 +140,8 @@ Status writeFileAtomic(const std::filesystem::path& path, std::string_view bytes
     }
 }
 
-Status writeFileExclusive(const std::filesystem::path& path, std::string_view bytes,
-                          bool& created, Report& report) {
+Status writeFileExclusive(const std::filesystem::path& path, std::string_view bytes, bool& created,
+                          Report& report) {
     std::filesystem::path temp;
     try {
         std::error_code ec;
@@ -204,7 +207,7 @@ Status hashFile(const std::filesystem::path& path, std::string& hex, Report& rep
             return Status::InvalidArgument;
         }
         loader::Sha256 sha;
-        std::string buffer(64U * 1024U, '\0');
+        std::string buffer(kChunkSize, '\0');
         while (in) {
             in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
             const auto got = static_cast<std::size_t>(in.gcount());
@@ -225,7 +228,8 @@ Status hashFile(const std::filesystem::path& path, std::string& hex, Report& rep
 }
 
 std::string sha256Tagged(std::string_view bytes) {
-    return "sha256:" + loader::sha256Hex(std::as_bytes(std::span<const char>(bytes.data(), bytes.size())));
+    return "sha256:" +
+           loader::sha256Hex(std::as_bytes(std::span<const char>(bytes.data(), bytes.size())));
 }
 
 }  // namespace pme::plugin::library

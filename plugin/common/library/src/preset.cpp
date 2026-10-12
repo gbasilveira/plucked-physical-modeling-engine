@@ -21,9 +21,8 @@ bool isHash(const std::string& s) {
     if (s.size() != 71 || !s.starts_with("sha256:")) {
         return false;
     }
-    return std::all_of(s.begin() + 7, s.end(), [](char c) {
-        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
-    });
+    return std::all_of(s.begin() + 7, s.end(),
+                       [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); });
 }
 
 const ParamInfo* findParamByName(std::string_view name) {
@@ -72,8 +71,9 @@ void normaliseParams(const std::map<ParamId, double>& raw, const std::string& po
         const std::string where = pointerBase + "/" + pointerEscape(keyOf.at(id));
         const ParamInfo* info = findParam(id);
         if (info == nullptr) {
-            report.diagnostic(where, code::kUnknownParam,
-                              "parameter id " + std::to_string(id) + " is not in the registry; ignored");
+            report.diagnostic(
+                where, code::kUnknownParam,
+                "parameter id " + std::to_string(id) + " is not in the registry; ignored");
             continue;
         }
         double v = value;
@@ -104,7 +104,8 @@ bool migrateV0(const Json& in, std::string_view stem, Json& out, Report& report)
     }
     const auto instrument = in.find("instrument");
     if (instrument == in.end()) {
-        report.error("/instrument", code::kMissing, "version 0 needs the instrument id as a string");
+        report.error("/instrument", code::kMissing,
+                     "version 0 needs the instrument id as a string");
         ok = false;
     } else if (!instrument->is_string()) {
         report.error("/instrument", code::kType, "version 0 stores the instrument as a string");
@@ -119,8 +120,9 @@ bool migrateV0(const Json& in, std::string_view stem, Json& out, Report& report)
             for (const auto& [name, value] : it->items()) {
                 const ParamInfo* info = findParamByName(name);
                 if (info == nullptr) {
-                    report.diagnostic("/params/" + pointerEscape(name), code::kUnknownParam,
-                                      "parameter name '" + name + "' is not in the registry; dropped");
+                    report.diagnostic(
+                        "/params/" + pointerEscape(name), code::kUnknownParam,
+                        "parameter name '" + name + "' is not in the registry; dropped");
                     continue;
                 }
                 params[std::to_string(info->id)] = value;
@@ -312,7 +314,8 @@ Status parsePreset(std::string_view text, std::string_view fileStem, Preset& out
         if (found < 0 || found > kPresetSchemaVersion) {
             report.error("/presetSchemaVersion", code::kVersion,
                          "unsupported preset schema version " + std::to_string(found) +
-                             " (this build reads 0 to " + std::to_string(kPresetSchemaVersion) + ")");
+                             " (this build reads 0 to " + std::to_string(kPresetSchemaVersion) +
+                             ")");
             return Status::InvalidArgument;
         }
         Json current;
@@ -534,7 +537,8 @@ std::vector<ListEntry> listPresets(const Locations& locations) {
                 std::error_code typeEc;
                 const std::string name = pathToUtf8(it->path().filename());
                 if (it->is_regular_file(typeEc) && !name.empty() && name.front() != '.' &&
-                    name.ends_with(kPresetExtension) && name.size() > std::string(kPresetExtension).size()) {
+                    name.ends_with(kPresetExtension) &&
+                    name.size() > std::string(kPresetExtension).size()) {
                     files.push_back(it->path());
                 }
             }
@@ -556,7 +560,7 @@ std::vector<ListEntry> listPresets(const Locations& locations) {
                 entries.push_back(std::move(entry));
             }
         } catch (...) {
-            // A directory that cannot be scanned contributes no entries.
+            return;  // A directory that cannot be scanned contributes no entries.
         }
     };
     scan(locations.factoryPresets(), Source::Factory);

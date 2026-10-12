@@ -15,12 +15,16 @@
 namespace pme::plugin::library {
 namespace {
 
+constexpr std::size_t kChunkSize = std::size_t{64} * 1024;
+
 /// Removes a directory tree on scope exit unless released.
 class TempDirGuard {
 public:
     explicit TempDirGuard(std::filesystem::path dir) : dir_(std::move(dir)) {}
     TempDirGuard(const TempDirGuard&) = delete;
     TempDirGuard& operator=(const TempDirGuard&) = delete;
+    TempDirGuard(TempDirGuard&&) = delete;
+    TempDirGuard& operator=(TempDirGuard&&) = delete;
     ~TempDirGuard() {
         if (!released_ && !dir_.empty()) {
             std::error_code ec;
@@ -76,11 +80,11 @@ Status loadVerified(const std::filesystem::path& file, loader::InstrumentFile& o
         if (e.code == "blob" && haveManifest) {
             const long index = blobIndexOf(e.path);
             if (index >= 0 && static_cast<std::size_t>(index) < manifest.blobs.size()) {
-                message += " (blob file " +
-                           pathToUtf8(file.parent_path() /
-                                      pathFromUtf8(manifest.blobs[static_cast<std::size_t>(index)]
-                                                       .path)) +
-                           ")";
+                message +=
+                    " (blob file " +
+                    pathToUtf8(file.parent_path() /
+                               pathFromUtf8(manifest.blobs[static_cast<std::size_t>(index)].path)) +
+                    ")";
             }
         }
         report.errors.push_back({e.path, e.code, std::move(message)});
@@ -142,7 +146,7 @@ Status copyFileVerified(const std::filesystem::path& from, const std::filesystem
                 report.error(pathToUtf8(temp), code::kIo, "cannot create temporary file");
                 return Status::InvalidArgument;
             }
-            std::string buffer(64U * 1024U, '\0');
+            std::string buffer(kChunkSize, '\0');
             while (in) {
                 in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
                 const std::streamsize got = in.gcount();
@@ -249,7 +253,8 @@ Status importInstrument(const Locations& locations,
         staging = root / (".import-" + uniqueToken());
         std::filesystem::create_directories(staging, ec);
         if (ec) {
-            report.error(pathToUtf8(staging), code::kIo, "cannot create directory: " + ec.message());
+            report.error(pathToUtf8(staging), code::kIo,
+                         "cannot create directory: " + ec.message());
             return Status::InvalidArgument;
         }
         TempDirGuard guard(staging);
@@ -335,8 +340,8 @@ Status exportInstrument(const Locations& locations, std::string_view id,
         const std::filesystem::path destination = targetDir / pathFromUtf8(parsed.name);
         for (const auto& blob : file.blobs) {
             const std::filesystem::path relative = pathFromUtf8(blob.path);
-            if (copyFileVerified(sourceDir / relative, destination / relative, blob.hash,
-                                 report) != Status::Ok) {
+            if (copyFileVerified(sourceDir / relative, destination / relative, blob.hash, report) !=
+                Status::Ok) {
                 return Status::InvalidArgument;
             }
         }
@@ -397,7 +402,7 @@ std::vector<ListEntry> listInstruments(const Locations& locations) {
                 entries.push_back(std::move(entry));
             }
         } catch (...) {
-            // A directory that cannot be scanned contributes no entries.
+            return;  // A directory that cannot be scanned contributes no entries.
         }
     };
     scan(locations.factoryInstruments(), Source::Factory);

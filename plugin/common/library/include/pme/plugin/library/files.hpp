@@ -34,10 +34,11 @@ namespace pme::plugin::library {
 [[nodiscard]] Status writeFileAtomic(const std::filesystem::path& path, std::string_view bytes,
                                      Report& report);
 
-/// Write `bytes` to `path` only if `path` does not exist (creating parent directories). The temporary
-/// file is hard-linked to the target, which fails if the target exists, so two processes cannot
-/// both create it; on a file system without hard links the call falls back to a check followed by a
-/// rename. `created` tells whether this call created the file; an existing file is not an error.
+/// Write `bytes` to `path` only if `path` does not exist (creating parent directories). The
+/// temporary file is hard-linked to the target, which fails if the target exists, so two processes
+/// cannot both create it; on a file system without hard links the call falls back to a check
+/// followed by a rename. `created` tells whether this call created the file; an existing file is
+/// not an error.
 [[nodiscard]] Status writeFileExclusive(const std::filesystem::path& path, std::string_view bytes,
                                         bool& created, Report& report);
 

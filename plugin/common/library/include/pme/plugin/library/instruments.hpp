@@ -40,9 +40,9 @@ namespace pme::plugin::library {
 
 /// Outcome of `importInstrument`.
 struct ImportResult {
-    std::string id;           ///< Library id of the stored instrument (`user/<name>`).
-    bool alreadyPresent{};    ///< True if an identical instrument was already stored (idempotent).
-    int sourceVersion{};      ///< Schema version of the imported text (before migration).
+    std::string id;         ///< Library id of the stored instrument (`user/<name>`).
+    bool alreadyPresent{};  ///< True if an identical instrument was already stored (idempotent).
+    int sourceVersion{};    ///< Schema version of the imported text (before migration).
 };
 
 /// Import an instrument file into `user/instruments/<name>/` (D5-R3). The file is loaded with
@@ -62,15 +62,14 @@ struct ImportResult {
 /// scope. `writtenInstrumentJson` receives the path of the written instrument file.
 [[nodiscard]] Status exportInstrument(const Locations& locations, std::string_view id,
                                       const std::filesystem::path& targetDir,
-                                      std::filesystem::path& writtenInstrumentJson,
-                                      Report& report);
+                                      std::filesystem::path& writtenInstrumentJson, Report& report);
 
 /// One row of `listInstruments` / `listPresets`.
 struct ListEntry {
-    std::string id;       ///< Library id.
-    std::string name;     ///< Display name (instrument `name`, or preset `name`).
+    std::string id;    ///< Library id.
+    std::string name;  ///< Display name (instrument `name`, or preset `name`).
     Source source{Source::User};
-    int schemaVersion{};  ///< Schema version found on disk (-1 if unreadable).
+    int schemaVersion{};               ///< Schema version found on disk (-1 if unreadable).
     std::vector<LibraryError> errors;  ///< Why this entry could not be read; empty if fine.
 };
 

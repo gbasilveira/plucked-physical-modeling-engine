@@ -60,8 +60,8 @@ inline void copyTree(const fs::path& from, const fs::path& to) {
     fs::copy(from, to, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
 }
 
-inline fs::path b1Fixtures() { return fs::path(PME_B1_FIXTURES); }
-inline fs::path b1Examples() { return fs::path(PME_B1_EXAMPLES); }
+inline fs::path b1Fixtures() { return {PME_B1_FIXTURES}; }
+inline fs::path b1Examples() { return {PME_B1_EXAMPLES}; }
 
 /// Copy an example instrument into `<dir>/instrument.json`; returns that path.
 inline fs::path installExample(const std::string& name, const fs::path& dir) {

@@ -60,10 +60,10 @@ enum class CacheKind : std::uint8_t {
 
 /// The keys of one instrument.
 struct BodyCacheKeys {
-    CacheKey body{};                      ///< Key of the `BodyModes` entry.
-    std::vector<CacheKey> localBridges;   ///< One key per bridge point, in order.
-    int maxModes{};                       ///< Effective M_b used in the local-bridge keys.
-    double fSplit{};                      ///< Effective f_split used in the local-bridge keys.
+    CacheKey body{};                     ///< Key of the `BodyModes` entry.
+    std::vector<CacheKey> localBridges;  ///< One key per bridge point, in order.
+    int maxModes{};                      ///< Effective M_b used in the local-bridge keys.
+    double fSplit{};                     ///< Effective f_split used in the local-bridge keys.
 };
 
 /// Keys for an instrument and its parameter overrides. The effective `maxModes` and `fSplit` are
@@ -146,7 +146,7 @@ template <class T, class Producer>
         cacheDiscard(locations, key, "payload fails its consistency check", report);
     }
     T fresh;
-    const Status status = producer(fresh);
+    const Status status = std::forward<Producer>(producer)(fresh);
     if (status != Status::Ok) {
         return status;
     }
