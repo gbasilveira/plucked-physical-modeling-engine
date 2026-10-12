@@ -59,3 +59,12 @@ pme_add_doctest(pme_oracle_exciters_tests
   LABELS oracle unit
   TIMEOUT 600)
 pme_a5_oracle_target(pme_oracle_exciters_tests)
+
+pme_add_doctest(pme_oracle_exciters_aftersound_tests
+  SOURCES test_orc19_aftersound.cpp
+  LIBRARIES ${_a5_libs}
+  LABELS oracle integration
+  TIMEOUT 600)
+pme_a5_oracle_target(pme_oracle_exciters_aftersound_tests)
+target_compile_definitions(pme_oracle_exciters_aftersound_tests PRIVATE
+  PME_ORC19_GOLDEN="${CMAKE_CURRENT_SOURCE_DIR}/data/orc19_envelope.json")
