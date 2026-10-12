@@ -89,6 +89,7 @@ inline pme::analysis::PartialEstimate fitOne(const std::vector<double>& y, doubl
 }
 
 /// Fits several damped sinusoids jointly and returns the one at `index` of `approxHz`.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): y is the signal, approxHz the frequencies.
 inline pme::analysis::PartialEstimate fitJoint(const std::vector<double>& y,
                                                const std::vector<double>& approxHz,
                                                std::size_t index) {

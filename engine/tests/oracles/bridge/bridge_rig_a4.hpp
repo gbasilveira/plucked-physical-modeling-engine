@@ -78,8 +78,8 @@ public:
         const float wV = point_.wV();
         const float wH = point_.wH();
         for (std::size_t s = 0; s < terms_.size(); ++s) {
-            const float fV = pme::bridge::bridgeForce<float>(terms_[s], banks_[2 * s].q(), wV);
-            const float fH = pme::bridge::bridgeForce<float, float>(
+            const auto fV = pme::bridge::bridgeForce<float>(terms_[s], banks_[2 * s].q(), wV);
+            const auto fH = pme::bridge::bridgeForce<float, float>(
                 std::span<const float>(aH_[s]), terms_[s].tOverL, banks_[2 * s + 1].q(), wH);
             point_.addForce(fV, fH);
         }
