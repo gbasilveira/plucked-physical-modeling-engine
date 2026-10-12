@@ -47,4 +47,4 @@ Decision, human reviewer (for physics or numerics), SPEC commit, affected phases
 | [SI-0013](SI-0013-body-moisture-reference.md) | SPEC-BODY moisture coefficients have no reference MC; E = E\_ref + dE/dMC (MC − MC\_ref), MC\_ref = 0.12 | resolved (orchestrator default; flagged for owner review; `PlateParams::moistureRef` on the next-ICR list) | |
 | [SI-0014](SI-0014-barrier-contact-damping.md) | SPEC-PLK barrier contact damping not normalised; per-point R\_j, lumped by Rayleigh quotient along ∇V\_B | resolved (orchestrator default; flagged for owner review) | |
 | [SI-0015](SI-0015-geo-one-way-energy-balance.md) | SPEC-GEO one-way longitudinal coupling does not conserve energy; monitors use transverse energy | resolved (states existing behaviour) | |
-| [SI-0016](SI-0016-sostenuto-thresholds.md) | SPEC-DMP sostenuto: pedal-down threshold and "lifted by its key" undefined; 0.5 for both | resolved (orchestrator default; control logic) | |
+| [SI-0016](SI-0016-sostenuto-thresholds.md) | SPEC-DMP sostenuto: pedal-down threshold and "lifted by its key" undefined; 0.5 for both | resolved (orchestrator default; control logic); consumed by A6 | |
