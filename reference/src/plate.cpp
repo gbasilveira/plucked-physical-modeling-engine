@@ -69,8 +69,8 @@ void validate_ribs(const PlateConstants& c, const std::vector<pme::RibDesc>& rib
     for (std::size_t i = 0; i < ribs.size(); ++i) {
         const pme::RibDesc& r = ribs[i];
         const std::string n = "PlateParams." + rib_name(i);
-        const double vals[] = {r.start.x, r.start.y, r.start.z, r.end.x, r.end.y, r.end.z,
-                               r.width,   r.height,  r.youngs,  r.density};
+        const double vals[] = {r.start.x, r.start.y, r.start.z, r.end.x,  r.end.y,
+                               r.end.z,   r.width,   r.height,  r.youngs, r.density};
         for (const double v : vals) {
             if (!std::isfinite(v)) {
                 throw RefError(n + ": all values must be finite");
@@ -236,7 +236,8 @@ void add_ribs(const std::vector<pme::RibDesc>& ribs, PlateOperator& op) {
             if (p < 1 || p > n_along - 1 || line.fixed < 1 || line.fixed > n_fixed - 1) {
                 return -1;
             }
-            return static_cast<long>(line.along_y ? g.index(line.fixed, p) : g.index(p, line.fixed));
+            return static_cast<long>(line.along_y ? g.index(line.fixed, p)
+                                                  : g.index(p, line.fixed));
         };
         for (int p = line.s0; p <= line.s1; ++p) {
             const long d = dof(p);
@@ -279,8 +280,10 @@ void plate_stiffness_apply(const PlateConstants& c, const std::vector<pme::RibDe
                            std::vector<double>& out) {
     const int nx = g.nx;
     const int ny = g.ny;
-    const auto stride = static_cast<std::size_t>(ny + 1);
-    auto at = [stride](int i, int j) { return static_cast<std::size_t>(i) * stride + static_cast<std::size_t>(j); };
+    const auto stride = static_cast<std::size_t>(ny) + 1;
+    auto at = [stride](int i, int j) {
+        return static_cast<std::size_t>(i) * stride + static_cast<std::size_t>(j);
+    };
     const std::size_t total = static_cast<std::size_t>(nx + 1) * stride;
     std::vector<double> wp(total, 0.0);
     for (int j = 1; j <= ny - 1; ++j) {

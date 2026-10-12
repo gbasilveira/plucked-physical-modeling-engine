@@ -56,13 +56,14 @@ TEST_CASE("P0.5-R7 scenario errors name the offending field") {
         "{\"L\": 1, \"dCore\": 0.001, \"rhoCore\": 7850, \"ECore\": 2e11, \"f1Target\": 100, "
         "\"b2\": 0.01}, \"initial_displacement\": {\"amplitude\": 0.001, \"position\": 0.3}}]}");
     CHECK_THROWS_WITH_AS(simulate(sc), doctest::Contains("b2"), RefError);
-    // Unmodelled plate features are named.
-    const Scenario plate = parse_scenario(
-        "{\"schema_version\": 1, \"fs\": 48000, \"duration\": 0.01, \"plate\": "
-        "{\"length_x\": 1, \"length_y\": 1, \"thickness\": 0.003, \"youngs_l\": 1e10, "
-        "\"youngs_r\": 1e9, \"shear_lr\": 1e9, \"poisson_lr\": 0.3, \"poisson_rl\": 0.03, "
-        "\"density\": 400, \"ribs\": [{}]}}");
-    CHECK_THROWS_WITH_AS(simulate(plate), doctest::Contains("ribs"), RefError);
+    // Unmodelled plate features are named (a rib without start and end is malformed).
+    CHECK_THROWS_WITH_AS(
+        parse_scenario(
+            "{\"schema_version\": 1, \"fs\": 48000, \"duration\": 0.01, \"plate\": "
+            "{\"length_x\": 1, \"length_y\": 1, \"thickness\": 0.003, \"youngs_l\": 1e10, "
+            "\"youngs_r\": 1e9, \"shear_lr\": 1e9, \"poisson_lr\": 0.3, \"poisson_rl\": 0.03, "
+            "\"density\": 400, \"ribs\": [{}]}}"),
+        doctest::Contains("ribs[0]"), RefError);
 }
 
 TEST_CASE("P0.5-R7 render produces golden features that the P0.3 comparator reads") {

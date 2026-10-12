@@ -7,11 +7,10 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <nlohmann/json.hpp>
 #include <numeric>
 #include <sstream>
 #include <string>
-
-#include <nlohmann/json.hpp>
 
 #include "pme/ref/common.hpp"
 #include "pme/ref/plate.hpp"
@@ -20,13 +19,14 @@ namespace pme::ref {
 
 namespace {
 
-constexpr double kRitzTolerance = 1e-13;      // relative change of the `count` lowest Ritz values
-constexpr double kLoopResidual = 1e-10;       // transformed residual required inside the loop
-constexpr double kReturnResidual = 1e-9;      // physical residual checked on return
+constexpr double kRitzTolerance = 1e-13;  // relative change of the `count` lowest Ritz values
+constexpr double kLoopResidual = 1e-10;   // transformed residual required inside the loop
+constexpr double kReturnResidual = 1e-9;  // physical residual checked on return
 // Round-off allowance added to both residual limits: a vector stored in float64 carries relative
 // errors of eps in every component, i.e. a high-frequency part of size eps whose image under K is
-// about eps * rho(K), so no float64 vector can have a relative residual below eps * rho(K) / omega^2
-// (about 5e-10 for the lowest mode of a 96 x 64 grid). rho(K) is bounded by the largest row sum.
+// about eps * rho(K), so no float64 vector can have a relative residual below eps * rho(K) /
+// omega^2 (about 5e-10 for the lowest mode of a 96 x 64 grid). rho(K) is bounded by the largest row
+// sum.
 constexpr double kRoundoffFactor = 4.0;
 constexpr std::uint64_t kSeed = 0x9E3779B97F4A7C15ULL;
 
@@ -144,9 +144,8 @@ void jacobi_eigen(Vec& b, std::size_t p, Vec& values, Vec& v) {
     }
     std::vector<std::size_t> order(p);
     std::iota(order.begin(), order.end(), std::size_t{0});
-    std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t c) {
-        return b[a * p + a] < b[c * p + c];
-    });
+    std::stable_sort(order.begin(), order.end(),
+                     [&](std::size_t a, std::size_t c) { return b[a * p + a] < b[c * p + c]; });
     values.resize(p);
     Vec vs(p * p);
     for (std::size_t j = 0; j < p; ++j) {
@@ -169,8 +168,7 @@ PlateModes plate_modes(const PlateConstants& c, const std::vector<pme::RibDesc>&
         throw RefError("plate_modes: count must lie between 1 and the number of grid nodes");
     }
     const auto cnt = static_cast<std::size_t>(count);
-    const std::size_t p =
-        std::min(n, cnt + static_cast<std::size_t>(std::max(10, count / 2)));
+    const std::size_t p = std::min(n, cnt + static_cast<std::size_t>(std::max(10, count / 2)));
 
     // A = M^(-1/2) K M^(-1/2), banded like K.
     Vec s(n);
@@ -215,8 +213,8 @@ PlateModes plate_modes(const PlateConstants& c, const std::vector<pme::RibDesc>&
     }
     orthonormalise(x);
 
-    // y = A v in difference form (plate_stiffness_apply): the Rayleigh quotients and residuals do not
-    // carry the eps/(k h)^4 round-off of the expanded banded product.
+    // y = A v in difference form (plate_stiffness_apply): the Rayleigh quotients and residuals do
+    // not carry the eps/(k h)^4 round-off of the expanded banded product.
     Vec tmp(n);
     Vec kv;
     auto apply_a = [&](const Vec& v, Vec& y) {

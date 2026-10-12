@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,6 +35,21 @@ pme::PlateParams spruce_plate() {
     return p;
 }
 
+// The convergence cases run on three grids with ratio 2. Optimised builds use the B2-T4
+// configuration (96 x 64 finest, 20 modes, 6 Levy roots per family); debug builds a smaller one (64 x 48) so
+// that every case stays within 60 s.
+#ifdef PME_REF_OPTIMISED
+constexpr int kFineNx = 96;
+constexpr int kFineNy = 64;
+constexpr std::size_t kModes = 20;
+constexpr std::size_t kRoots = 6;
+#else
+constexpr int kFineNx = 64;
+constexpr int kFineNy = 48;
+constexpr std::size_t kModes = 10;
+constexpr std::size_t kRoots = 3;
+#endif
+
 constexpr double kSpruceE = 1.0e10;
 constexpr double kSpruceRho = 400.0;
 
@@ -59,7 +73,9 @@ pme::RibDesc rib_x(double y0, double x0, double x1, double scale = 1.0) {
     return r;
 }
 
-double rib_ei(const pme::RibDesc& r) { return r.youngs * r.width * r.height * r.height * r.height / 12.0; }
+double rib_ei(const pme::RibDesc& r) {
+    return r.youngs * r.width * r.height * r.height * r.height / 12.0;
+}
 double rib_rho_a(const pme::RibDesc& r) { return r.density * r.width * r.height; }
 
 struct Mode {
@@ -76,7 +92,8 @@ std::vector<Mode> discrete_modes(const PlateConstants& c, int nx, int ny) {
             all.push_back({plate_discrete_frequency_hz(c, nx, ny, m, n), m, n});
         }
     }
-    std::stable_sort(all.begin(), all.end(), [](const Mode& a, const Mode& b) { return a.f < b.f; });
+    std::stable_sort(all.begin(), all.end(),
+                     [](const Mode& a, const Mode& b) { return a.f < b.f; });
     return all;
 }
 
@@ -147,13 +164,13 @@ using Mat4 = std::array<double, 16>;
 
 Mat4 mul4(const Mat4& a, const Mat4& b) {
     Mat4 c{};
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
+    for (std::size_t i = 0; i < 4; ++i) {
+        for (std::size_t j = 0; j < 4; ++j) {
             double s = 0.0;
-            for (int k = 0; k < 4; ++k) {
-                s += a[static_cast<std::size_t>(i * 4 + k)] * b[static_cast<std::size_t>(k * 4 + j)];
+            for (std::size_t k = 0; k < 4; ++k) {
+                s += a[i * 4 + k] * b[k * 4 + j];
             }
-            c[static_cast<std::size_t>(i * 4 + j)] = s;
+            c[i * 4 + j] = s;
         }
     }
     return c;
@@ -176,9 +193,9 @@ Mat4 expm4(const Mat4& a) {
     }
     Mat4 term{};
     Mat4 sum{};
-    for (int i = 0; i < 4; ++i) {
-        term[static_cast<std::size_t>(i * 5)] = 1.0;
-        sum[static_cast<std::size_t>(i * 5)] = 1.0;
+    for (std::size_t i = 0; i < 4; ++i) {
+        term[i * 5] = 1.0;
+        sum[i * 5] = 1.0;
     }
     for (int k = 1; k <= 20; ++k) {
         term = mul4(term, scaled);
@@ -322,8 +339,8 @@ TEST_CASE("P0.5-R4 modal solve is deterministic and returns mass-normalised shap
     // unribbed discrete sine mode, whose normalisation is known: phi = sin sin * 2/sqrt(M_total).
     const PlateModes plain = plate_modes(c, {}, 24, 16, 1, {{0.3, 0.2}});
     const double m_node = c.rho_h() * (c.lx / 24) * (c.ly / 16);
-    const double expect = std::sin(kPi * 12.0 / 24) * std::sin(kPi * 8.0 / 16) * 2.0 /
-                          std::sqrt(m_node * 24 * 16);
+    const double expect =
+        std::sin(kPi * 12.0 / 24) * std::sin(kPi * 8.0 / 16) * 2.0 / std::sqrt(m_node * 24 * 16);
     CHECK(plain.values[0][0] == doctest::Approx(expect).epsilon(1e-9));
 }
 
@@ -411,8 +428,8 @@ TEST_CASE("P0.5-R4 a weak rib shifts frequencies by the first-order perturbation
         const double w2 = std::pow(2.0 * kPi * md.f, 2);
         // phi^T K_rib phi = EI hy ay^2 s^2 ny/2, phi^T M_rib phi = rhoA hy s^2 ny/2,
         // phi^T M phi = rho h hx hy (nx/2)(ny/2).
-        const double predicted = 2.0 * s * s * (rib_ei(unit) * ay * ay - w2 * rib_rho_a(unit)) /
-                                 (c.rho_h() * hx * nx);
+        const double predicted =
+            2.0 * s * s * (rib_ei(unit) * ay * ay - w2 * rib_rho_a(unit)) / (c.rho_h() * hx * nx);
         INFO("mode (" << md.m << "," << md.n << ") measured " << measured << " predicted "
                       << predicted);
         CHECK(std::fabs(measured - predicted) <= 0.01 * std::fabs(predicted) + 1e-7 * w2);
@@ -428,22 +445,24 @@ TEST_CASE("P0.5-R4 ribbed plate frequencies converge at second order") {
     const std::vector<pme::RibDesc> ribs = {rib_y(0.15, 0.0, 0.4), rib_y(0.3, 0.0, 0.4),
                                             rib_y(0.45, 0.0, 0.4)};
     const auto pts = tracking_points(c);
-    const std::size_t k = 20;
+    const std::size_t k = kModes;
     // The coarse grids get extra modes so that every fine mode finds its partner.
-    const PlateModes fine = plate_modes(c, ribs, 96, 64, static_cast<int>(k), pts);
-    const PlateModes mid = plate_modes(c, ribs, 48, 32, static_cast<int>(k) + 8, pts);
-    const PlateModes coarse = plate_modes(c, ribs, 24, 16, static_cast<int>(k) + 8, pts);
-    std::printf("[ribbed] iterations %d / %d / %d, residuals %.2e / %.2e / %.2e\n",
-                coarse.iterations, mid.iterations, fine.iterations, coarse.max_residual,
-                mid.max_residual, fine.max_residual);
+    const PlateModes fine = plate_modes(c, ribs, kFineNx, kFineNy, static_cast<int>(k), pts);
+    const PlateModes mid =
+        plate_modes(c, ribs, kFineNx / 2, kFineNy / 2, static_cast<int>(k) + 8, pts);
+    const PlateModes coarse =
+        plate_modes(c, ribs, kFineNx / 4, kFineNy / 4, static_cast<int>(k) + 8, pts);
+    MESSAGE("[ribbed] iterations " << coarse.iterations << " / " << mid.iterations << " / "
+                                   << fine.iterations << ", residuals " << coarse.max_residual
+                                   << " / " << mid.max_residual << " / " << fine.max_residual);
     const std::vector<double> f1 = track_frequencies(fine, coarse, k);
     const std::vector<double> f2 = track_frequencies(fine, mid, k);
     const std::vector<double> f3(fine.frequencies_hz.begin(),
                                  fine.frequencies_hz.begin() + static_cast<long>(k));
     const Refined r = refine3(f1, f2, f3);
     for (std::size_t i = 0; i < k; ++i) {
-        std::printf("[ribbed] mode %2zu: %.6f %.6f %.6f -> %.6f Hz, order %.3f\n", i + 1, f1[i],
-                    f2[i], f3[i], r.extrapolated[i], r.order[i]);
+        MESSAGE("[ribbed] mode " << i + 1 << ": " << f1[i] << " " << f2[i] << " " << f3[i] << " -> "
+                                 << r.extrapolated[i] << " Hz, order " << r.order[i]);
         INFO("mode " << i + 1 << " observed order " << r.order[i]);
         CHECK(std::fabs(r.order[i] - 2.0) <= 0.2);  // within 10% of 2
     }
@@ -474,17 +493,17 @@ TEST_CASE("P0.5-R4 ribbed Levy plate matches the exact solution") {
         const auto plain = levy_roots(c, 2, x0, 0.0, 0.0, 300.0);
         REQUIRE(plain.size() >= 3);
         for (std::size_t i = 0; i < 3; ++i) {
-            CHECK(plain[i] == doctest::Approx(plate_frequency_hz(c, static_cast<int>(i) + 1, 2))
-                                  .epsilon(1e-9));
+            CHECK(plain[i] ==
+                  doctest::Approx(plate_frequency_hz(c, static_cast<int>(i) + 1, 2)).epsilon(1e-9));
         }
     }
 
     // All Levy frequencies below the larger of the 6th roots of n = 1 and n = 2.
     const auto r1 = levy_roots(c, 1, x0, ei, rho_a, 900.0);
     const auto r2 = levy_roots(c, 2, x0, ei, rho_a, 900.0);
-    REQUIRE(r1.size() >= 6);
-    REQUIRE(r2.size() >= 6);
-    const double f_scan = std::max(r1[5], r2[5]) * 1.0001;
+    REQUIRE(r1.size() >= kRoots);
+    REQUIRE(r2.size() >= kRoots);
+    const double f_scan = std::max(r1[kRoots - 1], r2[kRoots - 1]) * 1.0001;
     std::vector<double> exact;
     for (int n = 1; n <= 14; ++n) {
         for (const double f : levy_roots(c, n, x0, ei, rho_a, f_scan)) {
@@ -493,14 +512,14 @@ TEST_CASE("P0.5-R4 ribbed Levy plate matches the exact solution") {
     }
     std::sort(exact.begin(), exact.end());
     const std::size_t k = exact.size();
-    std::printf("[levy] %zu exact frequencies below %.3f Hz\n", k, f_scan);
+    MESSAGE("[levy] " << k << " exact frequencies below " << f_scan << " Hz");
 
     const std::vector<pme::RibDesc> ribs = {rib};
     const auto pts = tracking_points(c);
     const int kk = static_cast<int>(k);
-    const PlateModes fine = plate_modes(c, ribs, 96, 64, kk, pts);
-    const PlateModes mid = plate_modes(c, ribs, 48, 32, kk + 8, pts);
-    const PlateModes coarse = plate_modes(c, ribs, 24, 16, kk + 8, pts);
+    const PlateModes fine = plate_modes(c, ribs, kFineNx, kFineNy, kk, pts);
+    const PlateModes mid = plate_modes(c, ribs, kFineNx / 2, kFineNy / 2, kk + 8, pts);
+    const PlateModes coarse = plate_modes(c, ribs, kFineNx / 4, kFineNy / 4, kk + 8, pts);
     const std::vector<double> f1 = track_frequencies(fine, coarse, k);
     const std::vector<double> f2 = track_frequencies(fine, mid, k);
     const std::vector<double> f3(fine.frequencies_hz.begin(),
@@ -514,8 +533,8 @@ TEST_CASE("P0.5-R4 ribbed Levy plate matches the exact solution") {
     for (std::size_t i = 0; i < k; ++i) {
         const double err = std::fabs(extrapolated[i] / exact[i] - 1.0);
         worst = std::max(worst, err);
-        std::printf("[levy] mode %2zu exact %.6f extrapolated %.6f error %.2e\n", i + 1, exact[i],
-                    extrapolated[i], err);
+        MESSAGE("[levy] mode " << i + 1 << " exact " << exact[i] << " extrapolated "
+                               << extrapolated[i] << " error " << err);
         INFO("mode " << i + 1 << " exact " << exact[i] << " extrapolated " << extrapolated[i]);
         CHECK(err <= 1e-3);
     }
@@ -615,8 +634,9 @@ TEST_CASE("P0.5-R4 ribs input validation") {
                          doctest::Contains("grid"), RefError);
     CHECK_THROWS_WITH_AS(build_plate_operator(c, {rib_y(0.3, 0.0, 0.3125)}, 24, 16),
                          doctest::Contains("ribs[0]"), RefError);
-    CHECK_THROWS_WITH_AS(build_plate_operator(c, {rib_y(0.3, 0.0, 0.4), rib_x(0.19, 0.0, 0.6)}, 24, 16),
-                         doctest::Contains("ribs[1]"), RefError);
+    CHECK_THROWS_WITH_AS(
+        build_plate_operator(c, {rib_y(0.3, 0.0, 0.4), rib_x(0.19, 0.0, 0.6)}, 24, 16),
+        doctest::Contains("ribs[1]"), RefError);
     // On a grid containing the lines the same ribs are accepted, with ends inside the plate too.
     CHECK_NOTHROW(build_plate_operator(c, {rib_y(0.3, 0.1, 0.3), rib_x(0.2, 0.0, 0.6)}, 24, 16));
 }

@@ -76,13 +76,13 @@ void validate_ribs(const PlateConstants& c, const std::vector<pme::RibDesc>& rib
 // Nodal (mass, stiffness) form of the plate: M = rho h hx hy I, K = hx hy [D11 Dxx^2 + D22 Dyy^2 +
 // 2 (D12 + 2 D66) Dxx Dyy] (Bilbao 2009, section 12.1; the mixed term in the commuting form so that
 // the discrete sine modes diagonalise it). Ribs add to both: E I hs (delta_ss w)^2 per interior
-// line node to K, and the trapezoid-lumped rho A hs per line node to M (docs/dev/reference-solver.md,
-// "Ribs").
+// line node to K, and the trapezoid-lumped rho A hs per line node to M
+// (docs/dev/reference-solver.md, "Ribs").
 struct PlateOperator {
     PlateGrid grid;
-    double mass = 0.0;               // the plate's own mass per node (rho h hx hy)
-    std::vector<double> node_mass;   // mass per interior node, ribs included (= mass without ribs)
-    BandMatrix stiffness;            // ribs included
+    double mass = 0.0;              // the plate's own mass per node (rho h hx hy)
+    std::vector<double> node_mass;  // mass per interior node, ribs included (= mass without ribs)
+    BandMatrix stiffness;           // ribs included
 };
 PlateOperator build_plate_operator(const PlateConstants& c, int nx, int ny);
 // With ribs: every rib's line and end points must fall on grid nodes within 1e-9 h, else RefError
@@ -104,10 +104,10 @@ struct PlateModeOptions {
     int max_iterations = 500;  // RefError when the subspace iteration needs more
 };
 struct PlateModes {
-    std::vector<double> frequencies_hz;        // ascending
-    std::vector<std::vector<double>> values;   // values[mode][point]: M-normalised, bilinear
-    int iterations = 0;                        // subspace iterations used
-    double max_residual = 0.0;                 // max ||K phi - w^2 M phi|| / (w^2 ||M phi||)
+    std::vector<double> frequencies_hz;       // ascending
+    std::vector<std::vector<double>> values;  // values[mode][point]: M-normalised, bilinear
+    int iterations = 0;                       // subspace iterations used
+    double max_residual = 0.0;                // max ||K phi - w^2 M phi|| / (w^2 ||M phi||)
 };
 // Block inverse (subspace) iteration with Rayleigh-Ritz on A = M^(-1/2) K M^(-1/2), factored once
 // with BandCholesky; cyclic Jacobi for the projected problem. Mode shapes are evaluated at
@@ -115,8 +115,7 @@ struct PlateModes {
 // largest nodal value positive). Throws RefError when the iteration does not converge or a
 // residual exceeds 1e-9.
 PlateModes plate_modes(const PlateConstants& c, const std::vector<pme::RibDesc>& ribs, int nx,
-                       int ny, int count,
-                       const std::vector<std::pair<double, double>>& points = {},
+                       int ny, int count, const std::vector<std::pair<double, double>>& points = {},
                        const PlateModeOptions& options = {});
 // JSON text of a PlateModes result: count, nx, ny, frequencies_hz, iterations, max_residual and,
 // when points were given, points and values.

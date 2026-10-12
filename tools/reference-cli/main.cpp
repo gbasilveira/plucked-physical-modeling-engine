@@ -230,7 +230,11 @@ int plate_modes_command(int argc, char** argv) {
                         throw std::invalid_argument(item);
                     }
                 } catch (const std::exception&) {
-                    throw pme::ref::RefError(a + ": '" + item + "' is not a number");
+                    std::string msg = a;
+                    msg += ": '";
+                    msg += item;
+                    msg += "' is not a number";
+                    throw pme::ref::RefError(msg);
                 }
             }
             if (a == "--points") {
