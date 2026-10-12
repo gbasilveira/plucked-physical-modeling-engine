@@ -10,15 +10,16 @@ from test_b2_common import isotropic_plate, point
 
 from pme_compiler.body import compile as plate_compile
 
-# Published reference: A. W. Leissa, Vibration of Plates, NASA SP-160 (1969), Chapter 4, rectangular
-# plates with all edges clamped (CCCC), square, nu = 0.3. Frequency parameters
-# lambda = omega a^2 sqrt(rho h / D) of the first six modes, as tabulated (rounded to 0.01):
-#   35.99, 73.41, 73.41, 108.27, 131.64, 132.24.
-# The first value (35.99) is the one quoted in the B2 brief. The table number and the remaining five
-# values were transcribed from the book by the implementer without access to a copy during the
-# run; they agree with the converged FEM values below to 0.05 %, which is the evidence they are
-# right. A reviewer with the book should confirm them (see the B2 handoff report).
-LEISSA_CCCC_SQUARE = (35.99, 73.41, 73.41, 108.27, 131.64, 132.24)
+# Published reference: A. W. Leissa, Vibration of Plates, NASA SP-160 (1969), Chapter 4, Table 4.22
+# "First 6 Sets of Frequency Parameters, Nodal Lines, and Amplitude Coefficients for a C-C-C-C
+# Square Plate" (printed p. 60; NTRS 19700009156, PDF p. 68), nu = 0.3, row b (Young, ref. 4.47):
+# lambda = omega a^2 sqrt(rho h / D) = 35.99, 73.41, 108.27, 131.64, 132.25, 165.15. The table lists
+# the (1,2)/(2,1) pair once (mode 2, 73.41); the square plate has it twice, hence the sequence
+# below. Confirmed by the reviewer against the scanned table (first five values; the sixth is
+# outside the compared range). Cross-check in the same chapter, Table 4.27 (printed p. 62):
+# 35.998965 (m,n = 1,1), 73.405 (1,2), 108.237 (2,2), 131.902 (1,3). The source itself carries
+# 0.1 to 0.3 % scatter between authors, well inside the 1 % tolerance.
+LEISSA_CCCC_SQUARE = (35.99, 73.41, 73.41, 108.27, 131.64, 132.25)
 
 
 def test_b2_t2_clamped_square_matches_published_frequency_parameters() -> None:
