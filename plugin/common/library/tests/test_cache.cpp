@@ -462,3 +462,145 @@ TEST_CASE("D5-R4 pruneCache keeps the most recently used entries") {
             pme::Status::Ok);
     CHECK(lib::kDefaultCacheMaxBytes == (std::uint64_t{1} << 30U));
 }
+
+// ---- Independent reviewer checks (D5 code review) -------------------------------------------
+
+TEST_CASE("D5-R4 every BodyParams and PlateParams member changes the body key") {
+    const std::vector<pme::Point> points = {{1.0, 2.0, 3.0}};
+    const std::vector<pme::Point> channels = {{0.5, -0.5, 0.25}};
+    const auto keyOf = [&](const pme::BodyParams& p) {
+        return lib::toHex(lib::bodyKey(p, points, channels, "v"));
+    };
+    pme::BodyParams base;
+    base.plate.ribs.push_back({{0, 0, 0}, {1, 0, 0}, 0.01, 0.02, 1e9, 400.0});
+    base.plate.outline = {{0, 0, 0}, {1, 0, 0}, {1, 1, 0}};
+    base.plate.thicknessNx = 2;
+    base.plate.thicknessNy = 2;
+    base.plate.thicknessGrid = {0.01, 0.01, 0.01, 0.01};
+    base.plate.bridges.push_back({{{0, 0, 0}, {1, 0, 0}}, 0.03, 0.04, 1e9, 600.0});
+    base.modalTableHash = "sha256:00";
+    const std::string reference = keyOf(base);
+
+    std::vector<std::pair<std::string, pme::BodyParams>> edits;
+    const auto edit = [&](const std::string& what, auto&& fn) {
+        pme::BodyParams p = base;
+        fn(p);
+        edits.emplace_back(what, std::move(p));
+    };
+    edit("source", [](pme::BodyParams& p) { p.source = pme::BodySource::ModalTable; });
+    edit("modalTableHash", [](pme::BodyParams& p) { p.modalTableHash = "sha256:01"; });
+#define PME_D5_EDIT_DOUBLE(member) \
+    edit(#member, [](pme::BodyParams& p) { p.plate.member += 0.125; })
+    PME_D5_EDIT_DOUBLE(lengthX);
+    PME_D5_EDIT_DOUBLE(lengthY);
+    PME_D5_EDIT_DOUBLE(thickness);
+    PME_D5_EDIT_DOUBLE(grainAngle);
+    PME_D5_EDIT_DOUBLE(youngsL);
+    PME_D5_EDIT_DOUBLE(youngsR);
+    PME_D5_EDIT_DOUBLE(shearLR);
+    PME_D5_EDIT_DOUBLE(poissonLR);
+    PME_D5_EDIT_DOUBLE(poissonRL);
+    PME_D5_EDIT_DOUBLE(density);
+    PME_D5_EDIT_DOUBLE(moisture);
+    PME_D5_EDIT_DOUBLE(dEdMcL);
+    PME_D5_EDIT_DOUBLE(dEdMcR);
+    PME_D5_EDIT_DOUBLE(dGdMc);
+    PME_D5_EDIT_DOUBLE(dRhodMc);
+    PME_D5_EDIT_DOUBLE(lossFactor);
+    PME_D5_EDIT_DOUBLE(rimStiffness);
+    PME_D5_EDIT_DOUBLE(fMax);
+    PME_D5_EDIT_DOUBLE(rimRotationalStiffness);
+#undef PME_D5_EDIT_DOUBLE
+    edit("thicknessNx", [](pme::BodyParams& p) { ++p.plate.thicknessNx; });
+    edit("thicknessNy", [](pme::BodyParams& p) { ++p.plate.thicknessNy; });
+    edit("thicknessGrid value", [](pme::BodyParams& p) { p.plate.thicknessGrid[3] += 0.001; });
+    edit("thicknessGrid size", [](pme::BodyParams& p) { p.plate.thicknessGrid.push_back(0.01); });
+    edit("outline vertex", [](pme::BodyParams& p) { p.plate.outline[2].y += 0.1; });
+    edit("outline size", [](pme::BodyParams& p) { p.plate.outline.push_back({0, 1, 0}); });
+    edit("rib start", [](pme::BodyParams& p) { p.plate.ribs[0].start.z += 0.1; });
+    edit("rib end", [](pme::BodyParams& p) { p.plate.ribs[0].end.y += 0.1; });
+    edit("rib width", [](pme::BodyParams& p) { p.plate.ribs[0].width += 0.1; });
+    edit("rib height", [](pme::BodyParams& p) { p.plate.ribs[0].height += 0.1; });
+    edit("rib youngs", [](pme::BodyParams& p) { p.plate.ribs[0].youngs += 1.0; });
+    edit("rib density", [](pme::BodyParams& p) { p.plate.ribs[0].density += 1.0; });
+    edit("rib count", [](pme::BodyParams& p) { p.plate.ribs.push_back(p.plate.ribs[0]); });
+    edit("bridge path vertex", [](pme::BodyParams& p) { p.plate.bridges[0].path[1].x += 0.1; });
+    edit("bridge path size",
+         [](pme::BodyParams& p) { p.plate.bridges[0].path.push_back({2, 0, 0}); });
+    edit("bridge width", [](pme::BodyParams& p) { p.plate.bridges[0].width += 0.1; });
+    edit("bridge height", [](pme::BodyParams& p) { p.plate.bridges[0].height += 0.1; });
+    edit("bridge youngs", [](pme::BodyParams& p) { p.plate.bridges[0].youngs += 1.0; });
+    edit("bridge density", [](pme::BodyParams& p) { p.plate.bridges[0].density += 1.0; });
+    edit("bridge count", [](pme::BodyParams& p) { p.plate.bridges.push_back(p.plate.bridges[0]); });
+
+    std::set<std::string> seen{reference};
+    for (const auto& [what, params] : edits) {
+        const std::string key = keyOf(params);
+        CHECK_MESSAGE(key != reference, what);
+        CHECK_MESSAGE(seen.insert(key).second, what, " collides with another edit");
+    }
+    // -0.0 and +0.0 are different bit patterns: "doubles by bit pattern".
+    pme::BodyParams negZero = base;
+    negZero.plate.lengthX = -0.0;
+    CHECK(keyOf(negZero) != keyOf(base));
+    // Point order and channel order matter.
+    const std::vector<pme::Point> two = {{1, 0, 0}, {2, 0, 0}};
+    const std::vector<pme::Point> swapped = {{2, 0, 0}, {1, 0, 0}};
+    CHECK(lib::bodyKey(base, two, channels, "v") != lib::bodyKey(base, swapped, channels, "v"));
+    CHECK(lib::bodyKey(base, points, two, "v") != lib::bodyKey(base, points, swapped, "v"));
+    // The same positions given as bridge points or as channels must not collide.
+    CHECK(lib::bodyKey(base, two, {}, "v") != lib::bodyKey(base, {}, two, "v"));
+}
+
+TEST_CASE("D5-R5 any byte flip, truncation or extension of a cache entry is never returned") {
+    TempDir tmp;
+    const lib::Locations loc = tmp.locations();
+    const lib::CacheKey key = lib::bodyKey(pme::BodyParams{}, {}, {}, "fuzz");
+    const pme::BodyModes original = fakeBody(2);
+    const auto fetch = [&](int& calls, lib::Report& report) {
+        pme::BodyModes out;
+        REQUIRE(lib::getOrCompute(
+                    loc, key, out,
+                    [&](pme::BodyModes& o) {
+                        ++calls;
+                        o = original;
+                        return pme::Status::Ok;
+                    },
+                    report) == pme::Status::Ok);
+        CHECK(same(out, original));
+    };
+    int calls = 0;
+    lib::Report fill;
+    fetch(calls, fill);
+    REQUIRE(calls == 1);
+    const fs::path file = lib::cacheEntryPath(loc, key);
+    const std::string good = slurp(file);
+    REQUIRE(good.size() > 100);
+
+    std::uint64_t state = 0x9E3779B97F4A7C15ULL;
+    const auto next = [&state]() {
+        state ^= state << 13U;
+        state ^= state >> 7U;
+        state ^= state << 17U;
+        return state;
+    };
+    for (int round = 0; round < 150; ++round) {
+        std::string bad = good;
+        const unsigned mode = static_cast<unsigned>(next() % 3U);
+        if (mode == 0U) {
+            const std::size_t at = static_cast<std::size_t>(next() % bad.size());
+            bad[at] = static_cast<char>(bad[at] ^ static_cast<char>(1U + next() % 255U));
+        } else if (mode == 1U) {
+            bad.resize(static_cast<std::size_t>(next() % bad.size()));
+        } else {
+            bad.append(std::string(1U + next() % 16U, '\x5a'));
+        }
+        spit(file, bad);
+        int recomputed = 0;
+        lib::Report report;
+        fetch(recomputed, report);
+        CHECK_MESSAGE(recomputed == 1, "round ", round, " mode ", mode);
+        CHECK_MESSAGE(hasCode(report.diagnostics, lib::code::kIntegrity), "round ", round);
+        CHECK(slurp(file) == good);  // recomputed and rewritten identically
+    }
+}
