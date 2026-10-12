@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <string>
 
 #include "pme/ref/common.hpp"
@@ -232,22 +233,22 @@ void add_ribs(const std::vector<pme::RibDesc>& ribs, PlateOperator& op) {
         const int n_along = line.along_y ? g.ny : g.nx;
         const int n_fixed = line.along_y ? g.nx : g.ny;
         // Degree of freedom of line node p, or -1 on the simply supported edge (w = 0).
-        auto dof = [&](int p) -> long {
+        auto dof = [&](int p) -> std::ptrdiff_t {
             if (p < 1 || p > n_along - 1 || line.fixed < 1 || line.fixed > n_fixed - 1) {
                 return -1;
             }
-            return static_cast<long>(line.along_y ? g.index(line.fixed, p)
-                                                  : g.index(p, line.fixed));
+            return static_cast<std::ptrdiff_t>(line.along_y ? g.index(line.fixed, p)
+                                                            : g.index(p, line.fixed));
         };
         for (int p = line.s0; p <= line.s1; ++p) {
-            const long d = dof(p);
+            const std::ptrdiff_t d = dof(p);
             if (d >= 0) {
                 const double w = (p == line.s0 || p == line.s1) ? 0.5 : 1.0;
                 op.node_mass[static_cast<std::size_t>(d)] += rho_a * hs * w;
             }
         }
         for (int p = line.s0 + 1; p <= line.s1 - 1; ++p) {
-            const long ids[3] = {dof(p - 1), dof(p), dof(p + 1)};
+            const std::ptrdiff_t ids[3] = {dof(p - 1), dof(p), dof(p + 1)};
             const double coef[3] = {1.0 / (hs * hs), -2.0 / (hs * hs), 1.0 / (hs * hs)};
             for (int a = 0; a < 3; ++a) {
                 for (int b = 0; b < 3; ++b) {

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,8 +37,8 @@ pme::PlateParams spruce_plate() {
 }
 
 // The convergence cases run on three grids with ratio 2. Optimised builds use the B2-T4
-// configuration (96 x 64 finest, 20 modes, 6 Levy roots per family); debug builds a smaller one (64 x 48) so
-// that every case stays within 60 s.
+// configuration (96 x 64 finest, 20 modes, 6 Levy roots per family); debug builds a smaller one (64
+// x 48) so that every case stays within 60 s.
 #ifdef PME_REF_OPTIMISED
 constexpr int kFineNx = 96;
 constexpr int kFineNy = 64;
@@ -458,7 +459,7 @@ TEST_CASE("P0.5-R4 ribbed plate frequencies converge at second order") {
     const std::vector<double> f1 = track_frequencies(fine, coarse, k);
     const std::vector<double> f2 = track_frequencies(fine, mid, k);
     const std::vector<double> f3(fine.frequencies_hz.begin(),
-                                 fine.frequencies_hz.begin() + static_cast<long>(k));
+                                 fine.frequencies_hz.begin() + static_cast<std::ptrdiff_t>(k));
     const Refined r = refine3(f1, f2, f3);
     for (std::size_t i = 0; i < k; ++i) {
         MESSAGE("[ribbed] mode " << i + 1 << ": " << f1[i] << " " << f2[i] << " " << f3[i] << " -> "
@@ -523,7 +524,7 @@ TEST_CASE("P0.5-R4 ribbed Levy plate matches the exact solution") {
     const std::vector<double> f1 = track_frequencies(fine, coarse, k);
     const std::vector<double> f2 = track_frequencies(fine, mid, k);
     const std::vector<double> f3(fine.frequencies_hz.begin(),
-                                 fine.frequencies_hz.begin() + static_cast<long>(k));
+                                 fine.frequencies_hz.begin() + static_cast<std::ptrdiff_t>(k));
     const Refined r = refine3(f1, f2, f3);
     // Tracked modes keep the fine grid's order, which can differ from the exact order where two
     // frequencies lie closer than the discretisation error: compare the sorted sets.
