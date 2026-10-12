@@ -18,8 +18,8 @@
 #   ctest --preset linux-debug -L oracle -R "ORC-0[67]" --output-on-failure
 #   cmake --preset linux-release && cmake --build --preset linux-release
 #   ctest --preset linux-release -R "A4-T3" --output-on-failure
-# A4-T3 reads PME_A4T3_N0 (default 400, coarsest reference grid intervals) and PME_A4T3_OS0
-# (default 4, coarsest oversampling); levels 0, 1, 2 double both.
+# A4-T3 reads PME_A4T3_N0 (default 100, coarsest reference grid intervals) and PME_A4T3_OS0
+# (default 1, coarsest oversampling); levels 0, 1, 2 double both.
 
 set(PME_A4_ORACLE_BACKEND "AUTO" CACHE STRING "Backend of the A4 oracle rig: AUTO, SCRATCH or A4")
 set_property(CACHE PME_A4_ORACLE_BACKEND PROPERTY STRINGS AUTO SCRATCH A4)

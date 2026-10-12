@@ -15,8 +15,11 @@
 //
 // Both backends see the same description: compiled `StringModes` (public pme::compileString),
 // the bridge end, and a bridge model (pure conductance G, or mass-spring-damper m, k_b, r_b),
-// theta_b = 0, G_h = 0 (rigid horizontal axis; only vertical motion is excited, so G_h is
-// irrelevant).
+// theta_b and G_h (default 0: only vertical motion is excited and G_h is irrelevant). The
+// horizontal polarisation uses the same mode tables as the vertical one (the reference has no
+// detuneH), and theta_b follows SI-0019: R(theta) = [[c, -s], [s, c]],
+// F_par = c F_v - s F_h, F_perp = s F_v + c F_h, w_v = c w_par + s w_perp, w_h = -s w_par + c
+// w_perp.
 #pragma once
 
 #include <cstddef>
@@ -57,6 +60,8 @@ struct RigSetup {
     std::vector<pme::BridgeEnd> ends;        ///< same size as segments
     BridgeModel model;
     double fs{48000.0};
+    double thetaB{0.0};        ///< bridge frame rotation theta_b (rad), SI-0019 sense
+    double conductanceH{0.0};  ///< G_h of the perpendicular axis (0 = rigid)
 };
 
 }  // namespace pme::oracle::brg

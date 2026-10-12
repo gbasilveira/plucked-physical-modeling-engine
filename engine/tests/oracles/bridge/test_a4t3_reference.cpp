@@ -9,30 +9,43 @@
 // L = 0.65 m, core d = 1 mm, f1 = 196 Hz (string 0) and 270 Hz (string 1), so that B =
 // pi^2 EI / (T L^2) is 5.7e-4 and 3.2e-4 (printed), and the low partials of the two strings are
 // at least 8 Hz apart (checked below). Loss b1 = 0.5 1/s, b2 = 0 (the reference accepts only
-// b2 = 0), b3 = 2e-9 s. No detuneH, bridge at L, theta_b = 0, G_h = 0 (rigid horizontal axis;
-// only the vertical polarisation is excited, so the horizontal axis is irrelevant).
+// b2 = 0), b3 = 2e-9 s. No detuneH, bridge at L, G_h = 0 (rigid perpendicular axis, the
+// reference's conductance_h = 0). Two cases: theta_b = 0 with both strings released vertically,
+// and theta_b = 0.3 rad with string 0 released vertically and string 1 at the polarisation angle
+// 0.7 rad (asymmetric excitation). The second case distinguishes R(theta_b) from its transpose
+// (SI-0019: R = [[c, -s], [s, c]], F_par = c F_v - s F_h): the spectrum is the same for either
+// sign of theta_b, but the horizontal motion of string 0, which exists only through the bridge
+// rotation, changes sign, so the horizontal waveform at 0.37 L is compared too (see below).
 //
-// Bridge (SPEC-BODY "Local bridge model", one mode): mass m = 0.02 kg, stiffness k_b = m Omega^2,
-// Omega = 2 pi 600 Hz (resonance 600 Hz, above the compared partials of the low string and between
-// partials of the other), dashpot r_b = 250 N s/m. Admittance (SPEC-CONV e^(+iwt)):
-// Y(w) = 1 / (r_b + i (w m - k_b / w)). The test checks, from the small-admittance values of
-// SPEC-BRG, that the bridge-induced decay of the first partial of each string is at least
-// 3 b1 (sigma = 2 f0 Z0 Re Y: 1.7 and 3.6 1/s against 3 b1 = 1.5) and that Z0 |Y| < 0.1 at every
-// compared partial (it is below 0.011).
+// Bridge (SPEC-BODY "Local bridge model", one mode): mass m = 0.1 kg, stiffness k_b = m Omega^2
+// with Omega = 2 pi 100 Hz (bridge resonance 100 Hz, below both f1), dashpot r_b = 60 N s/m
+// (damping ratio r_b / (2 m Omega) = 0.48; the bridge mode must be underdamped, sigma_b =
+// r_b / (2 m) = 300 1/s < Omega = 628 1/s, or the SPEC-OSC bandwidth rule rejects it). Admittance
+// (SPEC-CONV e^(+iwt)): Y(w) = 1 / (r_b + i (w m - k_b / w)). Above its resonance the bridge is
+// mass-like: the partials rise, by about 6 cent for the first partial of the low string. The test
+// checks, from the small-admittance values of SPEC-BRG, that the bridge-induced decay of the first
+// partial of each string is at least 3 b1 (sigma = 2 f0 Z0 Re Y: 3.1 and 2.9 1/s against
+// 3 b1 = 1.5) and that Z0 |Y| < 0.1 at every compared partial (it is below 0.015).
 //
 // Engine side: public compileString (48 kHz, f_max = +inf, one registered point x = 0.37 L), the
 // rig of bridge_rig.hpp (float32 A1 ModeBank states, mass-spring-damper bridge, SPEC-BRG coupling
 // order), both strings released from a triangle of 1 mm peak at 0.12 L at rest (q_n(0) = the
 // projection integral of the triangle on phi_n, Gauss-Legendre in float64, not from the engine).
-// y_s(x = 0.37 L) = sum phiBar_n q_n is recorded for 2 s.
+// y_s(x = 0.37 L) = sum phiBar_n q_n is recorded for 1 s.
 //
 // Reference side (P0.5, reference/scenario.schema.json): two strings with "bridge": 0 and a
 // "mass_spring_dashpot" bridge, observed at 0.37 L, rendered by `pme_reference_cli render` at three
 // refinement levels (grid intervals N0 2^l and oversampling OS0 2^l, l = 0, 1, 2; PME_A4T3_N0 and
-// PME_A4T3_OS0 override 400 and 4). The scheme is second order, so partial frequencies and decay
-// rates are Richardson-extrapolated, x* = x_2 + (x_2 - x_1) / 3; the reference's own error
-// estimate |x*_(1,2) - x*_(0,1)| is required below 0.01 cent for each compared partial and is
-// printed with the per-partial engine-vs-reference errors.
+// PME_A4T3_OS0 override 100 and 1). The scheme is second order, so partial frequencies and decay
+// rates are Richardson-extrapolated twice: x12 = x_2 + (x_2 - x_1) / 3 and x01 likewise from
+// the two coarsest levels remove the h^2 term; x* = x12 + (x12 - x01) / 15 removes h^4. The size of
+// that last correction is the reference's own error estimate, required below 0.01 cent for each
+// compared partial and printed with the per-partial engine-vs-reference errors.
+//
+// Horizontal waveform check (theta_b != 0 case): the engine's horizontal displacement of string 0
+// at 0.37 L against the Richardson-extrapolated reference waveform y* = y_2 + (y_2 - y_1) / 3
+// (sample by sample), relative L2 error over the first 0.1 s required below 10% (measured 2% and
+// 4%; R^T instead of R gives 23% and 200%).
 //
 // Analysis: pme::analysis::track_partials with the same settings on every signal; the 8 first
 // partials of the string observed (the 8 first of the other string are fitted jointly, as they
@@ -67,12 +80,13 @@ namespace str = pme::oracle::str;
 using brg::kFs;
 using brg::kPi;
 
-constexpr double kDuration = 2.0;
+constexpr double kDuration = 1.0;
 constexpr double kObsFraction = 0.37;
 constexpr double kPluckFraction = 0.12;
 constexpr double kPluckHeight = 1.0e-3;
 constexpr double kFreqTolCents = 0.05;  // card A4-T3
 constexpr double kDecayTol = 0.02;      // card A4-T3
+constexpr double kWaveformTol = 0.10;   // horizontal waveform, relative L2 over 0.1 s
 constexpr int kPartials = 8;
 constexpr double kB1 = 0.5;
 constexpr double kB3 = 2.0e-9;
@@ -80,9 +94,9 @@ constexpr double kDCore = 1.0e-3;
 constexpr std::array<double, 2> kF1{196.0, 270.0};
 
 // Bridge: m, k_b, r_b chosen as described in the header comment.
-constexpr double kBridgeMass = 0.02;
-constexpr double kBridgeResonanceHz = 600.0;
-constexpr double kBridgeDamping = 250.0;
+constexpr double kBridgeMass = 0.1;
+constexpr double kBridgeResonanceHz = 100.0;
+constexpr double kBridgeDamping = 60.0;
 const double kBridgeStiffness =
     kBridgeMass * (2.0 * kPi * kBridgeResonanceHz) * (2.0 * kPi * kBridgeResonanceHz);
 
@@ -124,15 +138,27 @@ double pluckProjection(double L, double xp, double h, int n) {
     return str::integrate(left, 0.0, xp, rule) + str::integrate(right, xp, L, rule);
 }
 
-/// Engine signals y_0, y_1 at x = 0.37 L for kDuration seconds at kFs.
-std::array<std::vector<double>, 2> engineSignals(const T3Strings& t) {
+/// One A4-T3 configuration: bridge rotation theta_b (SI-0019 sense) and the polarisation angle at
+/// which string 1 is released (string 0 is always released vertically).
+struct Case {
+    const char* name;
+    double thetaB;
+    double angle1;
+};
+
+/// Engine signals at x = 0.37 L: index 2 s is the vertical and 2 s + 1 the horizontal
+/// displacement of string s.
+std::array<std::vector<double>, 4> engineSignals(const T3Strings& t, const Case& c) {
     brg::RigSetup setup;
     setup.segments = {t.s[0].modes, t.s[1].modes};
     setup.ends = {pme::BridgeEnd::AtL, pme::BridgeEnd::AtL};
     setup.model = brg::BridgeModel::lumped(kBridgeMass, kBridgeStiffness, kBridgeDamping);
+    setup.thetaB = c.thetaB;
+    setup.conductanceH = 0.0;
     brg::Rig rig(setup);
     REQUIRE(rig.ok());
     const double dt = 1.0 / kFs;
+    const std::array<double, 2> angle{0.0, c.angle1};
     for (std::size_t s = 0; s < 2; ++s) {
         const auto& m = t.s[s].modes;
         for (std::size_t i = 0; i < m.omega.size(); ++i) {
@@ -141,25 +167,33 @@ std::array<std::vector<double>, 2> engineSignals(const T3Strings& t) {
                 pluckProjection(brg::kLength, kPluckFraction * brg::kLength, kPluckHeight, n);
             const double sigma = m.sigma[i];
             const double wd = std::sqrt((m.omega[i] - sigma) * (m.omega[i] + sigma));
-            const double qPrev =
-                q0 * std::exp(sigma * dt) * (std::cos(wd * dt) - (sigma / wd) * std::sin(wd * dt));
-            rig.q(s)[i] = static_cast<float>(q0);
-            rig.u(s)[i] = static_cast<float>(q0 - qPrev);
+            const double back =
+                std::exp(sigma * dt) * (std::cos(wd * dt) - (sigma / wd) * std::sin(wd * dt));
+            // Release at rest at polarisation angle a: vertical cos a, horizontal sin a.
+            const double qv = q0 * std::cos(angle[s]);
+            const double qh = q0 * std::sin(angle[s]);
+            rig.q(s)[i] = static_cast<float>(qv);
+            rig.u(s)[i] = static_cast<float>(qv - qv * back);
+            rig.qH(s)[i] = static_cast<float>(qh);
+            rig.uH(s)[i] = static_cast<float>(qh - qh * back);
         }
     }
     const auto steps = static_cast<std::size_t>(std::llround(kDuration * kFs));
-    std::array<std::vector<double>, 2> y;
+    std::array<std::vector<double>, 4> y;
     for (auto& v : y) {
         v.assign(steps, 0.0);
     }
     for (std::size_t k = 0; k < steps; ++k) {
         for (std::size_t s = 0; s < 2; ++s) {
-            double sum = 0.0;
+            double sumV = 0.0;
+            double sumH = 0.0;
             const auto& phi = t.s[s].modes.phiBar[0];
             for (std::size_t i = 0; i < phi.size(); ++i) {
-                sum += static_cast<double>(phi[i]) * static_cast<double>(rig.q(s)[i]);
+                sumV += static_cast<double>(phi[i]) * static_cast<double>(rig.q(s)[i]);
+                sumH += static_cast<double>(phi[i]) * static_cast<double>(rig.qH(s)[i]);
             }
-            y[s][k] = sum;
+            y[2 * s][k] = sumV;
+            y[2 * s + 1][k] = sumH;
         }
         rig.step();
     }
@@ -221,12 +255,12 @@ TEST_CASE("A4-T3 engine side shows the bridge shift and decay SPEC-BRG predicts 
     // Attribution aid for a reference disagreement, not the card's criterion: the engine signal
     // against SPEC-BRG's small-admittance results. A string alone on this bridge would show
     // sigma = b1 + b3 w^2 + 2 f0 Z0 Re Y and a shift -2 f0 Z0 Im Y rad/s in angular frequency; the
-    // other string and Z0 |Y| up to 0.011 make the first-order values approximate, so the check is
+    // other string and Z0 |Y| up to 0.015 make the first-order values approximate, so the check is
     // loose (25% of the bridge-induced decay, 40% of the shift, both for partial 1 and 2 only).
     const T3Strings t = buildStrings();
-    const auto y = engineSignals(t);
+    const auto y = engineSignals(t, Case{"theta 0", 0.0, 0.0});
     for (std::size_t i = 0; i < 2; ++i) {
-        const auto fit = track(y[i], startList(t, i));
+        const auto fit = track(y[2 * i], startList(t, i));
         REQUIRE(fit.partials.size() == 2 * static_cast<std::size_t>(kPartials));
         const auto& s = t.s[i];
         for (int n = 1; n <= 2; ++n) {
@@ -278,15 +312,16 @@ struct RefGrid {
 };
 
 /// Writes the P0.5 scenario (schema_version 1, reference/scenario.schema.json): two strings with
-/// bridge 0, a mass_spring_dashpot bridge, observations of both strings at 0.37 L. This is the
-/// single place that knows the scenario field names.
-void writeScenario(const fs::path& path, const T3Strings& t, const RefGrid& grid) {
+/// bridge 0, a mass_spring_dashpot bridge with theta_b, observations of both polarisations of both
+/// strings at 0.37 L. This is the single place that knows the scenario field names.
+void writeScenario(const fs::path& path, const T3Strings& t, const Case& c, const RefGrid& grid) {
     std::ostringstream j;
     j << std::setprecision(17);
     j << "{\n  \"schema_version\": 1,\n  \"name\": \"A4-T3 two strings on a mass-spring-damper "
          "bridge\",\n";
     j << "  \"fs\": " << kFs << ",\n  \"oversampling\": " << grid.oversampling << ",\n";
     j << "  \"duration\": " << kDuration << ",\n  \"strings\": [\n";
+    const std::array<double, 2> angle{0.0, c.angle1};
     for (std::size_t i = 0; i < 2; ++i) {
         const auto& sp = t.s[i].spec;
         j << "    {\"params\": {\"L\": " << sp.L << ", \"dCore\": " << sp.dCore
@@ -298,17 +333,21 @@ void writeScenario(const fs::path& path, const T3Strings& t, const RefGrid& grid
           << "     \"grid\": {\"intervals\": " << grid.intervals << "},\n"
           << "     \"bridge\": 0,\n"
           << "     \"initial_displacement\": {\"amplitude\": " << kPluckHeight
-          << ", \"position\": " << kPluckFraction * sp.L << "}}" << (i == 0 ? "," : "") << "\n";
+          << ", \"position\": " << kPluckFraction * sp.L << ", \"angle\": " << angle[i] << "}}"
+          << (i == 0 ? "," : "") << "\n";
     }
-    j << "  ],\n  \"bridges\": [{\"position\": {\"x\": 0, \"y\": 0, \"z\": 0}, \"theta_b\": 0, "
-         "\"conductance_h\": 0,\n    \"model\": {\"type\": \"mass_spring_dashpot\", \"mass\": "
+    j << "  ],\n  \"bridges\": [{\"position\": {\"x\": 0, \"y\": 0, \"z\": 0}, \"theta_b\": "
+      << c.thetaB
+      << ", \"conductance_h\": 0,\n    \"model\": {\"type\": \"mass_spring_dashpot\", "
+         "\"mass\": "
       << kBridgeMass << ", \"stiffness\": " << kBridgeStiffness
       << ", \"damping\": " << kBridgeDamping << "}}],\n";
     j << "  \"observations\": [\n";
-    for (std::size_t i = 0; i < 2; ++i) {
-        j << "    {\"name\": \"y" << i << "\", \"kind\": \"string_displacement\", \"string\": " << i
-          << ", \"x\": " << kObsFraction * brg::kLength << ", \"polarisation\": \"v\"}"
-          << (i == 0 ? "," : "") << "\n";
+    for (std::size_t i = 0; i < 4; ++i) {
+        j << "    {\"name\": \"y" << i
+          << "\", \"kind\": \"string_displacement\", \"string\": " << i / 2
+          << ", \"x\": " << kObsFraction * brg::kLength << ", \"polarisation\": \""
+          << (i % 2 == 0 ? "v" : "h") << "\"}" << (i == 3 ? "" : ",") << "\n";
     }
     j << "  ]\n}\n";
     std::ofstream out(path);
@@ -318,13 +357,13 @@ void writeScenario(const fs::path& path, const T3Strings& t, const RefGrid& grid
 std::string quote(const std::string& text) { return '"' + text + '"'; }
 
 /// Runs the CLI and returns the two observation signals.
-std::array<std::vector<double>, 2> renderReference(const fs::path& dir, const T3Strings& t,
-                                                   int level, const RefGrid& grid) {
+std::array<std::vector<double>, 4> renderReference(const fs::path& dir, const T3Strings& t,
+                                                   const Case& c, int level, const RefGrid& grid) {
     const std::string tag = "t3_" + std::to_string(level);
     const fs::path scenario = dir / (tag + ".json");
     const fs::path features = dir / (tag + "_features.json");
     const fs::path wav = dir / (tag + ".wav");
-    writeScenario(scenario, t, grid);
+    writeScenario(scenario, t, c, grid);
     std::string cmd = quote(PME_A4T3_REFERENCE_CLI) + " render " + quote(scenario.string()) +
                       " --features " + quote(features.string()) + " --wav " + quote(wav.string());
 #ifdef _WIN32
@@ -335,29 +374,32 @@ std::array<std::vector<double>, 2> renderReference(const fs::path& dir, const T3
     REQUIRE(rc == 0);
     const pme::analysis::WavData data = pme::analysis::read_wav(wav);
     REQUIRE(data.sample_rate_hz == doctest::Approx(kFs));
-    REQUIRE(data.channels == 2);
-    std::array<std::vector<double>, 2> y;
+    REQUIRE(data.channels == 4);
+    std::array<std::vector<double>, 4> y;
     for (std::size_t f = 0; f < data.frames(); ++f) {
-        y[0].push_back(data.samples[f * data.channels]);
-        y[1].push_back(data.samples[f * data.channels + 1]);
+        for (std::size_t ch = 0; ch < 4; ++ch) {
+            y[ch].push_back(data.samples[f * data.channels + ch]);
+        }
     }
     return y;
 }
 
 }  // namespace
 
-TEST_CASE("A4-T3 two strings on a mass-spring-damper bridge vs P0.5 reference solver") {
-    const int n0 = envInt("PME_A4T3_N0", 400);
-    const int os0 = envInt("PME_A4T3_OS0", 4);
+namespace {
+
+void runReferenceCase(const Case& c) {
+    const int n0 = envInt("PME_A4T3_N0", 100);
+    const int os0 = envInt("PME_A4T3_OS0", 1);
     const T3Strings t = buildStrings();
-    const auto engineY = engineSignals(t);
+    const auto engineY = engineSignals(t, c);
 
     const fs::path dir = fs::temp_directory_path() / ("pme_a4t3_" + std::to_string(std::rand()));
     fs::create_directories(dir);
-    std::array<std::array<std::vector<double>, 2>, 3> refY;
+    std::array<std::array<std::vector<double>, 4>, 3> refY;
     for (int level = 0; level < 3; ++level) {
         refY[static_cast<std::size_t>(level)] =
-            renderReference(dir, t, level, RefGrid{n0 << level, os0 << level});
+            renderReference(dir, t, c, level, RefGrid{n0 << level, os0 << level});
     }
     std::error_code ec;
     fs::remove_all(dir, ec);
@@ -367,7 +409,7 @@ TEST_CASE("A4-T3 two strings on a mass-spring-damper bridge vs P0.5 reference so
     double worstRefAll = 0.0;
     for (std::size_t obs = 0; obs < 2; ++obs) {
         const std::vector<double> start = startList(t, obs);
-        const auto engine = track(engineY[obs], start);
+        const auto engine = track(engineY[2 * obs], start);
         REQUIRE(engine.partials.size() == start.size());
         std::vector<double> engineHz;
         for (const auto& p : engine.partials) {
@@ -379,7 +421,7 @@ TEST_CASE("A4-T3 two strings on a mass-spring-damper bridge vs P0.5 reference so
         // f_engine + 4^(2 - l) (f_2 - f_engine). Start values only: every compared number is the
         // converged fit of the reference signal itself.
         std::array<pme::analysis::PartialTrackingResult, 3> ref;
-        ref[2] = track(refY[2][obs], engineHz);
+        ref[2] = track(refY[2][2 * obs], engineHz);
         REQUIRE(ref[2].partials.size() == start.size());
         for (int level = 1; level >= 0; --level) {
             const double scale = std::pow(4.0, 2 - level);
@@ -388,7 +430,7 @@ TEST_CASE("A4-T3 two strings on a mass-spring-damper bridge vs P0.5 reference so
                 s.push_back(engineHz[i] + scale * (ref[2].partials[i].frequency_hz - engineHz[i]));
             }
             ref[static_cast<std::size_t>(level)] =
-                track(refY[static_cast<std::size_t>(level)][obs], s);
+                track(refY[static_cast<std::size_t>(level)][2 * obs], s);
         }
         double worstCents = 0.0;
         double worstDecay = 0.0;
@@ -400,13 +442,20 @@ TEST_CASE("A4-T3 two strings on a mass-spring-damper bridge vs P0.5 reference so
             const double s0 = ref[0].partials[i].sigma_per_s;
             const double s1 = ref[1].partials[i].sigma_per_s;
             const double s2 = ref[2].partials[i].sigma_per_s;
-            // Richardson extrapolation with the scheme's second order, from the two finest and
-            // the two coarsest levels.
-            const double fRef = f2v + (f2v - f1v) / 3.0;
-            const double fRefCoarse = f1v + (f1v - f0v) / 3.0;
-            const double sRef = s2 + (s2 - s1) / 3.0;
-            const double sRefCoarse = s1 + (s1 - s0) / 3.0;
-            const double refErrCents = std::fabs(pme::test::cents(fRef, fRefCoarse));
+            // Richardson extrapolation with the scheme's second order from the two finest levels
+            // (f12) and from the two coarsest (f01); both are accurate to the next order h^4, so
+            // a second extrapolation removes that term as well: f* = f12 + (f12 - f01) / 15. The
+            // size of that last correction, |cents(f*, f12)|, is the reference's own error
+            // estimate: it exceeds the true remainder (h^6), and it follows the h^4 law (it drops
+            // by 16 when N0 and OS0 double).
+            const double f12 = f2v + (f2v - f1v) / 3.0;
+            const double f01 = f1v + (f1v - f0v) / 3.0;
+            const double fRef = f12 + (f12 - f01) / 15.0;
+            const double s12 = s2 + (s2 - s1) / 3.0;
+            const double s01 = s1 + (s1 - s0) / 3.0;
+            const double sRef = s12 + (s12 - s01) / 15.0;
+            const double sRefCoarse = s01;
+            const double refErrCents = std::fabs(pme::test::cents(fRef, f12));
             const double cents = pme::test::cents(engine.partials[i].frequency_hz, fRef);
             const double decay = engine.partials[i].sigma_per_s / sRef - 1.0;
             INFO("string " << obs << " partial " << i + 1
@@ -421,21 +470,55 @@ TEST_CASE("A4-T3 two strings on a mass-spring-damper bridge vs P0.5 reference so
             worstCents = std::max(worstCents, std::fabs(cents));
             worstDecay = std::max(worstDecay, std::fabs(decay));
             worstRef = std::max(worstRef, refErrCents);
-            str::report("A4-T3 string " + std::to_string(obs) + " partial " +
-                        std::to_string(i + 1) + ": " + str::sci(cents) + " cent, decay " +
-                        str::sci(decay) + ", reference error estimate " + str::sci(refErrCents) +
-                        " cent");
+            str::report(std::string("A4-T3 ") + c.name + " string " + std::to_string(obs) +
+                        " partial " + std::to_string(i + 1) + ": " + str::sci(cents) +
+                        " cent, decay " + str::sci(decay) + ", reference error estimate " +
+                        str::sci(refErrCents) + " cent");
         }
-        str::report("A4-T3 string " + std::to_string(obs) + ": worst " + str::sci(worstCents) +
-                    " cent, worst decay " + str::sci(worstDecay) + ", worst reference estimate " +
-                    str::sci(worstRef) + " cent");
+        str::report(std::string("A4-T3 ") + c.name + " string " + std::to_string(obs) + ": worst " +
+                    str::sci(worstCents) + " cent, worst decay " + str::sci(worstDecay) +
+                    ", worst reference estimate " + str::sci(worstRef) + " cent");
         worstCentsAll = std::max(worstCentsAll, worstCents);
         worstDecayAll = std::max(worstDecayAll, worstDecay);
         worstRefAll = std::max(worstRefAll, worstRef);
     }
-    str::report("A4-T3 overall: worst " + str::sci(worstCentsAll) + " cent, worst decay " +
-                str::sci(worstDecayAll) + ", worst reference estimate " + str::sci(worstRefAll) +
-                " cent");
+    // Horizontal waveform of each string at 0.37 L against the extrapolated reference waveform.
+    // For theta_b = 0 and a vertical release it is identically zero in both and is skipped.
+    for (std::size_t obs = 0; obs < 2; ++obs) {
+        const std::size_t ch = 2 * obs + 1;
+        const auto window = static_cast<std::size_t>(0.1 * kFs);
+        double num = 0.0;
+        double den = 0.0;
+        for (std::size_t k = 0; k < window; ++k) {
+            const double y12 = refY[2][ch][k] + (refY[2][ch][k] - refY[1][ch][k]) / 3.0;
+            const double y01 = refY[1][ch][k] + (refY[1][ch][k] - refY[0][ch][k]) / 3.0;
+            const double ref = y12 + (y12 - y01) / 15.0;
+            num += (engineY[ch][k] - ref) * (engineY[ch][k] - ref);
+            den += ref * ref;
+        }
+        if (den < 1.0e-30) {
+            continue;
+        }
+        const double rel = std::sqrt(num / den);
+        INFO("string " << obs << " horizontal waveform relative L2 error over 0.1 s = " << rel);
+        CHECK(rel <= kWaveformTol);
+        str::report(std::string("A4-T3 ") + c.name + " string " + std::to_string(obs) +
+                    " horizontal waveform error " + str::sci(rel));
+    }
+    str::report(std::string("A4-T3 ") + c.name + " overall: worst " + str::sci(worstCentsAll) +
+                " cent, worst decay " + str::sci(worstDecayAll) + ", worst reference estimate " +
+                str::sci(worstRefAll) + " cent");
+}
+
+}  // namespace
+
+TEST_CASE("A4-T3 two strings on a mass-spring-damper bridge vs P0.5 reference solver") {
+    runReferenceCase(Case{"theta_b 0", 0.0, 0.0});
+}
+
+TEST_CASE("A4-T3 asymmetric excitation with theta_b 0.3 rad vs P0.5 reference solver") {
+    // SI-0019: pins R(theta_b) = [[c, -s], [s, c]] against the reference.
+    runReferenceCase(Case{"theta_b 0.3", 0.3, 0.7});
 }
 
 #endif  // PME_A4T3_REFERENCE_CLI

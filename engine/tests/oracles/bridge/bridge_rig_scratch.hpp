@@ -31,30 +31,39 @@ namespace pme::oracle::brg {
 
 class Rig {
 public:
-    explicit Rig(const RigSetup& setup) : dt_(1.0 / setup.fs) {
+    explicit Rig(const RigSetup& setup)
+        : dt_(1.0 / setup.fs),
+          cosT_(std::cos(setup.thetaB)),
+          sinT_(std::sin(setup.thetaB)),
+          gH_(setup.conductanceH) {
         const std::size_t count = setup.segments.size();
-        banks_.resize(count);
+        banks_.resize(2 * count);  // [2 s] vertical, [2 s + 1] horizontal
         g_.resize(count);
-        a_.resize(count);
+        aV_.resize(count);
+        aH_.resize(count);
         tOverL_.resize(count);
         force_.resize(count);
         for (std::size_t s = 0; s < count; ++s) {
             const pme::StringModes& m = setup.segments[s];
             const std::size_t n = m.omega.size();
-            banks_[s].resize(n);
+            banks_[2 * s].resize(n);
+            banks_[2 * s + 1].resize(n);
             g_[s].resize(n);
-            a_[s].resize(n);
+            aV_[s].resize(n);
+            aH_[s].resize(n);
             force_[s].assign(n, 0.0F);
             tOverL_[s] = m.tension / m.L;
             for (std::size_t i = 0; i < n; ++i) {
-                banks_[s].setMode(i, m.oscV[i]);
+                banks_[2 * s].setMode(i, m.oscV[i]);
+                banks_[2 * s + 1].setMode(i, m.oscH[i]);
                 const double sq = std::sqrt(2.0 / m.L);
                 const double sign = (setup.ends[s] == pme::BridgeEnd::AtL)
                                         ? ((i % 2 == 0) ? 1.0 : -1.0)  // (-1)^(n+1), n = i + 1
                                         : 1.0;
                 const double gn = sq * sign / m.k[i];
                 g_[s][i] = static_cast<float>(gn);
-                a_[s][i] = static_cast<float>(m.rhoA * m.oscV[i].omegaHat2 * gn);
+                aV_[s][i] = static_cast<float>(m.rhoA * m.oscV[i].omegaHat2 * gn);
+                aH_[s][i] = static_cast<float>(m.rhoA * m.oscH[i].omegaHat2 * gn);
             }
         }
         conductance_ = setup.model.conductance;
@@ -73,50 +82,75 @@ public:
     }
 
     [[nodiscard]] bool ok() const { return ok_; }
-    [[nodiscard]] std::size_t segmentCount() const { return banks_.size(); }
-    [[nodiscard]] std::size_t modeCount(std::size_t s) const { return banks_[s].size(); }
-    [[nodiscard]] float* q(std::size_t s) { return banks_[s].q(); }
-    [[nodiscard]] float* u(std::size_t s) { return banks_[s].u(); }
-    [[nodiscard]] double bridgeDisplacement() const { return wCur_; }
+    [[nodiscard]] std::size_t segmentCount() const { return g_.size(); }
+    [[nodiscard]] std::size_t modeCount(std::size_t s) const { return banks_[2 * s].size(); }
+    /// Vertical-polarisation state of segment s.
+    [[nodiscard]] float* q(std::size_t s) { return banks_[2 * s].q(); }
+    [[nodiscard]] float* u(std::size_t s) { return banks_[2 * s].u(); }
+    /// Horizontal-polarisation state of segment s.
+    [[nodiscard]] float* qH(std::size_t s) { return banks_[2 * s + 1].q(); }
+    [[nodiscard]] float* uH(std::size_t s) { return banks_[2 * s + 1].u(); }
+    [[nodiscard]] double bridgeDisplacement() const { return wV_; }
 
     /// One sample in the order of SPEC-BRG "Discrete coupling order".
     void step() {
-        double total = 0.0;
-        for (std::size_t s = 0; s < banks_.size(); ++s) {
-            float acc = 0.0F;
-            const float* q = banks_[s].q();
-            for (std::size_t i = 0; i < banks_[s].size(); ++i) {
-                acc += a_[s][i] * q[i];
+        double fV = 0.0;
+        double fH = 0.0;
+        for (std::size_t s = 0; s < g_.size(); ++s) {
+            float accV = 0.0F;
+            float accH = 0.0F;
+            const float* qv = banks_[2 * s].q();
+            const float* qh = banks_[2 * s + 1].q();
+            for (std::size_t i = 0; i < g_[s].size(); ++i) {
+                accV += aV_[s][i] * qv[i];
+                accH += aH_[s][i] * qh[i];
             }
-            total += static_cast<double>(acc) - tOverL_[s] * wCur_;
+            fV += static_cast<double>(accV) - tOverL_[s] * wV_;
+            fH += static_cast<double>(accH) - tOverL_[s] * wH_;
         }
+        // SPEC-BRG "Polarisation coupling" with SI-0019: F_par = c F_v - s F_h, F_perp = s F_v + c
+        // F_h.
+        const double fPar = cosT_ * fV - sinT_ * fH;
+        const double fPerp = sinT_ * fV + cosT_ * fH;
         if (hasMode_) {
-            const double uNext = beta_ * ub_ - kappa_ * qb_ + gamma_ * phi_ * total;
+            const double uNext = beta_ * ub_ - kappa_ * qb_ + gamma_ * phi_ * fPar;
             ub_ = uNext;
             qb_ += uNext;
         }
-        wR_ += dt_ * conductance_ * total;
-        const double wNext = phi_ * qb_ + wR_;
-        const double dtt = (wNext - 2.0 * wCur_ + wPrev_) / (dt_ * dt_);
-        wPrev_ = wCur_;
-        wCur_ = wNext;
-        for (std::size_t s = 0; s < banks_.size(); ++s) {
-            for (std::size_t i = 0; i < banks_[s].size(); ++i) {
-                force_[s][i] = static_cast<float>(-static_cast<double>(g_[s][i]) * dtt);
+        wR_ += dt_ * conductance_ * fPar;
+        wPerp_ += dt_ * gH_ * fPerp;
+        const double wPar = phi_ * qb_ + wR_;
+        const double wVNext = cosT_ * wPar + sinT_ * wPerp_;  // w = R^T [w_par; w_perp]
+        const double wHNext = -sinT_ * wPar + cosT_ * wPerp_;
+        const double dttV = (wVNext - 2.0 * wV_ + wVPrev_) / (dt_ * dt_);
+        const double dttH = (wHNext - 2.0 * wH_ + wHPrev_) / (dt_ * dt_);
+        wVPrev_ = wV_;
+        wV_ = wVNext;
+        wHPrev_ = wH_;
+        wH_ = wHNext;
+        for (std::size_t s = 0; s < g_.size(); ++s) {
+            for (std::size_t i = 0; i < g_[s].size(); ++i) {
+                force_[s][i] = static_cast<float>(-static_cast<double>(g_[s][i]) * dttV);
             }
-            banks_[s].step(std::span<const float>(force_[s]));
+            banks_[2 * s].step(std::span<const float>(force_[s]));
+            for (std::size_t i = 0; i < g_[s].size(); ++i) {
+                force_[s][i] = static_cast<float>(-static_cast<double>(g_[s][i]) * dttH);
+            }
+            banks_[2 * s + 1].step(std::span<const float>(force_[s]));
         }
     }
 
 private:
     double dt_;
+    double cosT_, sinT_, gH_;
     bool ok_{true};
     bool hasMode_{false};
     double conductance_{0.0};
     double beta_{0.0}, kappa_{0.0}, gamma_{0.0}, phi_{0.0};
-    double qb_{0.0}, ub_{0.0}, wR_{0.0}, wCur_{0.0}, wPrev_{0.0};
+    double qb_{0.0}, ub_{0.0}, wR_{0.0}, wPerp_{0.0};
+    double wV_{0.0}, wVPrev_{0.0}, wH_{0.0}, wHPrev_{0.0};
     std::vector<pme::osc::ModeBank> banks_;
-    std::vector<std::vector<float>> g_, a_, force_;
+    std::vector<std::vector<float>> g_, aV_, aH_, force_;
     std::vector<double> tOverL_;
 };
 
