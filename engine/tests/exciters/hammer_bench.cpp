@@ -30,18 +30,21 @@ struct Fixture {
     // hammer is never launched and the segment takes the skip path.
     Fixture(bool contact, bool withBridge) {
         modes = unison(3, false, kFs, 16000.0);
-        // 60 modes per string: raise fMax until every string keeps at least 60 modes.
+        // fMax 16 kHz keeps 61 modes per string: 3 x 61 + 1 = 184 coordinates.
         StruckNoteDesc d = describe(modes, pianoHammer());
         static_cast<void>(configureBridge(point));
         static_cast<void>(note.configure(d, kFs, withBridge ? &point : nullptr));
         coordinates = static_cast<double>(note.segment().size());
         contactMode = contact;
+        static_cast<void>(note.launch(0.6, 0.0));
         if (contact) {
-            static_cast<void>(note.launch(0.6, 0.0));
-        }
-        // Prime a few samples so that the strings move.
-        for (int i = 0; i < 40; ++i) {
-            note.step();
+            for (int i = 0; i < 40; ++i) {
+                note.step();  // the strings move and the hammer is in contact
+            }
+        } else {
+            for (int i = 0; i < 5000 && note.inFlight(); ++i) {
+                note.step();  // run until the hammer has left: ringing strings, skip path
+            }
         }
     }
 
@@ -60,17 +63,17 @@ struct Fixture {
 
 }  // namespace
 
-PME_BENCHMARK(hammer_trichord_contact_bridge, "coordinate-samples", 181.0 * kSamplesPerCall) {
+PME_BENCHMARK(hammer_trichord_contact_bridge, "coordinate-samples", 184.0 * kSamplesPerCall) {
     static Fixture fx(true, true);
     fx.run();
 }
 
-PME_BENCHMARK(hammer_trichord_contact_no_bridge, "coordinate-samples", 181.0 * kSamplesPerCall) {
+PME_BENCHMARK(hammer_trichord_contact_no_bridge, "coordinate-samples", 184.0 * kSamplesPerCall) {
     static Fixture fx(true, false);
     fx.run();
 }
 
-PME_BENCHMARK(hammer_trichord_skip_bridge, "coordinate-samples", 181.0 * kSamplesPerCall) {
+PME_BENCHMARK(hammer_trichord_skip_bridge, "coordinate-samples", 184.0 * kSamplesPerCall) {
     static Fixture fx(false, true);
     fx.run();
 }
