@@ -361,7 +361,7 @@ TEST_CASE("A4-R5 a constant external velocity moves w_par by dt v_ext per sample
         q.advance();
     }
     CHECK(q.wV() == doctest::Approx(std::cos(0.3) * 10 * dt * 0.01).epsilon(1e-12));
-    CHECK(q.wH() == doctest::Approx(std::sin(0.3) * 10 * dt * 0.01).epsilon(1e-12));
+    CHECK(q.wH() == doctest::Approx(-std::sin(0.3) * 10 * dt * 0.01).epsilon(1e-12));
 }
 
 TEST_CASE("A4-R5 a constant extra vertical force gives the static deflection F over k_b") {

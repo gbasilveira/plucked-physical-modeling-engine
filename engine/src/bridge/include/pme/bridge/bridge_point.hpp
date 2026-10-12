@@ -95,7 +95,7 @@ public:
         gPerp_ = static_cast<S>(dt * desc.conductanceH);  // SPEC-BRG: w_perp += dt G_h F_perp
         conductance_ = model.conductance;
         conductanceH_ = desc.conductanceH;
-        // R(theta_b): bridge-frame axes rotated by theta_b from the string polarisations
+        // R(theta_b) = [[c, -s], [s, c]] (SI-0019); bridge axis (cos, -sin) in the (v, h) plane
         // (SPEC-BRG "Polarisation coupling"); theta_b = 0 gives exactly c = 1, s = 0.
         cosTheta_ = static_cast<S>(std::cos(desc.thetaB));
         sinTheta_ = static_cast<S>(std::sin(desc.thetaB));
@@ -150,8 +150,8 @@ public:
     /// Thread: audio. Allocates: no.
     void advance() noexcept {
         // SPEC-BRG Polarisation coupling: [F_par; F_perp] = R(theta_b) [F_v; F_h].
-        const S fPar = cosTheta_ * fv_ + sinTheta_ * fh_;
-        const S fPerp = cosTheta_ * fh_ - sinTheta_ * fv_;
+        const S fPar = cosTheta_ * fv_ - sinTheta_ * fh_;  // SI-0019: R = [[c, -s], [s, c]]
+        const S fPerp = sinTheta_ * fv_ + cosTheta_ * fh_;
         const std::size_t m = r_.size();
         // SPEC-BODY Local bridge model: modes advance with the force at step n (explicit).
         for (std::size_t i = 0; i < m; ++i) {
@@ -179,12 +179,12 @@ public:
         prevDwPar_ = dwPar;
         prevDwPerp_ = dwPerp;
         // SPEC-BRG: [w_v; w_h] = R(theta_b)^T [w_par; w_perp].
-        wV_ = cosTheta_ * wPar_ - sinTheta_ * wPerp_;
-        wH_ = sinTheta_ * wPar_ + cosTheta_ * wPerp_;
-        dwV_ = cosTheta_ * dwPar - sinTheta_ * dwPerp;
-        dwH_ = sinTheta_ * dwPar + cosTheta_ * dwPerp;
-        accV_ = cosTheta_ * accPar - sinTheta_ * accPerp;
-        accH_ = sinTheta_ * accPar + cosTheta_ * accPerp;
+        wV_ = cosTheta_ * wPar_ + sinTheta_ * wPerp_;  // R^T = [[c, s], [-s, c]]
+        wH_ = cosTheta_ * wPerp_ - sinTheta_ * wPar_;
+        dwV_ = cosTheta_ * dwPar + sinTheta_ * dwPerp;
+        dwH_ = cosTheta_ * dwPerp - sinTheta_ * dwPar;
+        accV_ = cosTheta_ * accPar + sinTheta_ * accPerp;
+        accH_ = cosTheta_ * accPerp - sinTheta_ * accPar;
         // Dissipated power of the conductances, F times the centred velocity of w_R
         // (G (F^n + F^{n-1}) / 2), accumulated as energy.
         dissipatedPar_ += dt_ * static_cast<double>(fPar) * 0.5 * conductance_ *

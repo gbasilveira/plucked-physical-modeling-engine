@@ -58,7 +58,7 @@ w\_∥ = Σ Φ\_k r\_k + w\_R + w\_ext (SPEC-BODY "Local bridge model").
 | Mass–spring–damper | `massSpringDamperModel(m, k_b, r_b)` | 1: Ω = √(k\_b/m), σ = r\_b/(2m), Φ = 1/√m | w'' + 2σw' + Ω²w = F/m. A mode the bandwidth rule refuses makes `configure` return `Rejected` |
 | Modal set | `modalSetModel(const LocalBridge&)` | M, G = `conductanceHf` | the interface B3's `buildLocalBridge` output plugs into; modes the bandwidth rule refuses are dropped (`droppedModes()`), as SPEC-OSC "Bandwidth" requires |
 
-**Free mass.** k\_b = 0 gives Ω = 0, which A1's `compileOscillatorF64` refuses (σ ≥ ω, "overdamped"
+**Free mass (ratified by SI-0020, as is refusing σ ≥ Ω > 0).** k\_b = 0 gives Ω = 0, which A1's `compileOscillatorF64` refuses (σ ≥ ω, "overdamped"
 even for σ = 0). `compileBridgeMode` handles Ω = 0 explicitly: ω̂² = 0, σ̂Δt = tanh(σΔt),
 κ = 0, β = (1 − σ̂Δt)/(1 + σ̂Δt), γ = Δt²/(1 + σ̂Δt) (the overdamped continuation of the SPEC-OSC
 formulas as Ω → 0; the poles are exactly 1 and e^(−2σΔt)). For Ω > 0 it calls A1 unchanged. A mass
@@ -94,10 +94,11 @@ passes `StringParams::detuneH` as the fourth argument of `pme::string::applyMute
 
 ### Polarisation rotation (A4-R4)
 
-F\_∥ = cos θ\_b F\_v + sin θ\_b F\_h, F\_⊥ = cos θ\_b F\_h − sin θ\_b F\_v; w\_v = cos θ\_b w\_∥ − sin θ\_b
-w\_⊥, w\_h = sin θ\_b w\_∥ + cos θ\_b w\_⊥, i.e. R(θ\_b) = [[c, s], [−s, c]] and the bridge's ∥ axis is
-(cos θ\_b, sin θ\_b) in the (v, h) plane. SPEC-BRG fixes R(θ\_b) only by name; this sign convention
-is an assumption (θ\_b → −θ\_b mirrors the sense of the h–v energy exchange and nothing else). The
+F\_∥ = cos θ\_b F\_v − sin θ\_b F\_h, F\_⊥ = sin θ\_b F\_v + cos θ\_b F\_h; w\_v = cos θ\_b w\_∥ + sin θ\_b
+w\_⊥, w\_h = −sin θ\_b w\_∥ + cos θ\_b w\_⊥, i.e. the standard rotation R(θ\_b) = [[c, −s], [s, c]] of
+SPEC-BRG (SI-0019, which the P0.5 reference also uses); the bridge's ∥ axis is (cos θ\_b, −sin θ\_b)
+in the (v, h) plane. (A4 first implemented the transpose; flipped under SI-0019 and pinned by the
+asymmetric test `A4-R4 the rotation is the standard R`.) The
 ⊥ axis is a pure conductance: w\_⊥ⁿ⁺¹ = w\_⊥ⁿ + Δt G\_h F\_⊥ⁿ with G\_h =
 `BridgePointDesc::conductanceH`. At θ\_b = 0, c = 1 and s = 0 exactly, so the polarisations are
 independent bit for bit (tested against single-axis runs).

@@ -322,7 +322,39 @@ TEST_CASE("A4-R4 the perpendicular axis is a pure conductance G_h in the rotated
         }
         CHECK(p.wV() == doctest::Approx(100 * dt * gH * 4.0).epsilon(1e-12));
         CHECK(std::abs(p.wH()) < 1e-15);
-        CHECK(p.wPerpendicular() == doctest::Approx(-100 * dt * gH * 4.0).epsilon(1e-12));
+        CHECK(p.wPerpendicular() == doctest::Approx(100 * dt * gH * 4.0).epsilon(1e-12));
         CHECK(p.wParallel() == 0.0);
     }
+}
+
+TEST_CASE("A4-R4 the rotation is the standard R of SI-0019") {
+    // Asymmetric case: theta_b = 0.3, a purely vertical force on a rigid parallel axis with a
+    // perpendicular conductance. With R = [[c, -s], [s, c]]: F_perp = s F_v, so
+    // w_perp = n dt G_h s F_v and [w_v; w_h] = R^T [0; w_perp] = [s w_perp; c w_perp].
+    // The transpose would give F_perp = -s F_v and a negative w_perp.
+    ParallelModel rigid;
+    REQUIRE(pme::bridge::conductanceModel(0.0, rigid) == Status::Ok);
+    const double theta = 0.3;
+    const double gH = 3.0e-3;
+    const double dt = 1.0 / kFs;
+    pme::BridgePointDesc d;
+    d.thetaB = theta;
+    d.conductanceH = gH;
+    BridgePoint<double> p;
+    REQUIRE(p.configure(d, rigid, kFs) == Status::Ok);
+    for (int n = 0; n < 50; ++n) {
+        p.addForce(4.0, 0.0);
+        p.advance();
+    }
+    const double wPerp = 50 * dt * gH * std::sin(theta) * 4.0;
+    CHECK(p.wPerpendicular() == doctest::Approx(wPerp).epsilon(1e-12));
+    CHECK(p.wV() == doctest::Approx(std::sin(theta) * wPerp).epsilon(1e-12));
+    CHECK(p.wH() == doctest::Approx(std::cos(theta) * wPerp).epsilon(1e-12));
+    // A horizontal force: F_perp = c F_h, F_par = -s F_h.
+    BridgePoint<double> q;
+    REQUIRE(q.configure(d, rigid, kFs) == Status::Ok);
+    q.addForce(0.0, 2.0);
+    q.advance();
+    CHECK(q.wPerpendicular() == doctest::Approx(dt * gH * std::cos(theta) * 2.0).epsilon(1e-12));
+    CHECK(q.wV() == doctest::Approx(std::sin(theta) * q.wPerpendicular()).epsilon(1e-12));
 }
