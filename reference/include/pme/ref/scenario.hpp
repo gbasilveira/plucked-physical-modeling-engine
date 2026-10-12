@@ -151,6 +151,8 @@ struct Scenario {
 // wrong types, schema_version != 1 and values the reference does not model.
 Scenario parse_scenario(std::string_view json_text);
 Scenario read_scenario_file(const std::string& path);
+// Parses the "plate" object of a scenario on its own (same fields, same errors, context "plate").
+PlateSpec parse_plate_spec(std::string_view json_text);
 
 // Checks a parsed scenario for consistency and for features the reference does not model.
 // Throws RefError naming the field. Called by parse_scenario and by the simulation.

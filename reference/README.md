@@ -28,6 +28,9 @@ filtered and decimated by `oversampling`; `--normalise` scales to a peak of 0.9)
 trace with its summary. `refine` runs the first string on the given grids (a constant integer ratio),
 refines the time step with the grid, measures the partial frequencies of the first observation and
 prints the observed convergence orders of the three finest grids (also as JSON with `--json`).
+`plate-modes <scenario.json> --count N [--points x1,y1,...] [--grid nx,ny]` prints, as JSON, the
+`N` lowest modes of the scenario's (ribbed) plate: `frequencies_hz` ascending and, with `--points`,
+mass-normalised mode values there (docs/dev/reference-solver.md, "Ribs").
 Exit status: 0 success, 1 a rendering error (stderr names the offending field), 2 usage error.
 
 ### Python
@@ -46,6 +49,9 @@ result = pme_reference.render(scenario)  # scenario: dict or JSON text
 result["signals"]["y"]  # NumPy float64 array, one value per simulation step
 result["energy"]["total"]  # energy of the state pairs, steps + 1 values
 result["features"]  # the dict the CLI writes with --features
+
+modes = pme_reference.plate_modes(plate, nx, ny, count, points=None)  # plate: the scenario's plate
+modes["frequencies_hz"]  # the `count` lowest modes of the discrete (ribbed) plate, Hz ascending
 ```
 
 Errors for scenarios the reference does not model are `pme_reference.RefError` (a `ValueError`).
@@ -64,7 +70,7 @@ JSON, described by [scenario.schema.json](scenario.schema.json); examples in
 | `strings[]` | `params` (the `StringParams` members: `L dCore rhoCore ECore dOuter rhoWind packing epsWind f1Target b1 b2 b3 boundary`), `grid.intervals`, `bridge` (index; absent = fixed end), `initial_displacement` (`amplitude position angle`), `geometric` (`tension_modulation longitudinal longitudinal_b1 longitudinal_b3 longitudinal_initial`) |
 | `hammers[]` | `mass K p mu width strike_x velocity gap strings[] wall` |
 | `bridges[]` | `position {x,y,z}`, `theta_b`, `conductance_h`, `model` (`mass_spring_dashpot {mass stiffness damping}` or `conductance {G}`) |
-| `plate` | the `PlateParams` members in snake_case, `grid {nx ny}`, `loss {b1 b3 reference_hz}`, `initial_displacement {x y amplitude}` |
+| `plate` | the `PlateParams` members in snake_case, `ribs[] {start end width height youngs density}`, `grid {nx ny}`, `loss {b1 b3 reference_hz}`, `initial_displacement {x y amplitude}` |
 | `barriers[]` | `string side K alpha mu x[] b[] w[]` |
 | `observations[]` | `name`, `kind`, `string`/`bridge`/`hammer`/`barrier` index, `x`, `polarisation`, `point` |
 
@@ -81,7 +87,12 @@ The reference rejects what it does not model, with an error that names the field
   Comparisons against the engine (A2-T3 and later) use `b2 = 0`. `sigmaOverride` (a per-partial
   table), a horizontal detune `detuneH` and `bridgeEnd = At0` are rejected too.
 - **Rectangular plates only**, grain along x (`grainAngle = 0`), simply supported edges: a polygon
-  `outline`, a `thicknessGrid`, `ribs`, `bridges` as beams and rim stiffness are rejected. A rotated
+  `outline`, a `thicknessGrid`, `bridges` as beams and rim stiffness are rejected. **Ribs** are
+  accepted when they are axis-parallel Euler-Bernoulli beams on the mid-surface (z = 0) whose line
+  and end points fall on grid nodes of `plate.grid` (for example `nx` a multiple of 4 for ribs at
+  `x = Lx/4, Lx/2, 3Lx/4`); torsion, rotary inertia, the beam/plate mid-surface offset and the
+  moisture dependence of rib properties are neglected. A diagonal or off-grid rib is rejected with
+  an error that names `ribs[i]`. A rotated
   bridge axis (`theta_b`) is not supported together with a plate.
 - A clamped string end is supported only without a bridge.
 - Tension modulation and longitudinal waves: a single fixed-end string with an initial displacement,

@@ -10,6 +10,7 @@ add_library(pme_reference_core STATIC
   src/banded.cpp
   src/common.cpp
   src/plate.cpp
+  src/plate_modes.cpp
   src/scenario.cpp
   src/simulation.cpp
   src/geometric.cpp
@@ -41,6 +42,7 @@ pme_add_doctest(pme_reference_unit_tests
     tests/test_string.cpp
     tests/test_hammer.cpp
     tests/test_plate.cpp
+    tests/test_plate_ribs.cpp
     tests/test_bridge.cpp
     tests/test_barrier.cpp
     tests/test_geometric.cpp

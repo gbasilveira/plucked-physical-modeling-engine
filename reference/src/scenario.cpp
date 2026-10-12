@@ -146,15 +146,33 @@ StringParams string_params(const json& j, const std::string& ctx) {
 }
 
 PlateSpec plate_spec(const json& j, const std::string& ctx) {
-    check_keys(j, {"length_x",    "length_y",      "thickness",
-                   "grain_angle", "youngs_l",      "youngs_r",
-                   "shear_lr",    "poisson_lr",    "poisson_rl",
-                   "density",     "moisture",      "d_e_d_mc_l",
-                   "d_e_d_mc_r",  "d_g_d_mc",      "d_rho_d_mc",
-                   "loss_factor", "rim_stiffness", "rim_rotational_stiffness",
-                   "f_max",       "outline",       "thickness_grid",
-                   "ribs",        "bridges",       "grid",
-                   "loss"},
+    check_keys(j,
+               {"length_x",
+                "length_y",
+                "thickness",
+                "grain_angle",
+                "youngs_l",
+                "youngs_r",
+                "shear_lr",
+                "poisson_lr",
+                "poisson_rl",
+                "density",
+                "moisture",
+                "d_e_d_mc_l",
+                "d_e_d_mc_r",
+                "d_g_d_mc",
+                "d_rho_d_mc",
+                "loss_factor",
+                "rim_stiffness",
+                "rim_rotational_stiffness",
+                "f_max",
+                "outline",
+                "thickness_grid",
+                "ribs",
+                "bridges",
+                "grid",
+                "initial_displacement",
+                "loss"},
                ctx);
     PlateSpec s;
     PlateParams& p = s.params;
@@ -186,8 +204,26 @@ PlateSpec plate_spec(const json& j, const std::string& ctx) {
         p.thicknessNy = 2;
         p.thicknessGrid.assign(4, p.thickness);
     }
-    if (j.contains("ribs") && j["ribs"].is_array() && !j["ribs"].empty()) {
-        p.ribs.push_back(RibDesc{});
+    if (j.contains("ribs")) {
+        if (!j["ribs"].is_array()) {
+            throw RefError(ctx + ".ribs: expected an array");
+        }
+        std::size_t ri = 0;
+        for (const auto& jr : j["ribs"]) {
+            const std::string c = ctx + ".ribs[" + std::to_string(ri++) + "]";
+            check_keys(jr, {"start", "end", "width", "height", "youngs", "density"}, c);
+            RibDesc r;
+            if (!jr.contains("start") || !jr.contains("end")) {
+                throw RefError(c + ": start and end are required");
+            }
+            r.start = point(jr["start"], c + ".start");
+            r.end = point(jr["end"], c + ".end");
+            r.width = req_num(jr, "width", c);
+            r.height = req_num(jr, "height", c);
+            r.youngs = req_num(jr, "youngs", c);
+            r.density = req_num(jr, "density", c);
+            p.ribs.push_back(r);
+        }
     }
     if (j.contains("bridges") && j["bridges"].is_array() && !j["bridges"].empty()) {
         p.bridges.push_back(BridgeBeamDesc{});
@@ -239,6 +275,16 @@ ObservationKind observation_kind(const std::string& k, const std::string& ctx) {
 }
 
 }  // namespace
+
+PlateSpec parse_plate_spec(std::string_view json_text) {
+    json doc;
+    try {
+        doc = json::parse(json_text);
+    } catch (const json::exception& e) {
+        throw RefError(std::string("plate: invalid JSON: ") + e.what());
+    }
+    return plate_spec(doc, "plate");
+}
 
 Scenario parse_scenario(std::string_view json_text) {
     json doc;
