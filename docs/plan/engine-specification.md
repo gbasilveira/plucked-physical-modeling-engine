@@ -120,7 +120,9 @@ This is algebraically identical to the scheme above but keeps the small quantity
 H^{n+1/2} = \tfrac12\left(\frac{u^{n+1}}{\Delta t}\right)^2 + \tfrac12\,\hat\omega^2\, q^n q^{n+1}, \qquad H^{n+1/2}-H^{n-1/2} = \Delta t\left[-2\hat\sigma\,(\delta_{t\cdot}q^n)^2 + f^n\,\delta_{t\cdot}q^n\right]
 ```
 
-**Bandwidth.** A mode MUST be dropped if ω\_dΔt > 0.95π, if its frequency exceeds the instrument's f\_max, or if σ ≥ ω (overdamped). Only modes kept by this rule exist; nothing in the engine aliases from modal truncation.
+**Bandwidth.** A mode MUST be dropped if ω\_dΔt > 0.95π, if its frequency exceeds the instrument's f\_max, or if σ ≥ ω (overdamped). Only modes kept by this rule exist; nothing in the engine aliases from modal truncation. The overdamped exclusion applies to string and body modes. A lumped bridge mode (SPEC-BRG mass–spring–damper) with Ω = 0 is kept and compiled with the limit coefficients ω̂² = 0, κ = 0, σ̂Δt = tanh(σΔt), β = (1 − σ̂Δt)/(1 + σ̂Δt), γ = Δt²/(1 + σ̂Δt); a lumped bridge mode with σ ≥ Ω > 0 is refused at configure time (`Rejected`) until an instrument needs it ([SI-0020](../spec-issues/SI-0020-bridge-modes-bandwidth-rule.md)).
+
+**Coefficient resolution.** Stored in float32, β resolves the decay rate only to a relative 2⁻²⁵/(2σΔt) (1.6 × 10⁻³ at σΔt = 10⁻⁵); tests of measured decay in float32 MUST allow for it ([SI-0017](../spec-issues/SI-0017-orc13-float32-decay-resolution.md)).
 
 **Time-varying parameters.** When ω or σ changes (bending, tension modulation, damper engagement), the state (qⁿ, uⁿ) is kept and only β, κ, γ are recomputed. Changes larger than 0.1% per sub-block MUST be ramped linearly over the sub-block.
 
@@ -239,6 +241,8 @@ This partitioned order is explicit: no solve is needed for the bridge itself. Wh
 ```math
 \begin{bmatrix} F_\parallel \\ F_\perp \end{bmatrix} = R(\theta_b)\begin{bmatrix} F_v \\ F_h \end{bmatrix}, \qquad \begin{bmatrix} w_v \\ w_h \end{bmatrix} = R(\theta_b)^{\mathsf T}\begin{bmatrix} w_\parallel \\ w_\perp \end{bmatrix}
 ```
+
+R(θ) = [[cos θ, −sin θ], [sin θ, cos θ]] (the standard rotation): F\_∥ = cos θ\_b F\_v − sin θ\_b F\_h, F\_⊥ = sin θ\_b F\_v + cos θ\_b F\_h. The bridge's ∥ axis is the direction (cos θ\_b, −sin θ\_b) in the (v, h) plane, so positive θ\_b turns the ∥ axis from +v away from +h; `BridgePointDesc::thetaB` uses this sense ([SI-0019](../spec-issues/SI-0019-brg-rotation-sign-convention.md)).
 
 w\_∥ comes from the soundboard bridge model. w\_⊥ comes from a horizontal model that defaults to a pure conductance G\_h, integrated as w\_⊥ⁿ⁺¹ = w\_⊥ⁿ + Δt G\_h F\_⊥ⁿ. With θ\_b = 0 the polarisations are independent; a small θ\_b gives the slow vertical-to-horizontal energy exchange heard in piano aftersound.
 
@@ -815,7 +819,7 @@ Each block has an analytic or reference answer that the code MUST reproduce befo
 | Triangle pluck ✓ | q\_n(0) formula vs quadrature | Same value | 10⁻⁹ relative |
 | Longitudinal forcing ✓ | Pair sum vs quadrature of −(EA − T)/(2ρA) ∫ y\_x² χ\_m' dx | Same value | 10⁻⁹ relative |
 | Tension modulation ✓ | Σ k\_n² q\_n² vs ∫ y\_x² dx | Same value | 10⁻¹² relative |
-| Damper (diagonal) | e = 1, single mode | σ\_n + e R\_d φ̄² / (2ρA) | 0.1% |
+| Damper (diagonal) | e = 1, single mode | σ\_n + e R\_d φ̄² / (2ρA) | σ passed to the oscillator compiler: 10⁻⁹ relative (float64). Measured decay rate: 0.1% in float64; in float32 0.1% + 2⁻²⁴/(2σΔt), the β quantisation bound with a factor-2 margin ([SI-0017](../spec-issues/SI-0017-orc13-float32-decay-resolution.md)) |
 | Fretted pitch | Finger stop at fret k on a low-stiffness string | Open pitch × 2^(k/12) | 2 cents |
 | Collision passivity | String released onto a flat barrier | Energy constant without contact damping; non-increasing with it | 10⁻⁹ relative per step in float64 |
 | Sample-rate independence | Same instrument at 44.1, 48 and 96 kHz | Identical partial frequencies; matching decays | 0.01 cent; 0.5% |
