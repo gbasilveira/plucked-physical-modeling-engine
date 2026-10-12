@@ -88,7 +88,7 @@ TEST_CASE(
     }
 }
 
-TEST_CASE("A3-R4 the skip rule is bit-identical to the A1 free update and counts skipped solves") {
+TEST_CASE("A3-R5 diagnostic counters count skipped solves under the bit-identical skip rule") {
     const std::size_t n = 32;
     SavSegment<float> seg;
     REQUIRE(seg.configure(n, 0, 3, kFs) == pme::Status::Ok);
