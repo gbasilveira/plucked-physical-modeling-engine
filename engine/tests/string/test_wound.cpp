@@ -43,7 +43,7 @@ TEST_CASE("A2-T1 plain steel string mass and stiffness") {
     PME_CHECK_REL(pme::string::bendingStiffness(p), 9.8175e-3, 1e-4);
 }
 
-TEST_CASE("A2-T1 wound bass string mass and stiffness") {
+TEST_CASE("A2-R1 wound bass string mass and stiffness") {
     auto p = woundBass(1.9, 27.5);
     // d_c = 1.6 mm, d_o = 4.7 mm, eta_w = 0.85, eps_w = 0.
     const double rhoA = handRhoA(1.6e-3, 7850.0, 4.7e-3, 8960.0, 0.85);

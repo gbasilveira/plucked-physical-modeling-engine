@@ -249,7 +249,7 @@ Track 0 creates the repository, CI, test tooling, frozen interfaces and an indep
   1. P0.5-R1 Stiff damped string with an energy-conserving finite-difference scheme and configurable grid.
   2. P0.5-R2 Hammer contact with an iterative (Newton) energy-conserving scheme, deliberately different from the engine's SAV method.
   3. P0.5-R3 Bridge as a lumped mass–spring–dashpot or a conductance, shared by several strings, with both polarisations.
-  4. P0.5-R4 Finite-difference orthotropic Kirchhoff plate on a rectangle, coupled to strings at bridge points.
+  4. P0.5-R4 Finite-difference orthotropic Kirchhoff plate on a rectangle, coupled to strings at bridge points, with axis-parallel ribs modelled as beams (follow-up P0.5-ribs, added 2026-10-12 for B2-T4).
   5. P0.5-R5 Distributed string–barrier collision (penalty potential, Newton solve).
   6. P0.5-R6 Tension modulation and longitudinal waves (iterative scheme).
   7. P0.5-R7 Grid-refinement and energy-monitor tools; Python bindings and a CLI that render scenarios to features and WAV.

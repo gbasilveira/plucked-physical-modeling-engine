@@ -41,8 +41,9 @@ Non-blocking items from the ICR-0001 review (see [ICR-0001 "Application"](ICR-00
 - `docs/dev/interfaces.md` lists non-audio functions under "Real-time functions".
 - `engine/include/pme/nonlinear.hpp` says the SAV types are declared privately by A5; A3 declares them, in `engine/src/nonlinear/include/pme/nonlinear/sav.hpp` (A5 adds the hammer potential). Comment only.
 - SI-0010 (resolved 2026-10-11): add `double muteFeltSigma{20.0}` (σ\_felt, s⁻¹) to `Defaults` (compatible: new member with a default).
-- A4 (2026-10-11, candidate): `SegmentBridgeTerms` holds one `a`; the horizontal polarisation needs a\_n,h = ρA ω̂²\_h,n g\_n from `oscH`. A4 provides it through an internal function; a member `std::vector<float> aH` would make it part of the contract (compatible).
+- A4 (2026-10-11, candidate): `SegmentBridgeTerms` holds one `a`; the horizontal polarisation needs a\_n,h = ρA ω̂²\_h,n g\_n from `oscH`. A4 provides it through `pme::bridge::horizontalForceCoefficients` (engine/src/bridge/include/pme/bridge/terms.hpp); a member `std::vector<float> aH` in `SegmentBridgeTerms`, filled by `compileBridgeTerms`, would make it part of the contract (compatible). Confirmed by the A4 implementer handoff 2026-10-12.
 - SI-0013 (resolved 2026-10-11): add `double moistureRef{0.12}` (MC\_ref, dimensionless fraction) to `PlateParams` (compatible: new member with a default), with the matching B1 schema field; until then compileBody uses MC\_ref = 0.12.
+- B2 handoff (2026-10-12, proposed by the B2 implementer): (1) the SI-0013 `PlateParams::moistureRef` member above, confirmed as needed by B2-T5; (2) an optional static-prestress field in the instrument description (B2-R4: crown and downbearing). B2 takes prestress as a `compiler/pme_compiler/body` API argument only, so an instrument file cannot carry it. Proposal: an optional `PlateParams` member (for example `prestress`, in-plane membrane stress resultants N\_x, N\_y, N\_xy in N/m, default zero = none) with the matching B1 schema field; compatible (new member with a default). Exact form to be settled in the ICR; physics review needed (it changes body modes).
 
 ## Index
 

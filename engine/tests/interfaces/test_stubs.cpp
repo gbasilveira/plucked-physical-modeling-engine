@@ -65,10 +65,11 @@ TEST_CASE("P0.4-R3 compile stubs return NotImplemented and leave outputs unchang
         CHECK(out.k.empty());
     }
     SUBCASE("compileBridgeTerms") {
+        // Implemented by A4: empty modes are invalid and leave `out` unchanged (ADR-0006).
         pme::SegmentBridgeTerms out;
         out.tOverL = 7.0;
         CHECK(pme::compileBridgeTerms(pme::StringModes{}, pme::BridgeEnd::At0, out) ==
-              pme::Status::NotImplemented);
+              pme::Status::InvalidArgument);
         CHECK(out.tOverL == 7.0);
         CHECK(out.end == pme::BridgeEnd::AtL);
     }

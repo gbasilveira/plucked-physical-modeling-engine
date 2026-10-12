@@ -16,3 +16,5 @@ SPEC-DMP "Sostenuto", add: "The sostenuto pedal is down while its depth is ≥ 0
 
 ## Resolution
 Resolved 2026-10-11 by the orchestrator's default under the owner's proceed instruction, as proposed. Control logic only (no physics or numerics); the owner may change the thresholds. SPEC-DMP updated in the `A6: …` briefing commit. Affected phases: A6 (A6-R5, A6-T2), C4 (event handling).
+
+Consumed by A6 (2026-10-12): the A6 implementation applies the 0.5 thresholds (A6-R5, A6-T2). C4 still consumes it for event handling.

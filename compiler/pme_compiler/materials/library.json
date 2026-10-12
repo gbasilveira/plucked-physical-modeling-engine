@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "mcRef": 0.12,
+  "note": "Every entry records its source (B2-R2). No published tonewood value is included because none could be consulted when this file was written (no network access to the USDA Forest Products Laboratory Wood Handbook, FPL-GTR-282); see 'omissions'. Add species only from a source that has been read, with the table or page and the derivation of every field.",
+  "materials": [
+    {
+      "name": "p0_5_reference_plate",
+      "kind": "test-reference",
+      "description": "Spruce-like orthotropic plate material of the P0.5 reference solver (P0.5-T4). Not a measurement of any wood.",
+      "constants": {
+        "youngsL": 10.0e9,
+        "youngsR": 0.5e9,
+        "shearLR": 0.6e9,
+        "poissonLR": 0.37,
+        "poissonRL": 0.0185,
+        "density": 400.0,
+        "lossFactor": 0.01
+      },
+      "lossFactorTable": null,
+      "moistureSlopes": null,
+      "source": {
+        "author": "this repository (phase P0.5)",
+        "title": "Reference solver: the plate for P0.5-T4",
+        "year": 2026,
+        "locator": "docs/dev/reference-solver.md, paragraph after the test table",
+        "licence": "MIT (this repository)",
+        "derivation": {
+          "youngsL": "stated: E_L = 10 GPa",
+          "youngsR": "stated: E_R = 0.5 GPa",
+          "shearLR": "stated: G_LR = 0.6 GPa",
+          "poissonLR": "stated: nu_LR = 0.37",
+          "poissonRL": "derived: nu_RL = nu_LR E_R / E_L = 0.37 * 0.5 / 10",
+          "density": "stated: rho = 400 kg/m^3",
+          "lossFactor": "not part of the P0.5 plate (lossless reference); 0.01 is a placeholder of the B1 example instruments (instruments/examples), not a measurement",
+          "moistureSlopes": "not available: all four slopes are taken as zero"
+        }
+      }
+    }
+  ],
+  "omissions": [
+    "Sitka spruce, Norway (European) spruce, Engelmann spruce, western red cedar, maple, mahogany, Indian rosewood, ebony: not included. The constants (E_L, E_R, G_LR, nu, rho at 12 % MC), the loss factors and the moisture slopes must come from a published source that the author has read (candidate: USDA FPL Wood Handbook FPL-GTR-282 (2021), Chapter 5 Table 5-1 and Chapter 4; a US government work, public domain). The source was not reachable from the build environment, and values must not be written from memory.",
+    "Moisture slopes dE_L/dMC, dE_R/dMC, dG_LR/dMC, drho/dMC: no source consulted for any species."
+  ]
+}
