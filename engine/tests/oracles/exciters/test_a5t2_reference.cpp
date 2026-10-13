@@ -56,6 +56,7 @@
 #include <iomanip>
 #include <map>
 #include <pme/analysis/wav.hpp>
+#include <pme/test/scratch.hpp>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -283,7 +284,7 @@ struct ReferenceValues {
 ReferenceValues referenceLadder(const ham::OracleString& s, double speed, double width) {
     const int n0 = envInt("PME_A5T2_N0", 200);
     const int fs0 = envInt("PME_A5T2_FS0", 96000);
-    const fs::path dir = fs::temp_directory_path() / ("pme_a5t2_" + std::to_string(std::rand()));
+    const fs::path dir = pme::test::unique_scratch_dir("pme_a5t2");
     fs::create_directories(dir);
     std::array<Contact, 3> c;
     for (int level = 0; level < 3; ++level) {
