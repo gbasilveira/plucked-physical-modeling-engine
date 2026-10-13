@@ -165,7 +165,9 @@ each benchmark whose current median exceeds the baseline median by more than 5% 
 strictly greater than 1.05), exits 0 otherwise, and exits 2 for unreadable or malformed input.
 Benchmarks present in only one file are reported, not failed.
 
-**Baselines** live in `tools/bench/baselines/<machine-id>.json`; none exist yet. They are produced on
+**Baselines** live in `tools/bench/baselines/<machine-id>.json`, where `<machine-id>` is `<os>-<arch>-<cpu model>` from the
+file's own `machine` block, lower case with words joined by hyphens and without the (R) marks (for
+example `linux-x86_64-intel-xeon-2-10ghz.json`, the first one, from A8). They are produced on
 a reference machine and compared only with runs on the same machine class (V2 and decision D-4 define
 the reference machines): the comparison prints both files' CPU model and warns when they differ.
 

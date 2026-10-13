@@ -138,7 +138,7 @@ dot f64 3·10⁻¹⁶; dotF64 0; axpyNeg 4·10⁻⁷ on fused targets; rank-one 
 ## Baseline and benchmarks
 
 `simd_bench` (perf; each kernel on each target and the scalar reference) wrote
-`tools/bench/baselines/intel-xeon-processor-2-80ghz-a8.json`. CI-runner numbers are in the
+`tools/bench/baselines/linux-x86_64-intel-xeon-2-10ghz.json`. CI-runner numbers are in the
 handoff report once CI runs.
 
 ## Compilers

@@ -2,7 +2,7 @@
 // Covers: A8-R1, A8-R2, A8-R3, A8-R4, A8-T3
 // Throughput of every SIMD kernel on each instruction set this CPU supports and of the scalar
 // reference. Nightly (perf). Its JSON (`--out`) is the stored baseline
-// tools/bench/baselines/<machine-id>-a8.json (docs/dev/simd.md, A8-T3).
+// tools/bench/baselines/<machine-id>.json (docs/dev/simd.md, A8-T3).
 //
 // Benchmark names are <kernel>_<size>_<target>, where <target> is a Highway target name or
 // "scalar" for the reference of the same kernel.
