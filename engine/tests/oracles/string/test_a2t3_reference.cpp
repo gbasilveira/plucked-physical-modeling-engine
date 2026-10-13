@@ -49,6 +49,7 @@
 #include <pme/analysis/wav.hpp>
 #include <pme/osc/mode_bank.hpp>
 #include <pme/string.hpp>
+#include <pme/test/scratch.hpp>
 #include <pme/test/tolerance.hpp>
 #include <span>
 #include <sstream>
@@ -314,8 +315,7 @@ TEST_CASE("A2-T3 stiff string compiler vs P0.5 reference solver") {
         const std::vector<double> yEngine = engineSignal(spec, modes);
         const auto engine = trackSignal(yEngine, kFs, approx);
         REQUIRE(engine.partials.size() == approx.size());
-        const fs::path dir =
-            fs::temp_directory_path() / ("pme_a2t3_" + std::to_string(std::rand()));
+        const fs::path dir = pme::test::unique_scratch_dir("pme_a2t3");
         fs::create_directories(dir);
         // Three refinement levels of the reference (grid and time step halve per level).
         std::array<std::vector<double>, 3> refSignal;
