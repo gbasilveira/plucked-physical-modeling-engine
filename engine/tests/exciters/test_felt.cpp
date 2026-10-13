@@ -6,6 +6,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -195,4 +196,110 @@ TEST_CASE("A5-R3 Stulov with no hereditary amplitude reduces to the elastic felt
     for (std::size_t i = 0; i < a.segment().size(); ++i) {
         CHECK(a.segment().q()[i] == b.segment().q()[i]);
     }
+}
+
+// SPEC-HAM Stulov: the felt force is K (delta^p - eps h), so the hereditary term removes energy
+// (a bounce loses energy) and the felt never pulls. Regression for a sign error that made the
+// term stiffen the felt and add energy (rebound/incoming 1.36 instead of 0.60 on a rigid wall).
+TEST_CASE("A5-R3 Stulov hereditary term dissipates and the felt force is never negative") {
+    for (const std::size_t ns : {std::size_t{1}, std::size_t{3}}) {
+        for (const double eps : {0.0, 0.3}) {
+            HammerParams h = pianoHammer();
+            h.law = FeltLaw::Stulov;
+            h.stulovEps = eps;
+            h.stulovTau = 5.0e-4;
+            h.muHC = 0.0;
+            const std::vector<StringModes> modes = unison(ns, true);
+            StruckNote<double> note;
+            REQUIRE(note.configure(describe(modes, h), kFs, nullptr) == Status::Ok);
+            REQUIRE(note.launch(0.8, 0.0) == Status::Ok);
+            const double e0 = note.energy();
+            double work = 0.0;
+            double minForce = 0.0;
+            for (int n = 0; n < 800; ++n) {
+                const std::span<const double> z(note.segment().q(), note.segment().size());
+                std::array<double, 3> dp{};
+                for (std::size_t s = 0; s < ns; ++s) {
+                    const double d = note.potential().penetration(z, s);
+                    dp[s] = d > 0.0 ? std::pow(d, note.potential().map().exponent[s]) : -1.0;
+                }
+                note.step();
+                work += note.felt().hereditaryWork(note.segment());
+                for (std::size_t s = 0; s < ns; ++s) {
+                    if (dp[s] >= 0.0) {
+                        const double wk =
+                            note.potential().map().weight[s] * note.potential().map().stiffness[s];
+                        const double total = wk * dp[s] - note.felt().hereditaryForce(s);
+                        minForce = std::min(minForce, total / std::max(wk * dp[s], 1e-300));
+                        minForce = std::min(minForce, note.felt().hereditaryForce(s));
+                    }
+                }
+            }
+            MESSAGE("Stulov " << ns << " string(s), eps " << eps
+                              << ": hereditary work/E_0 = " << sci(work / e0)
+                              << ", min felt force/(K delta^p) = " << sci(minForce));
+            if (eps > 0.0) {
+                CHECK(work / e0 < 0.0);  // dissipates: rebound energy < incoming energy
+            } else {
+                CHECK(std::abs(work / e0) <= 1e-14);
+            }
+            CHECK(minForce >= -1e-12);  // felt cannot pull
+        }
+    }
+}
+
+namespace {
+
+// Rigid-wall bounce of an 8 g mass with a Stulov felt: K = 4e9, p = 2.5, tau = 0.5 ms, 3 m/s.
+// The hereditary force follows SPEC-HAM: F = +K min(eps h, delta^p) on x_H, so that the felt
+// force is K max(0, delta^p - eps h). Returns rebound kinetic energy / incoming kinetic energy.
+double rigidWallStulovBounce(double eps, double& minFeltForce) {
+    const double fs = 48000.0;
+    const double dt = 1.0 / fs;
+    const double K = 4.0e9;
+    const double p = 2.5;
+    const double v = 3.0;
+    const double a = std::exp(-dt / 5.0e-4);
+    nl::SavSegment<double> seg;
+    REQUIRE(seg.configure(0, 1, 0, fs) == Status::Ok);
+    REQUIRE(seg.setLumped(0, 8.0e-3) == Status::Ok);
+    const RigidFeltPotential<double> pot(K, p, 0);
+    const std::array<const nl::Potential<double>*, 1> pots{&pot};
+    seg.q()[0] = -v * dt;
+    seg.u()[0] = v * dt;
+    double h = 0.0;
+    minFeltForce = 0.0;
+    std::array<double, 1> f{};
+    for (int n = 0; n < 20000; ++n) {
+        const double d = seg.q()[0];
+        const double dp = d > 0.0 ? std::pow(d, p) : 0.0;
+        h = a * h + (1.0 - a) * dp;
+        const double hered = d > 0.0 ? K * std::min(eps * h, dp) : 0.0;
+        minFeltForce = std::min(minFeltForce, K * dp - hered);
+        f[0] = hered;
+        nl::savStep<double>(seg, pots, {}, std::span<const double>(f));
+        if (n > 50 && seg.q()[0] < -v * dt * 50.0) {
+            break;
+        }
+    }
+    const double vOut = seg.u()[0] / dt;
+    return (vOut * vOut) / (v * v);
+}
+
+}  // namespace
+
+TEST_CASE("A5-R3 Stulov rigid-wall bounce loses energy with eps > 0 and conserves it at eps = 0") {
+    double minForce = 0.0;
+    const double conserved = rigidWallStulovBounce(0.0, minForce);
+    CHECK(conserved == doctest::Approx(1.0).epsilon(1e-3));
+    CHECK(minForce >= 0.0);
+    const double lossy = rigidWallStulovBounce(0.3, minForce);
+    MESSAGE("rebound KE / incoming KE: eps 0 " << sci(conserved, 4) << ", eps 0.3 "
+                                               << sci(lossy, 4));
+    // With the no-pull clamp (SPEC-HAM): 0.7187 at 48 kHz, converging to 0.717; the unclamped
+    // force K (delta^p - eps h), which can pull at unloading, would give 0.604. The wrong sign,
+    // K (delta^p + eps h), gave 1.358.
+    CHECK(lossy < 1.0);
+    CHECK(lossy == doctest::Approx(0.7187).epsilon(0.01));
+    CHECK(minForce >= 0.0);  // felt cannot pull
 }

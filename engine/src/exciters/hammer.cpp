@@ -42,11 +42,12 @@ Status hammerVelocity(double nu, const HammerParams& params, double& vH) noexcep
 
 Status validate(const HammerParams& h) noexcept {
     const bool ok = finitePositive(h.mass) && finitePositive(h.K) && finitePositive(h.p) &&
-                    std::isfinite(h.muHC) && h.muHC >= 0.0 && finitePositive(h.width) &&
-                    std::isfinite(h.strikeRatio) && h.strikeRatio > 0.0 && h.strikeRatio < 1.0 &&
-                    std::isfinite(h.vMin) && h.vMin >= 0.0 && std::isfinite(h.vMax) &&
-                    h.vMax >= h.vMin && finitePositive(h.gammaV) && finitePositive(h.dCheck) &&
-                    std::isfinite(h.stulovEps) && std::isfinite(h.stulovTau) &&
+                    std::isfinite(h.muHC) && h.muHC >= 0.0 && std::isfinite(h.width) &&
+                    h.width >= 0.0 && std::isfinite(h.strikeRatio) && h.strikeRatio > 0.0 &&
+                    h.strikeRatio < 1.0 && std::isfinite(h.vMin) && h.vMin >= 0.0 &&
+                    std::isfinite(h.vMax) && h.vMax >= h.vMin && finitePositive(h.gammaV) &&
+                    finitePositive(h.dCheck) && std::isfinite(h.stulovEps) &&
+                    std::isfinite(h.stulovTau) &&
                     (h.law != FeltLaw::Stulov || (h.stulovEps >= 0.0 && h.stulovTau > 0.0));
     return ok ? Status::Ok : Status::InvalidArgument;
 }
@@ -351,10 +352,14 @@ void HammerFelt<S>::update(const HammerPotential<S>& potential, std::span<const 
         return;
     }
     for (std::size_t s = 0; s < ns; ++s) {
-        // SPEC-HAM Stulov: h^n = a h^{n-1} + (1 - a) [delta^n]_+^p; F = -K eps h along c_s, in
-        // contact only (the felt does not act on a separated hammer).
+        // SPEC-HAM Stulov: h^n = a h^{n-1} + (1 - a) [delta^n]_+^p; the felt force is
+        // K (delta^p - eps h). The elastic part -K delta^p c_s is in V_H, so the explicit
+        // hereditary part on the generalised coordinates is +K eps h c_s (it reduces the felt
+        // force). Felt cannot pull: the total w K (delta^p - eps h) is kept >= 0, so the
+        // hereditary term is clamped to w K delta^p. In contact only.
         h_[s] = decay_ * h_[s] + (1.0 - decay_) * dp[s];
-        const double f = delta[s] > 0.0 ? -map.weight[s] * map.stiffness[s] * eps_ * h_[s] : 0.0;
+        const double wk = map.weight[s] * map.stiffness[s];
+        const double f = delta[s] > 0.0 ? std::min(wk * eps_ * h_[s], wk * dp[s]) : 0.0;
         force_[s] = f;
         if (f != 0.0) {
             for (std::size_t i = 0; i < force.size(); ++i) {
@@ -468,9 +473,12 @@ Status StruckNote<S>::configure(const StruckNoteDesc& desc, double fs,
         }
         slices[s].offset = off;
         slices[s].phiBar.assign(n, 0.0F);
-        // SPEC-STR Forces and observations: raised-cosine window of width b_H at x_c = beta_c L.
-        string::windowedShapes(m, desc.hammer.strikeRatio * m.L, string::WindowKind::RaisedCosine,
-                               desc.hammer.width, slices[s].phiBar);
+        // SPEC-STR Forces and observations: raised-cosine window of width b_H at x_c = beta_c L;
+        // width 0 is a point contact, W = 1 (phi-bar_n = phi_n(x_c) exactly).
+        string::windowedShapes(
+            m, desc.hammer.strikeRatio * m.L,
+            desc.hammer.width == 0.0 ? string::WindowKind::Point : string::WindowKind::RaisedCosine,
+            desc.hammer.width, slices[s].phiBar);
         off += n;
     }
 

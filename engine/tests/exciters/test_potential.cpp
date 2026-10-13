@@ -187,6 +187,34 @@ TEST_CASE("A5-R2 the window and the strike position are those of windowedShapes"
     CHECK(note.potential().stringPosition(z, 0) == 0.0);
 }
 
+TEST_CASE(
+    "A5-R2 width zero is a point contact equal to the window limit and negative is rejected") {
+    const std::vector<StringModes> modes = unison(1, true);
+    HammerParams h = pianoHammer();
+    h.strikeRatio = 0.11;
+    h.width = 0.0;
+    StruckNote<double> point;
+    REQUIRE(point.configure(describe(modes, h), kFs, nullptr) == Status::Ok);
+    h.width = 1.0e-6;
+    StruckNote<double> narrow;
+    REQUIRE(narrow.configure(describe(modes, h), kFs, nullptr) == Status::Ok);
+    std::vector<float> expected(modes[0].k.size(), 0.0F);
+    string::windowedShapes(modes[0], 0.11 * modes[0].L, string::WindowKind::Point, 0.0, expected);
+    const auto& a = point.potential().slice(0).phiBar;
+    const auto& b = narrow.potential().slice(0).phiBar;
+    REQUIRE(a.size() == b.size());
+    for (std::size_t n = 0; n < a.size(); ++n) {
+        CHECK(a[n] == expected[n]);  // SPEC-STR: W = 1 for a point
+        // b = 1 um, all modes below 14 kHz: the window factor differs from 1 by < 1e-8, below
+        // the float32 storage resolution (6e-8), so allow one float ulp.
+        CHECK(static_cast<double>(b[n]) ==
+              doctest::Approx(static_cast<double>(a[n])).epsilon(1e-7));
+    }
+    h.width = -1.0e-3;
+    StruckNote<double> bad;
+    CHECK(bad.configure(describe(modes, h), kFs, nullptr) == Status::InvalidArgument);
+}
+
 TEST_CASE("A5-R2 an approach sign of minus one mirrors the string position") {
     const std::vector<StringModes> modes = unison(1, true);
     StruckNoteDesc d = describe(modes, pianoHammer());

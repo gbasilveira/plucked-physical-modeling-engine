@@ -45,7 +45,7 @@ the segment and on the bridge point.
 
 δ\_s = x\_H − s\_E Σ\_n φ̄\_s,n q\_s,n; V\_H = Σ\_s w\_s K\_s/(p\_s+1) [δ\_s]₊^(p\_s+1); ∂V/∂x\_H =
 Σ w\_s K\_s [δ\_s]₊^p\_s; ∂V/∂q\_s,n = −s\_E φ̄\_s,n w\_s K\_s [δ\_s]₊^p\_s. φ̄ is `windowedShapes` of a
-raised-cosine window of width b\_H at x\_c = β\_c L on the segment's own x axis (float32 storage);
+raised-cosine window of width b\_H (0 = point contact, φ̄\_n = φ\_n(x\_c)) at x\_c = β\_c L on the segment's own x axis (float32 storage);
 arithmetic is float64. `value` is exactly 0 when every δ\_s ≤ 0 or the potential is inactive, so the
 A3 skip rule applies. Strings with weight 0 are ignored.
 
@@ -64,14 +64,21 @@ single string two; Stulov uses none.
 
 ## Stulov hereditary felt (A5-R3)
 
-h\_s^n = a h\_s^(n−1) + (1 − a) [δ\_s^n]₊^p\_s with a = e^(−Δt/τ); the explicit force
-F\_s = −w\_s K\_s ε h\_s^n along c\_s goes through `savStep`'s `explicitForce` (N per coordinate); the
-elastic part stays in V\_H. Interpretation recorded here: the force acts only while δ\_s > 0 (the felt
-does not act on a separated hammer) and carries the strike weight w\_s; SPEC-HAM states neither. The
-variant is not provably passive: `HammerFelt::hereditaryWork(seg)` returns the work of the hereditary
-force in the last step (float64, Σ F\_s c\_s^T (u^(n+1) + u^n)/2), and the test closes E^(n+1) − E^n +
-dissipation = work to 1 × 10⁻¹⁴ per step. Measured: over a strike at ν = 0.8 (ε = 0.3, τ = 0.5 ms)
-the hereditary force **adds** 2.4% of the hammer energy for one string and 3.8% for a trichord.
+h\_s^n = a h\_s^(n−1) + (1 − a) [δ\_s^n]₊^p\_s with a = e^(−Δt/τ). SPEC-HAM form: the felt force of string s
+is f\_s = w\_s K\_s max(0, δ\_s^p − ε h\_s) (the hereditary term reduces the force; felt cannot pull).
+The SAV elastic force on the generalised coordinates stays in V\_H (−w\_s K\_s δ\_s^p c\_s), and the
+explicit hereditary term goes through `savStep`'s `explicitForce` (N per coordinate):
+F\_hered,s = +w\_s K\_s min(ε h\_s, δ\_s^p) c\_s while δ\_s > 0, else 0, so the two always oppose; on x\_H
+the elastic part is −wKδ^p and the hereditary part +wK·min(εh, δ^p), on string mode n they are
++s\_E φ̄\_n wKδ^p and −s\_E φ̄\_n wK·min(εh, δ^p). The variant is not provably passive:
+`HammerFelt::hereditaryWork(seg)` returns the work of the hereditary force in the last step (float64,
+Σ F\_s c\_s^T (u^(n+1) + u^n)/2), and the test closes E^(n+1) − E^n + dissipation = work to 1 × 10⁻¹⁴
+per step. Measured: the hereditary force **removes** energy (work/E₀ < 0 over a strike at ν = 0.8,
+ε = 0.3, τ = 0.5 ms, in `test_felt.cpp`). Rigid-wall bounce (8 g, K = 4 × 10⁹, p = 2.5, τ = 0.5 ms,
+3 m/s): rebound KE / incoming KE = 1.000 at ε = 0 and 0.719 at ε = 0.3 at 48 kHz (0.717 converged) with the
+no-pull clamp; without the clamp, K(δ^p − εh), which pulls during unloading, it would be 0.604 (the
+earlier sign error, K(δ^p + εh), gave 1.358). The force is zero outside contact (the felt does not act on a separated
+hammer) and carries the strike weight w\_s.
 
 ## Release, repetition (A5-R4)
 

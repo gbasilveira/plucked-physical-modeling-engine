@@ -201,8 +201,9 @@ public:
     void reset() noexcept;
 
     /// Set R_s (and `alongGradient`) from the state z^n; for Stulov advance h_s and add the
-    /// hereditary force -w_s K_s eps h_s c_s (N per coordinate) into `force` for strings in
-    /// contact. Thread: audio. Allocates: no.
+    /// hereditary force +w_s K_s eps h_s c_s (N per coordinate; it reduces the felt force
+    /// K (delta^p - eps h), clamped so that force stays >= 0) into `force` for strings in contact.
+    /// Thread: audio. Allocates: no.
     void update(const HammerPotential<S>& potential, std::span<const S> z,
                 std::span<S> force) noexcept;
 
@@ -215,6 +216,9 @@ public:
     /// Work done by the hereditary force in the last step, float64 J: sum_s F_s c_s^T (u^{n+1} +
     /// u^n) / 2, so that E^{n+1} - E^n + dissipation = work (A5-R3). 0 for Hunt-Crossley.
     [[nodiscard]] double hereditaryWork(const nl::SavSegment<S>& seg) const noexcept;
+    /// Hereditary force magnitude w_s K_s eps h_s (clamped to w_s K_s delta^p) applied last step, N
+    /// (tests).
+    [[nodiscard]] double hereditaryForce(std::size_t s) const noexcept { return force_[s]; }
     /// Hereditary state h_s of string s (tests).
     [[nodiscard]] double hereditary(std::size_t s) const noexcept { return h_[s]; }
 
