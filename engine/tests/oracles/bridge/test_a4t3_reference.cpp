@@ -66,6 +66,7 @@
 #include <fstream>
 #include <iomanip>
 #include <pme/analysis/wav.hpp>
+#include <pme/test/scratch.hpp>
 #include <pme/test/tolerance.hpp>
 #include <sstream>
 #include <string>
@@ -394,7 +395,7 @@ void runReferenceCase(const Case& c) {
     const T3Strings t = buildStrings();
     const auto engineY = engineSignals(t, c);
 
-    const fs::path dir = fs::temp_directory_path() / ("pme_a4t3_" + std::to_string(std::rand()));
+    const fs::path dir = pme::test::unique_scratch_dir("pme_a4t3");
     fs::create_directories(dir);
     std::array<std::array<std::vector<double>, 4>, 3> refY;
     for (int level = 0; level < 3; ++level) {
