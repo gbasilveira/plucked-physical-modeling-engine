@@ -98,7 +98,7 @@ flowchart LR
   D_11[/"D-11 Human approver for G5 and each G7"/]
   D_12[/"D-12 Redistribution rights for published piano data"/]
   D_2[/"D-2 Repository host and organisation name"/]
-  D_3[/"D-3 Product name and frozen plug-in identifiers"/]
+  D_3[/"D-3 Brand, product name and frozen plug-in identifiers"/]
   D_4[/"D-4 Reference machines for performance validation"/]
   D_5[/"D-5 Access to a concert grand and measurement equipment"/]
   D_6[/"D-6 Listening-test participants and consent process"/]

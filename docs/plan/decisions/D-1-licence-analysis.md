@@ -1,6 +1,6 @@
 # Licence analysis for the owner: MIT, GPL-3.0 or AGPL-3.0
 
-Status: **analysis for decision D-1 (licence half); the choice is the owner's.** The repository stays MIT (the D-1 default) until the owner decides.
+Status: **decided by the owner on 2026-10-12: AGPL-3.0-or-later** (licence half of D-1; recorded as "or later" per section 7's recommendation; the owner may still say "only"). The repository stays MIT until the relicensing task H1-agpl lands (section 8). The GUI half of D-1 keeps its default (web UI in a native WebView).
 Written by: planner (Opus) · Date: 2026-10-12 · Related: D-1, D-8, H1 (H1-R1 licence ADR, H1-R4 notices, H1-R7 prior art, H1-R8 contribution policy)
 
 This is a planning analysis, not legal advice. Before a public release, H1 should have a lawyer, or at least the FSF/OSI guidance cited below, confirm the conclusions that matter for the chosen licence.
@@ -119,3 +119,12 @@ The owner reports checking patents with another AI assistant (Gemini). The reply
 - Gmsh licence and exception: https://spdx.org/licenses/Gmsh-exception.html
 - Apple AudioUnitSDK repository: https://github.com/apple/AudioUnitSDK
 - Licence texts and compatibility: https://www.gnu.org/licenses/gpl-3.0.html, https://www.gnu.org/licenses/agpl-3.0.html, https://www.gnu.org/licenses/license-list.html, https://www.gnu.org/licenses/gpl-faq.html (plug-ins, mere aggregation)
+
+## 8. Owner decision (2026-10-12) and what follows
+
+- **Decision:** the project licence is **AGPL-3.0-or-later** for the whole repository (engine, compiler, plug-ins, bindings, tools), relayed by the orchestrator on 2026-10-12. Recorded as "or later" as section 7 recommends; if the owner prefers "AGPL-3.0-only", only the SPDX identifier and the LICENSE notice change. ADR: docs/adr/ADR-licence.md (H1-R1).
+- **Accepted consequence: Mac App Store.** The standalone app will not be distributed through the Mac App Store (Apple's terms are widely considered incompatible with the GPL family). Direct downloads, notarised (D-9), are unaffected.
+- **Dependencies:** every row of section 4 is compatible with AGPL-3.0-or-later as we use them. Gmsh (GPL-2.0-or-later) combines with AGPL-3.0 through GPL-3.0 (section 13 of both licences). H1-agpl rechecks `pyproject.toml`, `uv.lock` and `cmake/dependencies.cmake` against this table and lists anything new.
+- **Network use (section 13):** anyone who runs a modified engine, compiler or renderer as a network service for users must offer those users the corresponding source. README and the user documentation state this; if the project itself ever offers a rendering service, the service must link to its source.
+- **When:** a repository-wide header change conflicts with every in-flight worktree, so H1-agpl is **scheduled after A5, A7, A8 and A9 merge**, in the same window as applying ICR-0002. Until then new files may keep the MIT header; the bulk pass converts them. Code already published under MIT stays available under MIT to those who received it (section 6).
+- **Contributions:** before the first outside contribution, H1-R8 adds the DCO and the clean-room sentence to CONTRIBUTING.md (section 5). A CLA is needed only if the owner wants to keep the option of dual licensing.
