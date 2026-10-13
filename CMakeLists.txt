@@ -138,3 +138,22 @@ add_subdirectory(engine/tests/exciters)
 target_link_libraries(pme_string PUBLIC pme_nonlinear)
 add_subdirectory(engine/tests/geometric)
 # ---- end A7 ----
+
+# ---- A8: SIMD kernels ----
+target_include_directories(pme_simd PUBLIC "${PROJECT_SOURCE_DIR}/engine/src/simd/include")
+# The scalar references must be truly scalar for A8-T3 (docs/dev/simd.md, "Scalar references").
+if(MSVC)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(PME_SIMD_REFERENCE_OPTIONS /Qvec- /clang:-fno-slp-vectorize)
+  else()
+    set(PME_SIMD_REFERENCE_OPTIONS /Qvec-)
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(PME_SIMD_REFERENCE_OPTIONS -fno-vectorize -fno-slp-vectorize)
+else()
+  set(PME_SIMD_REFERENCE_OPTIONS -fno-tree-vectorize -fno-tree-slp-vectorize)
+endif()
+set_source_files_properties("${PROJECT_SOURCE_DIR}/engine/src/simd/reference.cpp"
+  PROPERTIES COMPILE_OPTIONS "${PME_SIMD_REFERENCE_OPTIONS}")
+add_subdirectory(engine/tests/simd)
+# ---- end A8 ----
