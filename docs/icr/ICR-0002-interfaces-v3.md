@@ -115,3 +115,12 @@ Test names follow docs/icr/README.md: the owning phase's ID, then the ICR ID.
 **Approved by the orchestrator, 2026-10-12,** under owner decision D-13. The owner stated (orchestrator's paraphrase) that options and settings are preferable to leaving alternatives unimplemented, and that the owner will approve everything at the end given detailed documentation. The ICR protocol (docs/icr/README.md, step 2) gives the approval to the orchestrator, so no separate owner approval is required to apply it; the change is listed for the owner's final review. Next: one interface agent (implementer, Sonnet) applies the change and the interfaces-v3 tag, **after A5, A7, A8 and A9 have merged** (orchestrator scheduling decision, 2026-10-12); the planner updates SPEC-API where it changes; A5, A7, A9 switch from their internal mirrors to the public types in follow-ups; B6 and A10 are briefed against v3.
 
 Earlier note: Physics review: the prestress field changes body modes and was approved in principle by the owner (2026-10-12). The B2 reviewer checks the prestress computation (B2-R4). Interfaces tag after applying: interfaces-v3.
+
+## Amendment proposed 2026-10-13 (SI-0032 item 2; pending the orchestrator's approval)
+
+```cpp
+// engine/include/pme/string.hpp
+struct StringModes { /* existing */ std::vector<double> omegaH; };  // horizontal undamped omega_n (rad/s), detuneH applied
+```
+
+Compatible (new member, empty by default). `compileString` fills it with what `horizontalOmega(omega, detuneH)` computes today; `applyMute` leaves it unchanged. Reason: the implicit bridge's matched coupling g̃\_n = g\_n ω\_n/ω̂\_n needs the horizontal ω\_n, which `StringModes` does not carry (A9 uses the vertical one; exact only at detuneH = 0). Phases affected: A2 (fills it; test `A2-R5 ICR-0002 compileString fills omegaH`), A9 follow-up (uses it; test at detuneH ≠ 0). Not yet part of the approved change above until the orchestrator approves this amendment.

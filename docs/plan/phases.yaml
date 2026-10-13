@@ -33,7 +33,7 @@ decisions:
 
 gates:
   G0: {name: "Foundations", requires: [P0.1, P0.2, P0.3, P0.4], human_approval: false}
-  G1: {name: "Core numerics", requires: [A1, A2, A3, A4, A5, A6, A7, A8, A9, P0.5], oracles: [ORC-01, ORC-02, ORC-03, ORC-04, ORC-05, ORC-06, ORC-07, ORC-08, ORC-09, ORC-11, ORC-12, ORC-13, ORC-19], human_approval: false}
+  G1: {name: "Core numerics", requires: [A1, A2, A3, A4, A5, A6, A7, A8, A9, A11, P0.5], oracles: [ORC-01, ORC-02, ORC-03, ORC-04, ORC-05, ORC-06, ORC-07, ORC-08, ORC-09, ORC-11, ORC-12, ORC-13, ORC-19], human_approval: false}
   G2: {name: "Piano engine", requires: [C1, C2, C3, C4, C5, C6, C7, C8, B1, B2, B3, B6, A10], oracles: [ORC-16, ORC-17, ORC-18], human_approval: false}
   G3: {name: "Plug-in alpha", requires: [D1, D2, D3, D4, D5, D6], human_approval: false}
   G4: {name: "Piano content", requires: [E1, E3, V3], conditional: {E2: "when D-5 provides an instrument"}, human_approval: false}
@@ -170,6 +170,13 @@ phases:
     outputs: [engine/src/nonlinear/geometric_exact*, engine/src/string/longitudinal*, docs/dev/geometric.md]
     tests: [A10-T1, A10-T2, A10-T3, A10-T4]
     references: [SPEC-GEO, SPEC-NL]
+  - id: A11
+    name: Nonlinear segments on implicit bridge points
+    track: A
+    depends_on: [A3, A5, A6, A7, A9]
+    outputs: [engine/src/nonlinear/, engine/src/exciters/, engine/src/dampers/, engine/tests/, docs/dev/nonlinear.md, docs/dev/bridge.md]
+    tests: [A11-T1, A11-T2, A11-T3, A11-T4, A11-T5]
+    references: [SPEC-NL, SPEC-BRG, SPEC-EXEC, SPEC-HAM, SPEC-DMP, SPEC-GEO]
 
   # ---------------- Track B ----------------
   - id: B1

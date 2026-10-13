@@ -20,3 +20,7 @@ The golden envelope stays "the first accepted run", **provisional until the owne
 
 ## Resolution
 Applied to docs/agents/briefs/A5-test-author.md on 2026-10-12; SPEC-ORC unchanged (still qualitative plus regression). Affected phases: A5 (test-author follow-up: replace the may-fail 20 dB case; regenerate the golden on the merged code for the owner's acceptance), E1-T2 (uses ORC-19 on the full instrument).
+
+## Follow-up (2026-10-13)
+- The golden envelope was regenerated from the real A5 run: first window 76.88 dB below the struck strings, rise 8.796 dB by 0.5 s, maximum 3.670 N at 0.425 s. It remains provisional until the owner accepts it.
+- The SHOULD added above (rise within 100 ms monotone in Z₀|Y|) is not met (7.53, 6.98, 6.70 dB at 0.005, 0.01, 0.02) and was the wrong expectation; replaced by [SI-0031](SI-0031-orc19-rise-monotonicity.md).

@@ -24,6 +24,7 @@ flowchart LR
     A8["A8 SIMD kernels"]
     A9["A9 Implicit bridge step and bridge numerics options"]
     A10["A10 Geometrically exact string tier"]
+    A11["A11 Nonlinear segments on implicit bridge points"]
   end
   subgraph T_B["Track B: Bodies and offline toolchain"]
     B1["B1 Instrument description schema and loader"]
@@ -126,6 +127,11 @@ flowchart LR
   A4 --> A8
   A4 --> A9
   A7 --> A10
+  A3 --> A11
+  A5 --> A11
+  A6 --> A11
+  A7 --> A11
+  A9 --> A11
   G0 --> B1
   B1 --> B2
   B2 --> B3
@@ -238,6 +244,7 @@ flowchart LR
   A7 --> G1
   A8 --> G1
   A9 --> G1
+  A11 --> G1
   P0_5 --> G1
   C1 --> G2
   C2 --> G2

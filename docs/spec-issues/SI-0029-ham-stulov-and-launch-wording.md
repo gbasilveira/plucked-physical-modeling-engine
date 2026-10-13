@@ -1,6 +1,6 @@
 # SI-0029 SPEC-HAM is silent on the Stulov force out of contact and per strike weight, and on what "contact starts on the next sample" means
 
-Status: resolved (2026-10-12, planner ratifies A5's implementation; clarifications, flagged for owner review with the D-13 items) · **corrected 2026-10-13** (Stulov sign defect and non-negativity clamp; see Correction) · Raised by: A5, implementer · Date: 2026-10-12
+Status: resolved (2026-10-12, planner ratifies A5's implementation; clarifications, flagged for owner review with the D-13 items) · **corrected 2026-10-13** (Stulov sign defect and non-negativity clamp; see Correction; rigid-wall figure corrected to the clamped 0.7187 the same day) · Raised by: A5, implementer · Date: 2026-10-12
 SPEC section: SPEC-HAM "Velocity map", "Alternative: Stulov hereditary felt"
 
 ## Failing test
@@ -28,7 +28,10 @@ Applied to SPEC on 2026-10-12. A5's implementation stands (docs/dev/hammer.md). 
 | --- | --- |
 | K(δ^p + εh) (A5 code, SPEC's per-coordinate text) | 1.358 |
 | K δ^p (ε = 0) | 1.000 |
-| K(δ^p − εh) (SPEC's scalar law) | 0.598 |
+| K max(0, δ^p − εh) (SPEC law with the no-pull clamp; **governs**) | 0.7187 at 48 kHz (0.717 converged at 384 kHz) |
+| K(δ^p − εh) unclamped (pulls during unloading; context only) | 0.598 at 48 kHz (0.604 converged) |
+
+**Figure corrected 2026-10-13 (second correction).** The first version of this correction quoted 0.598 as the expected ratio. That is the unclamped law, which pulls the hammer back during unloading and so removes more energy than felt can. With the clamp that SPEC-HAM states, the ratio is 0.7187 at 48 kHz (A5 regression test, commit 4a1d133, asserts 0.7187 ± 1 %). Hereditary work over the contact divided by the initial hammer energy E0 at ε = 0.3: −3.24·10⁻² (one string), −4.20·10⁻² (three strings); negative, i.e. dissipated.
 
 The 2.4 % / 3.8 % energy gains in item 3 therefore came from the sign defect. The record above is corrected; the figures MUST NOT be quoted as Stulov's non-passivity.
 
@@ -38,10 +41,10 @@ The 2.4 % / 3.8 % energy gains in item 3 therefore came from the sign defect. Th
 
 **Is "not provably passive" still true?** Yes, as far as is known:
 - For p = 1 the law is a standard linear solid (relaxation modulus K(1 − ε(1 − e^{−t/τ})), positive and non-increasing for 0 ≤ ε < 1), which is passive in continuous time.
-- For p > 1 (the piano range, 2–4) it is a quasi-linear viscoelastic law in δ^p. We know of no general passivity proof for it. The power of the hereditary term is w K εh δ̇: it returns energy while δ grows and removes more while δ shrinks, because h lags δ^p; the rigid-wall case above dissipates 40 %, but that is one trajectory, not a proof (multiple contacts and re-contact with residual h are the cases a proof would have to cover).
+- For p > 1 (the piano range, 2–4) it is a quasi-linear viscoelastic law in δ^p. We know of no general passivity proof for it. The power of the hereditary term is w K εh δ̇: it returns energy while δ grows and removes more while δ shrinks, because h lags δ^p; the rigid-wall case above dissipates 28 % with the clamp (40 % without), but that is one trajectory, not a proof (multiple contacts and re-contact with residual h are the cases a proof would have to cover).
 - The clamp only limits the magnitude of the hereditary force, whatever the sign of its power, so it neither creates energy nor proves passivity.
 - The discrete scheme adds no proof: the hereditary force is explicit against an SAV elastic part.
 
 SPEC therefore keeps "not provably passive", and energy monitors MUST check it; a gain of hammer–string energy across a contact is now to be reported as a defect, not as expected behaviour.
 
-**Affected phases.** A5: changes requested; the implementer fixes the sign and adds the clamp, the test author wires A5-T2, ORC-09 and ORC-19 (the ORC-19 golden envelope, if recorded with the Stulov law, must be re-recorded). B5: its card (B5-R4) fits K, p and μ\_HC only; any fit of ε and τ (SPEC says they are fitted) MUST use the corrected sign and clamp; the B5 card carries a note.
+**Affected phases.** A5: changes requested; the implementer fixes the sign and adds the clamp (done in commit 4a1d133, regression test 0.7187 ± 1 %), the test author wires A5-T2, ORC-09 and ORC-19 (the ORC-19 golden envelope, if recorded with the Stulov law, must be re-recorded). B5: its card (B5-R4) fits K, p and μ\_HC only; any fit of ε and τ (SPEC says they are fitted) MUST use the corrected sign and clamp; the B5 card carries a note.

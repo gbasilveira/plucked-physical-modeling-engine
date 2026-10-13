@@ -261,7 +261,7 @@ Track 0 creates the repository, CI, test tooling, frozen interfaces and an indep
 
 ## Track A — Core numerics
 
-Track A implements the numerical building blocks of SPEC as tested library code, with no runtime scheduling yet. A1 comes first; A2 and A3 run in parallel; A4 follows A2; A5, A6 and A7 run in parallel; A8 runs alongside A5–A7; A9 (the second bridge scheme, D-13) follows A4 and runs alongside A5, A7 and A8. Gate G1 closes the track. A10 (the geometrically exact tier, D-13) follows A7 and closes before G2.
+Track A implements the numerical building blocks of SPEC as tested library code, with no runtime scheduling yet. A1 comes first; A2 and A3 run in parallel; A4 follows A2; A5, A6 and A7 run in parallel; A8 runs alongside A5–A7; A9 (the second bridge scheme, D-13) follows A4 and runs alongside A5, A7 and A8. A11 (nonlinear segments on implicit bridge points) follows A3, A5, A6, A7 and A9. Gate G1 closes the track. A10 (the geometrically exact tier, D-13) follows A7 and closes before G2.
 
 ### A1 Modal oscillator
 
@@ -395,6 +395,7 @@ Track A implements the numerical building blocks of SPEC as tested library code,
 - **Outputs:** engine/src/bridge/, docs/dev/bridge.md.
 - **Tests:** ORC-06 in the implicit scheme, with the SPEC-ORC criterion for that scheme (every kept mode within 0.1% at Z₀G = 0.01, and at Z₀G = 0.05 within 0.1% for ω\_nΔt ≤ 2.4 and 0.5% for every kept mode); A9-T1 strings on a lossless mass–spring bridge in the implicit scheme keep the A9-R3 energy within 10⁻¹⁰ relative over 10⁶ samples in float64 with no secular trend, and with losses it never increases; A9-T2 SI-0018's unstable configurations (m = 10⁻⁴ kg with 3 and 8 strings, 10⁻⁵ kg with 1 string) run stably in the implicit scheme, and the explicit-mode check flags exactly the unstable configurations of the SI-0018 table (SwitchToImplicit then runs them, and Reject returns `Rejected`); A9-T3 an overdamped bridge mode's free response matches the exact real poles within 10⁻¹² (float64) and its energy never increases; A9-T4 A4-T1, A4-T2 and ORC-07 pass unchanged in the implicit scheme; A9-T5 against P0.5, the A4-T3 setup in the implicit scheme matches partial frequencies within 0.05 cent and decay rates within 2%.
 - **References:** SPEC-BRG, SPEC-OSC, SPEC-CONV, SPEC-EXEC.
+- **Note (2026-10-13):** A9 meets the low-rank part of A9-R2 with a Sherman–Morrison stand-in against a dense float64 solve; the real SAV solve and the hammer, damper and tension-modulation segments are wired to the implicit point in A11 ([SI-0032](../spec-issues/SI-0032-a9-implicit-bridge-follow-ups.md)).
 
 ### A10 Geometrically exact string tier
 
@@ -408,6 +409,18 @@ Track A implements the numerical building blocks of SPEC as tested library code,
 - **Outputs:** engine/src/nonlinear/geometric\_exact\*, engine/src/string/longitudinal\* (exact-tier additions only), docs/dev/geometric.md.
 - **Tests:** A10-T1 lossless total energy (transverse, longitudinal and ψ) is conserved within 10⁻¹⁰ relative over 10⁵ samples in float64; A10-T2 at 10⁻⁶ relative amplitude the partials equal the linear string's within 0.01 cent; A10-T3 at moderate amplitude the pitch glide agrees with A7's default tier within 2%; A10-T4 the bridge-force spectrum shows phantom partials at sums f\_i + f\_j.
 - **References:** SPEC-GEO, SPEC-NL.
+
+### A11 Nonlinear segments on implicit bridge points
+
+- **Mode:** sequential after A3, A5, A6, A7 and A9; parallel with A8 and A10. Edits engine/src/nonlinear and the segment wiring of A5, A6 and A7; nothing else edits those while it runs. Created 2026-10-13 (SI-0032 item 3). **Depends on:** A3, A5, A6, A7, A9.
+- **Description:** A9's implicit bridge point needs, from every attached segment, the affine pair (c, κ) of Fⁿ⁺¹ = c − κ wⁿ⁺¹ per polarisation. A segment with an active nonlinearity obtains it by applying its low-rank solve to two right-hand sides at fixed H and W (SPEC-BRG "Bridge scheme", SPEC-EXEC 3′ to 5′). A3's `savStep` returns one solve; A9 verified the contract with a Sherman–Morrison stand-in (docs/dev/bridge.md). This phase makes the real solve and the real hammer, damper and tension-modulation segments meet that contract. Required by G1 because the default `numerics.unstableBridge` = SwitchToImplicit can put a hammered note on an implicit point in any quality level.
+- **Requirements:**
+  1. A11-R1 `savStep` (or a companion entry point) returns the solutions for the segment's own right-hand side and for the bridge column γ ⊙ g̃/Δt² from one factorisation, then completes qⁿ⁺¹ = y\_b − y\_h wⁿ⁺¹ and the ψ update with the reset and drift rules after the point's solve. The single-solve path stays bit-identical.
+  2. A11-R2 A5's hammer, A6's damper rank-one term and A7's tension modulation supply (c, κ) to A9's implicit point through the A9 contract (docs/dev/bridge.md "Contract for segments with an active nonlinearity"), replacing the Sherman–Morrison stand-in in A9's tests.
+  3. A11-R3 SPEC-GEO's κ\_L F\_L + κ\_T ΔT stay at step n (SPEC-BRG), unchanged.
+- **Outputs:** engine/src/nonlinear/, the implicit-segment wiring in engine/src/exciters/, engine/src/dampers/ and engine/src/nonlinear/ (A5, A6, A7 files), engine/tests/, docs/dev/nonlinear.md, docs/dev/bridge.md (contract section only).
+- **Tests:** A11-T1 the two-right-hand-side solve equals a dense float64 solve within 10⁻¹² on random systems of rank 1 to 4; A11-T2 a hammered trichord on an implicit lossless mass–spring bridge keeps the ORC-09 energy balance (with the SI-0027 reset accounting) within ORC-09's tolerance in float64; A11-T3 an implicit point with a hammer segment matches a dense float64 solve of the coupled step within 10⁻¹² for 10³ samples through contact; A11-T4 a damper engagement and a tension-modulated string on an implicit point keep energy non-increasing (with losses) and conserved within 10⁻¹⁰ (lossless, tension modulation) over 10⁵ samples; A11-T5 every A3, A5, A6, A7 and A9 test passes unchanged.
+- **References:** SPEC-NL, SPEC-BRG, SPEC-EXEC, SPEC-HAM, SPEC-DMP, SPEC-GEO.
 
 ## Track B — Bodies and offline toolchain
 
@@ -1074,7 +1087,7 @@ A gate passes only when every phase it lists is complete and every exit criterio
 | Gate | Requires complete | Exit criteria | Unblocks |
 | --- | --- | --- | --- |
 | G0 Foundations | P0.1, P0.2, P0.3, P0.4 | CI green on all three systems; interfaces-v1 tagged; RT-safety trap proven (P0.2-T1); analysis tools validated (P0.3-T1 to T3) | Tracks A and B, D1, P0.5 continues |
-| G1 Core numerics | A1–A9, P0.5 | ORC-01 to 09, 11 to 13 and 19 pass (ORC-06 in both bridge schemes); every Track A test against P0.5 passes; SIMD parity on every instruction set; coverage of engine/src at least 90% | Tracks C and P |
+| G1 Core numerics | A1–A9, A11, P0.5 | ORC-01 to 09, 11 to 13 and 19 pass (ORC-06 in both bridge schemes); every Track A test against P0.5 passes; SIMD parity on every instruction set; coverage of engine/src at least 90% | Tracks C and P |
 | G2 Piano engine | C1–C8, B1–B3, B6, A10 | ORC-16, 17 and 18 pass; generic-grand-88 renders offline and in real time; RT-safety holds in all integration tests; V2 engine-level baselines stored; V1 matrix has no gaps for Tracks A, B (B1–B3) and C | D6, E1, E4, B5 |
 | G3 Plug-in alpha | D1–D6 | clap-validator, pluginval, auval, Steinberg's validator and lv2lint pass with the real engine; standalone runs on all three systems; bounce equals real time | V4, V5, V6, H2 |
 | G4 Piano content | E1, E3, V3; E2 when decision D-5 provides an instrument | Common instrument tests pass for both pianos; V2-T1 passes on the concert grand; V3-T1 and V3-T2 pass | G5 |
