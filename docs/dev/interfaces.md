@@ -155,8 +155,8 @@ dependencies and the include directory `engine/include`.
 
 ## Stubs (P0.4-R3)
 
-`body` and `runtime` hold `<module>_stub.cpp` (`osc`: implemented by A1; `string`: implemented by A2; `nonlinear`: SAV framework by A3; `bridge`: implemented by A4; `dampers`: implemented by A6); `exciters`,
-`barriers`, `sched` and `simd` keep their placeholders until their own phases. Every
+`body` and `runtime` hold `<module>_stub.cpp` (`osc`: implemented by A1; `string`: implemented by A2; `nonlinear`: SAV framework by A3; `bridge`: implemented by A4; `dampers`: implemented by A6; `simd`: implemented by A8); `exciters`,
+`barriers` and `sched` keep their placeholders until their own phases. Every
 compile function returns `Status::NotImplemented` and leaves its out-parameter unchanged.
 `Engine::prepare` checks `fs > 0`, `subBlock` in {16, 32} (SPEC-CONV), `maxBlock >= 1`,
 `channels >= 1`, `threads >= 1` (`InvalidArgument`), else returns `NotImplemented`.
