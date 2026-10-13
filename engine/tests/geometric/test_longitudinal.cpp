@@ -239,8 +239,14 @@ TEST_CASE("A7-R3 the pair sum equals the direct double sum over all pairs") {
     pme::string::longitudinalForce<double>(lm, qV, qH, fs3);
     CHECK(fs3[2] == f[2]);
     // The float instantiation rounds the float64 sum once.
-    std::vector<float> qVf(qV.begin(), qV.end());
-    std::vector<float> qHf(qH.begin(), qH.end());
+    std::vector<float> qVf(qV.size());
+    std::vector<float> qHf(qH.size());
+    for (std::size_t i = 0; i < qV.size(); ++i) {
+        qVf[i] = static_cast<float>(qV[i]);
+    }
+    for (std::size_t i = 0; i < qH.size(); ++i) {
+        qHf[i] = static_cast<float>(qH[i]);
+    }
     std::vector<float> ff(f.size());
     pme::string::longitudinalForce<float>(lm, qVf, qHf, ff);
     for (std::size_t mi = 0; mi < f.size(); ++mi) {

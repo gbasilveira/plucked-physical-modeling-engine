@@ -195,4 +195,6 @@ TEST_CASE(
               << " cents (first window " << fix(1200.0 * std::log2(ws.front().f / f1), 2) << ")\n";
     CHECK(std::isfinite(meanCents));
     CHECK(meanCents > 0.0);
+    // Measured 22.4 cents against 22.8 predicted: within 10% of the multi-mode prediction.
+    CHECK(meanCents == doctest::Approx(predictedCents).epsilon(0.10));
 }

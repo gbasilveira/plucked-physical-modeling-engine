@@ -132,5 +132,9 @@ add_subdirectory(engine/tests/exciters)
 # ---- end A5 ----
 
 # ---- A7: geometric nonlinearity ----
+# GeometricSegment (pme/string/longitudinal_segment.hpp) composes the SAV segment with the string
+# tables, so the string module's headers need the nonlinear module's include directory. pme_string
+# has no other dependency on pme_nonlinear and pme_nonlinear none on pme_string.
+target_link_libraries(pme_string PUBLIC pme_nonlinear)
 add_subdirectory(engine/tests/geometric)
 # ---- end A7 ----

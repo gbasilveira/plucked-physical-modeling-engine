@@ -65,6 +65,8 @@ Status compileLongitudinal(const StringModes& modes, const StringParams& params,
         }
         osc::OscCoeffsF64 coeffs;
         if (osc::compileOscillatorF64(omega, sigma, fs, coeffs) != Status::Ok) {
+            // By design: a mode whose oscillator cannot be compiled ends the prefix silently, so
+            // fewer longitudinal modes are kept (never an error).
             break;
         }
         lm.K.push_back(K);

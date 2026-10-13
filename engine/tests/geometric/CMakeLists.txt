@@ -3,11 +3,6 @@
 # (A7-R2 to A7-R4), flags and tier (A7-R5, A7-R6), energy (SI-0015), the Kirchhoff-Carrier glide
 # (A7-T1), phantom partials (A7-T2), real-time safety and the nightly benchmark.
 
-# GeometricSegment (pme/string/longitudinal_segment.hpp) composes the SAV segment with the string
-# tables, so the string module's headers need the nonlinear module's include directory. pme_string
-# has no other dependency on pme_nonlinear and pme_nonlinear none on pme_string.
-target_link_libraries(pme_string PUBLIC pme_nonlinear)
-
 set(PME_GEOMETRIC_LIBRARIES pme_string pme_nonlinear pme_bridge pme_osc pme::engine)
 
 pme_add_doctest(pme_geometric_tests
