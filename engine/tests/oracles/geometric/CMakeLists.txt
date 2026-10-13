@@ -9,13 +9,9 @@
 #            no call into engine/src/{string,nonlinear}. Builds before A7 is merged. With this
 #            backend ORC-11 and ORC-12 check the test chain (quadrature, pair-sum formula,
 #            estimator, initial conditions) and A7-T3 checks the reference, not the A7 code.
-#   A7       geometric_rig_a7.hpp, the adapter onto the A7 code under test. Its lines marked
-#            ADAPT name A7 types that did not exist when it was written; fix them against
-#            engine/src/string/include/pme/string/longitudinal*.hpp and
-#            engine/src/nonlinear/include/pme/nonlinear/tension*.hpp, then set
-#            PME_A7_ADAPTER_VERIFIED to ON below. Links pme_nonlinear.
-#   AUTO     (default) A7 when PME_A7_ADAPTER_VERIFIED is ON and both A7 headers exist, else
-#            SCRATCH.
+#   A7       geometric_rig_a7.hpp, the adapter onto the merged A7 code (longitudinal.hpp,
+#            tension.hpp, SavSegment with S = double; verified against A7). Links pme_nonlinear.
+#   AUTO     (default) A7 when both A7 headers exist (PME_A7_ADAPTER_VERIFIED, ON), else SCRATCH.
 #
 # Run (ORC-11 and ORC-12 in any build; A7-T3 reference case only in an optimised build):
 #   cmake --preset linux-debug && cmake --build --preset linux-debug
@@ -27,7 +23,7 @@
 
 set(PME_A7_ORACLE_BACKEND "AUTO" CACHE STRING "Backend of the A7 oracle rig: AUTO, SCRATCH or A7")
 set_property(CACHE PME_A7_ORACLE_BACKEND PROPERTY STRINGS AUTO SCRATCH A7)
-option(PME_A7_ADAPTER_VERIFIED "geometric_rig_a7.hpp compiles against the merged A7 headers" OFF)
+option(PME_A7_ADAPTER_VERIFIED "geometric_rig_a7.hpp compiles against the merged A7 headers" ON)
 
 set(_a7_use_a7 OFF)
 if(PME_A7_ORACLE_BACKEND STREQUAL "A7")
