@@ -190,6 +190,24 @@ std::vector<double> readArray(const std::string& text, const std::string& key) {
     return v;
 }
 
+/// Value of environment variable `name`, or an empty string when unset. std::getenv is deprecated
+/// on MSVC (-Werror,-Wdeprecated-declarations), so Windows uses _dupenv_s.
+std::string envString(const char* name) {
+#ifdef _WIN32
+    char* buffer = nullptr;
+    std::size_t size = 0;
+    if (_dupenv_s(&buffer, &size, name) != 0 || buffer == nullptr) {
+        return {};
+    }
+    std::string value(buffer);
+    std::free(buffer);  // NOLINT(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
+    return value;
+#else
+    const char* v = std::getenv(name);  // NOLINT(concurrency-mt-unsafe)
+    return v != nullptr ? std::string(v) : std::string();
+#endif
+}
+
 void writeGolden(const std::string& path, const Envelope& e) {
     std::ofstream out(path);
     out << "{\n";
@@ -309,8 +327,7 @@ void orc19Case(const char* label) {
     CHECK(m.env.centres[m.peakWindow] > kPeakAfter);
 
     // Regression against the first accepted run.
-    if (const char* writePath =
-            std::getenv("PME_ORC19_WRITE_GOLDEN")) {  // NOLINT(concurrency-mt-unsafe)
+    if (const std::string writePath = envString("PME_ORC19_WRITE_GOLDEN"); !writePath.empty()) {
         writeGolden(writePath, m.env);
     }
 #ifdef PME_ORC19_GOLDEN
