@@ -69,6 +69,7 @@
 #include <iomanip>
 #include <iterator>
 #include <pme/analysis/wav.hpp>
+#include <pme/test/scratch.hpp>
 #include <pme/test/tolerance.hpp>
 #include <sstream>
 #include <string>
@@ -362,7 +363,7 @@ TEST_CASE("A7-T3 longitudinal precursor of engine and P0.5 reference reach the b
 
     const int n0 = envInt("PME_A7T3_N0", 190);
     const int fs0 = envInt("PME_A7T3_FS0", 96000);
-    const fs::path dir = fs::temp_directory_path() / ("pme_a7t3_" + std::to_string(std::rand()));
+    const fs::path dir = pme::test::unique_scratch_dir("pme_a7t3");
     fs::create_directories(dir);
     std::array<geo::StepEstimate, 3> est{};
     std::array<RefLevel, 3> levels;
