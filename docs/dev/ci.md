@@ -43,6 +43,17 @@ required checks of `main` (`tools/ci/required_checks.json`, [CONTRIBUTING.md](..
 | `deps` | ubuntu-24.04 | configure with `PME_FETCH_ALL_DEPS=ON` (every pin resolves) |
 | `traceability` | ubuntu-24.04 | V1: downloads every `junit-*` artifact, builds the traceability matrix, uploads it as the artifact `traceability`, fails on a gap in a `complete` phase (see below) |
 
+clang-tidy cost: `tools/ci/run_clang_tidy.py` runs one clang-tidy process per source file, `-j`
+at a time (default: CPU count, 4 on the hosted runner), and prints each file's findings in sorted
+file order, so the log is deterministic. Any finding fails the step (`WarningsAsErrors: '*'`).
+Both databases are tidied in full on purpose: `linux-rt-safety` differs from `linux-debug` in
+`PME_RTSAFETY` and in `NDEBUG` (RelWithDebInfo), so preprocessor-guarded code and `assert`s are
+analysed in both shapes. Third-party code is never analysed: only `git ls-files` sources are
+listed, and `HeaderFilterRegex` in `.clang-tidy` limits header diagnostics to the project
+directories. Measured locally on 4 cores (`nproc` 4); before the change: 34 min serial for both databases (the step hit
+the 30 minute job timeout); after, with `-j4`: 8 min 51 s. Keep the `lint` timeout at 30 minutes; if the
+step grows past about half of it, shard by file rather than raising the limit.
+
 Every `build` step per preset is `cmake --preset`, `cmake --build --preset`,
 `ctest --preset <p> -LE "perf|fuzz|soak" --output-on-failure --output-junit <file>`. Nothing
 hard-codes a test name: tests are selected by CTest label, so tests registered by other phases
