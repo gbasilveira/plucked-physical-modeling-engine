@@ -6,7 +6,7 @@
 set(PME_SIMD_TEST_DEFINITIONS DOCTEST_CONFIG_DOUBLE_STRINGIFY DOCTEST_CONFIG_USE_STD_HEADERS)
 
 pme_add_doctest(pme_simd_tests
-  SOURCES test_parity.cpp test_matmul.cpp test_determinism.cpp test_dispatch.cpp test_speed.cpp
+  SOURCES test_parity.cpp test_reviewer.cpp test_matmul.cpp test_determinism.cpp test_dispatch.cpp test_speed.cpp
   LIBRARIES pme_simd pme_osc pme_nonlinear pme::engine
   LABELS unit)
 target_compile_definitions(pme_simd_tests PRIVATE ${PME_SIMD_TEST_DEFINITIONS})
