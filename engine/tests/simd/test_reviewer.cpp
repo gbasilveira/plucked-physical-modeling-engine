@@ -262,7 +262,7 @@ TEST_CASE("A8-T1 reviewer bit-exact canonical order for float32 reductions and m
     });
 }
 
-TEST_CASE("A8-R1 reviewer stepModes tails, guard pages and single-sided previous-state outputs") {
+TEST_CASE("A8-R1 reviewer stepModes tails with guard pages and one-sided outputs") {
     simdtest::forEachTarget("A8-R1 reviewer", [&](std::size_t, const char* name, bool) {
         CAPTURE(name);
         for (const std::size_t n : kSizes) {
