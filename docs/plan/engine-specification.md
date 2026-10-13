@@ -449,13 +449,21 @@ R_s^n = w_s K_s\,\mu_{HC}\,[\delta_s^n]_+^{\,p_s}
 
 μ\_HC (s/m) sets the hysteresis loss; a trichord gives r = 1 + 3 = 4, the maximum the low-rank solve allows.
 
-**Alternative: Stulov hereditary felt.** The force is K(δ^p − εh), where h is δ^p passed through a one-pole low-pass of time constant τ (ε is the hereditary amplitude, τ the relaxation time, both fitted). The elastic part stays in the SAV; the hereditary part is an explicit force at step n:
+**Alternative: Stulov hereditary felt.** The felt force of string s, pushing the hammer and the string apart, has magnitude
 
 ```math
-h^n = a\,h^{n-1} + (1-a)\,[\delta^n]_+^{\,p}, \quad a = e^{-\Delta t/\tau}, \qquad F_{\text{hered}}^n = -K\varepsilon\,h^n \ \text{along } c_s
+f_s^n = w_s K_s \max\!\left(0,\; [\delta_s^n]_+^{\,p_s} - \varepsilon\,h_s^n\right), \qquad h_s^n = a\,h_s^{n-1} + (1-a)\,[\delta_s^n]_+^{\,p_s}, \quad a = e^{-\Delta t/\tau}
 ```
 
-The hereditary force of string s acts only while δ\_s > 0 and is scaled by its strike weight w\_s, like the elastic part; h keeps evolving while out of contact. This variant is not provably passive (A5 measured a gain of 2.4 % of the hammer energy for one string and 3.8 % for a trichord at ν = 0.8, ε = 0.3, τ = 0.5 ms); energy monitors MUST check it ([SI-0029](../spec-issues/SI-0029-ham-stulov-and-launch-wording.md)).
+h\_s is δ\_s^p passed through a one-pole low-pass of time constant τ; ε (hereditary amplitude, 0 ≤ ε < 1) and τ (relaxation time) are fitted. **The hereditary term softens the felt: it subtracts from the elastic force, never adds to it.** The elastic part w\_s K\_s [δ\_s]\_+^p stays in the SAV (generalized force −∂V\_H/∂z = −w\_s K\_s [δ\_s]\_+^p c\_s). The hereditary part is an explicit force at step n, of the opposite sign along c\_s:
+
+```math
+F_{\text{hered},s}^n = +\,w_s K_s\,\min\!\left(\varepsilon\,h_s^n,\; [\delta_s^n]_+^{\,p_s}\right) c_s \quad \text{while } \delta_s^n > 0, \qquad F_{\text{hered},s}^n = 0 \ \text{otherwise}
+```
+
+Per coordinate (c\_s = +1 on x\_H, −s\_E φ̄\_s,n on string s's modes): the elastic force on x\_H is −w\_s K\_s δ\_s^p (it pushes the hammer back, away from the string) and the hereditary force on x\_H is +w\_s K\_s min(εh\_s, δ\_s^p) (towards the string, reducing the push); on mode n of string s the elastic force is +s\_E φ̄\_s,n w\_s K\_s δ\_s^p and the hereditary force is −s\_E φ̄\_s,n w\_s K\_s min(εh\_s, δ\_s^p). The min() is the non-negativity clamp: while in contact the total felt force K(δ^p − εh) is limited to ≥ 0, because felt cannot pull (it bites at the end of contact and on re-contact while h is still large). The hereditary force acts only while δ\_s > 0 and is scaled by w\_s like the elastic part; h\_s keeps evolving while out of contact. Check (rigid wall, m\_H = 8 g, K = 4·10⁹, p = 2.5, ε = 0.3, τ = 0.5 ms, v = 3 m/s): rebound kinetic energy / incoming = 0.598; it is 1.000 at ε = 0, and a ratio above 1 indicates the sign error K(δ^p + εh) (1.358) ([SI-0029](../spec-issues/SI-0029-ham-stulov-and-launch-wording.md), corrected 2026-10-13).
+
+*Passivity.* For p = 1 the law is a standard linear solid (relaxation modulus K(1 − ε(1 − e^{−t/τ})), positive and non-increasing for 0 ≤ ε < 1) and is passive in continuous time. For p > 1 it is a quasi-linear viscoelastic law, for which no general passivity proof is known; the clamp only reduces the magnitude of the hereditary force and supplies no proof, and the explicit discretisation against the SAV elastic part has none either. The variant is therefore still not provably passive; energy monitors MUST check it and report any gain of the hammer–string energy across a contact as a defect.
 
 **Release and check.** After rebound the hammer leaves the coordinate set when it is farther than d\_check (default 5 mm) from the string and moving away. A double strike in the bass needs no special code: the contact law handles it.
 

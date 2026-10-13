@@ -67,7 +67,7 @@ Your job: decide whether the A5 implementer's and test-author's work meets the A
 
 2. V\_H, δ\_s, s\_E and the gradient match SPEC-HAM exactly. Recompute V and ∇V by finite differences in a scratch program (`uv run --no-project --with mpmath python` is fine) for one and three strings, s\_E = ±1. `value` is exactly 0 out of contact (skip rule reachable).
 3. Hunt–Crossley R\_s = w\_s K\_s μ\_HC [δ\_s]₊^p\_s along c\_s. Single string: `alongGradient` set (r = 1); trichord: r = 4, never above A3's limit. The dashpot-budget note for a rank-one damper is documented.
-4. Stulov: hⁿ recursion with a = e^(−Δt/τ), explicit force −K ε hⁿ along c\_s; the energy test closes the balance with the hereditary work (SPEC: "energy monitors MUST check it").
+4. Stulov: hⁿ recursion with a = e^(−Δt/τ), explicit force +w\_s K\_s min(ε h\_sⁿ, [δ\_sⁿ]₊^p) c\_s while δ\_s > 0, i.e. opposite to the elastic force (towards the string on x\_H), total felt force K(δ^p − εh) clamped at ≥ 0 (SPEC-HAM as corrected 2026-10-13, SI-0029); a rigid-wall bounce (8 g, K 4·10⁹, p 2.5, ε 0.3, τ 0.5 ms, 3 m/s) must lose energy (KE ratio ≈ 0.598), never gain it; the energy test closes the balance with the hereditary work (SPEC: "energy monitors MUST check it").
 5. Launch at gap v\_HΔt along s\_E, so contact starts on the next sample. Velocity map formula. Upright soft pedal scaling (1 − s ρ\_up).
 6. Release: hammer frozen beyond d\_check and moving away; strings afterwards bit-identical to a free run. Repetition: no jump in x\_H inside d\_check; restart from the gap outside.
 7. Una corda: smoothstep definition stated; the weights table per note type with `leavingString`; K\_s(s), p\_s(s); s ramps per sample.

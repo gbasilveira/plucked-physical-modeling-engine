@@ -487,6 +487,7 @@ Track B builds everything that runs off the audio thread: the instrument file fo
   6. B5-R6 Output an updated instrument file plus a fit report with residuals.
 - **Outputs:** compiler/pme\_compiler/fit/, tools/fit-cli, docs/dev/fitting.md.
 - **Tests:** B5-T1 render with known parameters, fit them back within 2% (loss coefficients within 5%); B5-T2 fitted intrinsic losses exclude the bridge loss in a synthetic case built from ORC-06; B5-T3 the fit report validates against its schema.
+- **Note (2026-10-13):** B5-R4 fits K, p and μ\_HC. If B5 also fits the Stulov ε and τ (SPEC-HAM says they are fitted), the fit MUST use the corrected Stulov law of SPEC-HAM: felt force K(δ^p − εh) clamped at ≥ 0, the hereditary term opposing the elastic force ([SI-0029](../spec-issues/SI-0029-ham-stulov-and-launch-wording.md), corrected 2026-10-13). Parameters fitted with the earlier sign (K(δ^p + εh)) are invalid.
 - **References:** SPEC-STR, SPEC-HAM, PLAN-RISK.
 
 ### B6 Instrument-file prestress, moisture reference and shank

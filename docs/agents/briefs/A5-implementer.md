@@ -129,9 +129,10 @@ Rules:
 
 - **Hunt–Crossley.** One `nl::Dashpot` per struck string along c\_s = ∂δ\_s/∂z (+1 on x\_H, −s\_E φ̄\_s,n on that string's modes), with R\_sⁿ = w\_s K\_s μ\_HC [δ\_sⁿ]₊^p\_s. For a single struck string, c is parallel to g: set `alongGradient`, so r = 1. A trichord gives r = 1 + 3 = 4, A3's maximum.
 - **Stulov** (`FeltLaw::Stulov`):
-  - hⁿ = a hⁿ⁻¹ + (1 − a)[δⁿ]₊^p, a = e^(−Δt/τ);
-  - explicit force F\_heredⁿ = −K ε hⁿ along c\_s, passed through `savStep`'s `explicitForce` (N per coordinate);
-  - the elastic part stays in V\_H.
+  - h\_sⁿ = a h\_sⁿ⁻¹ + (1 − a)[δ\_sⁿ]₊^p, a = e^(−Δt/τ);
+  - explicit force F\_hered,sⁿ = **+** w\_s K\_s min(ε h\_sⁿ, [δ\_sⁿ]₊^p) c\_s while δ\_s > 0 (0 otherwise), passed through `savStep`'s `explicitForce` (N per coordinate). It opposes the elastic force: +w\_s K\_s min(εh, δ^p) on x\_H (towards the string), −s\_E φ̄\_s,n w\_s K\_s min(εh, δ^p) on string mode n. Total felt force K(δ^p − εh), clamped at ≥ 0 (amended 2026-10-13, SI-0029 correction: the earlier text "−K ε hⁿ along c\_s" had the elastic force's sign and produced K(δ^p + εh));
+  - the elastic part stays in V\_H;
+  - regression check: rigid wall, m\_H = 8 g, K = 4·10⁹, p = 2.5, ε = 0.3, τ = 0.5 ms, v = 3 m/s gives rebound KE / incoming ≈ 0.598 (1.000 at ε = 0; 1.358 with the wrong sign).
 
   SPEC says this variant is not provably passive and energy monitors MUST check it. Provide the hereditary force's work per step in float64, so a test can close the balance E^(n+1) − Eⁿ + dissipation = work.
 - **Dashpot budget with dampers.** SPEC-NL allows at most 3 dashpots per segment (A3 `kMaxDashpots`). While a trichord is in contact, its three felt dashpots use the whole budget, so a rank-one damper (A6) on the same segment cannot be added. Provide `std::size_t hammerDashpotCount()` and document in docs/dev/hammer.md that the composition (C1) must then use the damper's diagonal mode for that segment, as SPEC-NL requires. While the key is down the damper is lifted (R = 0, no column), so the case arises only at very fast re-strikes. Test the budget arithmetic; do not edit A6.

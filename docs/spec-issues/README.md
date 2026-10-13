@@ -60,5 +60,5 @@ Decision, human reviewer (for physics or numerics), SPEC commit, affected phases
 | [SI-0026](SI-0026-geo-longitudinal-force-at-x0.md) | Longitudinal bridge force defined only at x = L | resolved 2026-10-12 (SPEC-GEO updated; A7's x = 0 form ratified) | |
 | [SI-0027](SI-0027-orc09-reset-energy.md) | ORC-09 "constant over the whole run" contradicts the MUST ψ reset | resolved 2026-10-12 (SPEC-ORC updated) | |
 | [SI-0028](SI-0028-ham-contact-ignores-bridge-lifting.md) | Hammer δ\_s ignores the bridge lifting displacement (energy error ∝ 1/m on a movable bridge) | open (owner; recommended: modal-only default, `numerics.contactLifting` option for HighQuality) | |
-| [SI-0029](SI-0029-ham-stulov-and-launch-wording.md) | Stulov force out of contact and per strike weight; launch wording | resolved 2026-10-12 (SPEC-HAM updated; flagged for owner review) | |
+| [SI-0029](SI-0029-ham-stulov-and-launch-wording.md) | Stulov force out of contact and per strike weight; launch wording | resolved 2026-10-12 (SPEC-HAM updated; flagged for owner review); corrected 2026-10-13 (Stulov sign defect, felt force clamped at ≥ 0; the recorded energy gain was the defect) | |
 | [SI-0030](SI-0030-orc19-aftersound-criterion.md) | ORC-19: 20 dB rise by 0.5 s not met at Z₀\|Y\| = 0.02 | resolved 2026-10-12 (brief criterion amended; golden provisional) | |
