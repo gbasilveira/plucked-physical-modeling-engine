@@ -11,10 +11,8 @@
 #                  named "(SPEC scratch scheme)".
 #   A5Rig<S>       hammer_rig_a5.hpp, the adapter onto the A5 StruckNote (the code under test).
 #                  Compiled when PME_A5_ORACLE_BACKEND is A5 (or AUTO and the A5 header named in
-#                  PME_A5_STRUCK_NOTE_HEADER exists); test cases named "(A5 StruckNote)". The
-#                  lines to adapt to the merged A5 headers are marked "ADAPT" in that file.
-# Default backend: SCRATCH until the adapter is adapted and verified (post-merge action of the A5
-# test-author's report); then switch the default to AUTO.
+#                  PME_A5_STRUCK_NOTE_HEADER exists); test cases named "(A5 StruckNote)".
+# Default backend: AUTO (the A5 adapter, plus the scratch scheme, once hammer.hpp exists).
 #
 # Run (ORC-08/09/19 in any build; A5-T2 reference case only in an optimised build):
 #   cmake --preset linux-debug && cmake --build --preset linux-debug
@@ -24,9 +22,9 @@
 # A5-T2 reads PME_A5T2_N0 (default 200: coarsest reference grid intervals) and PME_A5T2_FS0
 # (default 96000: coarsest reference simulation rate); levels 0, 1, 2 double both.
 
-set(PME_A5_ORACLE_BACKEND "SCRATCH" CACHE STRING "Backend of the A5 oracle rig: SCRATCH, A5 or AUTO")
+set(PME_A5_ORACLE_BACKEND "AUTO" CACHE STRING "Backend of the A5 oracle rig: SCRATCH, A5 or AUTO")
 set_property(CACHE PME_A5_ORACLE_BACKEND PROPERTY STRINGS SCRATCH A5 AUTO)
-set(PME_A5_STRUCK_NOTE_HEADER "engine/src/exciters/include/pme/exciters/struck_note.hpp"
+set(PME_A5_STRUCK_NOTE_HEADER "engine/src/exciters/include/pme/exciters/hammer.hpp"
     CACHE STRING "Header AUTO looks for to decide whether the A5 adapter can be built")
 
 set(_a5_use_a5 OFF)

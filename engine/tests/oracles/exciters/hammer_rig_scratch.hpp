@@ -176,6 +176,8 @@ public:
     [[nodiscard]] double bridgeForceV(std::size_t s) const { return fVs_[s]; }
     [[nodiscard]] double bridgeW() const { return wV_; }
     [[nodiscard]] int resets() const { return static_cast<int>(segV_.counters().resets); }
+    /// Energy removed so far by the reset-at-separation rule: sum of (psi_before^2 - 2 eps0) / 2.
+    [[nodiscard]] double resetEnergyRemoved() const { return resetRemoved_; }
     [[nodiscard]] std::size_t strings() const { return ns_; }
 
     /// One sample n -> n + 1 in the order of SPEC-EXEC / SPEC-BRG "Discrete coupling order".
@@ -239,11 +241,15 @@ public:
         }
         const double gH = gradH / std::sqrt(2.0 * (v + cfg_.eps0));
         psiPrev_ = segV_.psi();
+        const auto resetsBefore = segV_.counters().resets;
         const std::array<const pme::nl::Potential<S>*, 1> pots{pot_.get()};
         pme::nl::savStep<S>(segV_, std::span<const pme::nl::Potential<S>* const>(pots.data(), 1),
                             std::span<const pme::nl::Dashpot<S>>(dash_.data(), dash_.size()),
                             std::span<const S>(forceV_));
         contactForce_ = gH * 0.5 * (segV_.psi() + psiPrev_);
+        if (segV_.counters().resets > resetsBefore) {
+            resetRemoved_ += 0.5 * psiPrev_ * psiPrev_ - cfg_.eps0;
+        }
         // Step 7: the horizontal polarisation is linear.
         if (ns_ > 0) {
             pme::nl::savStep<S>(segH_, {}, {}, std::span<const S>(forceH_));
@@ -360,6 +366,7 @@ private:
     double psiPrev_{0.0};
     double maxDelta_{0.0};
     double contactForce_{0.0};
+    double resetRemoved_{0.0};
 };
 
 }  // namespace pme::oracle::ham

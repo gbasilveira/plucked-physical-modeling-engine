@@ -103,6 +103,8 @@ struct EnergyRun {
     double maxRelAccounted{0.0};    ///< max |E^n + R^n - E0| / E0, R^n = energy removed by resets
     double resetLoss{0.0};          ///< total energy removed by the reset rule, relative to E0
     double resetGain{0.0};          ///< largest energy ADDED by one reset (should be <= 0), / E0
+    double resetMismatch{0.0};      ///< max |removed - (psi^2/2 - eps0)| / E0 at a reset
+    double minRemoved{1.0e300};     ///< smallest energy one reset removed, / E0 (must be >= 0)
     int resets{0};
     double contactTime{0.0};
     double peakForce{0.0};
@@ -161,20 +163,25 @@ EnergyRun runEnergy(const ham::NoteSetup& cfg) {
     delta.reserve(steps);
     std::vector<double> force;
     force.reserve(steps);
-    double removed = 0.0;  // R^n in joules
     double ePrev = e0;
+    double removedPrev = 0.0;
     for (std::size_t n = 0; n < steps; ++n) {
         const double psiBefore = rig.psi();
         const int resetsBefore = rig.resets();
         rig.step();
         const double e = rig.energy();
         r.finite = r.finite && std::isfinite(e);
+        const double removed = rig.resetEnergyRemoved();  // R^n in joules, the implementation's
         if (rig.resets() > resetsBefore) {
+            // The energy a reset removes is what psi held above the constant: psi^2/2 - eps0.
             const double stored = 0.5 * psiBefore * psiBefore - cfg.eps0;
-            removed += stored;
+            r.resetMismatch =
+                std::max(r.resetMismatch, std::fabs((removed - removedPrev) - stored) / e0);
+            r.minRemoved = std::min(r.minRemoved, (removed - removedPrev) / e0);
             ++r.resets;
             r.resetGain = std::max(r.resetGain, (e - ePrev) / e0);
         }
+        removedPrev = removed;
         ePrev = e;
         const double rel = std::fabs(e - e0) / e0;
         r.maxRelRaw = std::max(r.maxRelRaw, rel);
@@ -185,7 +192,7 @@ EnergyRun runEnergy(const ham::NoteSetup& cfg) {
         delta.push_back(rig.penetration());
         force.push_back(rig.contactForce());
     }
-    r.resetLoss = removed / e0;
+    r.resetLoss = removedPrev / e0;
     const ham::ContactInterval contact = ham::firstContact(delta, 1.0 / cfg.fs);
     r.contactTime = contact.duration;
     r.peakForce = ham::parabolicPeak(force);
@@ -211,7 +218,9 @@ void orc09Single() {
     CHECK(r.maxRelBeforeReset <= kEnergyTol);
     CHECK(r.maxRelAccounted <= kEnergyTol);
     CHECK(r.resetGain <= kEnergyTol);  // the reset rule only removes energy (SPEC-NL)
-    CHECK(r.contactTime > 0.0);        // the strike happened
+    CHECK(r.resetMismatch <= kEnergyTol);
+    CHECK(r.minRemoved >= 0.0);
+    CHECK(r.contactTime > 0.0);  // the strike happened
 }
 
 template <class RigT>
@@ -222,6 +231,8 @@ void orc09Trichord() {
     CHECK(r.maxRelBeforeReset <= kEnergyTol);
     CHECK(r.maxRelAccounted <= kEnergyTol);
     CHECK(r.resetGain <= kEnergyTol);
+    CHECK(r.resetMismatch <= kEnergyTol);
+    CHECK(r.minRemoved >= 0.0);
     CHECK(r.contactTime > 0.0);
 }
 
