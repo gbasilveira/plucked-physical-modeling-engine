@@ -64,6 +64,7 @@ def test_v1_r1_the_real_plan_parses_without_error() -> None:
         "A7",
         "A8",
         "A9",
+        "A11",
         "P0.5",
     ]
 
