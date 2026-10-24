@@ -16,9 +16,9 @@ The initial build is in `out/piano-mvp/` at the worktree root:
   CC64 controls sustain. MIDI channels are merged (omni).
 - CC120 clears all sound; CC123 releases keys while respecting sustain.
 
-No plug-in is installed into your system automatically. Binary and WAV outputs
-are local build artifacts, excluded from Git. Build them with the instructions below
-on another machine.
+No plug-in is installed into your system automatically. The Linux executables, CLAP plug-in and demo WAV in `out/piano-mvp/` are
+committed for direct testing. CMake caches, object files and intermediate libraries
+remain excluded. Rebuild with the instructions below on another platform.
 
 ## Build
 
