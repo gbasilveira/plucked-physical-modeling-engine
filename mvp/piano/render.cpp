@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: MIT
+#include "piano.hpp"
+#include <cmath>
+#include <chrono>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+
+static void word(std::ostream& f, std::uint32_t n, int bytes) {
+    for (int i = 0; i < bytes; ++i) f.put(static_cast<char>((n >> (8 * i)) & 255));
+}
+int main(int argc, char** argv) {
+    try {
+        const std::string path = argc > 1 ? argv[1] : "piano-demo.wav";
+        const int key = argc > 2 ? std::stoi(argv[2]) : -1;
+        if (argc > 3 || (argc > 2 && (key < 21 || key > 108)))
+            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key 21..108]");
+        constexpr int fs = 48000, seconds = 14, frames = fs * seconds;
+        piano_mvp::Piano piano;
+        if (!piano.prepare(fs)) throw std::runtime_error("could not prepare piano");
+        std::ofstream out(path, std::ios::binary);
+        if (!out) throw std::runtime_error("could not open output");
+        out.write("RIFF", 4); word(out, 36 + frames * 4, 4); out.write("WAVEfmt ", 8);
+        word(out, 16, 4); word(out, 1, 2); word(out, 2, 2); word(out, fs, 4);
+        word(out, fs * 4, 4); word(out, 4, 2); word(out, 16, 2);
+        out.write("data", 4); word(out, frames * 4, 4);
+        const auto start = std::chrono::steady_clock::now();
+        double peak = 0;
+        for (int i = 0; i < frames; ++i) {
+            if (key >= 0) {
+                if (i == 0) piano.noteOn(key, 0.75);
+                if (i == fs * 4) piano.noteOff(key);
+            } else {
+                constexpr int melody[] = {60, 64, 67, 72, 71, 67, 64, 60};
+                if (i < fs * 4 && i % (fs / 2) == 0)
+                    piano.noteOn(melody[i / (fs / 2)], 0.45 + 0.06 * (i / (fs / 2)));
+                if (i < fs * 4 && i % (fs / 2) == fs * 2 / 5)
+                    piano.noteOff(melody[i / (fs / 2)]);
+                if (i == fs * 5) { piano.sustain(true); for (int k : {48, 60, 64, 67}) piano.noteOn(k, 0.75); }
+                if (i == fs * 6) for (int k : {48, 60, 64, 67}) piano.noteOff(k);
+                if (i == fs * 9) piano.sustain(false);
+            }
+            float l, r; piano.sample(l, r);
+            for (float x : {l, r}) {
+                if (!std::isfinite(x)) throw std::runtime_error("non-finite audio");
+                peak = std::max(peak, std::abs(static_cast<double>(x)));
+                word(out, static_cast<std::uint16_t>(static_cast<std::int16_t>(std::lround(x * 32767))), 2);
+            }
+        }
+        if (!out) throw std::runtime_error("failed writing WAV");
+        const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+        std::cout << path << ": 14 seconds, stereo 48 kHz, peak " << peak
+                  << ", rendered in " << elapsed << " s\n";
+        return peak > 1e-5 ? 0 : 1;
+    } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
+}
