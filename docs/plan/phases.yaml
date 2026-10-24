@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # Machine-readable phase graph for the implementation orchestrator.
 # Source of truth for dependencies is docs/plan/phasing-plan.md; this file mirrors it.
 # If the two ever disagree, the phase card in phasing-plan.md wins and this file must be fixed.
@@ -16,28 +17,29 @@ model_policy:
   code_review: sonnet
 
 decisions:
-  D-1:  {title: "GUI technology and project licence", default: "Web UI in a native WebView; MIT throughout", status: defaulted, note: "Repository LICENSE is MIT, consistent with the default"}
+  D-1:  {title: "GUI technology and project licence", default: "Web UI in a native WebView; MIT throughout", status: answered, answer: "Licence: AGPL-3.0-or-later (owner, 2026-10-12; recorded as or-later, owner may still say only); GUI: default (web UI in a native WebView)", note: "docs/plan/decisions/D-1-licence-analysis.md section 8; docs/adr/ADR-licence.md; applied by task H1-agpl after A5, A7, A8, A9 merge; no Mac App Store distribution (accepted)"}
   D-2:  {title: "Repository host and organisation name", default: null, status: answered, answer: "github.com/gbasilveira/plucked-physical-modeling-engine"}
-  D-3:  {title: "Product name and frozen plug-in identifiers", default: "Internal codename pme; blocks D2", status: open}
+  D-3:  {title: "Brand, product name and frozen plug-in identifiers", default: "Internal codename pme; blocks D2", status: open, answer: "Brand (vendor): Sympathon (owner, 2026-10-12)", note: "Partly answered: brand Sympathon; product name open (candidates and brand-scoped identifier scheme in docs/plan/decisions/D-3-name-and-identifiers-proposal.md); D2 blocked until the product name is chosen"}
   D-4:  {title: "Reference machines for performance validation", default: "One mid-range 2024 laptop per system plus CI runners", status: open}
   D-5:  {title: "Access to a concert grand and measurement equipment", default: "No access: E2 skipped, G4 passes without it", status: open}
   D-6:  {title: "Listening-test participants and consent process", default: "Skipped: G5 passes without V4", status: open}
   D-7:  {title: "Host licences for compatibility testing", default: "Test available hosts; record untested ones", status: open}
-  D-8:  {title: "Prior-art and patent review sign-off", default: null, status: open, blocks: [G5]}
+  D-8:  {title: "Prior-art and patent review sign-off", default: null, status: open, blocks: [G5], note: "2026-10-12: owner-provided input recorded (AI assistant said documentation is open and partly GPL); not a prior-art or patent review; D-8 stays open"}
   D-9:  {title: "Signing identities (Apple Developer ID, Windows code signing) as CI secrets", default: "Unsigned builds as pre-releases only", status: open}
   D-10: {title: "Beta programme", default: "Release candidates as GitHub pre-releases", status: open}
-  D-11: {title: "Human approver for G5 and each G7", default: null, status: open, blocks: [G5, G7]}
+  D-11: {title: "Human approver for G5 and each G7", default: null, status: answered, answer: "The owner approves G5 and every G7, on condition of detailed textual documentation regardless of size (gate reports and release notes, H4-R7)"}
   D-12: {title: "Redistribution rights for published piano data", default: "Use only after rights confirmed; otherwise generic scale from published scaling rules", status: open}
+  D-13: {title: "Alternatives behind settings; engine quality levels (standing policy)", default: null, status: answered, answer: "Implement viable alternatives behind settings unless incompatible; default = fastest option that plays in real time; engine settings EngineConfig.quality (Realtime | HighQuality) and numerics, non-automatable, persisted by plug-ins"}
 
 gates:
   G0: {name: "Foundations", requires: [P0.1, P0.2, P0.3, P0.4], human_approval: false}
-  G1: {name: "Core numerics", requires: [A1, A2, A3, A4, A5, A6, A7, A8, P0.5], oracles: [ORC-01, ORC-02, ORC-03, ORC-04, ORC-05, ORC-06, ORC-07, ORC-08, ORC-09, ORC-11, ORC-12, ORC-13, ORC-19], human_approval: false}
-  G2: {name: "Piano engine", requires: [C1, C2, C3, C4, C5, C6, C7, C8, B1, B2, B3], oracles: [ORC-16, ORC-17, ORC-18], human_approval: false}
+  G1: {name: "Core numerics", requires: [A1, A2, A3, A4, A5, A6, A7, A8, A9, A11, P0.5], oracles: [ORC-01, ORC-02, ORC-03, ORC-04, ORC-05, ORC-06, ORC-07, ORC-08, ORC-09, ORC-11, ORC-12, ORC-13, ORC-19], human_approval: false}
+  G2: {name: "Piano engine", requires: [C1, C2, C3, C4, C5, C6, C7, C8, B1, B2, B3, B6, A10], oracles: [ORC-16, ORC-17, ORC-18], human_approval: false}
   G3: {name: "Plug-in alpha", requires: [D1, D2, D3, D4, D5, D6], human_approval: false}
   G4: {name: "Piano content", requires: [E1, E3, V3], conditional: {E2: "when D-5 provides an instrument"}, human_approval: false}
-  G5: {name: "Release candidate", requires: [G3, G4, V2, V5, V6, H1, H2, H3, H4], conditional: {V4: "when D-6 provides listeners"}, decisions: [D-8, D-11], human_approval: true}
+  G5: {name: "Release candidate", requires: [G3, G4, V2, V5, V6, H1, H2, H3, H4], conditional: {V4: "when D-6 provides listeners"}, decisions: [D-8, D-11], human_approval: true, documentation: "complete plain-text report per D-11"}
   G6: {name: "Plucked numerics", requires: [P1, P2, P3, P4, P5, P6, B4], oracles: [ORC-10, ORC-14, ORC-15], human_approval: false}
-  G7: {name: "Plucked instrument (one gate per instrument)", requires_per_instrument: ["<that instrument's E card>", H4], instruments: [E4, E5, E6, E7, E8], decisions: [D-11], human_approval: true}
+  G7: {name: "Plucked instrument (one gate per instrument)", requires_per_instrument: ["<that instrument's E card>", H4], instruments: [E4, E5, E6, E7, E8], decisions: [D-11], human_approval: true, documentation: "complete plain-text report per D-11"}
 
 tracks:
   "0": Foundations
@@ -153,6 +155,28 @@ phases:
     outputs: [engine/src/simd/, docs/dev/simd.md]
     tests: [A8-T1, A8-T2, A8-T3]
     references: [PLAN-COMP, SPEC-EXEC]
+  - id: A9
+    name: Implicit bridge step and bridge numerics options
+    track: A
+    depends_on: [A4]
+    outputs: [engine/src/bridge/, docs/dev/bridge.md]
+    tests: [A9-T1, A9-T2, A9-T3, A9-T4, A9-T5]
+    oracles: [ORC-06]
+    references: [SPEC-BRG, SPEC-OSC, SPEC-CONV, SPEC-EXEC]
+  - id: A10
+    name: Geometrically exact string tier
+    track: A
+    depends_on: [A7]
+    outputs: [engine/src/nonlinear/geometric_exact*, engine/src/string/longitudinal*, docs/dev/geometric.md]
+    tests: [A10-T1, A10-T2, A10-T3, A10-T4]
+    references: [SPEC-GEO, SPEC-NL]
+  - id: A11
+    name: Nonlinear segments on implicit bridge points
+    track: A
+    depends_on: [A3, A5, A6, A7, A9]
+    outputs: [engine/src/nonlinear/, engine/src/exciters/, engine/src/dampers/, engine/tests/, docs/dev/nonlinear.md, docs/dev/bridge.md]
+    tests: [A11-T1, A11-T2, A11-T3, A11-T4, A11-T5]
+    references: [SPEC-NL, SPEC-BRG, SPEC-EXEC, SPEC-HAM, SPEC-DMP, SPEC-GEO]
 
   # ---------------- Track B ----------------
   - id: B1
@@ -180,7 +204,7 @@ phases:
     name: Modal data import
     track: B
     depends_on: [B1]
-    outputs: [compiler/pme_compiler/import/, docs/dev/body-import.md]
+    outputs: [compiler/pme_compiler/importers/, docs/dev/body-import.md]
     tests: [B4-T1, B4-T2, B4-T3]
     references: [SPEC-BODY, SPEC-INST]
   - id: B5
@@ -190,6 +214,13 @@ phases:
     outputs: [compiler/pme_compiler/fit/, tools/fit-cli/, docs/dev/fitting.md]
     tests: [B5-T1, B5-T2, B5-T3]
     references: [SPEC-STR, SPEC-HAM, PLAN-RISK]
+  - id: B6
+    name: Instrument-file prestress, moisture reference and shank
+    track: B
+    depends_on: [B1, B2]
+    outputs: [compiler/pme_compiler/schema/, compiler/pme_compiler/body/, engine/src/runtime/loader/, docs/dev/instrument-format.md, docs/dev/body-compiler.md]
+    tests: [B6-T1, B6-T2, B6-T3, B6-T4]
+    references: [SPEC-BODY, SPEC-INST, SPEC-HAM]
 
   # ---------------- Track C ----------------
   - id: C1
@@ -197,7 +228,8 @@ phases:
     track: C
     depends_on: [G1, B1]
     outputs: [engine/src/runtime/, docs/dev/runtime.md]
-    tests: [C1-T1, C1-T2, C1-T3, C1-T4]
+    tests: [C1-T1, C1-T2, C1-T3, C1-T4, C1-T5]
+    oracles: [ORC-16]
     references: [SPEC-EXEC, SPEC-GLANCE, SPEC-BRG, SPEC-BODY]
   - id: C2
     name: Global body engine
@@ -249,7 +281,7 @@ phases:
     track: C
     depends_on: [C4]
     outputs: [tools/render/, bindings/python/, docs/dev/render.md]
-    tests: [C8-T1, C8-T2, C8-T3]
+    tests: [C8-T1, C8-T2, C8-T3, C8-T4]
     references: [SPEC-API, PLAN-VAL]
 
   # ---------------- Track P ----------------
@@ -340,7 +372,7 @@ phases:
     track: D
     depends_on: [G2, D1, D2, D3, D4, D5]
     outputs: [plugin/, tools/hosts/]
-    tests: [D6-T1, D6-T2, D6-T3]
+    tests: [D6-T1, D6-T2, D6-T3, D6-T4]
     references: [SPEC-EXEC, PLAN-VAL]
 
   # ---------------- Track E ----------------
@@ -482,7 +514,7 @@ phases:
     track: H
     depends_on: [H2, P0.2]
     outputs: [.github/workflows/release.yml, CHANGELOG.md, docs/dev/releasing.md]
-    tests: [H4-T1, H4-T2]
+    tests: [H4-T1, H4-T2, H4-T3]
     references: [PLAN-STACK]
   - id: H5
     name: Public release 1.0 (pianos)

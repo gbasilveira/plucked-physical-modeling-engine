@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: MIT
+# Test support classes are single-use fakes; each disabled check has a reason.
+InheritParentConfig: true
+Checks: >
+  -cppcoreguidelines-special-member-functions,
+  -hicpp-special-member-functions,
+  -modernize-use-nodiscard,
+  -modernize-use-auto,
+  -cppcoreguidelines-prefer-member-initializer,
+  -modernize-loop-convert,
+  -performance-enum-size
+# special-member-functions: fakes delete copy and are never moved.
+# use-nodiscard, use-auto, prefer-member-initializer, loop-convert, enum-size: style only in test helpers.

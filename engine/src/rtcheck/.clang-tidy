@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT
+# pme_rtcheck is low-level infrastructure that replaces global allocation functions and libc symbols
+# and must not allocate itself. The relaxations below are what that job needs; each has a reason.
+# The root .clang-tidy still applies to everything else.
+InheritParentConfig: true
+Checks: >
+  -cppcoreguidelines-avoid-c-arrays,
+  -modernize-avoid-c-arrays,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-no-malloc,
+  -cppcoreguidelines-owning-memory,
+  -bugprone-reserved-identifier,
+  -modernize-deprecated-headers
+# avoid-c-arrays, array-to-pointer-decay: the diagnostic uses a fixed stack buffer (no allocation).
+# avoid-non-const-global-variables: the thread_local nesting count and the dlsym slots are mutable state by design.
+# macro-usage: PME_RTCHECK_INTERPOSE is a feature switch for preprocessor conditionals.
+# reinterpret-cast: dlsym returns void*, converted to the function pointer type.
+# no-malloc, owning-memory: the replacement operator new is built on malloc.
+# reserved-identifier: glibc's __libc_malloc family is declared to reach the real allocator.
+# deprecated-headers: <time.h> is needed for POSIX nanosleep and clockid_t.

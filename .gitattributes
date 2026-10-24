@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: MIT
+* text=auto eol=lf
+
+# Git LFS: everything under data/ and audio files anywhere.
+data/** filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.flac filter=lfs diff=lfs merge=lfs -text
+*.aif filter=lfs diff=lfs merge=lfs -text
+*.aiff filter=lfs diff=lfs merge=lfs -text
+*.ogg filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+
+# Placeholder files are plain text, not LFS objects.
+data/.gitkeep text eol=lf -filter -diff -merge
+
+# Images are binary.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary

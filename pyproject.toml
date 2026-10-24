@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: MIT
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pme-compiler"
+version = "0.0.0"
+description = "Design compiler for the plucked physical modelling engine"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "jsonschema>=4.23",
+]
+
+[project.optional-dependencies]
+# FEM toolchain for plate and body compilation (ADR-0002).
+fem = [
+    "scikit-fem>=10.0",
+    "gmsh>=4.13",
+    "meshio>=5.3",
+]
+# Parameter fitting (B5, E2).
+fit = [
+    "jax>=0.4.30",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-jsonschema>=4.23",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["compiler/pme_compiler"]
+
+[tool.pytest.ini_options]
+testpaths = ["compiler/tests", "tools/tests"]
+pythonpath = ["tools", "tools/analysis"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["compiler", "tools"]
+# Planning documentation (docs/) is read-only for implementers and holds scratch verification scripts.
+extend-exclude = ["docs", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+files = ["compiler", "tools"]
+mypy_path = "tools:tools/analysis:compiler"
+
+[[tool.mypy.overrides]]
+module = ["skfem.*", "gmsh.*", "meshio.*", "jax.*", "scipy.*"]
+ignore_missing_imports = true
+
+# The reference solver's extension module (P0.5-R7) is built by CMake with
+# -DPME_BUILD_PYTHON_BINDINGS=ON and is not installed in the environment.
+[[tool.mypy.overrides]]
+module = ["pme_reference"]
+ignore_missing_imports = true

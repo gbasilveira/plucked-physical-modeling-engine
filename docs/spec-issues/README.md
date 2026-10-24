@@ -27,3 +27,40 @@ The exact SPEC text and formula change.
 ## Resolution
 Decision, human reviewer (for physics or numerics), SPEC commit, affected phases.
 ```
+
+## Index
+
+| ID | Title | Status | Blocks |
+| --- | --- | --- | --- |
+| [SI-0001](SI-0001-compile-string-registered-points.md) | compileString contract omits registeredPoints | resolved | |
+| [SI-0002](SI-0002-api-compiled-data-and-io-types.md) | Compiled-data and I/O types; buildLocalBridge fs; EngineConfig.threads | resolved | |
+| [SI-0003](SI-0003-body-description-types.md) | Body and bridge-point description types | resolved (ICR-0001 applied at 300b995, interfaces-v2; physics items flagged for owner review) | |
+| [SI-0004](SI-0004-tuning-keys-and-segment-addressing.md) | Tuning curve, key numbering, unison detune, segment addressing | resolved (ICR-0001 applied at 300b995, interfaces-v2; physics items flagged for owner review) | |
+| [SI-0005](SI-0005-plucked-exciter-interfaces.md) | Plucked exciters: Pluck event, finger, initial displacement | resolved (ICR-0001 applied at 300b995, interfaces-v2; physics items flagged for owner review) | |
+| [SI-0006](SI-0006-compiled-instrument-retirement.md) | No retire mechanism for the previous CompiledInstrument | resolved (ICR-0001 applied at 300b995, interfaces-v2) | |
+| [SI-0007](SI-0007-parameter-registry.md) | Parameter registry ranges, soft-pedal duplication, output gains, f_max | resolved (ICR-0001 applied at 300b995, interfaces-v2) | |
+| [SI-0008](SI-0008-oscillator-coefficient-cancellation.md) | SPEC-OSC ω̂²Δt² formula loses digits at small ωΔt; exact sech form proposed | resolved (orchestrator default; flagged for owner review) | |
+| [SI-0009](SI-0009-orc02-float32-energy-tolerance.md) | ORC-02 float32 energy tolerance 10⁻⁵ is below float32 round-off; 24 u√N / (1 − ω̂²Δt²/4) at named frequencies | resolved (orchestrator default; flagged for owner review) | |
+| [SI-0010](SI-0010-rear-segment-tension-and-mute.md) | Rear and duplex segments: tension source (tuning rule vs same T) and undefined σ_felt | resolved (orchestrator default: AtL-only tuning rule, rear segments take the preceding speaking T, σ_felt = 20 s⁻¹ provisional; item 2 flagged for owner review) | |
+| [SI-0011](SI-0011-sav-drift-control-sign.md) | SPEC-NL drift control rules must act on \|ψ\| and keep the sign | resolved (clarifying text fix; A3 already conforms) | |
+| [SI-0012](SI-0012-brg-admittance-time-convention.md) | SPEC-BRG Im Y has no stated time convention (formula correct under e^(+iωt)) | resolved (clarifying text) | |
+| [SI-0013](SI-0013-body-moisture-reference.md) | SPEC-BODY moisture coefficients have no reference MC; E = E\_ref + dE/dMC (MC − MC\_ref), MC\_ref = 0.12 | resolved (orchestrator default; flagged for owner review; `PlateParams::moistureRef` on the next-ICR list) | |
+| [SI-0014](SI-0014-barrier-contact-damping.md) | SPEC-PLK barrier contact damping not normalised; per-point R\_j, lumped by Rayleigh quotient along ∇V\_B | resolved (orchestrator default; flagged for owner review) | |
+| [SI-0015](SI-0015-geo-one-way-energy-balance.md) | SPEC-GEO one-way longitudinal coupling does not conserve energy; monitors use transverse energy | resolved (states existing behaviour) | |
+| [SI-0016](SI-0016-sostenuto-thresholds.md) | SPEC-DMP sostenuto: pedal-down threshold and "lifted by its key" undefined; 0.5 for both | resolved (orchestrator default; control logic); consumed by A6 | |
+| [SI-0017](SI-0017-orc13-float32-decay-resolution.md) | ORC-13 0.1% decay criterion below float32 resolution of β for small σΔt; float32 tolerance 0.1% + 2⁻²⁴/(2σΔt) | resolved; owner decision 2026-10-12: ruling kept, no setting (test tolerance only); 64-bit states recorded as a D-13 candidate | |
+| [SI-0018](SI-0018-brg-explicit-order-light-bridge-stability.md) | SPEC-BRG explicit coupling order unstable for very light bridges (m ≈ N Z₀Δt) | resolved by owner decision 2026-10-12 (D-13): explicit and implicit schemes both implemented; explicit-mode stability check with `numerics.unstableBridge` = SwitchToImplicit (default) or Reject; phase A9 | |
+| [SI-0019](SI-0019-brg-rotation-sign-convention.md) | SPEC-BRG R(θ\_b) sign convention undefined; A4 used the transpose of P0.5's standard rotation | resolved (standard rotation; convention only; A4 must change) | A4 |
+| [SI-0020](SI-0020-bridge-modes-bandwidth-rule.md) | Bandwidth rule rejects free-mass (Ω = 0) and overdamped lumped bridge modes | resolved; owner decision 2026-10-12 (D-13): Ω = 0 kept; σ ≥ Ω > 0 accepted via the real-pole continuation by default (`numerics.overdampedBridgeModes` = Accept or Reject); phase A9 | |
+| [SI-0021](SI-0021-orc06-bridge-damping-high-modes.md) | ORC-06 0.1% on every kept mode not met by the SPEC-BRG explicit scheme above ωΔt ≈ 0.1 (error ∝ (ωΔt)², up to −50%) | oracle criterion resolved; owner decision 2026-10-12 (D-13): explicit (Realtime default) and implicit + matched-coupling scheme (HighQuality default) both implemented, phase A9; implicit numerics pending owner review | |
+| [SI-0022](SI-0022-body-radiation-and-local-bridge-conventions.md) | SPEC-BODY: air constants, delay reference, radiating sides, G\_hf band edge, selection ties | open (planner defaults in effect for B3; item 4 two-sided radiation needs owner review) | |
+| [SI-0023](SI-0023-orc11-float64-evaluation.md) | ORC-11's 10⁻⁹ tolerance needs the forcing evaluated in float64 | resolved 2026-10-12 (test condition; SPEC-ORC updated) | |
+| [SI-0024](SI-0024-exec-taylor-start-forced-modes.md) | Forced mode started from rest: Taylor start u⁰ = −γf⁰/2 (longitudinal front Δt/2 early otherwise) | resolved provisionally 2026-10-12 (SPEC-EXEC, SPEC-PLK updated; numerics, flagged for owner review) | |
+| [SI-0025](SI-0025-brg-geo-tension-modulation-bridge-force.md) | Bridge force omits the transverse pull of the modulated tension (−ΔT y\_x(L)) and S omits w²/L | open (physics; owner review; recommended: add, in an A7 follow-up) | A7 follow-up |
+| [SI-0026](SI-0026-geo-longitudinal-force-at-x0.md) | Longitudinal bridge force defined only at x = L | resolved 2026-10-12 (SPEC-GEO updated; A7's x = 0 form ratified) | |
+| [SI-0027](SI-0027-orc09-reset-energy.md) | ORC-09 "constant over the whole run" contradicts the MUST ψ reset | resolved 2026-10-12 (SPEC-ORC updated) | |
+| [SI-0028](SI-0028-ham-contact-ignores-bridge-lifting.md) | Hammer δ\_s ignores the bridge lifting displacement (energy error ∝ 1/m on a movable bridge) | open (owner; recommended: modal-only default, `numerics.contactLifting` option for HighQuality) | |
+| [SI-0029](SI-0029-ham-stulov-and-launch-wording.md) | Stulov force out of contact and per strike weight; launch wording | resolved 2026-10-12 (SPEC-HAM updated; flagged for owner review); corrected 2026-10-13 (Stulov sign defect, felt force clamped at ≥ 0; the recorded energy gain was the defect; rigid-wall check 0.7187 with the clamp) | |
+| [SI-0030](SI-0030-orc19-aftersound-criterion.md) | ORC-19: 20 dB rise by 0.5 s not met at Z₀\|Y\| = 0.02 | resolved 2026-10-12 (brief criterion amended; golden provisional; regenerated from the A5 run 2026-10-13, still provisional) | |
+| [SI-0031](SI-0031-orc19-rise-monotonicity.md) | ORC-19 SHOULD "rise grows monotonically with Z₀\|Y\|" expected the wrong trend (7.53, 6.98, 6.70 dB) | resolved 2026-10-13 (brief SHOULD reworded: first-window level grows with Z₀\|Y\|; rise reported) | |
+| [SI-0032](SI-0032-a9-implicit-bridge-follow-ups.md) | Implicit bridge: w\_ext in the solve, horizontal matched coupling, nonlinear segments, stability-check scope | resolved 2026-10-13 (SPEC-EXEC 4′ reworded; `omegaH` ICR-0002 amendment proposed; phase A11; known limit recorded; flagged for owner review with A9's numerics) | A11 |

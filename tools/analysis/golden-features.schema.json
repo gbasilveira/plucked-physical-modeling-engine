@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gbasilveira/plucked-physical-modeling-engine/tools/analysis/golden-features.schema.json",
+  "title": "Golden features",
+  "description": "Features of a render (partial frequencies, decay rates, spectral envelope, ...) compared within per-feature tolerances by pme_golden_compare and pme_analysis.golden (P0.3-R4). SI units throughout.",
+  "type": "object",
+  "required": ["schema_version", "scenario", "sample_rate_hz", "producer", "partials"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "scenario": { "type": "string", "minLength": 1, "description": "Name of the render scenario." },
+    "sample_rate_hz": { "type": "number", "exclusiveMinimum": 0 },
+    "producer": {
+      "type": "object",
+      "required": ["tool", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "units": {
+      "type": "object",
+      "description": "Informational; the field names fix the units.",
+      "additionalProperties": { "type": "string" }
+    },
+    "partials": {
+      "type": "array",
+      "description": "Partials matched between files by index.",
+      "items": {
+        "type": "object",
+        "required": ["index", "frequency_hz", "amplitude", "sigma_per_s", "t60_s"],
+        "additionalProperties": false,
+        "properties": {
+          "index": { "type": "integer", "minimum": 1, "description": "Partial number, 1 = fundamental." },
+          "frequency_hz": { "type": "number", "exclusiveMinimum": 0 },
+          "amplitude": { "type": "number", "minimum": 0, "description": "Linear amplitude at t = 0." },
+          "sigma_per_s": { "type": "number", "description": "Decay rate; amplitude proportional to exp(-sigma t)." },
+          "t60_s": { "type": "number", "description": "3 ln(10) / sigma." },
+          "second_decay": {
+            "type": "object",
+            "required": ["sigma_per_s", "knee_s"],
+            "additionalProperties": false,
+            "properties": {
+              "sigma_per_s": { "type": "number", "description": "Decay rate after the knee." },
+              "knee_s": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "spectral_envelope": {
+      "type": "object",
+      "required": ["frequencies_hz", "magnitude_db"],
+      "additionalProperties": false,
+      "properties": {
+        "frequencies_hz": { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0 } },
+        "magnitude_db": { "type": "array", "items": { "type": "number" } }
+      }
+    },
+    "contact_time_s": { "type": "number", "minimum": 0 },
+    "energy": {
+      "type": "object",
+      "required": ["max_relative_drift", "max_relative_step_change"],
+      "additionalProperties": false,
+      "properties": {
+        "max_relative_drift": { "type": "number", "minimum": 0 },
+        "max_relative_step_change": { "type": "number", "minimum": 0 }
+      }
+    },
+    "tolerances": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "frequency_cents": { "type": "number", "minimum": 0, "default": 0.01 },
+            "amplitude_db": { "type": "number", "minimum": 0, "default": 0.1 },
+            "decay_rate_relative": { "type": "number", "minimum": 0, "default": 0.005 },
+            "spectral_envelope_db": { "type": "number", "minimum": 0, "default": 1.0 },
+            "contact_time_relative": { "type": "number", "minimum": 0, "default": 0.01 },
+            "energy_absolute": { "type": "number", "minimum": 0, "default": 1e-9 },
+            "knee_relative": { "type": "number", "minimum": 0, "default": 0.05 }
+          }
+        },
+        "partials": {
+          "type": "object",
+          "description": "Per-partial overrides keyed by the partial index as a string.",
+          "patternProperties": {
+            "^[0-9]+$": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "frequency_cents": { "type": "number", "minimum": 0 },
+                "amplitude_db": { "type": "number", "minimum": 0 },
+                "decay_rate_relative": { "type": "number", "minimum": 0 },
+                "knee_relative": { "type": "number", "minimum": 0 }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}

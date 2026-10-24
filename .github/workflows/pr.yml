@@ -1,0 +1,701 @@
+# SPDX-License-Identifier: MIT
+# Pull-request workflow (P0.2-R1, R4, R6, R7). Documented in docs/dev/ci.md.
+#
+# Job names are the required checks of `main` (tools/ci/required_checks.json); renaming a job is
+# a change to branch protection. Actions are pinned by commit SHA with the tag in a comment
+# (ADR-0003).
+name: pr
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      p0_2_t2_inject_misformat:
+        description: "P0.2-T2 demonstration: write a mis-formatted C++ file before the format check"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+  # Pinned tools (ADR-0003). clang-format comes from a PyPI wheel; clang-tidy from the Ubuntu
+  # package, because it must see the same Clang resource headers as the compiler that wrote the
+  # compile database.
+  CLANG_FORMAT_VERSION: "18.1.8"
+  CLANG_APT_MAJOR: "18"
+  # The pytest test of the format script (P0.2-T2) uses the same pinned clang-format everywhere.
+  PME_CLANG_FORMAT: "uvx clang-format==18.1.8"
+
+jobs:
+  # Covers: P0.1-R3, P0.2-R4
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: Install Python tools from uv.lock
+        run: uv sync --locked --all-extras
+      - name: P0.2-T2 demonstration, inject a mis-formatted file
+        # Only for the demonstration run: manual dispatch with the input set, or a push whose
+        # head commit message contains the marker. The file is staged in the runner's index only.
+        if: ${{ inputs.p0_2_t2_inject_misformat || contains(github.event.head_commit.message, '[p0.2-t2-misformat]') }}
+        run: |
+          mkdir -p engine/tests
+          printf '%s\n' '// SPDX-License-Identifier: MIT' 'int   injected( int a ){return a+1;}' \
+            > engine/tests/p0_2_t2_injected_misformat.cpp
+          git add engine/tests/p0_2_t2_injected_misformat.cpp
+      - name: clang-format
+        if: ${{ !cancelled() }}
+        run: python3 tools/ci/check_format.py --clang-format "uvx clang-format==${CLANG_FORMAT_VERSION}"
+      - name: ruff check
+        if: ${{ !cancelled() }}
+        run: uv run ruff check
+      - name: ruff format --check
+        if: ${{ !cancelled() }}
+        run: uv run ruff format --check
+      - name: mypy (strict)
+        if: ${{ !cancelled() }}
+        run: uv run mypy
+      - name: SPDX headers
+        if: ${{ !cancelled() }}
+        run: uv run python tools/check_spdx.py
+      - name: Install Clang and clang-tidy
+        if: ${{ !cancelled() }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build "clang-${CLANG_APT_MAJOR}" "clang-tidy-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev"
+          "clang-tidy-${CLANG_APT_MAJOR}" --version
+      - name: Configure (compile databases for clang-tidy, debug and rt-safety)
+        if: ${{ !cancelled() }}
+        env:
+          CC: clang-${{ env.CLANG_APT_MAJOR }}
+          CXX: clang++-${{ env.CLANG_APT_MAJOR }}
+        run: |
+          cmake --preset linux-debug -B build/lint-debug
+          cmake --preset linux-rt-safety -B build/lint-rt
+      - name: clang-tidy
+        if: ${{ !cancelled() }}
+        run: python3 tools/ci/run_clang_tidy.py -p build/lint-debug -p build/lint-rt --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
+
+  # Covers: P0.1-R1, P0.1-R2, P0.1-T1, P0.2-R1
+  build:
+    name: build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-msvc
+            os: windows-2025
+            system: windows
+            preset_a: windows-debug
+            preset_b: windows-rt-safety
+            py: python
+          - name: windows-clang-cl
+            os: windows-2025
+            system: windows
+            preset_a: windows-debug
+            preset_b: windows-rt-safety
+            py: python
+          - name: macos-arm64
+            os: macos-15
+            system: macos
+            preset_a: macos-debug
+            preset_b: macos-rt-safety
+            py: python3
+          - name: macos-universal
+            os: macos-15
+            system: macos
+            preset_a: macos-release
+            preset_b: ""
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64;x86_64
+            py: python3
+          - name: linux-gcc
+            os: ubuntu-24.04
+            system: linux
+            preset_a: linux-debug
+            preset_b: linux-rt-safety
+            py: python3
+          - name: linux-clang
+            os: ubuntu-24.04
+            system: linux
+            preset_a: linux-debug
+            preset_b: linux-rt-safety
+            py: python3
+    env:
+      PY: ${{ matrix.py }}
+      CMAKE_ARGS: ${{ matrix.cmake_args }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja (Linux)
+        if: matrix.system == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Install Clang and its runtime libraries (linux-clang)
+        if: matrix.name == 'linux-clang'
+        # libclang-rt-<major>-dev supplies the sanitizer and profile runtimes, so that the same
+        # Clang that builds here is proven to link them (the nightly asan and tsan jobs use it).
+        run: |
+          sudo apt-get install -y "clang-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev"
+          echo "CC=clang-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+          echo "CXX=clang++-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Select clang-cl (windows-clang-cl)
+        if: matrix.name == 'windows-clang-cl'
+        shell: bash
+        run: |
+          echo "CC=clang-cl" >> "$GITHUB_ENV"
+          echo "CXX=clang-cl" >> "$GITHUB_ENV"
+          clang-cl --version
+      - name: Toolchain versions
+        shell: bash
+        run: |
+          cmake --version
+          ninja --version
+          "${CXX:-c++}" --version || true
+      - name: Create the report directory
+        shell: bash
+        run: mkdir -p reports
+
+      - name: "${{ matrix.preset_a }}: configure"
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: cmake --preset "$PRESET" $CMAKE_ARGS
+      - name: "${{ matrix.preset_a }}: build"
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: cmake --build --preset "$PRESET"
+      - name: "${{ matrix.preset_a }}: test"
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: ctest --preset "$PRESET" -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-${{ matrix.name }}-$PRESET.xml"
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: P0.3-T3 bench smoke (PME_BENCH_SMOKE)
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: |
+          uv sync --locked --all-extras
+          exe="$GITHUB_WORKSPACE/build/$PRESET/tools/bench/pme_bench_smoke"
+          if [ "${{ matrix.system }}" = windows ]; then exe="$exe.exe"; fi
+          test -f "$exe"
+          PME_BENCH_SMOKE="$exe" uv run pytest tools/tests/test_p0_3_t3.py -rs \
+            --junitxml="$GITHUB_WORKSPACE/reports/pytest-bench-smoke-${{ matrix.name }}.xml"
+      - name: P0.3-R5 WAV cross-language test (PME_WAV_TOOL)
+        # C++ writes and Python reads, and the reverse, for every WAV format. A skip here is a
+        # failure: the tool exists and the test must run on all three systems.
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_a }}
+        run: |
+          exe="$GITHUB_WORKSPACE/build/$PRESET/tools/analysis/pme_wav_roundtrip"
+          if [ "${{ matrix.system }}" = windows ]; then exe="$exe.exe"; fi
+          test -f "$exe"
+          set -o pipefail
+          PME_WAV_TOOL="$exe" uv run pytest tools/tests/test_p0_3_r5_cross_language.py -rs \
+            --junitxml="$GITHUB_WORKSPACE/reports/pytest-wav-${{ matrix.name }}.xml" \
+            | tee wav-cross-language.log
+          if grep -Eq '(skipped|SKIPPED)' wav-cross-language.log; then
+            echo "::error::the WAV cross-language test was skipped"
+            exit 1
+          fi
+
+      - name: "${{ matrix.preset_b }}: configure"
+        if: ${{ matrix.preset_b != '' && !cancelled() }}
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_b }}
+        run: cmake --preset "$PRESET" $CMAKE_ARGS
+      - name: "${{ matrix.preset_b }}: build"
+        if: ${{ matrix.preset_b != '' && !cancelled() }}
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_b }}
+        run: cmake --build --preset "$PRESET"
+      - name: "${{ matrix.preset_b }}: test"
+        if: ${{ matrix.preset_b != '' && !cancelled() }}
+        shell: bash
+        env:
+          PRESET: ${{ matrix.preset_b }}
+        run: ctest --preset "$PRESET" -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-${{ matrix.name }}-$PRESET.xml"
+
+      - name: Verify both architecture slices (macos-universal)
+        if: ${{ matrix.name == 'macos-universal' }}
+        run: |
+          for lib in build/macos-release/libpme_simd.a build/macos-release/_deps/highway-build/libhwy.a build/macos-release/engine/src/rtcheck/libpme_rtcheck.a; do
+            archs="$(lipo -archs "$lib")"
+            echo "$lib: $archs"
+            case "$archs" in
+              *arm64*x86_64* | *x86_64*arm64*) ;;
+              *) echo "::error::$lib is not a universal library ($archs)"; exit 1 ;;
+            esac
+          done
+
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: $PY tools/ci/junit_summary.py --title "ctest ${{ matrix.name }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-build-${{ matrix.name }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Covers: P0.1-R3
+  python:
+    name: python (${{ matrix.system }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: linux
+            os: ubuntu-24.04
+          - system: macos
+            os: macos-15
+          - system: windows
+            os: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: Install the shared libraries the gmsh wheel imports (B2 plate mesher)
+        if: ${{ matrix.system == 'linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglu1-mesa libgl1 libxrender1 libxcursor1 libxft2 libxinerama1 libfontconfig1
+      - run: uv sync --locked --all-extras
+      - name: pytest
+        shell: bash
+        run: |
+          mkdir -p reports
+          uv run pytest --junitxml="reports/pytest-${{ matrix.system }}.xml"
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: uv run python tools/ci/junit_summary.py --title "pytest ${{ matrix.system }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-python-${{ matrix.system }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Covers: P0.1-R2
+  coverage:
+    name: coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: Install Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Configure (linux-coverage, GCC)
+        run: cmake --preset linux-coverage
+      - name: Build
+        run: cmake --build --preset linux-coverage
+      - name: Test
+        run: |
+          mkdir -p reports
+          ctest --preset linux-coverage -LE "perf|fuzz|soak" --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-coverage.xml"
+      - name: Coverage report (gcovr 8.3, HTML and Cobertura)
+        # The measured set is engine/src without rtcheck and *_placeholder.cpp (docs/dev/ci.md).
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p coverage
+          uvx --from gcovr==8.3 gcovr --root . --object-directory build/linux-coverage \
+            --filter 'engine/src/' --exclude 'engine/src/rtcheck/' --exclude '.*_placeholder\.cpp' \
+            --exclude 'engine/src/sched/platform/' \
+            --html-details coverage/index.html --cobertura coverage/coverage.xml --print-summary
+      - name: Coverage gate (>= 90 % line coverage of engine/src)
+        run: python3 tools/ci/coverage_gate.py coverage/coverage.xml --threshold 90
+      - name: Job summary
+        if: ${{ always() }}
+        run: python3 tools/ci/junit_summary.py --title "ctest coverage" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+            reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Covers: P0.1-R4
+  deps:
+    name: deps
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-all-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Configure with every dependency (proves every pin resolves)
+        run: cmake --preset linux-release -DPME_FETCH_ALL_DEPS=ON
+
+  # ---- D1: CLAP plug-in shell ----
+  plugin:
+    name: plugin (${{ matrix.system }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: linux
+            os: ubuntu-24.04
+            preset: linux-rt-safety
+            validator_asset: clap-validator-0.3.2-ubuntu-18.04.tar.gz
+            validator_sha256: 1476ed68f5657e76050e0c4f19790c02d819ecc62c35fd465059d21f05169cb1
+            validator_exe: clap-validator
+            py: python3
+          - system: macos
+            os: macos-15
+            preset: macos-rt-safety
+            validator_asset: clap-validator-0.3.2-macos-universal.tar.gz
+            validator_sha256: 3750f3729adfd8489f2b29019f7f2ed65ba71bf9d5049735f6a2ca0fccb18ffd
+            validator_exe: binaries/clap-validator
+            py: python3
+          - system: windows
+            os: windows-2025
+            preset: windows-rt-safety
+            validator_asset: clap-validator-0.3.2-windows.zip
+            validator_sha256: 68cdbe51c05489542b5420a870b7159b4cb352b5ce5c486f9bd8a9b49b75bdda
+            validator_exe: clap-validator.exe
+            py: python
+    env:
+      PY: ${{ matrix.py }}
+      # clap-validator 0.3.2 (release tag 0.3.2, the newest release that ships binaries). The
+      # release page lists no checksums: the SHA-256 values above were computed from the
+      # downloaded release assets and are verified before the archive is unpacked (ADR-0003).
+      CLAP_VALIDATOR_TAG: "0.3.2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-plugin-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja and Clang with clang-tidy (Linux)
+        if: matrix.system == 'linux'
+        # Clang writes the compile database, so that clang-tidy sees the same resource headers.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build "clang-${CLANG_APT_MAJOR}" "clang-tidy-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev"
+          echo "CC=clang-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+          echo "CXX=clang++-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Create the report directory
+        shell: bash
+        run: mkdir -p reports
+
+      - name: Fetch clap-validator (pinned tag, SHA-256 verified)
+        shell: bash
+        env:
+          ASSET: ${{ matrix.validator_asset }}
+          SHA256: ${{ matrix.validator_sha256 }}
+          EXE: ${{ matrix.validator_exe }}
+        run: |
+          dest="$RUNNER_TEMP/clap-validator"
+          mkdir -p "$dest"
+          curl -fsSL -o "$dest/$ASSET" "https://github.com/free-audio/clap-validator/releases/download/$CLAP_VALIDATOR_TAG/$ASSET"
+          actual="$("$PY" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$dest/$ASSET")"
+          if [ "$actual" != "$SHA256" ]; then
+            echo "::error::SHA-256 mismatch for $ASSET: $actual"
+            exit 1
+          fi
+          echo "SHA-256 verified: $actual"
+          case "$ASSET" in
+            *.zip) "$PY" -m zipfile -e "$dest/$ASSET" "$dest" ;;
+            *) tar -xzf "$dest/$ASSET" -C "$dest" ;;
+          esac
+          chmod +x "$dest/$EXE" || true
+          echo "PME_CLAP_VALIDATOR=$dest/$EXE" >> "$GITHUB_ENV"
+          "$dest/$EXE" --version
+
+      - name: "${{ matrix.preset }} (plug-ins): configure"
+        shell: bash
+        run: cmake --preset "${{ matrix.preset }}" -DPME_BUILD_PLUGINS=ON
+      - name: "${{ matrix.preset }} (plug-ins): build"
+        shell: bash
+        run: cmake --build --preset "${{ matrix.preset }}"
+      - name: D1 and D5 tests (D1-T1 runs clap-validator on the built .clap)
+        shell: bash
+        run: ctest --preset "${{ matrix.preset }}" -R "^D[15]-" --no-tests=error --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-plugin-${{ matrix.system }}.xml"
+      - name: clap-validator (all tests) on the built .clap
+        shell: bash
+        run: '"$PME_CLAP_VALIDATOR" validate "build/${{ matrix.preset }}/plugin/clap/pme.clap"'
+      - name: clang-tidy (compile database of this build)
+        if: ${{ matrix.system == 'linux' && !cancelled() }}
+        run: python3 tools/ci/run_clang_tidy.py -p "build/${{ matrix.preset }}" --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
+
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: $PY tools/ci/junit_summary.py --title "ctest plugin (${{ matrix.system }})" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-plugin-${{ matrix.system }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+  # ---- end D1 ----
+
+# ---- P0.5: reference solver Python bindings ----
+  reference-python:
+    name: reference-python (${{ matrix.system }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: linux
+            os: ubuntu-24.04
+          - system: macos
+            os: macos-15
+          - system: windows
+            os: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: Install Python tools from uv.lock
+        run: uv sync --locked --all-extras
+      - name: Install Ninja (Linux)
+        if: matrix.system == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libglu1-mesa libgl1 libxrender1 libxcursor1 libxft2 libxinerama1 libfontconfig1
+      - name: Install Ninja (macOS)
+        if: matrix.system == 'macos'
+        run: brew install ninja
+      - name: Visual Studio developer shell (Windows)
+        if: matrix.system == 'windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      - name: Configure (release preset, Python bindings on)
+        shell: bash
+        run: |
+          py="$(uv run python -c 'import sys; print(sys.executable)')"
+          cmake --preset "${{ matrix.system }}-release" -DPME_BUILD_PYTHON_BINDINGS=ON -DPython_EXECUTABLE="$py"
+      - name: Build the module and the CLI
+        shell: bash
+        run: cmake --build --preset "${{ matrix.system }}-release" --target pme_reference pme_reference_cli
+      - name: pytest tools/tests/test_p0_5_*.py (a skip fails the job)
+        shell: bash
+        env:
+          PME_REFERENCE_PYDIR: ${{ github.workspace }}/build/${{ matrix.system }}-release/reference/python
+          PME_REFERENCE_REQUIRED: "1"
+        run: |
+          mkdir -p reports
+          uv run pytest tools/tests/test_p0_5_*.py compiler/tests/test_b2_t4_*.py compiler/tests/test_b2_r5_reference_*.py -rs --junitxml="reports/pytest-reference-python-${{ matrix.system }}.xml"
+      - name: Job summary
+        if: ${{ always() }}
+        shell: bash
+        run: uv run python tools/ci/junit_summary.py --title "pytest reference-python ${{ matrix.system }}" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-reference-python-${{ matrix.system }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+# ---- end P0.5 ----
+
+  # ---- V1: traceability ----
+  # The traceability matrix (V1-R1 to V1-R4, docs/dev/traceability.md). It reads every junit-*
+  # artifact of this run, publishes traceability.html and traceability.json as the artifact
+  # `traceability`, and fails when a phase marked `complete` in docs/status/phase-status.md has a
+  # gap that is not on the allow-list tools/trace/known-gaps.json.
+  #
+  # `needs` lists the jobs that upload junit-* artifacts. The orchestrator adds `plugin` (D1) and
+  # `reference-python` (P0.5) here when it merges those phases, so that this job waits for them.
+  # Covers: V1-R4, V1-T2
+  traceability:
+    name: traceability
+    needs: [lint, build, python, coverage, deps, plugin, reference-python, lv2]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the JUnit artifacts of this run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: junit-*
+          path: junit
+      - name: Job conclusions (toJSON(needs))
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: printf '%s' "$NEEDS_JSON" > job-results.json
+      - name: Build the traceability matrix (fails on a gap in a complete phase)
+        run: |
+          python3 tools/trace/build_matrix.py --junit junit --job-results job-results.json \
+            --job-results-workflow pr.yml --known-gaps tools/trace/known-gaps.json \
+            --out traceability --fail-on-gaps
+      - name: Job summary
+        if: ${{ always() }}
+        run: |
+          if [ -f traceability/summary.md ]; then cat traceability/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: traceability
+          path: |
+            traceability/traceability.html
+            traceability/traceability.json
+          if-no-files-found: warn
+          retention-days: 14
+  # ---- end V1 ----
+
+  # ---- D3: LV2 plug-in ----
+  lv2:
+    name: lv2 (linux)
+    runs-on: ubuntu-24.04
+    env:
+      LV2LINT_URL: https://github.com/amsynth/lv2lint
+      LV2LINT_SHA: ec29cfed3193a89a8091a4c18e22bb36e6b43b24
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-lv2-${{ runner.os }}-${{ hashFiles('cmake/dependencies.cmake') }}
+      - name: Install Ninja, Clang with clang-tidy, lilv and the LV2 headers
+        # Clang writes the compile database, so that clang-tidy sees the same resource headers.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build "clang-${CLANG_APT_MAJOR}" "clang-tidy-${CLANG_APT_MAJOR}" "libclang-rt-${CLANG_APT_MAJOR}-dev" liblilv-dev lilv-utils lv2-dev
+          echo "CC=clang-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+          echo "CXX=clang++-${CLANG_APT_MAJOR}" >> "$GITHUB_ENV"
+      - name: Cache the lv2lint build
+        id: lv2lint-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/lv2lint-prefix
+          key: lv2lint-${{ runner.os }}-${{ env.LV2LINT_SHA }}
+      - name: Build lv2lint from source (pinned commit)
+        # lv2lint is not in the apt sources of ubuntu-24.04. Pinned to the commit of the GitHub
+        # mirror (Artistic-2.0); the checked-out SHA is verified. See docs/dev/lv2.md.
+        if: steps.lv2lint-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install -y meson
+          src="$RUNNER_TEMP/lv2lint-src"
+          mkdir -p "$src"
+          git -C "$src" init -q
+          git -C "$src" fetch -q --depth 1 "$LV2LINT_URL" "$LV2LINT_SHA"
+          git -C "$src" checkout -q FETCH_HEAD
+          test "$(git -C "$src" rev-parse HEAD)" = "$LV2LINT_SHA"
+          meson setup "$RUNNER_TEMP/lv2lint-build" "$src" --prefix="$HOME/lv2lint-prefix" --buildtype=release
+          ninja -C "$RUNNER_TEMP/lv2lint-build" install
+      - name: Put lv2lint on PATH
+        run: echo "$HOME/lv2lint-prefix/bin" >> "$GITHUB_PATH"
+      - name: Tool versions (lv2lint, lilv, LV2)
+        run: |
+          dpkg-query -W liblilv-dev lilv-utils lv2-dev
+          echo "lv2lint ${LV2LINT_SHA} ($LV2LINT_URL)"
+          lv2lint -v 2>&1 | head -3
+      - name: Create the report directory
+        run: mkdir -p reports
+      - name: "linux-rt-safety (LV2): configure"
+        run: cmake --preset linux-rt-safety -DPME_BUILD_PLUGINS=ON -DPME_REQUIRE_LV2_TOOLS=ON
+      - name: "linux-rt-safety (LV2): build"
+        run: cmake --build --preset linux-rt-safety
+      - name: D3 tests (D3-T1 lv2lint, D3-T2 headless lilv host)
+        run: ctest --preset linux-rt-safety -R "^D3-" --no-tests=error --output-on-failure --output-junit "$GITHUB_WORKSPACE/reports/ctest-lv2-linux.xml"
+      - name: clang-tidy over plugin/lv2 (compile database of this build)
+        if: ${{ !cancelled() }}
+        run: python3 tools/ci/run_clang_tidy.py -p build/linux-rt-safety --clang-tidy "clang-tidy-${CLANG_APT_MAJOR}"
+      - name: Job summary
+        if: ${{ always() }}
+        run: python3 tools/ci/junit_summary.py --title "ctest lv2 (linux)" reports/*.xml >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: junit-lv2-linux
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+  # ---- end D3 ----

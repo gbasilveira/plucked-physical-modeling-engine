@@ -136,6 +136,8 @@ C++ namespace `pme`; Python package `pme_compiler`.
 5. Reductions run in the fixed order of SPEC-EXEC.
 6. SI units everywhere. Each function that implements a SPEC formula cites it in a comment, for example `// SPEC-OSC difference form`.
 
+**Quality settings and numerical options (decision D-13, owner, 2026-10-12).** When a modelling or numerical choice has viable alternatives, implement each behind a setting instead of picking one and dropping the others, unless they are incompatible. The default is always the fastest option that plays in real time. Engine-wide choices are engine settings (`EngineConfig::quality`, Realtime or HighQuality, and `EngineConfig::numerics`). Per-instrument modelling choices are instrument options in the description. Engine settings are non-automatable configuration: plug-ins persist them in their state and offer them as settings. The definitions and the option table are in SPEC-CONV "Quality and numerical options"; the interface is ICR-0002. A phase that adds an alternative scheme adds its option to that table through the planner.
+
 **Code style.** clang-format and clang-tidy with the repository configuration; Python with ruff and mypy in strict mode. No global mutable state. Public headers contain declarations and documentation only.
 
 **Testing policy.**
@@ -159,7 +161,7 @@ Engine core line coverage (engine/src excluding platform glue) MUST stay at or a
 
 **Branching and versioning.** Trunk-based: main is always releasable. Phase branches are named phase/\<ID>-\<slug>, and pull-request titles start with the phase ID. Releases follow semantic versioning. The instrument file format has its own schema version with migrations.
 
-**Licensing.** Engine, compiler and plug-in are MIT-licensed unless decision D-1 says otherwise. Every source file carries an SPDX header. A software bill of materials lists every third-party component and licence. Each instrument records the provenance and licence of its data. Instrument names contain no trademarks.
+**Licensing.** Engine, compiler and plug-in are licensed **AGPL-3.0-or-later** (decision D-1, answered 2026-10-12; docs/adr/ADR-licence.md). The repository changes from MIT when task H1-agpl lands, scheduled after A5, A7, A8 and A9 merge; until then files carry the MIT header and the bulk pass converts them. Every source file carries an SPDX header. A software bill of materials lists every third-party component and licence. Each instrument records the provenance and licence of its data. Instrument names contain no trademarks.
 
 ## Track 0 — Foundations
 
@@ -249,7 +251,7 @@ Track 0 creates the repository, CI, test tooling, frozen interfaces and an indep
   1. P0.5-R1 Stiff damped string with an energy-conserving finite-difference scheme and configurable grid.
   2. P0.5-R2 Hammer contact with an iterative (Newton) energy-conserving scheme, deliberately different from the engine's SAV method.
   3. P0.5-R3 Bridge as a lumped mass–spring–dashpot or a conductance, shared by several strings, with both polarisations.
-  4. P0.5-R4 Finite-difference orthotropic Kirchhoff plate on a rectangle, coupled to strings at bridge points.
+  4. P0.5-R4 Finite-difference orthotropic Kirchhoff plate on a rectangle, coupled to strings at bridge points, with axis-parallel ribs modelled as beams (follow-up P0.5-ribs, added 2026-10-12 for B2-T4).
   5. P0.5-R5 Distributed string–barrier collision (penalty potential, Newton solve).
   6. P0.5-R6 Tension modulation and longitudinal waves (iterative scheme).
   7. P0.5-R7 Grid-refinement and energy-monitor tools; Python bindings and a CLI that render scenarios to features and WAV.
@@ -259,7 +261,7 @@ Track 0 creates the repository, CI, test tooling, frozen interfaces and an indep
 
 ## Track A — Core numerics
 
-Track A implements the numerical building blocks of SPEC as tested library code, with no runtime scheduling yet. A1 comes first; A2 and A3 run in parallel; A4 follows A2; A5, A6 and A7 run in parallel; A8 runs alongside A5–A7. Gate G1 closes the track.
+Track A implements the numerical building blocks of SPEC as tested library code, with no runtime scheduling yet. A1 comes first; A2 and A3 run in parallel; A4 follows A2; A5, A6 and A7 run in parallel; A8 runs alongside A5–A7; A9 (the second bridge scheme, D-13) follows A4 and runs alongside A5, A7 and A8. A11 (nonlinear segments on implicit bridge points) follows A3, A5, A6, A7 and A9. Gate G1 closes the track. A10 (the geometrically exact tier, D-13) follows A7 and closes before G2.
 
 ### A1 Modal oscillator
 
@@ -330,7 +332,7 @@ Track A implements the numerical building blocks of SPEC as tested library code,
   3. A5-R3 Hunt–Crossley dashpots per struck string; Stulov hereditary felt as an option.
   4. A5-R4 Release and check at d\_check; repetition while in flight.
   5. A5-R5 Una corda map: strike weights, felt-zone stiffness and exponent; upright soft pedal as velocity scaling.
-  6. A5-R6 MAY: flexible shank as one extra oscillator.
+  6. A5-R6 Flexible shank as one extra oscillator (SPEC-HAM "Flexible shank"), selected per instrument by `HammerParams::shank`; absent = rigid hammer (D-13; amended 2026-10-12 from MAY).
   7. A5-R7 Diagnostics: contact duration and peak force per strike.
 - **Outputs:** engine/src/exciters/hammer\*, docs/dev/hammer.md.
 - **Tests:** ORC-09; ORC-19; A5-T1 contact time scales as v^((1−p)/(1+p)) within 2% against a rigid wall; A5-T2 against P0.5 with elastic felt, peak force and contact duration within 2%; A5-T3 una corda weights and felt-zone values match SPEC-HAM tables; A5-T4 re-launching a hammer in flight keeps its position continuous.
@@ -360,7 +362,7 @@ Track A implements the numerical building blocks of SPEC as tested library code,
   3. A7-R3 Pair-sum forcing for M\_L ≤ 16; MAY add the cosine-transform path for larger M\_L.
   4. A7-R4 Longitudinal bridge force F\_L and the κ\_L, κ\_T contributions to the vertical bridge force.
   5. A7-R5 Per-segment enable flags.
-  6. A7-R6 MAY: geometrically exact high-quality tier, behind a flag.
+  6. A7-R6 Geometric tier selector (`numerics.geometricTier`, D-13): the default tier is selectable per segment, and the selector reports `NotImplemented` for the exact tier until A10 provides it (amended 2026-10-12 from MAY; the exact tier itself is phase A10).
 - **Outputs:** engine/src/string/longitudinal\*, engine/src/nonlinear/tension\*, docs/dev/geometric.md.
 - **Tests:** ORC-11; ORC-12; A7-T1 a large-amplitude pluck's instantaneous frequency follows the Kirchhoff–Carrier prediction within 2%; A7-T2 the bridge-force spectrum shows phantom partials at sums f\_i + f\_j; A7-T3 against P0.5, the longitudinal precursor reaches the bridge at the predicted time within 1%.
 - **References:** SPEC-GEO.
@@ -378,6 +380,47 @@ Track A implements the numerical building blocks of SPEC as tested library code,
 - **Outputs:** engine/src/simd/, docs/dev/simd.md.
 - **Tests:** A8-T1 parity with the scalar reference within 10⁻⁶ relative for every instruction set; A8-T2 repeated runs are bit-identical; A8-T3 the AVX2 mode-bank update is at least 4× the scalar throughput on a 1,024-mode bank, with the measured baseline stored.
 - **References:** PLAN-COMP, SPEC-EXEC.
+
+### A9 Implicit bridge step and bridge numerics options
+
+- **Mode:** sequential after A4; parallel with A5, A7 and A8. Only A9 edits engine/src/bridge while it runs. **Depends on:** A4.
+- **Description:** the second bridge scheme required by decision D-13 (owner answers on SI-0018 and SI-0021): an implicit bridge step with matched coupling, selectable against A4's explicit order; the explicit-mode stability check with its policy; and overdamped lumped bridge modes (SI-0020), each behind an engine setting.
+- **Requirements:**
+  1. A9-R1 Bridge scheme selector Explicit or Implicit per bridge point (internal enum mirroring ICR-0002 `BridgeScheme`); Explicit stays bit-identical to A4.
+  2. A9-R2 Implicit scheme exactly as SPEC-BRG "Bridge scheme": matched coupling g̃\_n = g\_n ω\_n/ω̂\_n in the modal force and in a\_n, trapezoidal conductances, averaged bridge-mode force (Fⁿ⁺¹ + 2Fⁿ + Fⁿ⁻¹)/4, affine segment response and one solve of size 1 or 2 per bridge point, including segments whose response comes from a low-rank solve (two right-hand sides, SPEC-EXEC steps 3′ to 5′).
+  3. A9-R3 Discrete energy of the implicit scheme derived, documented in docs/dev/bridge.md and computed in float64 for tests.
+  4. A9-R4 Explicit-mode stability check in `configure` (largest generalised eigenvalue against (1 − 10⁻³)·4/Δt²) with the policy SwitchToImplicit (default) or Reject, and a record of switched points for C1's diagnostic.
+  5. A9-R5 Overdamped lumped bridge modes (σ ≥ Ω > 0) compiled with the real-pole continuation of SPEC-OSC "Bandwidth" under Accept (default); Reject keeps A4's `Rejected`.
+  6. A9-R6 Cost of both schemes measured on A4's benchmark configuration and reported.
+- **Outputs:** engine/src/bridge/, docs/dev/bridge.md.
+- **Tests:** ORC-06 in the implicit scheme, with the SPEC-ORC criterion for that scheme (every kept mode within 0.1% at Z₀G = 0.01, and at Z₀G = 0.05 within 0.1% for ω\_nΔt ≤ 2.4 and 0.5% for every kept mode); A9-T1 strings on a lossless mass–spring bridge in the implicit scheme keep the A9-R3 energy within 10⁻¹⁰ relative over 10⁶ samples in float64 with no secular trend, and with losses it never increases; A9-T2 SI-0018's unstable configurations (m = 10⁻⁴ kg with 3 and 8 strings, 10⁻⁵ kg with 1 string) run stably in the implicit scheme, and the explicit-mode check flags exactly the unstable configurations of the SI-0018 table (SwitchToImplicit then runs them, and Reject returns `Rejected`); A9-T3 an overdamped bridge mode's free response matches the exact real poles within 10⁻¹² (float64) and its energy never increases; A9-T4 A4-T1, A4-T2 and ORC-07 pass unchanged in the implicit scheme; A9-T5 against P0.5, the A4-T3 setup in the implicit scheme matches partial frequencies within 0.05 cent and decay rates within 2%.
+- **References:** SPEC-BRG, SPEC-OSC, SPEC-CONV, SPEC-EXEC.
+- **Note (2026-10-13):** A9 meets the low-rank part of A9-R2 with a Sherman–Morrison stand-in against a dense float64 solve; the real SAV solve and the hammer, damper and tension-modulation segments are wired to the implicit point in A11 ([SI-0032](../spec-issues/SI-0032-a9-implicit-bridge-follow-ups.md)).
+
+### A10 Geometrically exact string tier
+
+- **Mode:** sequential after A7; parallel with Track C. Not required by G1; required by G2. **Depends on:** A7.
+- **Description:** SPEC-GEO's high-quality tier, selected by `numerics.geometricTier` = Exact (the HighQuality default, D-13): the geometrically exact string with transverse and longitudinal motion fully coupled, integrated with the SAV framework and conserving total energy.
+- **Requirements:**
+  1. A10-R1 Geometrically exact potential over both transverse polarisations and the longitudinal modes (Ducceschi and Bilbao 2022, energy-quadratised), integrated with A3's SAV and sharing the segment's ψ.
+  2. A10-R2 Selection per segment by the resolved `geometricTier`; the default tier stays bit-identical.
+  3. A10-R3 Transmission to the bridge per SPEC-GEO "Transmission to the body" from the exact tier's longitudinal force and tension.
+  4. A10-R4 Cost measured against the default tier and reported.
+- **Outputs:** engine/src/nonlinear/geometric\_exact\*, engine/src/string/longitudinal\* (exact-tier additions only), docs/dev/geometric.md.
+- **Tests:** A10-T1 lossless total energy (transverse, longitudinal and ψ) is conserved within 10⁻¹⁰ relative over 10⁵ samples in float64; A10-T2 at 10⁻⁶ relative amplitude the partials equal the linear string's within 0.01 cent; A10-T3 at moderate amplitude the pitch glide agrees with A7's default tier within 2%; A10-T4 the bridge-force spectrum shows phantom partials at sums f\_i + f\_j.
+- **References:** SPEC-GEO, SPEC-NL.
+
+### A11 Nonlinear segments on implicit bridge points
+
+- **Mode:** sequential after A3, A5, A6, A7 and A9; parallel with A8 and A10. Edits engine/src/nonlinear and the segment wiring of A5, A6 and A7; nothing else edits those while it runs. Created 2026-10-13 (SI-0032 item 3). **Depends on:** A3, A5, A6, A7, A9.
+- **Description:** A9's implicit bridge point needs, from every attached segment, the affine pair (c, κ) of Fⁿ⁺¹ = c − κ wⁿ⁺¹ per polarisation. A segment with an active nonlinearity obtains it by applying its low-rank solve to two right-hand sides at fixed H and W (SPEC-BRG "Bridge scheme", SPEC-EXEC 3′ to 5′). A3's `savStep` returns one solve; A9 verified the contract with a Sherman–Morrison stand-in (docs/dev/bridge.md). This phase makes the real solve and the real hammer, damper and tension-modulation segments meet that contract. Required by G1 because the default `numerics.unstableBridge` = SwitchToImplicit can put a hammered note on an implicit point in any quality level.
+- **Requirements:**
+  1. A11-R1 `savStep` (or a companion entry point) returns the solutions for the segment's own right-hand side and for the bridge column γ ⊙ g̃/Δt² from one factorisation, then completes qⁿ⁺¹ = y\_b − y\_h wⁿ⁺¹ and the ψ update with the reset and drift rules after the point's solve. The single-solve path stays bit-identical.
+  2. A11-R2 A5's hammer, A6's damper rank-one term and A7's tension modulation supply (c, κ) to A9's implicit point through the A9 contract (docs/dev/bridge.md "Contract for segments with an active nonlinearity"), replacing the Sherman–Morrison stand-in in A9's tests.
+  3. A11-R3 SPEC-GEO's κ\_L F\_L + κ\_T ΔT stay at step n (SPEC-BRG), unchanged.
+- **Outputs:** engine/src/nonlinear/, the implicit-segment wiring in engine/src/exciters/, engine/src/dampers/ and engine/src/nonlinear/ (A5, A6, A7 files), engine/tests/, docs/dev/nonlinear.md, docs/dev/bridge.md (contract section only).
+- **Tests:** A11-T1 the two-right-hand-side solve equals a dense float64 solve within 10⁻¹² on random systems of rank 1 to 4; A11-T2 a hammered trichord on an implicit lossless mass–spring bridge keeps the ORC-09 energy balance (with the SI-0027 reset accounting) within ORC-09's tolerance in float64; A11-T3 an implicit point with a hammer segment matches a dense float64 solve of the coupled step within 10⁻¹² for 10³ samples through contact; A11-T4 a damper engagement and a tension-modulated string on an implicit point keep energy non-increasing (with losses) and conserved within 10⁻¹⁰ (lossless, tension modulation) over 10⁵ samples; A11-T5 every A3, A5, A6, A7 and A9 test passes unchanged.
+- **References:** SPEC-NL, SPEC-BRG, SPEC-EXEC, SPEC-HAM, SPEC-DMP, SPEC-GEO.
 
 ## Track B — Bodies and offline toolchain
 
@@ -439,8 +482,9 @@ Track B builds everything that runs off the audio thread: the instrument file fo
   3. B4-R3 Rational (vector) fitting of measured mobilities into modal tables.
   4. B4-R4 Air-cavity (Helmholtz) modes for guitar-type bodies as fitted body modes.
   5. B4-R5 Analytic circular and rectangular membrane modes for shamisen-type bodies, from tension and areal density.
-- **Outputs:** compiler/pme\_compiler/import/, docs/dev/body-import.md.
+- **Outputs:** compiler/pme\_compiler/importers/, docs/dev/body-import.md. (Amended 2026-10-11: `import` is a Python keyword, so a package of that name cannot be imported normally.)
 - **Tests:** B4-T1 vector fitting recovers synthetic modal parameters within 0.5% in frequency and 5% in damping; B4-T2 membrane frequencies match Bessel-zero values within 10⁻⁹; B4-T3 an imported MAESSTRO sample yields a valid blob.
+- **Note (2026-10-12):** the owner has no access to MAESSTRO, so B4-R1 stays partial permanently unless someone supplies a real sample: B4-T3 runs on a synthetic fixture in MAESSTRO's documented format. The adapter's `names=` mapping lets a future user map a real file's field names without code changes.
 - **References:** SPEC-BODY, SPEC-INST.
 
 ### B5 Parameter fitting toolkit
@@ -456,7 +500,20 @@ Track B builds everything that runs off the audio thread: the instrument file fo
   6. B5-R6 Output an updated instrument file plus a fit report with residuals.
 - **Outputs:** compiler/pme\_compiler/fit/, tools/fit-cli, docs/dev/fitting.md.
 - **Tests:** B5-T1 render with known parameters, fit them back within 2% (loss coefficients within 5%); B5-T2 fitted intrinsic losses exclude the bridge loss in a synthetic case built from ORC-06; B5-T3 the fit report validates against its schema.
+- **Note (2026-10-13):** B5-R4 fits K, p and μ\_HC. If B5 also fits the Stulov ε and τ (SPEC-HAM says they are fitted), the fit MUST use the corrected Stulov law of SPEC-HAM: felt force K(δ^p − εh) clamped at ≥ 0, the hereditary term opposing the elastic force ([SI-0029](../spec-issues/SI-0029-ham-stulov-and-launch-wording.md), corrected 2026-10-13). Parameters fitted with the earlier sign (K(δ^p + εh)) are invalid.
 - **References:** SPEC-STR, SPEC-HAM, PLAN-RISK.
+
+### B6 Instrument-file prestress, moisture reference and shank
+
+- **Mode:** sequential after B1 and B2, once ICR-0002 is applied; parallel with B3. **Depends on:** B1, B2.
+- **Description:** carries the description fields added by ICR-0002 into the instrument file: the plate's moisture reference (SI-0013), an optional static prestress for crown and downbearing (owner decision 2026-10-12; absent = none), and the optional flexible hammer shank (A5-R6).
+- **Requirements:**
+  1. B6-R1 Schema fields `plate.moistureRef` (default 0.12), `plate.prestress` {nx, ny, nxy} in N/m (optional) and `hammer.shank` {mass, frequency, sigma} (optional), mapped by the loader to `PlateParams` and `HammerParams`.
+  2. B6-R2 compileBody uses `moistureRef` in the SI-0013 moisture formula and passes `prestress` to B2's prestress path.
+  3. B6-R3 Files without the new fields load and compile bit-identically to before; no schema-version change.
+- **Outputs:** compiler/pme\_compiler/schema/, compiler/pme\_compiler/body/ (wiring only), engine/src/runtime/loader/, docs/dev/instrument-format.md, docs/dev/body-compiler.md.
+- **Tests:** B6-T1 the example instrument files compile bit-identically before and after; B6-T2 moistureRef equal to the moisture gives the listed wood values exactly, and other values follow the SI-0013 slopes; B6-T3 prestress read from a file gives the same modes as B2's API argument, bit for bit; B6-T4 the shank fields round-trip through the schema and the loader.
+- **References:** SPEC-BODY, SPEC-INST, SPEC-HAM.
 
 ## Track C — Engine runtime
 
@@ -473,8 +530,9 @@ Track C assembles the numerical blocks into the real-time engine of SPEC-EXEC. C
   4. C1-R4 Tension modulation and longitudinal modes (A7) are wired in behind per-segment flags.
   5. C1-R5 Small-body exact mode: when K ≤ 256 and bridge points ≤ 8, all bridge points couple to the full body every sample.
   6. C1-R6 An instrumented build records the step order for conformance testing.
+  7. C1-R7 The engine settings of `EngineConfig` (D-13) are resolved at compile time per bridge point and segment (bridge scheme, unstable-bridge policy, overdamped bridge modes, geometric tier); a bridge point switched to the implicit scheme emits a `BridgeSchemeSwitched` diagnostic.
 - **Outputs:** engine/src/runtime/note\_group\*, engine/src/runtime/compile\*, docs/dev/runtime.md.
-- **Tests:** C1-T1 a composed note group equals the composition of the Track A components sample for sample; C1-T2 against P0.5, a full note (hammer, three strings, mass–spring–damper bridge) matches partials within 0.05 cent, decays within 2% and attack force within 2%; C1-T3 processing in the rt-safety build allocates nothing; C1-T4 the instrumented build shows the SPEC-EXEC order.
+- **Tests:** ORC-16 at 44.1, 48 and 96 kHz on the C1-T2 note and on a hammer-struck note group in small-body exact mode (C1-R5); C1-T1 a composed note group equals the composition of the Track A components sample for sample; C1-T2 against P0.5, a full note (hammer, three strings, mass–spring–damper bridge) matches partials within 0.05 cent, decays within 2% and attack force within 2%; C1-T3 processing in the rt-safety build allocates nothing; C1-T4 the instrumented build shows the SPEC-EXEC order (including steps 3′ to 5′ in the implicit bridge scheme); C1-T5 for each value of each D-13 option the composed note group equals the Track A components run with that option, sample for sample.
 - **References:** SPEC-EXEC, SPEC-GLANCE, SPEC-BRG, SPEC-BODY.
 
 ### C2 Global body engine
@@ -513,7 +571,7 @@ Track C assembles the numerical blocks into the real-time engine of SPEC-EXEC. C
   1. C4-R1 Events applied at their sample offsets inside sub-blocks.
   2. C4-R2 NoteOn, NoteOff, KeyDepth, Pedal, Pluck, Bend and Param semantics exactly as the SPEC-API events table.
   3. C4-R3 Continuous parameters ramp per sample within the sub-block where they arrive.
-  4. C4-R4 Structural parameters queue a recompile on a background worker; results swap in by atomic exchange at a block start; old data is freed off the audio thread.
+  4. C4-R4 Structural parameters, and changes of the engine settings `quality` and `numerics` (D-13), queue a recompile on a background worker; results swap in by atomic exchange at a block start; old data is freed off the audio thread.
   5. C4-R5 State mapping on swap: keep states when the mode count is unchanged, keep overlapping modes otherwise; a body swap resets body states.
   6. C4-R6 Diagnostics ring buffer read by `popDiagnostic`.
 - **Outputs:** engine/src/runtime/events\*, engine/src/runtime/params\*, engine/src/runtime/swap\*, docs/dev/events.md.
@@ -568,8 +626,9 @@ Track C assembles the numerical blocks into the real-time engine of SPEC-EXEC. C
   1. C8-R1 `pme-render`: instrument file plus MIDI or event script to WAV and golden-feature JSON; batch scenario files.
   2. C8-R2 Python bindings for compile functions and offline Engine use.
   3. C8-R3 Scenario file format with schema: events, pedals, channel layout, sample rate, thread count.
+  4. C8-R4 Engine quality and numerics options (D-13) as CLI flags, scenario fields and Python arguments.
 - **Outputs:** tools/render/, bindings/python/, docs/dev/render.md.
-- **Tests:** C8-T1 CLI and in-process renders are bit-identical; C8-T2 Python and CLI renders are bit-identical; C8-T3 scenario files validate against their schema.
+- **Tests:** C8-T1 CLI and in-process renders are bit-identical; C8-T2 Python and CLI renders are bit-identical; C8-T3 scenario files validate against their schema; C8-T4 every value of every D-13 option is accepted by the CLI, the scenario file and Python, and reaches `EngineConfig` unchanged.
 - **References:** SPEC-API, PLAN-VAL.
 
 ## Track P — Plucked-string numerics
@@ -731,14 +790,15 @@ Track D wraps the engine as CLAP, VST3, AUv2 and LV2 plug-ins and a standalone a
 ### D6 Real-engine integration
 
 - **Mode:** sequential after G2 and D1–D5. **Depends on:** G2, D1, D2, D3, D4, D5.
-- **Description:** replaces the stub with the real engine in every format and proves the plug-ins behave in hosts.
+- **Description:** replaces the stub with the real engine in every format and proves the plug-ins behave in hosts. It inherits the engine-routing half of D1-R6 (ADR-0007): D6-R1 connects the D1 shell's task runner to the engine-side host-pool adapter from C5-R5, and D6-T2 covers the CLAP host pool with bit-identical output for any thread count (SPEC-EXEC).
 - **Requirements:**
   1. D6-R1 Real engine in all formats, using the host thread pool where available.
   2. D6-R2 CPU meter and diagnostics wired to the GUI.
   3. D6-R3 Host bounce and real-time playback of the same events give identical output at the same thread count.
   4. D6-R4 Validators run in CI with the generic-grand-88 instrument.
+  5. D6-R5 Engine quality level and numerics options (D-13) offered as non-automatable settings in the GUI settings page and the standalone app, persisted in the plug-in state of every format; a change recompiles off the audio thread.
 - **Outputs:** updated plugin/, tools/hosts/ scripts.
-- **Tests:** D6-T1 clap-validator, pluginval, auval, Steinberg's validator and lv2lint pass with the real engine; D6-T2 bounce and real-time renders are bit-identical; D6-T3 RT-safety holds inside the plug-in.
+- **Tests:** D6-T1 clap-validator, pluginval, auval, Steinberg's validator and lv2lint pass with the real engine; D6-T2 bounce and real-time renders are bit-identical; D6-T3 RT-safety holds inside the plug-in; D6-T4 the D-13 settings survive saving and restoring plug-in state in every format.
 - **References:** SPEC-EXEC, PLAN-VAL.
 
 ## Track E — Instrument content
@@ -862,10 +922,10 @@ Track V proves the whole system against SPEC and PLAN-VAL, beyond the tests each
 - **Requirements:**
   1. V1-R1 A script extracts requirement and test IDs from this plan, the code and test results, and builds a traceability matrix.
   2. V1-R2 The matrix shows, per phase, requirements without tests and tests that fail or are missing.
-  3. V1-R3 Every ORC row is implemented and passing by the gate that needs it (ORC-01 to 13 and 16 to 19 by G2; ORC-14 and 15 by G6).
+  3. V1-R3 Every ORC row is implemented and passing by the gate that needs it, as the Gates table and engine/tests/oracles.md assign them (ORC-01 to 09, 11 to 13 and 19 by G1; ORC-16 to 18 by G2; ORC-10, 14 and 15 by G6).
   4. V1-R4 The matrix is published as a CI artifact on every pull request and nightly.
 - **Outputs:** tools/trace/, CI artifact traceability.html.
-- **Tests:** V1-T1 a deliberately removed test shows up as a gap; V1-T2 the matrix for the main branch has no gaps for completed phases.
+- **Tests:** V1-T1 a deliberately removed test shows up as a gap; V1-T2 the matrix for the main branch has no gaps for completed phases, except one-off demonstration tests that a passed gate report evidences, each listed in tools/trace/known-gaps.json with owner `gate G<n>` and a reason citing that report (the allow-list holds no other entry).
 - **References:** SPEC-ORC.
 
 ### V2 Performance and real-time validation
@@ -992,8 +1052,9 @@ Track H turns the validated software into signed, installable, documented public
   4. H4-R4 Pre-release (beta, release-candidate) and stable channels.
   5. H4-R5 Version embedded in binaries, plug-in state and presets.
   6. H4-R6 A documented procedure to withdraw a faulty release.
+  7. H4-R7 Release notes contain complete plain-text documentation, whatever its length: what was built, every decision, every deviation from SPEC or the plan, and every known limitation (decision D-11).
 - **Outputs:** .github/workflows/release.yml (complete), CHANGELOG.md, docs/dev/releasing.md.
-- **Tests:** H4-T1 a dry-run release to a staging repository yields every artifact with valid checksums and signatures; H4-T2 the only manual step between tag and publication is the gate approval.
+- **Tests:** H4-T1 a dry-run release to a staging repository yields every artifact with valid checksums and signatures; H4-T2 the only manual step between tag and publication is the gate approval; H4-T3 a release-notes check fails the release when the sections Built, Decisions, Deviations or Known limitations are missing or empty.
 - **References:** PLAN-STACK.
 
 ### H5 Public release 1.0 (pianos)
@@ -1026,13 +1087,15 @@ A gate passes only when every phase it lists is complete and every exit criterio
 | Gate | Requires complete | Exit criteria | Unblocks |
 | --- | --- | --- | --- |
 | G0 Foundations | P0.1, P0.2, P0.3, P0.4 | CI green on all three systems; interfaces-v1 tagged; RT-safety trap proven (P0.2-T1); analysis tools validated (P0.3-T1 to T3) | Tracks A and B, D1, P0.5 continues |
-| G1 Core numerics | A1–A8, P0.5 | ORC-01 to 09, 11 to 13 and 19 pass; every Track A test against P0.5 passes; SIMD parity on every instruction set; coverage of engine/src at least 90% | Tracks C and P |
-| G2 Piano engine | C1–C8, B1–B3 | ORC-16, 17 and 18 pass; generic-grand-88 renders offline and in real time; RT-safety holds in all integration tests; V2 engine-level baselines stored; V1 matrix has no gaps for Tracks A, B (B1–B3) and C | D6, E1, E4, B5 |
+| G1 Core numerics | A1–A9, A11, P0.5 | ORC-01 to 09, 11 to 13 and 19 pass (ORC-06 in both bridge schemes); every Track A test against P0.5 passes; SIMD parity on every instruction set; coverage of engine/src at least 90% | Tracks C and P |
+| G2 Piano engine | C1–C8, B1–B3, B6, A10 | ORC-16, 17 and 18 pass; generic-grand-88 renders offline and in real time; RT-safety holds in all integration tests; V2 engine-level baselines stored; V1 matrix has no gaps for Tracks A, B (B1–B3) and C | D6, E1, E4, B5 |
 | G3 Plug-in alpha | D1–D6 | clap-validator, pluginval, auval, Steinberg's validator and lv2lint pass with the real engine; standalone runs on all three systems; bounce equals real time | V4, V5, V6, H2 |
 | G4 Piano content | E1, E3, V3; E2 when decision D-5 provides an instrument | Common instrument tests pass for both pianos; V2-T1 passes on the concert grand; V3-T1 and V3-T2 pass | G5 |
 | G5 Release candidate | G3, G4, V2, V5, V6, H1, H2, H3, H4; V4 when decision D-6 provides listeners | No open release-blocking issues; full nightly suite green on the candidate tag; V1 matrix has no gaps for completed phases; documentation complete; human approval | H5 |
 | G6 Plucked numerics | P1–P6, B4 | ORC-10, 14 and 15 pass; every Track P test against P0.5 passes; plucked RT-safety and determinism pass | E5–E8 |
 | G7 Plucked instrument (one per instrument) | That instrument's E card, H4 | Common instrument tests; V5 fuzzing on that instrument; V6 smoke test in at least two hosts per system; manual pages published; human approval | H6 for that instrument |
+
+**Documentation of gates and releases (decision D-11).** The owner approves G5 and every G7 on the condition that the documentation is detailed and textual, whatever its size. Every gate report (docs/gates/) and every release note (H4-R7) therefore MUST contain complete plain-text explanations of what was built, every decision taken (by the owner or by default), every deviation from SPEC or the plan with its reason, and every known limitation. A table of links is not enough: each item is explained in sentences a reader can follow without opening other files.
 
 **Failing a gate.** The gate report lists each failed criterion with its owning phase. The orchestrator reopens those phases only; phases that do not depend on the gate keep running.
 
@@ -1118,18 +1181,19 @@ These items need a human answer or resource. Where a default exists, the orchest
 
 | ID | Decision or prerequisite | Needed by | Default if unanswered |
 | --- | --- | --- | --- |
-| D-1 | GUI technology and project licence: permissive web UI with MIT throughout, or JUCE with AGPLv3 for the plug-in | P0.1, D4, H1 | Web UI in a native WebView; MIT throughout (the repository LICENSE is already MIT) |
+| D-1 | GUI technology and project licence: permissive web UI with MIT throughout, or JUCE with AGPLv3 for the plug-in | P0.1, D4, H1 | GUI: default in effect (web UI in a native WebView). **Licence answered 2026-10-12 by the owner: AGPL-3.0-or-later** (recorded as "or later" per the analysis' recommendation; the owner may still say "only"); analysis and consequences in [decisions/D-1-licence-analysis.md](decisions/D-1-licence-analysis.md) section 8; record [docs/adr/ADR-licence.md](../adr/ADR-licence.md). Applied by task H1-agpl after A5, A7, A8 and A9 merge; the standalone app is not distributed through the Mac App Store (accepted) |
 | D-2 | Repository host and organisation name | P0.1 | Answered: github.com/gbasilveira/plucked-physical-modeling-engine |
-| D-3 | Product name and frozen plug-in identifiers (CLAP ID, VST3 class IDs, AU manufacturer and subtype codes) | D2 | Internal codename "pme" until answered; blocks D2 |
+| D-3 | Brand, product name and frozen plug-in identifiers (CLAP ID, VST3 class IDs, AU manufacturer and subtype codes, LV2 URI, data directory, preset format) | D2 | **Brand answered 2026-10-12 by the owner: Sympathon** (vendor of this and future products). **Product name open**: candidates and the brand-scoped identifier scheme in [decisions/D-3-name-and-identifiers-proposal.md](decisions/D-3-name-and-identifiers-proposal.md). Internal codename "pme" stays. D2 stays blocked until the product name is chosen; H1-R6 trademark search still applies before release |
 | D-4 | Reference machines for performance validation | V2 | One mid-range 2024 laptop per system plus the CI runners |
 | D-5 | Access to a concert grand and measurement equipment | E2 | No access: E2 is skipped and G4 passes without it |
 | D-6 | Listening-test participants and consent process | V4 | Skipped: G5 passes without V4 and the release notes say so |
 | D-7 | Host licences for compatibility testing | V6 | Test the hosts available; record the untested ones in the host matrix |
-| D-8 | Prior-art and patent review sign-off | H1 | None: blocks G5 |
+| D-8 | Prior-art and patent review sign-off | H1 | None: blocks G5. 2026-10-12: owner-provided input recorded (an AI assistant, Gemini, said the documentation is open and free and partly GPL); this is not a prior-art or patent review and does not answer D-8 (see [decisions/D-1-licence-analysis.md](decisions/D-1-licence-analysis.md), section 3) |
 | D-9 | Signing identities: Apple Developer ID certificates and notarisation credentials, Windows code-signing certificate, stored as CI secrets | H2 | Unsigned builds may be published as pre-releases only |
 | D-10 | Beta programme | H5 | Release candidates published as GitHub pre-releases |
-| D-11 | Human approver for G5 and each G7 | G5, G7 | None: blocks G5 and G7 |
+| D-11 | Human approver for G5 and each G7 | G5, G7 | **Answered 2026-10-12:** the owner approves G5 and every G7, on condition that detailed textual documentation is provided regardless of size (Gates, "Documentation of gates and releases"; H4-R7) |
 | D-12 | Redistribution rights for published piano data | E1, H1 | Use the data only after rights are confirmed; otherwise build the scale from published scaling rules and record it as generic |
+| D-13 | Alternatives behind settings; quality levels | all phases | **Answered 2026-10-12 (standing policy):** "Anything that exposes a decision similar to those answered here that can be defined either in code or binary options is preferable over not implemented … unless the implementation is totally incompatible with one another. Always choose the best for the fastest considering real time playing." Recorded as Software guidelines "Quality settings and numerical options" and SPEC-CONV "Quality and numerical options". Applied 2026-10-12: SI-0018, SI-0020, SI-0021 (phase A9), geometric tier (A7-R6, phase A10), flexible shank (A5-R6), plate prestress (B6). Not options, with reasons: A7-R3's cosine-transform path (same result, performance only), SI-0017 (a test tolerance). Candidates not yet scheduled: 64-bit mode states for HighQuality (evaluate with V2 data), damper landing noise (SPEC-DMP MAY; an A6 follow-up) |
 
 **Resources.** GitHub Actions runners for all three systems including macOS arm64; Git LFS storage for body blobs and audio references; GitHub Pages for the website.
 

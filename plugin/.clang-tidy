@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+# Plug-in code talks to C ABIs (CLAP) and to snprintf; each disabled check has a reason.
+InheritParentConfig: true
+Checks: >
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-avoid-c-arrays,
+  -modernize-avoid-c-arrays,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-casting-through-void,
+  -cppcoreguidelines-macro-usage
+# array-to-pointer-decay: string literals and the fixed char arrays of CLAP structs decay at every call.
+# pro-type-vararg: std::snprintf formats parameter text and port names.
+# avoid-c-arrays: CLAP structs contain C arrays; copyText takes a reference to one.
+# easily-swappable-parameters: the signatures follow the CLAP ABI and the event record layout.
+# casting-through-void: CLAP delivers events as headers that are cast to their concrete type.
+# macro-usage: PME_PLUGIN_VERSION_STRING comes from the CMake project version.

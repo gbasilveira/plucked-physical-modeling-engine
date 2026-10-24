@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MIT
+# Disabled checks each carry a one-line reason.
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-bounds-constant-array-index
+# modernize-use-trailing-return-type: stylistic, not the project convention.
+# cppcoreguidelines-avoid-magic-numbers: duplicates readability-magic-numbers; SPEC constants are inline by design.
+# cppcoreguidelines-pro-bounds-*: DSP kernels index raw buffers by contract; bounds are checked by tests.
+WarningsAsErrors: '*'
+# Every project directory, anchored on a path separator so that a checkout directory named
+# *-engine does not match. Fetched dependencies are SYSTEM includes and are skipped.
+HeaderFilterRegex: '/(engine|tools|reference|plugin|bindings|compiler)/'

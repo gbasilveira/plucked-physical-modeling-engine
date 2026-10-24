@@ -1,0 +1,14 @@
+{
+  "plectrum-v0.json": [
+    [
+      "/instrument/groups/2/exciter/plectrum",
+      "migration"
+    ]
+  ],
+  "finger-v0.json": [
+    [
+      "/instrument/groups/2/exciter/finger",
+      "migration"
+    ]
+  ]
+}

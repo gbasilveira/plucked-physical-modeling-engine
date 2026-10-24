@@ -1,0 +1,776 @@
+{
+  "format": "pme-instrument",
+  "schemaVersion": 1,
+  "instrument": {
+    "name": "all-fields",
+    "groups": [
+      {
+        "key": 60,
+        "segments": [
+          {
+            "string": {
+              "L": 4.25,
+              "dCore": 1.25,
+              "rhoCore": 1.75,
+              "ECore": 2.25,
+              "dOuter": 1.875,
+              "rhoWind": 3.25,
+              "packing": 0.38,
+              "epsWind": 4.25,
+              "f1Target": 1.25,
+              "b1": 1.75,
+              "b2": 2.25,
+              "b3": 2.75,
+              "sigmaOverride": [
+                3.25,
+                3.75,
+                4.25
+              ],
+              "boundary": "Clamped",
+              "detuneH": 2.75,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": 1.25,
+            "barriers": [
+              {
+                "kind": "Custom",
+                "x": [
+                  0.25,
+                  0.75,
+                  1.25
+                ],
+                "b": [
+                  0.75,
+                  1.25,
+                  1.75
+                ],
+                "w": [
+                  1.25,
+                  1.75,
+                  2.25
+                ],
+                "side": 1,
+                "K": 1.75,
+                "alpha": 2.25,
+                "muB": 2.75
+              },
+              {
+                "kind": "Fret",
+                "x": [
+                  0.75,
+                  1.25,
+                  1.75
+                ],
+                "b": [
+                  1.25,
+                  1.75,
+                  2.25
+                ],
+                "w": [
+                  1.75,
+                  2.25,
+                  2.75
+                ],
+                "side": -1,
+                "K": 2.25,
+                "alpha": 2.75,
+                "muB": 3.25
+              },
+              {
+                "kind": "Fretboard",
+                "x": [
+                  1.25,
+                  1.75,
+                  2.25
+                ],
+                "b": [
+                  1.75,
+                  2.25,
+                  2.75
+                ],
+                "w": [
+                  2.25,
+                  2.75,
+                  3.25
+                ],
+                "side": 1,
+                "K": 2.75,
+                "alpha": 3.25,
+                "muB": 3.75
+              },
+              {
+                "kind": "Jawari",
+                "x": [
+                  1.75,
+                  2.25,
+                  2.75
+                ],
+                "b": [
+                  2.25,
+                  2.75,
+                  3.25
+                ],
+                "w": [
+                  2.75,
+                  3.25,
+                  -0.75
+                ],
+                "side": -1,
+                "K": 3.25,
+                "alpha": 3.75,
+                "muB": 4.25
+              },
+              {
+                "kind": "Thread",
+                "x": [
+                  2.25,
+                  2.75,
+                  3.25
+                ],
+                "b": [
+                  2.75,
+                  3.25,
+                  -0.75
+                ],
+                "w": [
+                  3.25,
+                  -0.75,
+                  -0.25
+                ],
+                "side": 1,
+                "K": 3.75,
+                "alpha": 4.25,
+                "muB": 1.25
+              },
+              {
+                "kind": "Sawari",
+                "x": [
+                  2.75,
+                  3.25,
+                  -0.75
+                ],
+                "b": [
+                  3.25,
+                  -0.75,
+                  -0.25
+                ],
+                "w": [
+                  -0.75,
+                  -0.25,
+                  0.25
+                ],
+                "side": -1,
+                "K": 4.25,
+                "alpha": 1.25,
+                "muB": 1.75
+              }
+            ],
+            "damper": {
+              "xRatio": 0.31,
+              "width": 1.25,
+              "Kd": 1.75,
+              "Rd": 2.25,
+              "tau0": 2.75,
+              "kRelease": 3.25,
+              "tauUp": 3.75,
+              "etaD": 4.25,
+              "hasDamper": false,
+              "mode": "RankOne"
+            },
+            "muteRatio": 0.31,
+            "tensionModulation": true,
+            "longitudinalModes": 6,
+            "kappaL": 1.25,
+            "kappaT": 1.75,
+            "unisonDetuneCents": 0.75
+          },
+          {
+            "string": {
+              "L": 2.25,
+              "dCore": 2.75,
+              "rhoCore": 3.25,
+              "ECore": 3.75,
+              "dOuter": 4.125,
+              "rhoWind": 1.25,
+              "packing": 0.38,
+              "epsWind": 2.25,
+              "f1Target": 2.75,
+              "b1": 3.25,
+              "b2": 3.75,
+              "b3": 4.25,
+              "sigmaOverride": [
+                1.25,
+                1.75,
+                2.25
+              ],
+              "boundary": "Pinned",
+              "detuneH": 3.25,
+              "bridgeEnd": "At0"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": 1.75,
+            "barriers": [],
+            "muteRatio": 0.31,
+            "tensionModulation": true,
+            "longitudinalModes": 4,
+            "kappaL": 2.75,
+            "kappaT": 3.25,
+            "unisonDetuneCents": 1.25
+          }
+        ],
+        "exciter": {
+          "hammer": {
+            "mass": 3.75,
+            "K": 4.25,
+            "p": 1.25,
+            "muHC": 1.75,
+            "width": 2.25,
+            "strikeRatio": 0.31,
+            "law": "Stulov",
+            "stulovEps": 3.75,
+            "stulovTau": 4.25,
+            "vMin": 1.25,
+            "vMax": 1.75,
+            "gammaV": 2.25,
+            "dCheck": 2.75
+          }
+        },
+        "unaCorda": {
+          "s0": 0.31,
+          "s1": 0.38,
+          "kappaUC": 1.25,
+          "deltaPUC": 3.25,
+          "rhoUpright": 0.59,
+          "leavingString": 5
+        }
+      },
+      {
+        "key": 61,
+        "segments": [
+          {
+            "string": {
+              "L": 1.75,
+              "dCore": 2.25,
+              "rhoCore": 2.75,
+              "ECore": 3.25,
+              "dOuter": 3.375,
+              "rhoWind": 4.25,
+              "packing": 0.38,
+              "epsWind": 1.75,
+              "f1Target": 2.25,
+              "b1": 2.75,
+              "b2": 3.25,
+              "b3": 3.75,
+              "sigmaOverride": [
+                4.25,
+                1.25,
+                1.75
+              ],
+              "boundary": "Pinned",
+              "detuneH": -0.25,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": 2.75,
+            "barriers": [],
+            "damper": {
+              "xRatio": 0.31,
+              "width": 2.25,
+              "Kd": 2.75,
+              "Rd": 3.25,
+              "tau0": 3.75,
+              "kRelease": 4.25,
+              "tauUp": 1.25,
+              "etaD": 1.75,
+              "hasDamper": false,
+              "mode": "Diagonal"
+            },
+            "muteRatio": 0.31,
+            "tensionModulation": true,
+            "longitudinalModes": 4,
+            "kappaL": 2.25,
+            "kappaT": 2.75,
+            "unisonDetuneCents": 2.25
+          }
+        ],
+        "exciter": {
+          "pluckPulse": {
+            "duration": 2.25,
+            "peakForceMax": 2.75,
+            "position": 3.25,
+            "width": 3.75,
+            "angle": -0.25,
+            "strengthGamma": 1.25
+          }
+        },
+        "unaCorda": {
+          "s0": 0.38,
+          "s1": 0.45,
+          "kappaUC": 1.75,
+          "deltaPUC": -0.75,
+          "rhoUpright": 0.31,
+          "leavingString": 6
+        }
+      },
+      {
+        "key": 62,
+        "segments": [
+          {
+            "string": {
+              "L": 3.25,
+              "dCore": 3.75,
+              "rhoCore": 4.25,
+              "ECore": 1.25,
+              "dOuter": 5.625,
+              "rhoWind": 2.25,
+              "packing": 0.38,
+              "epsWind": 3.25,
+              "f1Target": 3.75,
+              "b1": 4.25,
+              "b2": 1.25,
+              "b3": 1.75,
+              "sigmaOverride": [
+                2.25,
+                2.75,
+                3.25
+              ],
+              "boundary": "Pinned",
+              "detuneH": 0.25,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": 3.25,
+            "barriers": [],
+            "muteRatio": 0.31,
+            "tensionModulation": true,
+            "longitudinalModes": 6,
+            "kappaL": 3.75,
+            "kappaT": 4.25,
+            "unisonDetuneCents": 2.75
+          }
+        ],
+        "exciter": {
+          "plectrum": {
+            "tipMass": 3.75,
+            "driverStiffness": 4.25,
+            "driverSpeedMax": 1.25,
+            "slipHeight": 1.75,
+            "contactK": 2.25,
+            "contactAlpha": 2.75,
+            "position": 3.25,
+            "angle": 1.75,
+            "strengthGamma": 4.25
+          }
+        },
+        "unaCorda": {
+          "s0": 0.45,
+          "s1": 0.52,
+          "kappaUC": 2.25,
+          "deltaPUC": -0.25,
+          "rhoUpright": 0.38,
+          "leavingString": 3
+        }
+      },
+      {
+        "key": -1,
+        "segments": [
+          {
+            "string": {
+              "L": 1.25,
+              "dCore": 1.75,
+              "rhoCore": 2.25,
+              "ECore": 2.75,
+              "dOuter": 2.625,
+              "rhoWind": 3.75,
+              "packing": 0.38,
+              "epsWind": 1.25,
+              "f1Target": 1.75,
+              "b1": 2.25,
+              "b2": 2.75,
+              "b3": 3.25,
+              "sigmaOverride": [
+                3.75,
+                4.25,
+                1.25
+              ],
+              "boundary": "Pinned",
+              "detuneH": 0.75,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": -0.75,
+            "barriers": [],
+            "muteRatio": 0.31,
+            "tensionModulation": true,
+            "longitudinalModes": 4,
+            "kappaL": 1.75,
+            "kappaT": 2.25,
+            "unisonDetuneCents": 3.25
+          }
+        ],
+        "exciter": {
+          "finger": {
+            "tipMass": 1.75,
+            "driverStiffness": 2.25,
+            "driverSpeedMax": 2.75,
+            "slipHeight": 3.25,
+            "contactK": 3.75,
+            "contactAlpha": 4.25,
+            "muFlesh": 1.25,
+            "width": 1.75,
+            "position": 2.25,
+            "angle": 3.25,
+            "strengthGamma": 3.25
+          }
+        },
+        "unaCorda": {
+          "s0": 0.52,
+          "s1": 0.59,
+          "kappaUC": 2.75,
+          "deltaPUC": 0.25,
+          "rhoUpright": 0.45,
+          "leavingString": 4
+        }
+      },
+      {
+        "key": -1,
+        "segments": [
+          {
+            "string": {
+              "L": 2.75,
+              "dCore": 3.25,
+              "rhoCore": 3.75,
+              "ECore": 4.25,
+              "dOuter": 4.875,
+              "rhoWind": 1.75,
+              "packing": 0.38,
+              "epsWind": 2.75,
+              "f1Target": 3.25,
+              "b1": 3.75,
+              "b2": 4.25,
+              "b3": 1.25,
+              "sigmaOverride": [
+                1.75,
+                2.25,
+                2.75
+              ],
+              "boundary": "Pinned",
+              "detuneH": 1.25,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": -0.25,
+            "barriers": [],
+            "muteRatio": 0.31,
+            "tensionModulation": true,
+            "longitudinalModes": 6,
+            "kappaL": 3.25,
+            "kappaT": 3.75,
+            "unisonDetuneCents": -0.75
+          }
+        ],
+        "exciter": {
+          "initialDisplacement": {
+            "amplitudeMax": 3.25,
+            "position": 3.75,
+            "angle": 0.25,
+            "strengthGamma": 1.25
+          }
+        },
+        "unaCorda": {
+          "s0": 0.59,
+          "s1": 0.31,
+          "kappaUC": 3.25,
+          "deltaPUC": 0.75,
+          "rhoUpright": 0.52,
+          "leavingString": 5
+        }
+      },
+      {
+        "key": 63,
+        "segments": [
+          {
+            "string": {
+              "L": 4.25,
+              "dCore": 1.25,
+              "rhoCore": 1.75,
+              "ECore": 2.25,
+              "dOuter": 1.875,
+              "rhoWind": 3.25,
+              "packing": 0.38,
+              "epsWind": 4.25,
+              "f1Target": 1.25,
+              "b1": 1.75,
+              "b2": 2.25,
+              "b3": 2.75,
+              "sigmaOverride": [
+                3.25,
+                3.75,
+                4.25
+              ],
+              "boundary": "Pinned",
+              "detuneH": 1.75,
+              "bridgeEnd": "AtL"
+            },
+            "bridgePoint": 0,
+            "polarisationAngle": 0.25,
+            "barriers": [],
+            "muteRatio": 0.31,
+            "tensionModulation": true,
+            "longitudinalModes": 4,
+            "kappaL": 1.25,
+            "kappaT": 1.75,
+            "unisonDetuneCents": -0.25
+          }
+        ],
+        "unaCorda": {
+          "s0": 0.31,
+          "s1": 0.38,
+          "kappaUC": 3.75,
+          "deltaPUC": 1.25,
+          "rhoUpright": 0.59,
+          "leavingString": 6
+        }
+      }
+    ],
+    "bridgePoints": [
+      {
+        "position": {
+          "x": 1.75,
+          "y": 2.25,
+          "z": 2.75
+        },
+        "thetaB": 1.75,
+        "conductanceH": 4.25
+      },
+      {
+        "position": {
+          "x": 2.25,
+          "y": 2.75,
+          "z": 3.25
+        },
+        "thetaB": 2.25,
+        "conductanceH": 1.25
+      }
+    ],
+    "body": {
+      "source": "ModalTable",
+      "plate": {
+        "lengthX": 2.25,
+        "lengthY": 2.75,
+        "thickness": 3.25,
+        "grainAngle": 1.25,
+        "youngsL": 4.25,
+        "youngsR": 1.25,
+        "shearLR": 1.75,
+        "poissonLR": 3.25,
+        "poissonRL": -0.75,
+        "density": 3.25,
+        "moisture": 3.75,
+        "dEdMcL": 0.75,
+        "dEdMcR": 1.25,
+        "dGdMc": 1.75,
+        "dRhodMc": 2.25,
+        "lossFactor": 2.75,
+        "rimStiffness": 3.25,
+        "fMax": 3.75,
+        "ribs": [
+          {
+            "start": {
+              "x": 0.75,
+              "y": 1.25,
+              "z": 1.75
+            },
+            "end": {
+              "x": 1.25,
+              "y": 1.75,
+              "z": 2.25
+            },
+            "width": 2.25,
+            "height": 2.75,
+            "youngs": 3.25,
+            "density": 3.75
+          },
+          {
+            "start": {
+              "x": 1.25,
+              "y": 1.75,
+              "z": 2.25
+            },
+            "end": {
+              "x": 1.75,
+              "y": 2.25,
+              "z": 2.75
+            },
+            "width": 2.75,
+            "height": 3.25,
+            "youngs": 3.75,
+            "density": 4.25
+          }
+        ],
+        "outline": [
+          {
+            "x": 0.1,
+            "y": 0.0,
+            "z": 0.0
+          },
+          {
+            "x": 1.1,
+            "y": 0.1,
+            "z": 0.0
+          },
+          {
+            "x": 0.6,
+            "y": 0.9,
+            "z": 0.0
+          }
+        ],
+        "thicknessNx": 2,
+        "thicknessNy": 3,
+        "thicknessGrid": [
+          0.004,
+          0.0045,
+          0.005,
+          0.0055,
+          0.006,
+          0.0065
+        ],
+        "bridges": [
+          {
+            "path": [
+              {
+                "x": 3.25,
+                "y": -0.75,
+                "z": -0.25
+              },
+              {
+                "x": -0.75,
+                "y": -0.25,
+                "z": 0.25
+              }
+            ],
+            "width": 4.25,
+            "height": 1.25,
+            "youngs": 1.75,
+            "density": 2.25
+          },
+          {
+            "path": [
+              {
+                "x": -0.75,
+                "y": -0.25,
+                "z": 0.25
+              },
+              {
+                "x": -0.25,
+                "y": 0.25,
+                "z": 0.75
+              }
+            ],
+            "width": 1.25,
+            "height": 1.75,
+            "youngs": 2.25,
+            "density": 2.75
+          }
+        ],
+        "rimRotationalStiffness": 3.75
+      },
+      "modalTableHash": "sha256:9904ef62b0fd276a5a6e92e307d59c1ba1e6db066fbf3dd30f27b5f0b2944f3a"
+    },
+    "channels": [
+      {
+        "name": "all-fields name 140",
+        "position": {
+          "x": 2.75,
+          "y": 3.25,
+          "z": -0.75
+        }
+      },
+      {
+        "name": "all-fields name 141",
+        "position": {
+          "x": 3.25,
+          "y": -0.75,
+          "z": -0.25
+        }
+      }
+    ],
+    "tuning": {
+      "referencePitch": 1.25,
+      "stretchCents": [
+        -0.25,
+        0.25,
+        0.75
+      ]
+    },
+    "defaults": {
+      "halfPedalP0": 0.45,
+      "halfPedalP1": 0.52,
+      "sympatheticGain": 0.59,
+      "sympatheticLowPass": 3.25,
+      "localBridgeModes": 6,
+      "localBridgeFSplit": 4.25
+    }
+  },
+  "blobs": [
+    {
+      "hash": "sha256:9904ef62b0fd276a5a6e92e307d59c1ba1e6db066fbf3dd30f27b5f0b2944f3a",
+      "path": "blobs/modal-small.bin",
+      "producer": {
+        "tool": "pme-plate-compiler",
+        "version": "0.0.1"
+      },
+      "arrays": [
+        {
+          "name": "omega",
+          "dtype": "float64",
+          "shape": [
+            4,
+            3
+          ],
+          "unit": "rad",
+          "offset": 0
+        },
+        {
+          "name": "phi",
+          "dtype": "float32",
+          "shape": [
+            10
+          ],
+          "unit": "1",
+          "offset": 96
+        },
+        {
+          "name": "index",
+          "dtype": "uint32",
+          "shape": [
+            8
+          ],
+          "unit": "index",
+          "offset": 136
+        }
+      ]
+    },
+    {
+      "hash": "sha256:feeca545e2fe46329bb9df542b225dde7ba16646337c3095c1b7f5f4e1fba27e",
+      "path": "blobs/modal-second.bin",
+      "producer": {
+        "tool": "pme-fit",
+        "version": "1.2.3"
+      },
+      "arrays": [
+        {
+          "name": "shifts",
+          "dtype": "int32",
+          "shape": [
+            2,
+            4
+          ],
+          "unit": "index",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}

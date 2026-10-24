@@ -1,0 +1,556 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "os-linux",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "os-macos",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "os-windows",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "cfg-debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "cfg-release",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "cfg-rt-safety",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "PME_RTSAFETY": "ON"
+      }
+    },
+    {
+      "name": "cfg-asan",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PME_SANITIZER": "asan"
+      }
+    },
+    {
+      "name": "cfg-tsan",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PME_SANITIZER": "tsan"
+      }
+    },
+    {
+      "name": "cfg-coverage",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PME_SANITIZER": "coverage"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "linux debug",
+      "inherits": [
+        "base",
+        "os-linux",
+        "cfg-debug"
+      ]
+    },
+    {
+      "name": "linux-release",
+      "displayName": "linux release",
+      "inherits": [
+        "base",
+        "os-linux",
+        "cfg-release"
+      ]
+    },
+    {
+      "name": "linux-rt-safety",
+      "displayName": "linux rt-safety",
+      "inherits": [
+        "base",
+        "os-linux",
+        "cfg-rt-safety"
+      ]
+    },
+    {
+      "name": "linux-asan",
+      "displayName": "linux asan",
+      "inherits": [
+        "base",
+        "os-linux",
+        "cfg-asan"
+      ]
+    },
+    {
+      "name": "linux-tsan",
+      "displayName": "linux tsan",
+      "inherits": [
+        "base",
+        "os-linux",
+        "cfg-tsan"
+      ]
+    },
+    {
+      "name": "linux-coverage",
+      "displayName": "linux coverage",
+      "inherits": [
+        "base",
+        "os-linux",
+        "cfg-coverage"
+      ]
+    },
+    {
+      "name": "macos-debug",
+      "displayName": "macos debug",
+      "inherits": [
+        "base",
+        "os-macos",
+        "cfg-debug"
+      ]
+    },
+    {
+      "name": "macos-release",
+      "displayName": "macos release",
+      "inherits": [
+        "base",
+        "os-macos",
+        "cfg-release"
+      ]
+    },
+    {
+      "name": "macos-rt-safety",
+      "displayName": "macos rt-safety",
+      "inherits": [
+        "base",
+        "os-macos",
+        "cfg-rt-safety"
+      ]
+    },
+    {
+      "name": "macos-asan",
+      "displayName": "macos asan",
+      "inherits": [
+        "base",
+        "os-macos",
+        "cfg-asan"
+      ]
+    },
+    {
+      "name": "macos-tsan",
+      "displayName": "macos tsan",
+      "inherits": [
+        "base",
+        "os-macos",
+        "cfg-tsan"
+      ]
+    },
+    {
+      "name": "macos-coverage",
+      "displayName": "macos coverage",
+      "inherits": [
+        "base",
+        "os-macos",
+        "cfg-coverage"
+      ]
+    },
+    {
+      "name": "windows-debug",
+      "displayName": "windows debug",
+      "inherits": [
+        "base",
+        "os-windows",
+        "cfg-debug"
+      ]
+    },
+    {
+      "name": "windows-release",
+      "displayName": "windows release",
+      "inherits": [
+        "base",
+        "os-windows",
+        "cfg-release"
+      ]
+    },
+    {
+      "name": "windows-rt-safety",
+      "displayName": "windows rt-safety",
+      "inherits": [
+        "base",
+        "os-windows",
+        "cfg-rt-safety"
+      ]
+    },
+    {
+      "name": "windows-asan",
+      "displayName": "windows asan",
+      "inherits": [
+        "base",
+        "os-windows",
+        "cfg-asan"
+      ]
+    },
+    {
+      "name": "windows-coverage",
+      "displayName": "windows coverage",
+      "inherits": [
+        "base",
+        "os-windows",
+        "cfg-coverage"
+      ]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "os-linux",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "os-macos",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "os-windows",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-release"
+    },
+    {
+      "name": "linux-rt-safety",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-rt-safety"
+    },
+    {
+      "name": "linux-asan",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-asan"
+    },
+    {
+      "name": "linux-tsan",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-tsan"
+    },
+    {
+      "name": "linux-coverage",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-coverage"
+    },
+    {
+      "name": "macos-debug",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-debug"
+    },
+    {
+      "name": "macos-release",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-release"
+    },
+    {
+      "name": "macos-rt-safety",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-rt-safety"
+    },
+    {
+      "name": "macos-asan",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-asan"
+    },
+    {
+      "name": "macos-tsan",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-tsan"
+    },
+    {
+      "name": "macos-coverage",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-coverage"
+    },
+    {
+      "name": "windows-debug",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-debug"
+    },
+    {
+      "name": "windows-release",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-release"
+    },
+    {
+      "name": "windows-rt-safety",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-rt-safety"
+    },
+    {
+      "name": "windows-asan",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-asan"
+    },
+    {
+      "name": "windows-coverage",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-coverage"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "os-linux",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "os-macos",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "os-windows",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-debug",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-release"
+    },
+    {
+      "name": "linux-rt-safety",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-rt-safety"
+    },
+    {
+      "name": "linux-asan",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-asan"
+    },
+    {
+      "name": "linux-tsan",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-tsan"
+    },
+    {
+      "name": "linux-coverage",
+      "inherits": [
+        "os-linux"
+      ],
+      "configurePreset": "linux-coverage"
+    },
+    {
+      "name": "macos-debug",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-debug"
+    },
+    {
+      "name": "macos-release",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-release"
+    },
+    {
+      "name": "macos-rt-safety",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-rt-safety"
+    },
+    {
+      "name": "macos-asan",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-asan"
+    },
+    {
+      "name": "macos-tsan",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-tsan"
+    },
+    {
+      "name": "macos-coverage",
+      "inherits": [
+        "os-macos"
+      ],
+      "configurePreset": "macos-coverage"
+    },
+    {
+      "name": "windows-debug",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-debug"
+    },
+    {
+      "name": "windows-release",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-release"
+    },
+    {
+      "name": "windows-rt-safety",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-rt-safety"
+    },
+    {
+      "name": "windows-asan",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-asan"
+    },
+    {
+      "name": "windows-coverage",
+      "inherits": [
+        "os-windows"
+      ],
+      "configurePreset": "windows-coverage"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "known_gaps": [
+    {
+      "id": "P0.2-T3",
+      "phase": "P0.2",
+      "kind": "test_missing",
+      "reason": "One-off demonstration accepted by gate G0: docs/gates/G0.md, Traceability addendum (nightly 38144943308, release 38144945130); no test or annotated step can carry it.",
+      "owner": "gate G0"
+    }
+  ]
+}
