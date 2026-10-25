@@ -78,6 +78,23 @@ public:
     static constexpr double idleThreshold = 1e-9;
     static constexpr int idleHoldSamples = 4800;       // no simulated string for this long first
     bool idle() const noexcept { return idle_; }
+    // 0.5.4.1: number of times the audio thread had to wait more than 0.4 ms for the radiation helper and
+    // switched the radiation to the audio thread for a while (output is bit-identical either way).
+    std::uint64_t radiationStalls() const noexcept { return radStalls_; }
+    bool radiationOnHelper() const noexcept { return radOn_; }
+    // 0.5.4.1 adaptive load shedding (Live and Balanced only, off by default; the plug-ins switch it on).
+    // The audio thread times every block against its deadline. When the smoothed cost is above 0.7 of the
+    // deadline (or a block exceeds it) the model sheds work in steps (level 1..3, table in piano.cpp: fewer
+    // struck voices, sympathetic and leaky strings, then no tension modulation) instead of missing deadlines;
+    // it restores the preset after silence or after 4 s below 0.2. The output then depends on timing, so
+    // renders, tests and Full leave it off.
+    void setAdaptive(bool on) noexcept { adaptive_ = on; if (!on && shed_ != 0) { shed_ = 0; applyShed(); } }
+    int shedLevel() const noexcept { return shed_; }
+    std::uint64_t shedEvents() const noexcept { return shedEvents_; }
+    void setStallFallback(bool on) noexcept { stallFallback_ = on; }
+    // Tests only: the radiation helper sleeps this long (microseconds) while holding the lock after each
+    // batch, as if it were descheduled there.
+    void testHelperHold(unsigned microseconds) noexcept { testHelperHoldUs_.store(microseconds, std::memory_order_relaxed); }
     // Per-key held-note count (0.5.4): a note-off releases the key only when every overlapping note-on
     // of the key has been released (default on; off is the 0.5.3 single flag).
     bool setHeldNoteCount(bool enabled) noexcept {
@@ -263,7 +280,18 @@ private:
     void stringsStep() noexcept;                     // wake, coupled board, all strings of one sample
     void radiateInline(float& left, float& right) noexcept;   // radiation of the sample just stepped
     void resetAfterNonFinite() noexcept;
-    bool radOn_{};
+    bool radOn_{};                                       // radiation on the helper right now
+    // 0.5.4.1: stall fallback. If the audio thread has to wait for the helper longer than kStallNs at the end
+    // of a block (the helper was descheduled while holding radLock_), radiation runs inline for a while.
+    bool radRequested_{}, stallFallback_{true}, adaptive_{};
+    int shed_{};
+    std::uint64_t shedEvents_{}, shedHold_{}, shedCalm_{};
+    double costEma_{};
+    std::chrono::steady_clock::time_point blockT0_{};
+    void applyShed() noexcept;
+    void governBlock() noexcept;
+    std::uint64_t fallbackLeft_{}, healthyFrames_{}, backoffFrames_{}, radStalls_{};
+    static constexpr std::int64_t kStallNs = 400'000;
     void assignSlots() noexcept;
     double voiceCost(const Voice& v) const noexcept;
     WorkerPool pool_;
@@ -283,8 +311,10 @@ private:
     std::uint32_t blockFrames_{0};
     std::vector<float> blockL_, blockR_;                 // single-thread block output
     static bool radiationPump(void* self) noexcept;      // worker: process pending records
-    bool pumpRecords(std::uint32_t maxRecords) noexcept; // takes the lock; false if nothing was done
+    bool pumpRecords(std::uint32_t maxRecords, unsigned holdUs = 0) noexcept; // takes the lock; false if nothing was done
+    std::atomic<unsigned> testHelperHoldUs_{0};          // tests: the helper keeps the lock this long per batch (a descheduled helper)
     void radiateRecord(std::uint64_t index) noexcept;
+    void publishSkipped(std::uint64_t n) noexcept;      // advance produced_/consumed_ together, under the lock
     PipelineThread radThread_;
     int workerThreads_{0}, activeWorkers_{0};
     std::array<int, 88> ports_{};

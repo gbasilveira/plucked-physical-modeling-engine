@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
         const auto* params = static_cast<const clap_plugin_params_t*>(plugin->get_extension(plugin, CLAP_EXT_PARAMS));
         const auto* render = static_cast<const clap_plugin_render_t*>(plugin->get_extension(plugin, CLAP_EXT_RENDER));
         const auto* state = static_cast<const clap_plugin_state_t*>(plugin->get_extension(plugin, CLAP_EXT_STATE));
-        require(params && render && state && params->count(plugin) == 2, "quality/threads parameters missing");
+        require(params && render && state && params->count(plugin) == 3, "quality/threads/adaptive parameters missing");
         clap_param_info_t pinfo{};
         require(params->get_info(plugin, 0, &pinfo) && std::string(pinfo.name) == "Quality" && pinfo.max_value == 2 &&
                 (pinfo.flags & CLAP_PARAM_IS_STEPPED), "quality parameter info wrong");

@@ -4,6 +4,15 @@ Goal: improve the acoustic-piano character, with one change at a time and audibl
 reproducible comparisons. A passing numerical test is not a listening endorsement.
 Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano`.
 
+## Hotfix 0.5.4.1 (2026-10-25): 64-frame blocks, xruns, "delay per strike"
+
+The user's PipeWire runs at 64 frames / 48 kHz (1.33 ms). Findings: the audio path adds no latency (onset = hammer flight, 4.5-8.4 ms,
+constant over strikes); the reported delay is late blocks. Causes: bass chords under the pedal cost 0.8-1.8 deadlines per block at Live
+(tension SAV, woken strings, hammer contact), and the audio thread waited for a descheduled radiation helper. Fixes: stall fallback
+(radiation moves to the audio thread, bit-identical), shorter helper spin, adaptive load shedding (new parameter, default on; Live and
+Balanced only), and a race in the idle/inline paths (stale ring record radiated at note-on). No clipping found (peak <= 0.84). Honest
+limit: rolling four-note bass chords at 64 frames still miss about 0.5% of blocks on an i3-8100; use 128 there. Details: `piano-v4/README.md`.
+
 ## Real-time iteration (2026-10-25, 0.5.4)
 
 0.5.4 is about response time, not sound. The model has no latency of its own (sample-accurate events), so response = host block

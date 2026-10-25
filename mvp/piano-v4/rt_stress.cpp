@@ -28,6 +28,7 @@
 constexpr std::uint32_t kWarmupBlocks = 16;
 struct Ev { std::uint32_t frame; std::uint8_t d[3]; };
 struct Result { double rtf{}, maxRatio{}, p999{}, p99{}; std::uint64_t worstBlock{}; std::uint64_t misses{}, blocks{}, hash{}; double peak{}; };
+static bool g_adaptive = false;   // --adaptive: the plug-in's load shedding (off by default: exact, comparable runs)
 static void require(bool ok, const char* why) { if (!ok) throw std::runtime_error(why); }
 
 struct Host {
@@ -102,12 +103,12 @@ static Result run(const char* path, const std::string& name, const std::string& 
         [](const clap_input_events_t* l, std::uint32_t i) -> const clap_event_header_t* { return (*static_cast<Ctx*>(l->ctx)->list)[i]; }};
     clap_process_t proc{}; proc.frames_count = block; proc.audio_outputs = &audio; proc.audio_outputs_count = 1; proc.in_events = &in;
     std::vector<clap_event_midi_t> midi(4096);
-    clap_event_param_value_t pq{}, pt{};
+    clap_event_param_value_t pq{}, pt{}, pa{};
     const auto param = [](clap_event_param_value_t& p, clap_id id, double v) {
         p.header = {sizeof(p), 0, CLAP_CORE_EVENT_SPACE_ID, CLAP_EVENT_PARAM_VALUE, 0};
         p.param_id = id; p.value = v; p.note_id = -1; p.port_index = -1; p.channel = -1; p.key = -1;
     };
-    param(pq, 0, quality); param(pt, 1, threads);
+    param(pq, 0, quality); param(pt, 1, threads); param(pa, 2, g_adaptive ? 1 : 0);
     std::size_t cursor = 0;
     // Events before `start` are applied in the first block (pedal) at their time.
     std::vector<double> ratios;
@@ -120,7 +121,7 @@ static Result run(const char* path, const std::string& name, const std::string& 
     for (std::uint32_t base = 0; base < total; base += block) {
         list.clear();
         std::size_t used = 0;
-        if (base == 0) { list.push_back(&pq.header); list.push_back(&pt.header); }
+        if (base == 0) { list.push_back(&pq.header); list.push_back(&pt.header); list.push_back(&pa.header); }
         const std::uint32_t abs0 = start + base;
         while (cursor < script.size() && script[cursor].frame < abs0 + block && used < midi.size()) {
             const std::uint32_t f = script[cursor].frame < abs0 ? 0 : script[cursor].frame - abs0;
@@ -165,6 +166,7 @@ int main(int argc, char** argv) {
             if (a == "--scenario") name = argv[++i];
             else if (a == "--block") block = std::stoul(argv[++i]);
             else if (a == "--quality") qname = argv[++i];
+            else if (a == "--adaptive") g_adaptive = true;
             else if (a == "--threads") threads = std::stoi(argv[++i]);
             else if (a == "--seconds") seconds = std::stod(argv[++i]);
             else if (a == "--events") events = argv[++i];

@@ -352,7 +352,7 @@ private:
                 _mm_pause();
 #endif
                 if ((++spins & 255u) == 0 &&
-                    std::chrono::steady_clock::now() - idleSince > std::chrono::nanoseconds(4'000'000))
+                    std::chrono::steady_clock::now() - idleSince > std::chrono::nanoseconds(300'000))
                     sleeping = true;
             } else {
                 if ((++sleepTicks & 63u) == 0) mirror(mirrored, policyDone, prioDone);

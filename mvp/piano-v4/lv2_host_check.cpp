@@ -79,12 +79,12 @@ static void exercise(const LV2_Descriptor* d,double fs) {
     // match it bit for bit.
     require(reference.setWorkerThreads(0) && reference.prepare(fs),"reference preparation failed");
     reference.setQuality(piano_mvp_v4::Piano::Quality::Live);
-    float qualityPort = 0, threadsPort = 1, freeWheelPort = 0;
+    float qualityPort = 0, threadsPort = 1, freeWheelPort = 0, adaptivePort = 0;   // adaptive shedding off: bit-exact comparison
     std::array<float,512> left{},right{};
     Sequence seq; seq.reset();
     d->connect_port(instance,0,seq.get());
     d->connect_port(instance,1,left.data()); d->connect_port(instance,2,right.data());
-    d->connect_port(instance,3,&qualityPort); d->connect_port(instance,4,&threadsPort); d->connect_port(instance,5,&freeWheelPort);
+    d->connect_port(instance,3,&qualityPort); d->connect_port(instance,4,&threadsPort); d->connect_port(instance,5,&freeWheelPort); d->connect_port(instance,6,&adaptivePort);
     d->activate(instance);
     double outputEnergy = 0;
     const auto block = [&](std::uint32_t count,std::initializer_list<Message> messages) {

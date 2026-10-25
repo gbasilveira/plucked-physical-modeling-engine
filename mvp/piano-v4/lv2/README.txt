@@ -1,20 +1,25 @@
-Piano MVP 4 - Real time (LV2 0.5.4, Linux)
+Piano MVP 4 - Real time 0.5.4.1 (LV2, Linux)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Real time" under instruments/synthesizers.
+Look for "Piano MVP 4 - Real time 0.5.4.1" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
 One fixed preset; no custom GUI. For low latency set the host block size to 128 (2.7 ms at 48 kHz)
-or 256 (5.3 ms); the model adds no latency of its own. Control ports:
+or 256 (5.3 ms); the model adds no latency of its own. 64 frames works from about E3 upward and for
+moderate bass playing; rolling bass chords under the pedal need 128. A radiation helper that the system
+deschedules is detected and its work moves to the audio thread. Control ports:
   Quality: Live (default; the real-time caps, tuned for >= 2x real time on the worst-case chords at
     128 samples), Balanced, Full (the complete offline model: 88 voices, nothing capped; for bouncing).
     Changing it while notes sound is safe: notes keep ringing, the new limits apply to the next notes.
   Worker threads (default 1): one helper thread renders the soundboard radiation beside the strings (the
     output is identical for any value; 0 = everything on the audio thread, about 2x real time on the
     worst case). Values 2 and 3 add per-sample voice helpers and were measured to be no better.
+  Adaptive load shedding (default on; Live and Balanced): when blocks get close to the host's deadline the plug-in
+    reduces work in steps (fewer struck voices, sympathetic and leaky strings, then no tension modulation) and
+    restores it after silence or 4 s of low load. Switch it off for exact, repeatable Live output.
   Free-wheeling (optional, lv2:freeWheeling designation): a host that bounces offline raises it and
     the plug-in uses Full.
 When nothing sounds the plug-in stops simulating and costs well under 1 percent of a core.

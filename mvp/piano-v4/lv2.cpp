@@ -19,8 +19,9 @@ struct Instance {
     float* right{};
     const float* quality{};      // port 3: 0 Live, 1 Balanced, 2 Full
     const float* threads{};      // port 4: helper threads taking part (0..3)
+    const float* adaptive{};     // port 6: adaptive load shedding (Live/Balanced), default on
     const float* freeWheel{};    // port 5 (optional, designation lv2:freeWheeling): offline bounce -> Full
-    int appliedQuality{-1}, appliedThreads{-1};
+    int appliedQuality{-1}, appliedThreads{-1}, appliedAdaptive{-1};
     LV2_URID midiType{}, sequenceType{}, frameTime{}, beatTime{};
     bool active{};
     // Audio thread: make the engine match the control ports (cheap; no allocation). A host that bounces
@@ -32,6 +33,8 @@ struct Instance {
         if (q != appliedQuality) { piano.setQuality(static_cast<piano_mvp_v4::Piano::Quality>(q)); appliedQuality = q; }
         const int t = std::clamp(threads ? static_cast<int>(*threads + 0.5f) : 1, 0, kMaxThreads);
         if (t != appliedThreads) { piano.setActiveWorkers(t); appliedThreads = t; }
+        const int a = ((!adaptive || *adaptive > 0.5f) && q != 2) ? 1 : 0;
+        if (a != appliedAdaptive) { piano.setAdaptive(a != 0); appliedAdaptive = a; }
     }
 };
 LV2_Handle instantiate(const LV2_Descriptor*,double fs,const char*,const LV2_Feature* const* features) {
@@ -63,12 +66,13 @@ void connect(LV2_Handle handle,std::uint32_t port,void* data) {
     if (port == 3) s.quality = static_cast<const float*>(data);
     if (port == 4) s.threads = static_cast<const float*>(data);
     if (port == 5) s.freeWheel = static_cast<const float*>(data);
+    if (port == 6) s.adaptive = static_cast<const float*>(data);
 }
 void activate(LV2_Handle handle) {
     auto& s = *static_cast<Instance*>(handle);
     s.piano.startThreads();
     s.applySettings(); s.piano.warmUp();
-    s.piano.reset(); s.active = true; s.appliedQuality = s.appliedThreads = -1;
+    s.piano.reset(); s.active = true; s.appliedQuality = s.appliedThreads = s.appliedAdaptive = -1;
 }
 void run(LV2_Handle handle,std::uint32_t frames) {
     pme::simd::ScopedFlushDenormals denormals;

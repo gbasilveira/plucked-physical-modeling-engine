@@ -15,9 +15,9 @@ constexpr const char* features[] = {CLAP_PLUGIN_FEATURE_INSTRUMENT, CLAP_PLUGIN_
                                    CLAP_PLUGIN_FEATURE_STEREO, nullptr};
 const clap_plugin_descriptor_t descriptor = {
     CLAP_VERSION, "org.pme.experimental.piano-mvp-v4", "Piano MVP 4 - Real time", "PME",
-    "", "", "", "0.5.4", "Experimental coupled-unison piano: one shared soundboard, sympathetic strings, leaky dampers, string tension modulation, una corda (CC67), undamped treble; quality Live / Balanced / Full (Full is selected automatically while the host renders offline)", features};
+    "", "", "", "0.5.4.1", "Experimental coupled-unison piano: one shared soundboard, sympathetic strings, leaky dampers, string tension modulation, una corda (CC67), undamped treble; quality Live / Balanced / Full (Full is selected automatically while the host renders offline)", features};
 using piano_mvp_v4::Piano;
-enum : clap_id { kParamQuality = 0, kParamThreads = 1 };
+enum : clap_id { kParamQuality = 0, kParamThreads = 1, kParamAdaptive = 2 };
 constexpr int kMaxThreads = 3;
 struct Instance {
     clap_plugin_t plugin{};
@@ -25,14 +25,17 @@ struct Instance {
     bool active{}, processing{};
     std::atomic<int> quality{0};                 // 0 Live, 1 Balanced, 2 Full (the parameter)
     std::atomic<int> threads{1};                 // helper threads taking part, 0..kMaxThreads
+    std::atomic<int> adaptive{1};                // 0.5.4.1 adaptive load shedding (Live/Balanced), default on
     std::atomic<int> offline{0};                 // clap.render: offline rendering forces Full
-    int appliedQuality{-1}, appliedThreads{-1};  // audio thread
+    int appliedQuality{-1}, appliedThreads{-1}, appliedAdaptive{-1};  // audio thread
     // Audio thread: make the engine match the parameters (cheap; no allocation).
     void applySettings() noexcept {
         const int q = offline.load(std::memory_order_relaxed) ? 2 : quality.load(std::memory_order_relaxed);
         if (q != appliedQuality) { piano.setQuality(static_cast<Piano::Quality>(q)); appliedQuality = q; }
         const int t = threads.load(std::memory_order_relaxed);
         if (t != appliedThreads) { piano.setActiveWorkers(t); appliedThreads = t; }
+        const int a = (adaptive.load(std::memory_order_relaxed) != 0 && q != 2) ? 1 : 0;
+        if (a != appliedAdaptive) { piano.setAdaptive(a != 0); appliedAdaptive = a; }
     }
 };
 Instance& self(const clap_plugin_t* p) { return *static_cast<Instance*>(p->plugin_data); }
@@ -68,6 +71,7 @@ clap_process_status CLAP_ABI process(const clap_plugin_t* plugin, const clap_pro
                     const auto* p = reinterpret_cast<const clap_event_param_value_t*>(e);
                     if (p->param_id == kParamQuality) s.quality.store(std::clamp(static_cast<int>(p->value + 0.5), 0, 2));
                     if (p->param_id == kParamThreads) s.threads.store(std::clamp(static_cast<int>(p->value + 0.5), 0, kMaxThreads));
+                    if (p->param_id == kParamAdaptive) s.adaptive.store(std::clamp(static_cast<int>(p->value + 0.5), 0, 1));
                     s.applySettings();
                 }
                 ++next;
@@ -97,14 +101,17 @@ const clap_plugin_note_ports_t notePorts = {
     }};
 const char* const qualityNames[] = {"Live", "Balanced", "Full"};
 const clap_plugin_params_t params = {
-    [](const clap_plugin_t*) -> std::uint32_t { return 2; },
+    [](const clap_plugin_t*) -> std::uint32_t { return 3; },
     [](const clap_plugin_t*, std::uint32_t i, clap_param_info_t* info) {
-        if (i > 1 || !info) return false;
+        if (i > 2 || !info) return false;
         *info = {};
         info->flags = CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM | CLAP_PARAM_IS_AUTOMATABLE;
         if (i == 0) {
             info->id = kParamQuality; std::strcpy(info->name, "Quality"); std::strcpy(info->module, "Engine");
             info->min_value = 0; info->max_value = 2; info->default_value = 0;
+        } else if (i == 2) {
+            info->id = kParamAdaptive; std::strcpy(info->name, "Adaptive load shedding"); std::strcpy(info->module, "Engine");
+            info->min_value = 0; info->max_value = 1; info->default_value = 1;
         } else {
             info->id = kParamThreads; std::strcpy(info->name, "Worker threads"); std::strcpy(info->module, "Engine");
             info->min_value = 0; info->max_value = kMaxThreads; info->default_value = 1;
@@ -115,12 +122,14 @@ const clap_plugin_params_t params = {
         if (!v) return false;
         if (id == kParamQuality) { *v = self(p).quality.load(); return true; }
         if (id == kParamThreads) { *v = self(p).threads.load(); return true; }
+        if (id == kParamAdaptive) { *v = self(p).adaptive.load(); return true; }
         return false;
     },
     [](const clap_plugin_t*, clap_id id, double v, char* out, std::uint32_t cap) {
         if (!out || !cap) return false;
         if (id == kParamQuality) { std::snprintf(out, cap, "%s", qualityNames[std::clamp(static_cast<int>(v + 0.5), 0, 2)]); return true; }
         if (id == kParamThreads) { std::snprintf(out, cap, "%d", static_cast<int>(v + 0.5)); return true; }
+        if (id == kParamAdaptive) { std::snprintf(out, cap, "%s", v > 0.5 ? "On" : "Off"); return true; }
         return false;
     },
     [](const clap_plugin_t*, clap_id id, const char* text, double* v) {
@@ -130,6 +139,7 @@ const clap_plugin_params_t params = {
             return false;
         }
         if (id == kParamThreads) { *v = std::clamp(std::atoi(text), 0, kMaxThreads); return true; }
+        if (id == kParamAdaptive) { *v = (!strcasecmp(text, "off") || !std::strcmp(text, "0")) ? 0 : 1; return true; }
         return false;
     },
     // Not processing: parameter changes arrive here.
@@ -142,6 +152,7 @@ const clap_plugin_params_t params = {
             const auto* pv = reinterpret_cast<const clap_event_param_value_t*>(e);
             if (pv->param_id == kParamQuality) self(p).quality.store(std::clamp(static_cast<int>(pv->value + 0.5), 0, 2));
             if (pv->param_id == kParamThreads) self(p).threads.store(std::clamp(static_cast<int>(pv->value + 0.5), 0, kMaxThreads));
+            if (pv->param_id == kParamAdaptive) self(p).adaptive.store(std::clamp(static_cast<int>(pv->value + 0.5), 0, 1));
         }
     }};
 // clap.render: while the host renders offline the plug-in uses the full model (Quality is ignored).
@@ -157,13 +168,14 @@ const clap_plugin_state_t stateExt = {
     [](const clap_plugin_t* p, const clap_ostream_t* stream) {
         unsigned char buf[7] = {kStateMagic[0], kStateMagic[1], kStateMagic[2], kStateMagic[3],
                                 static_cast<unsigned char>(self(p).quality.load()),
-                                static_cast<unsigned char>(self(p).threads.load()), 0};
+                                static_cast<unsigned char>(self(p).threads.load()),
+                                static_cast<unsigned char>(self(p).adaptive.load() ? 0 : 1)};   // byte 6: adaptive off
         return stream && stream->write(stream, buf, 7) == 7;
     },
     [](const clap_plugin_t* p, const clap_istream_t* stream) {
         unsigned char buf[7] = {};
         if (!stream || stream->read(stream, buf, 7) != 7 || std::memcmp(buf, kStateMagic, 4)) return false;
-        self(p).quality.store(std::clamp<int>(buf[4], 0, 2)); self(p).threads.store(std::clamp<int>(buf[5], 0, kMaxThreads));
+        self(p).quality.store(std::clamp<int>(buf[4], 0, 2)); self(p).threads.store(std::clamp<int>(buf[5], 0, kMaxThreads)); self(p).adaptive.store(buf[6] ? 0 : 1);
         return true;
     }};
 const void* CLAP_ABI extension(const clap_plugin_t*, const char* id) {
@@ -190,12 +202,12 @@ const clap_plugin_t* CLAP_ABI create(const clap_plugin_factory_t*, const clap_ho
                 try {
                     auto& s = self(p);
                     s.piano.setWorkerThreads(std::min(Piano::defaultWorkerThreads(), kMaxThreads));
-                    s.appliedQuality = s.appliedThreads = -1;
+                    s.appliedQuality = s.appliedThreads = s.appliedAdaptive = -1;
                     if (!s.piano.prepare(fs)) return s.active = false;
                     s.piano.setQuality(static_cast<Piano::Quality>(s.offline.load() ? 2 : s.quality.load()));
                     s.applySettings();
                     s.piano.warmUp();
-                    s.appliedQuality = s.appliedThreads = -1; s.applySettings();
+                    s.appliedQuality = s.appliedThreads = s.appliedAdaptive = -1; s.applySettings();
                     return s.active = true;
                 } catch (...) { return self(p).active = false; }
             },

@@ -4,6 +4,7 @@
 #include "bridge_model.hpp"
 #include "string_loss.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <numbers>
 #include <thread>
@@ -296,9 +297,34 @@ const Piano::Preset& Piano::preset(Quality q) noexcept {
     return q == Quality::Live ? live : (q == Quality::Balanced ? balanced : full);
 }
 void Piano::setQuality(Quality q) noexcept { applyPreset(q, preset(q)); }
+// Shed levels (Live caps; Balanced takes the smaller of its preset and the level): struck voices,
+// sympathetic strings, leaky strings, highest key with tension modulation (20 = none).
+void Piano::applyShed() noexcept {
+    const Preset& p = preset(quality_);
+    static const int voices[4] = {1 << 20, 12, 10, 8}, symp[4] = {1 << 20, 6, 3, 1}, leaky[4] = {1 << 20, 3, 2, 1}, tension[4] = {1 << 20, 33, 20, 20};
+    const int s = (quality_ == Quality::Full) ? 0 : shed_;
+    voiceLimit_ = std::min(p.voices, voices[s]); sympLimit_ = std::min(p.sympathetic, symp[s]);
+    leakyLimit_ = std::min(p.leaky, leaky[s]); tensionLimit_ = std::min(p.tensionMaxKey, tension[s]);
+    // Sounding notes above the new tension limit stop modulating (the same as V_KC falling below the floor).
+    if (s > 0) for (int i = 0; i < 88; ++i) if (voices_[i].active && voices_[i].struck && i + 21 > tensionLimit_) voices_[i].note.setTensionEnabled(false);
+}
+// Called from blockEnd with the block's wall time.
+void Piano::governBlock() noexcept {
+    if (!adaptive_ || quality_ == Quality::Full || !blockFrames_) return;
+    const double cost = std::chrono::duration<double>(std::chrono::steady_clock::now() - blockT0_).count() * fs_ / blockFrames_;
+    costEma_ += (cost - costEma_) * 0.08;
+    shedHold_ += blockFrames_;
+    if (idle_) { if (shed_) { shed_ = 0; applyShed(); } shedCalm_ = 0; costEma_ = 0; return; }
+    if ((cost > 1.0 || costEma_ > 0.7) && shed_ < 3 && shedHold_ > static_cast<std::uint64_t>(0.15 * fs_)) {
+        ++shed_; ++shedEvents_; shedHold_ = 0; shedCalm_ = 0; applyShed();
+    } else if (shed_ > 0 && costEma_ < 0.2) {
+        shedCalm_ += blockFrames_;
+        if (shedCalm_ > static_cast<std::uint64_t>(4 * fs_)) { --shed_; shedCalm_ = 0; shedHold_ = 0; applyShed(); }
+    } else shedCalm_ = 0;
+}
 void Piano::applyPreset(Quality q, const Preset& p) noexcept {
     quality_ = q; qualitySet_ = true;
-    voiceLimit_ = p.voices; sympLimit_ = p.sympathetic; leakyLimit_ = p.leaky; tensionLimit_ = p.tensionMaxKey;
+    voiceLimit_ = p.voices; sympLimit_ = p.sympathetic; leakyLimit_ = p.leaky; tensionLimit_ = p.tensionMaxKey; shed_ = 0; costEma_ = 0;
     truncation_ = p.truncation; fast_ = p.fast; sleepForce_ = p.sleepForce; sleepSeconds_ = p.sleepSeconds; tensionFloor_ = p.tensionFloor; idleSkip_ = p.idleSkip; if (!idleSkip_) idle_ = false;
     sleepSamples_ = static_cast<std::uint64_t>(p.sleepSeconds * fs_);
     // Sounding notes keep their tension model (changed at the next note-on); truncation and fast sums
@@ -318,9 +344,10 @@ void Piano::warmUp() noexcept {
         blockEnd(l.data(), r.data());
     }
     reset();
+    radOn_ = radRequested_; fallbackLeft_ = 0; healthyFrames_ = 0; radStalls_ = 0; backoffFrames_ = static_cast<std::uint64_t>(fs_);
 }
 void Piano::stopThreads() noexcept {
-    radOn_ = false;
+    radOn_ = radRequested_ = false;
     radThread_.stop();
     pool_.stop();
     // Anything still in the ring was produced by blockStep() and is drained by the caller's blockEnd().
@@ -337,7 +364,8 @@ void Piano::setActiveWorkers(int n) noexcept {
     if (n < 0) n = 0;
     if (n > workerThreads_) n = workerThreads_;
     activeWorkers_ = n;
-    radOn_ = n >= 1 && radThread_.running();
+    radRequested_ = n >= 1 && radThread_.running();
+    radOn_ = radRequested_; fallbackLeft_ = 0; healthyFrames_ = 0; backoffFrames_ = static_cast<std::uint64_t>(fs_);
     pool_.setActive(n > 0 ? n - 1 : 0);
     slotsDirty_ = true;
 }
@@ -519,40 +547,68 @@ void Piano::radiateRecord(std::uint64_t n) noexcept {
     if (!std::isfinite(l) || !std::isfinite(r)) { l = r = 0; radFault_.store(true, std::memory_order_relaxed); board_.resetRadiation(); }
     ring_.outL[slot] = l; ring_.outR[slot] = r;
 }
-bool Piano::pumpRecords(std::uint32_t maxRecords) noexcept {
+bool Piano::pumpRecords(std::uint32_t maxRecords, unsigned holdUs) noexcept {
     std::uint32_t expected = 0;
     if (!radLock_.compare_exchange_strong(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) return false;
     std::uint64_t done = consumed_.load(std::memory_order_relaxed);
     const std::uint64_t avail = produced_.load(std::memory_order_acquire);
     std::uint32_t n = 0;
     while (done < avail && n < maxRecords) { radiateRecord(done); ++done; ++n; consumed_.store(done, std::memory_order_release); }
+    if (holdUs && n > 0) std::this_thread::sleep_for(std::chrono::microseconds(holdUs));   // tests only
     radLock_.store(0, std::memory_order_release);
     return n > 0;
 }
 bool Piano::radiationPump(void* self) noexcept {
     auto* p = static_cast<Piano*>(self);
     if (p->consumed_.load(std::memory_order_relaxed) >= p->produced_.load(std::memory_order_acquire)) return false;
-    return p->pumpRecords(8);
+    return p->pumpRecords(8, p->testHelperHoldUs_.load(std::memory_order_relaxed));
+}
+// Advance both counters without producing a record (silent or inline-radiated frame). The helper thread
+// stays alive while the radiation runs on the audio thread (Worker threads 0, stall fallback, idle skip), so
+// the two stores must not be observable half done: with `produced_` ahead of `consumed_` for an instant the
+// helper radiated the stale ring slot (old ports and drives from a previous lap) into the live radiation
+// state (0.5.4: ghost sound at note-on that differed from run to run, also with Worker threads 0). Both
+// counters change under the radiation lock, which the helper takes before it reads either.
+void Piano::publishSkipped(std::uint64_t n) noexcept {
+    const bool shared = radThread_.running();
+    if (shared) {
+        std::uint32_t expected = 0;
+        while (!radLock_.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) {
+            expected = 0;
+#if defined(__x86_64__) || defined(__i386__)
+            _mm_pause();
+#endif
+        }
+    }
+    produced_.store(n + 1, std::memory_order_release);
+    consumed_.store(n + 1, std::memory_order_release);
+    if (shared) radLock_.store(0, std::memory_order_release);
 }
 void Piano::blockBegin(std::uint32_t frames) noexcept {
     blockFrames_ = frames > maxBlockFrames ? maxBlockFrames : frames;
     blockStart_ = produced_.load(std::memory_order_relaxed);
+    // Everything is drained here (blockEnd waits; the inline path consumes as it produces), so the
+    // radiation may move between the audio thread and the helper at a block boundary.
+    if (!radOn_ && radRequested_ && fallbackLeft_ > 0) {
+        fallbackLeft_ = fallbackLeft_ > blockFrames_ ? fallbackLeft_ - blockFrames_ : 0;
+        if (fallbackLeft_ == 0) radOn_ = true;
+    }
+    if (adaptive_) blockT0_ = std::chrono::steady_clock::now();
     if (radOn_) radThread_.announce();
 }
 void Piano::blockStep() noexcept {
     const std::uint64_t n = produced_.load(std::memory_order_relaxed);
-    if (!ready_) { const std::size_t s = n & (ringSize - 1); ring_.outL[s] = ring_.outR[s] = 0; produced_.store(n + 1, std::memory_order_release); consumed_.store(n + 1, std::memory_order_release); return; }
+    if (!ready_) { const std::size_t s = n & (ringSize - 1); ring_.outL[s] = ring_.outR[s] = 0; publishSkipped(n); return; }
     if (!shared_) {
         const std::size_t s = n & (ringSize - 1);
         sample(ring_.outL[s], ring_.outR[s]);
-        produced_.store(n + 1, std::memory_order_relaxed); consumed_.store(n + 1, std::memory_order_relaxed);
+        publishSkipped(n);
         return;
     }
     if (idle_) {   // nothing sounds: silent frame (sample-accurate wake-up happens in noteOn)
         const std::size_t z = static_cast<std::size_t>(n & (ringSize - 1));
         ring_.outL[z] = ring_.outR[z] = 0;
-        produced_.store(n + 1, std::memory_order_release);
-        consumed_.store(n + 1, std::memory_order_release);
+        publishSkipped(n);
         return;
     }
     stringsStep();
@@ -560,7 +616,7 @@ void Piano::blockStep() noexcept {
     const std::size_t s = static_cast<std::size_t>(n & (ringSize - 1));
     if (!radOn_) {
         radiateInline(ring_.outL[s], ring_.outR[s]);
-        produced_.store(n + 1, std::memory_order_relaxed); consumed_.store(n + 1, std::memory_order_relaxed);
+        publishSkipped(n);
         return;
     }
     std::uint8_t* keys = ring_.keys.data() + s * 88;
@@ -579,15 +635,36 @@ void Piano::blockEnd(float* left, float* right) noexcept {
     const std::uint64_t end = produced_.load(std::memory_order_relaxed);
     // Finish the radiation of the block: helping is allowed whenever the lock is free; wait otherwise
     // (the holder is at most a few records from done).
+    // 0.5.4.1: a helper that is descheduled while it holds the lock (a loaded desktop, a helper that
+    // could not get the audio thread's real-time class) used to hold the block until it ran again, a few
+    // to tens of milliseconds, each time it happened. Measure the wait; after a stall the radiation of
+    // the following blocks runs on this thread (bit-identical output, only the thread differs), and the
+    // helper is tried again after a back-off (1 s, doubling to 32 s, reset after 20 s without a stall).
+    bool waited = false;
+    std::chrono::steady_clock::time_point since{};
+    unsigned spins = 0;
     while (consumed_.load(std::memory_order_acquire) < end) {
         if (!pumpRecords(~0u)) {
+            if (!waited) { waited = true; since = std::chrono::steady_clock::now(); }
 #if defined(__x86_64__) || defined(__i386__)
             _mm_pause();
 #endif
+            if (radOn_ && stallFallback_ && (++spins & 63u) == 0 &&
+                std::chrono::steady_clock::now() - since > std::chrono::nanoseconds(kStallNs)) {
+                radOn_ = false; ++radStalls_;
+                fallbackLeft_ = backoffFrames_ ? backoffFrames_ : static_cast<std::uint64_t>(fs_);
+                backoffFrames_ = std::min<std::uint64_t>(fallbackLeft_ * 2, static_cast<std::uint64_t>(32 * fs_));
+                healthyFrames_ = 0;
+            }
         }
+    }
+    if (radOn_) {
+        healthyFrames_ += blockFrames_;
+        if (healthyFrames_ > static_cast<std::uint64_t>(20 * fs_)) backoffFrames_ = static_cast<std::uint64_t>(fs_);
     }
     if (radFault_.exchange(false, std::memory_order_relaxed)) resetAfterNonFinite();
     checkIdle();
+    governBlock();
     for (std::uint32_t i = 0; i < blockFrames_; ++i) {
         const std::size_t s = static_cast<std::size_t>((blockStart_ + i) & (ringSize - 1));
         if (left) left[i] = ring_.outL[s];

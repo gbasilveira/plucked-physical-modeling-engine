@@ -1,5 +1,94 @@
 # MVP 4: bridge feedback
 
+## Update 0.5.4.1: hotfix, 64-frame blocks and load shedding (display name "Piano MVP 4 - Real time 0.5.4.1")
+
+Two user reports against 0.5.4 (and 0.5.3): (1) "from the 2nd note, a considerable delay is added each strike"; (2) in Carla the CPU
+goes to 100% with thousands of xruns, especially below C5, and Full "clips". The user's PipeWire runs at **64 frames, 48 kHz**
+(1.33 ms deadline, rtprio limit 70); the 0.5.4 benches used 128/256.
+
+### Findings (measured on the i3-8100, 4 cores, performance governor, 48 kHz, `piano-block-bench`)
+
+* **The audio path adds no delay.** Per-note onset latency through the LV2 path (MIDI event frame to the first output frame that differs
+  from a run without the note) is the physical hammer flight: 4.5-8.4 ms at velocity 80 for keys 40-64 (the same in the 0.5.3
+  bundle), constant over strikes and independent of block size (test LAT-2). What the player hears as "added delay" is **late blocks**:
+  (a) bass chords cost more than the 64-frame deadline (below), so every strike pushes the plug-in into xruns; (b) with the radiation
+  helper (Worker threads 1) the audio thread waited at the end of a block for a helper that had been **descheduled while holding the
+  radiation lock** (priority inversion: the helper is a normal thread when the host's real-time class cannot be copied, or competes with a
+  busy desktop). In a paced 64-frame run with three busy loops on the other cores the block completion lag reached 18 ms with one
+  helper against 4.7 ms with none. A synthetic 3 ms hold per helper batch made every block take 4.1 ms.
+* **Bass cost at 64 frames.** A rolling 4-note chord every 150 ms with pedal, velocity 0.9, Live, one helper: keys from 28 cost a mean
+  **1.84** deadlines per block (p99.9 2.96, 8783 of 9000 blocks late); from 36: mean 0.82 (p99.9 1.68, 299 late); from 48: mean 0.29
+  (p99.9 1.63, max 4.1, 14 late); from 60: 0.25 (p99.9 0.58); from 72: 0.23 (0.41). Single notes are cheap (0.16-0.31, any key). The cost
+  is the number of simultaneously simulated strings: tension modulation (SAV with two potentials every sample while the tension energy is
+  above the floor; keys up to E2), pedal-woken sympathetic and leaky strings, up to 16 struck voices held by the pedal, and the hammer
+  contact (about 5 times the sustained cost of a voice for the first 3 ms). Mode truncation and the tension floor change nothing here.
+  A fixed cost of about 0.23 deadlines (board + radiation) is always present.
+* **Denormals** are not the cause: the plug-in sets FTZ/DAZ in `run()` and the helper mirrors the audio thread's control word;
+  runs with and without FTZ in the bench cost the same.
+* **Clipping:** none. Peak output over all qualities: 0.38-0.50 for 10-14 note chords at velocity 1.0, 0.47 for a 32-key bass
+  cluster, 0.84 for a 29-key treble cluster (Full). The Full "clipping" is the crackle of missed deadlines (Full runs at 0.3-0.5x real
+  time). Output gain and Full's offline bits are unchanged.
+* **A race in the idle path (found while reproducing).** 0.5.4 advanced `produced_` and `consumed_` with two stores in the idle, inline
+  and Worker-threads-0 paths while the helper thread was alive. If the helper read `consumed_` before and `produced_` after, it radiated
+  a stale ring slot (ports and drives of a lap-old record) into the live radiation state: ghost sound at a note-on after silence, output
+  that differed from run to run (about half of the activations at 64 frames in a harness, also with Worker threads 0). Fixed
+  (`Piano::publishSkipped`: both counters move under the radiation lock).
+
+### Changes
+
+1. **Stall fallback.** The audio thread times its wait at the end of a block; after more than 0.4 ms it moves the radiation to the audio
+   thread for 1 s (doubling to 32 s on repeated stalls, back to 1 s after 20 s without one). Output is bit-identical either way
+   (test LAT-3: a helper that sleeps 3 ms per batch gives the single-thread output; worst block 0.6 ms instead of 4.1 ms).
+   `Piano::radiationStalls()`.
+2. **Helper spin 4 ms -> 0.3 ms** before it polls every 100 us (with 64-frame blocks the old window kept it spinning, a core at 100%).
+3. **Adaptive load shedding** (Live and Balanced, parameter "Adaptive load shedding", default on; CLAP parameter 2, LV2 port 6). The
+   audio thread times every block. Smoothed cost above 0.7 of the deadline, or a block over 1.0, steps the level up (at most every 0.15 s):
+
+   | level | struck voices | sympathetic | leaky | tension modulation up to key |
+   | --- | --- | --- | --- | --- |
+   | 0 (preset) | 16 / 24 | 12 / 16 | 6 / 8 | 40 / 47 |
+   | 1 | 12 | 6 | 3 | 33 |
+   | 2 | 10 | 3 | 2 | none |
+   | 3 | 8 | 1 | 1 | none |
+
+   (Live/Balanced take the smaller of the preset and the level; sounding notes above the tension limit stop modulating, the same
+   transition as V_KC falling below the floor.) It steps back after 4 s below 0.2 of the deadline and at once after silence. The
+   output then depends on timing, so it is a plug-in feature only: `Piano::setAdaptive`, off in renderers and tests (the LV2 and CLAP
+   checks set the port/parameter to 0 for their bit-exact comparisons); Full never sheds.
+4. Plug-in versions: LV2 `minorVersion 5`, `microVersion 5` (0.5.4.1), name "Piano MVP 4 - Real time 0.5.4.1", same URI; CLAP "0.5.4.1".
+   CLAP state byte 6 holds "adaptive off" (old states load with it on).
+
+### Results at 64 frames, 48 kHz (rolling 4-note chords every 150 ms, pedal, velocity 0.9, Live, one helper; `piano-block-bench`)
+
+| lowest key | before: mean / p99.9 / late blocks | after (adaptive): mean / p99.9 / late blocks / level |
+| --- | --- | --- |
+| 28 | 1.84 / 2.96 / 8783 of 9000 | 0.33 / 1.16 / 49 / 3 |
+| 36 | 0.82 / 1.68 / 299 | 0.26 / 1.04 / 21 / 3 |
+| 48 | 0.29 / 1.63 / 14 | 0.29 / 0.84 / 0 / 0 |
+| 60 | 0.25 / 0.58 / 0 | 0.26 / 0.59 / 0 / 0 |
+| 72 | 0.23 / 0.41 / 0 | 0.23 / 0.40 / 0 / 0 |
+
+At 128 frames the same chords: base 28 after 0.33 / 1.03 / 23 of 4500, base 36 0.28 / 0.95 / 2, base 48 and up clean. Chopin op. 28 no. 4
+(0-40 s), Live, 64 frames: mean 0.20, p99.9 0.68, no miss with the helper (0.38 / 0.90 / 6 late without).
+
+**Honest limit.** The p99.9 target of 0.7 holds from E3 (key 52) upward and for the Chopin prelude. Bass chords of four or more notes
+under the pedal at 64 frames cannot be done at the Live model on this CPU: the hammer contact of each bass voice costs about 0.2
+deadlines for 3 ms, so a four-note bass chord is a single burst of 0.8-1.0 deadlines on top of the 0.23 fixed cost. The governor
+removes the sustained load (mean 0.3) and leaves roughly 0.5% late blocks on that worst case; 128 frames (p99.9 about 1.0, 2-23 late
+blocks of 4500) or a faster core is needed for rolling four-note bass chords without any xrun. The next speed-ups are a fused
+tension-SAV step (it is the generic `savStep`, not the fused flight step) and a FMA clone of the fast kernels.
+
+### Tests
+
+`piano-lv2-latency` (new, `lv2_latency.cpp`): LAT-1 threaded output == single-thread output for block patterns 64/128/256/1024 and a
+variable one, gaps below and above the idle hold; LAT-2 onset latency per note <= 12 ms and constant over five strikes of one key, in
+the LV2 path; LAT-3 a stalled helper (`Piano::testHelperHold`) does not delay the audio thread beyond the first stalled block and the
+output is bit-identical. Note: block patterns differ from each other at the -200 dB level because the idle skip is evaluated at block
+ends and the tension model amplifies it; only equal patterns are compared. `piano-block-bench` (new) is the 64-frame deadline bench
+(`--events FILE` or `--keys`/`--chords BASE`, `--block`, `--fs`, `--quality`, `--threads`, `--adaptive`, `--o-NAME` overrides).
+`piano-rt-stress` got `--adaptive`; `piano-host-check` expects three CLAP parameters. The Full offline output is unchanged
+(`piano-previous-bitexact`, `piano-rt-equal-full` pass).
+
 ## Update 0.5.4: real time (display name "Piano MVP 4 - Real time")
 
 Goal: sub-5 ms and sub-10 ms response in the plug-ins. The model adds no latency (events are
