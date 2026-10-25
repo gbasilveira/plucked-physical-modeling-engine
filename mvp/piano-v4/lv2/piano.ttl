@@ -12,7 +12,7 @@
     doap:name "Piano MVP 4 - Bridge feedback" ;
     doap:license <https://opensource.org/license/mit> ;
     lv2:minorVersion 4 ;
-    lv2:microVersion 0 ;
+    lv2:microVersion 2 ;
     lv2:requiredFeature urid:map ;
     rdfs:comment "Experimental physical piano with velocity, sustain and a fixed preset." ;
     lv2:port [

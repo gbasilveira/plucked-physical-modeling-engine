@@ -149,7 +149,8 @@ or a MIDI controller. The format change does not alter the sound model.
 The LV2 bundle has one MIDI Atom Sequence input and two float audio outputs, and
 requires the host's standard `urid:map` feature. It accepts default or explicit
 frame-based event timestamps; MIDI events are applied at their sample offsets.
-Unsupported time units, truncated events and MIDI messages are ignored safely.
+Explicit beat timestamps and truncated or malformed MIDI events are ignored safely.
+In the audio callback, otherwise unspecified time units use the frame-time default.
 Activation resets the instrument. CLAP and LV2 share the MIDI dispatcher and core.
 
 The LV2 callback is tested against the core sample by sample, with identical
@@ -168,3 +169,32 @@ Build and package with:
 cmake --build out/piano-mvp-v4 --target piano-lv2-package -j2
 ctest --test-dir out/piano-mvp-v4 -R piano-lv2 --output-on-failure
 ```
+
+### Carla silence compatibility fix (LV2 version 0.4.2)
+
+The original callback accepted only a zero or explicit frame-time unit in the Atom
+Sequence header. Carla 2.5.10's `lv2_atom_buffer_new/reset` initialises the sequence
+size/type but leaves `Sequence_Body::unit` uninitialised. This caused valid MIDI
+to be discarded and silence in actual playback, despite discovery and the synthetic
+host tests passing. See the host's [atom buffer helper](https://github.com/falkTX/Carla/blob/v2.5.10/source/includes/lv2/atom-helpers.h).
+
+The audio callback now accepts the usual integer frame timestamps even when that
+header field contains otherwise unspecified data, while rejecting explicitly
+beat-timed sequences and retaining all size, type and frame-range checks. A
+regression poisons the unit field with `0xa5a5a5a5`: it fails against the old binary
+and passes against the fixed binary, with sample-exact expected audio. The sound
+engine and gain are unchanged.
+
+The issue was also reproduced with the installed Carla engine: peak 0 before,
+about 0.03 after the fix for MIDI C4 at velocity 90. The optional test below
+creates its own diagnostic client and leaves the user's Carla session alone:
+
+```bash
+LD_LIBRARY_PATH=/usr/lib64/pipewire-0.3/jack \
+  python3 mvp/piano-v4/carla_check.py out/piano-mvp-v4/piano-mvp-v4.lv2
+```
+
+This needs an existing JACK/PipeWire server and Carla's Python backend/library;
+paths can be overridden with `--backend-dir` and `--library`. It is a local host
+integration check, not part of unattended CTest. After installing the updated
+bundle, reload the instrument or restart Carla to unload the old binary from memory.

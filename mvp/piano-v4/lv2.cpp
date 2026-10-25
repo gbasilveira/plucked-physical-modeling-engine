@@ -16,7 +16,7 @@ struct Instance {
     const LV2_Atom_Sequence* midi{};
     float* left{};
     float* right{};
-    LV2_URID midiType{}, sequenceType{}, frameTime{};
+    LV2_URID midiType{}, sequenceType{}, frameTime{}, beatTime{};
     bool active{};
 };
 LV2_Handle instantiate(const LV2_Descriptor*,double fs,const char*,const LV2_Feature* const* features) {
@@ -30,7 +30,8 @@ LV2_Handle instantiate(const LV2_Descriptor*,double fs,const char*,const LV2_Fea
         s->midiType = map->map(map->handle,LV2_MIDI__MidiEvent);
         s->sequenceType = map->map(map->handle,LV2_ATOM__Sequence);
         s->frameTime = map->map(map->handle,LV2_ATOM__frameTime);
-        if (!s->midiType || !s->sequenceType || !s->frameTime || !s->piano.prepare(fs)) return nullptr;
+        s->beatTime = map->map(map->handle,LV2_ATOM__beatTime);
+        if (!s->midiType || !s->sequenceType || !s->frameTime || !s->beatTime || !s->piano.prepare(fs)) return nullptr;
         return s.release();
     } catch (...) { return nullptr; }
 }
@@ -62,8 +63,12 @@ void run(LV2_Handle handle,std::uint32_t frames) {
         }
     };
     const auto* seq = s.midi;
+    // In run(), integer audio-frame timestamps are the default. Carla 2.5.10's
+    // atom buffer helper does not initialise Sequence_Body::unit. Do not mute a
+    // valid frame-timed sequence because that unused header field contains junk.
+    // Explicit beat timestamps remain unsupported; all event bounds are checked.
     if (seq && seq->atom.type == s.sequenceType && seq->atom.size >= sizeof(seq->body) &&
-        (seq->body.unit == 0 || seq->body.unit == s.frameTime)) {
+        seq->body.unit != s.beatTime) {
         const auto* body = reinterpret_cast<const std::uint8_t*>(&seq->body);
         std::size_t offset = sizeof(seq->body);
         while (offset <= seq->atom.size && seq->atom.size-offset >= sizeof(LV2_Atom_Event)) {

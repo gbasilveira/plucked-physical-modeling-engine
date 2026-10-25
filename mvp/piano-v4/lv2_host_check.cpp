@@ -33,6 +33,7 @@ static LV2_URID map(void*,const char* uri) {
     if (!std::strcmp(uri,LV2_MIDI__MidiEvent)) return 1;
     if (!std::strcmp(uri,LV2_ATOM__Sequence)) return 2;
     if (!std::strcmp(uri,LV2_ATOM__frameTime)) return 3;
+    if (!std::strcmp(uri,LV2_ATOM__beatTime)) return 4;
     return 4;
 }
 struct Message { std::int64_t frame; std::array<std::uint8_t,3> data; std::uint32_t size{3}, type{1}; };
@@ -113,12 +114,23 @@ static void exercise(const LV2_Descriptor* d,double fs) {
     for (float x : left) require(x == 0,"truncated MIDI was applied");
     seq.reset(); seq.append({0,{0x90,60,100}}); seq.get()->body.unit = 4;
     d->run(instance,512);
-    for (float x : left) require(x == 0,"unsupported time unit was treated as frames");
+    for (float x : left) require(x == 0,"beat timestamps were treated as frames");
     seq.reset(); seq.append({0,{0x90,60,100}}); seq.get()->body.unit = 3;
     d->run(instance,512);
     require(std::abs(left[511])+std::abs(right[511]) > 0,"explicit frame-time MIDI was ignored");
     d->deactivate(instance); d->activate(instance); reference.reset();
     block(512,{});
+    // Reproduce Carla's malloc-backed buffer whose unit field is not initialised.
+    seq.reset(); seq.append({0,{0x90,60,100}}); seq.get()->body.unit = 0xa5a5a5a5U;
+    inRun = true; d->run(instance,512); inRun = false;
+    reference.noteOn(60,100/127.0);
+    double compatibilityEnergy = 0;
+    for (int frame = 0; frame < 512; ++frame) {
+        float l,r; reference.sample(l,r);
+        require(left[frame] == l && right[frame] == r,"Carla-style dirty unit silenced MIDI");
+        compatibilityEnergy += l*l+r*r;
+    }
+    require(compatibilityEnergy > 1e-9 && runAllocations == 0,"Carla MIDI compatibility test failed");
     left.fill(0.123f); seq.reset(); d->run(instance,0);
     require(left.front() == 0.123f,"zero-size block wrote audio");
     d->deactivate(instance); d->cleanup(instance);
