@@ -8,6 +8,7 @@
 #include "grand_board.hpp"
 #include "sympathetic_string.hpp"
 #include "bridge_mass.hpp"
+#include "tension_note.hpp"
 
 namespace piano_mvp_v4 {
 // Experimental fixed preset. All allocations happen in prepare(), never during playback.
@@ -85,8 +86,22 @@ public:
         if (ready_ || n < 0 || n > maxPolyphony) return false;
         sympLimit_ = n; return true;
     }
+    // 0.5.2, before prepare(). Kirchhoff-Carrier tension modulation of the struck strings (pitch
+    // glide, phantom partials; default on). Off reproduces 0.5.1 bit-for-bit.
+    bool setTensionModulation(bool enabled) noexcept {
+        if (ready_) return false;
+        tension_ = enabled; return true;
+    }
+    // Tension modulation only for keys 21..n (CPU lever, default 108 = all keys). See README 0.5.2.
+    bool setTensionMaxKey(int n) noexcept {
+        if (ready_ || n < 20 || n > 108) return false;
+        tensionMaxKey_ = n; return true;
+    }
     // Plug-in cap on sympathetic strings (CPU, README 0.5.1).
     static constexpr int pluginSympatheticLimit = 8;
+    // Plug-in tension modulation boundary (CPU, README 0.5.2): keys 21..47 only. With all keys the
+    // pedalled 12-key cluster runs at 0.50x real time, with this boundary at 0.97x.
+    static constexpr int pluginTensionMaxKey = 47;
     // Board bridge-point speed (m/s) above which a lifted, idle string starts to be simulated,
     // and below which (half of it) an idle sympathetic string may go back to sleep. Assumption.
     static constexpr double wakeVelocity = 1e-4;
@@ -130,7 +145,7 @@ private:
     struct Voice {
         std::array<pme::StringModes, 3> modes;
         std::array<pme::SegmentBridgeTerms, 3> terms;
-        pme::exciters::StruckNote<double> note;
+        TensionStruckNote note;           // 0.5.2: StruckNote + tension modulation (tension_note.hpp)
         pme::bridge::BridgePoint<double> bridge;
         bool active{}, held{}, undamped{}, struck{}, sympathetic{};
         double force{};     // F^n of this voice's strings on the shared board (0.5.1)
@@ -155,6 +170,8 @@ private:
     bool softFelt_{true};
     bool bridgeMass_{true};
     bool saturatingLoss_{true};
+    bool tension_{true};
+    int tensionMaxKey_{108};
     bool unaCordaEnabled_{true}, undampedTreble_{true}, unaCordaDown_{};
     int voiceLimit_{maxVoices};
     BridgeMassTransmission bridgeMassFilter_;

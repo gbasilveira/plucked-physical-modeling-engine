@@ -75,7 +75,7 @@ static void exercise(const LV2_Descriptor* d,double fs) {
     const auto instance = d->instantiate(d,fs,"",features);
     require(instance,"LV2 instantiate failed");
     piano_mvp_v4::Piano reference;
-    require(reference.setVoiceLimit(piano_mvp_v4::Piano::maxVoices) && reference.setSympatheticLimit(piano_mvp_v4::Piano::pluginSympatheticLimit) && reference.prepare(fs),"reference preparation failed");
+    require(reference.setVoiceLimit(piano_mvp_v4::Piano::maxVoices) && reference.setSympatheticLimit(piano_mvp_v4::Piano::pluginSympatheticLimit) && reference.setTensionMaxKey(piano_mvp_v4::Piano::pluginTensionMaxKey) && reference.prepare(fs),"reference preparation failed");
     std::array<float,512> left{},right{};
     Sequence seq; seq.reset();
     d->connect_port(instance,0,seq.get());

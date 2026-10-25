@@ -1,0 +1,162 @@
+{
+  "glide": [
+    {
+      "key": 33,
+      "velocity": 40,
+      "partial": 13,
+      "tracked_hz": 720.0,
+      "on_minus_off_cents_30_60ms": 0.0723213614574042,
+      "on_minus_off_cents_60_100ms": 0.0633922337464246,
+      "on_minus_off_cents_100_250ms": 0.04556695487709926,
+      "on_minus_off_cents_250_500ms": 0.030924481295506158,
+      "on_minus_off_cents_1000_1500ms": 0.013329525183829901,
+      "on_glide_cents_30_100ms_vs_1_1.5s": 0.39903116408572115,
+      "off_glide_cents_30_100ms_vs_1_1.5s": 0.3451417361317837
+    },
+    {
+      "key": 33,
+      "velocity": 92,
+      "partial": 13,
+      "tracked_hz": 720.0,
+      "on_minus_off_cents_30_60ms": 0.6208709714554657,
+      "on_minus_off_cents_60_100ms": 0.5679386298547564,
+      "on_minus_off_cents_100_250ms": 0.4101623184371497,
+      "on_minus_off_cents_250_500ms": 0.2795649377550651,
+      "on_minus_off_cents_1000_1500ms": 0.11935904981340177,
+      "on_glide_cents_30_100ms_vs_1_1.5s": 0.8151172274806349,
+      "off_glide_cents_30_100ms_vs_1_1.5s": 0.3438525047105136
+    },
+    {
+      "key": 45,
+      "velocity": 40,
+      "partial": 6,
+      "tracked_hz": 661.0,
+      "on_minus_off_cents_30_60ms": 0.15951990960729737,
+      "on_minus_off_cents_60_100ms": 0.14177239882160572,
+      "on_minus_off_cents_100_250ms": 0.10217116972477623,
+      "on_minus_off_cents_250_500ms": 0.05811903361488619,
+      "on_minus_off_cents_1000_1500ms": 0.018993847527379842,
+      "on_glide_cents_30_100ms_vs_1_1.5s": -0.244696514808852,
+      "off_glide_cents_30_100ms_vs_1_1.5s": -0.37508146807387255
+    },
+    {
+      "key": 45,
+      "velocity": 92,
+      "partial": 6,
+      "tracked_hz": 661.0,
+      "on_minus_off_cents_30_60ms": 1.5186597810894498,
+      "on_minus_off_cents_60_100ms": 1.3944670532174805,
+      "on_minus_off_cents_100_250ms": 1.0316408819989122,
+      "on_minus_off_cents_250_500ms": 0.606471720964944,
+      "on_minus_off_cents_1000_1500ms": 0.20401981213602463,
+      "on_glide_cents_30_100ms_vs_1_1.5s": 0.8915723682168745,
+      "off_glide_cents_30_100ms_vs_1_1.5s": -0.3521045456755186
+    },
+    {
+      "key": 60,
+      "velocity": 40,
+      "partial": 3,
+      "tracked_hz": 787.0,
+      "on_minus_off_cents_30_60ms": 0.08396003271245282,
+      "on_minus_off_cents_60_100ms": 0.0628073806109072,
+      "on_minus_off_cents_100_250ms": 0.042052063779844946,
+      "on_minus_off_cents_250_500ms": 0.028265032185417586,
+      "on_minus_off_cents_1000_1500ms": 0.00204518072966545,
+      "on_glide_cents_30_100ms_vs_1_1.5s": 0.30799367535950156,
+      "off_glide_cents_30_100ms_vs_1_1.5s": 0.2381660444498401
+    },
+    {
+      "key": 60,
+      "velocity": 92,
+      "partial": 3,
+      "tracked_hz": 787.0,
+      "on_minus_off_cents_30_60ms": 0.9404828731240055,
+      "on_minus_off_cents_60_100ms": 0.696977932843732,
+      "on_minus_off_cents_100_250ms": 0.4219213720731553,
+      "on_minus_off_cents_250_500ms": 0.219813097775853,
+      "on_minus_off_cents_1000_1500ms": 0.006743145633239466,
+      "on_glide_cents_30_100ms_vs_1_1.5s": 1.0336713346823503,
+      "off_glide_cents_30_100ms_vs_1_1.5s": 0.2390732815673618
+    }
+  ],
+  "sidebands": [
+    {
+      "key": 24,
+      "velocity": 92,
+      "off_inharmonic_fraction_db": -46.1133278076253,
+      "off_total_power_db": 108.04138948921769,
+      "on_inharmonic_fraction_db": -45.8683562975387,
+      "on_total_power_db": 108.00210449806474,
+      "extra_inharmonic_power_on_vs_off_db": 0.2056865189336427,
+      "strongest_inharmonic_peak_hz_on": 63.500661465223594,
+      "strongest_inharmonic_peak_db_re_strongest_partial_on": -42.80198805868393,
+      "strongest_inharmonic_peak_hz_off": 63.500661465223594,
+      "strongest_inharmonic_peak_db_re_strongest_partial_off": -42.63264902751498
+    },
+    {
+      "key": 24,
+      "velocity": 127,
+      "off_inharmonic_fraction_db": -46.05716957366936,
+      "off_total_power_db": 111.72943244631463,
+      "on_inharmonic_fraction_db": -43.552948468794554,
+      "on_total_power_db": 111.63763683640454,
+      "extra_inharmonic_power_on_vs_off_db": 2.4124254949647046,
+      "strongest_inharmonic_peak_hz_on": 63.500661465223594,
+      "strongest_inharmonic_peak_db_re_strongest_partial_on": -43.01739660273892,
+      "strongest_inharmonic_peak_hz_off": 63.500661465223594,
+      "strongest_inharmonic_peak_db_re_strongest_partial_off": -42.42039974891615
+    },
+    {
+      "key": 33,
+      "velocity": 92,
+      "off_inharmonic_fraction_db": -44.14984750249027,
+      "off_total_power_db": 105.51601880742786,
+      "on_inharmonic_fraction_db": -44.09451356792101,
+      "on_total_power_db": 105.51515758455594,
+      "extra_inharmonic_power_on_vs_off_db": 0.05447271169733688,
+      "strongest_inharmonic_peak_hz_on": 112.50117188720715,
+      "strongest_inharmonic_peak_db_re_strongest_partial_on": -47.158883590557735,
+      "strongest_inharmonic_peak_hz_off": 112.50117188720715,
+      "strongest_inharmonic_peak_db_re_strongest_partial_off": -47.27188492073836
+    },
+    {
+      "key": 33,
+      "velocity": 127,
+      "off_inharmonic_fraction_db": -44.15914972272928,
+      "off_total_power_db": 109.341023710224,
+      "on_inharmonic_fraction_db": -43.369219910206205,
+      "on_total_power_db": 109.33544074431151,
+      "extra_inharmonic_power_on_vs_off_db": 0.7843468466105765,
+      "strongest_inharmonic_peak_hz_on": 222.50231773247637,
+      "strongest_inharmonic_peak_db_re_strongest_partial_on": -46.712928257602336,
+      "strongest_inharmonic_peak_hz_off": 112.50117188720715,
+      "strongest_inharmonic_peak_db_re_strongest_partial_off": -47.43326289550426
+    },
+    {
+      "key": 45,
+      "velocity": 92,
+      "off_inharmonic_fraction_db": -42.376319411168154,
+      "off_total_power_db": 102.1203867147622,
+      "on_inharmonic_fraction_db": -41.53426312991354,
+      "on_total_power_db": 102.16097647600968,
+      "extra_inharmonic_power_on_vs_off_db": 0.8826460425020839,
+      "strongest_inharmonic_peak_hz_on": 222.50231773247637,
+      "strongest_inharmonic_peak_db_re_strongest_partial_on": -42.837193366230295,
+      "strongest_inharmonic_peak_hz_off": 222.50231773247637,
+      "strongest_inharmonic_peak_db_re_strongest_partial_off": -44.36319523874413
+    },
+    {
+      "key": 45,
+      "velocity": 127,
+      "off_inharmonic_fraction_db": -42.29245701660243,
+      "off_total_power_db": 106.02845290122656,
+      "on_inharmonic_fraction_db": -35.29765123414722,
+      "on_total_power_db": 106.12964185288158,
+      "extra_inharmonic_power_on_vs_off_db": 7.095994734110236,
+      "strongest_inharmonic_peak_hz_on": 222.50231773247637,
+      "strongest_inharmonic_peak_db_re_strongest_partial_on": -40.159224565979,
+      "strongest_inharmonic_peak_hz_off": 222.50231773247637,
+      "strongest_inharmonic_peak_db_re_strongest_partial_off": -44.38484368429901
+    }
+  ]
+}

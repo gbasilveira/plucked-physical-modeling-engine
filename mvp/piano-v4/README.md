@@ -1,5 +1,192 @@
 # MVP 4: bridge feedback
 
+## Update 0.5.2: tension modulation of the struck strings
+
+Physical "soft distortion": large transverse motion stretches a string, raising its tension, hence
+a small pitch rise at the strike (glide as the amplitude decays) and coupling between partials
+(phantom partials, bass growl). Strings so far were linear. `setTensionModulation(bool)` (before
+`prepare`, default on; off is 0.5.1 bit-for-bit). `piano-midi-render ... --previous` is now
+**0.5.1** and reproduces the committed `chopin-prelude-0.5.1-raw.wav` byte-for-byte (verified with
+`cmp`, also the 0.5.1 listening WAV); `--v050` is the former `--previous` (0.5.0); `--shared-pan`,
+`--v049`, `--v048`, `--v046`, `--legacy` unchanged. `piano-render` takes `previous` (0.5.1) and
+`v050`; `piano-sympathetic-demo` takes `--previous` (0.5.1) and `--v050`.
+
+### Design
+
+1. **`TensionStruckNote` (`tension_note.*`).** Copy-and-adapt of `pme::exciters::StruckNote` (the
+   engine is untouched). Same SPEC-EXEC order, hammer, bridge port, felt and release rules; the SAV
+   segment (vertical modes of every struck string plus the hammer) gets a second potential
+   `V_KC = sum_s c_s S_s^2 / 4`, `S_s = sum_n k_n^2 q_s,n^2`, `c_s = (EA - T_s)/(2 L)` (SPEC-GEO
+   "Tension modulation"), which adds to the hammer potential and shares the one psi (SPEC-NL "SAV
+   formulation", rank one). It is the formula of `pme::nl::TensionModulationPotential`, re-coded as
+   a vertical-only potential per string slice because the core class addresses `[V modes, H
+   modes, lumped]` of one string and cannot address one slice of a stacked 1-3 string segment; test
+   0.5.2-T1 checks value and gradient against the core class (relative difference 0). Each unison
+   string of a key has its own `S_s` (strings are separate); the bridge reaction, hammer, damper law
+   and the 0.5.1 shared board are unchanged.
+2. **Consequences of the second potential.** The tension potential is non-zero whenever the string
+   moves, so the SAV solve runs every sample while a struck string sounds (the skip rule no longer
+   saves work); the felt dashpots can no longer be merged into the SAV column (gradient not parallel
+   to the felt direction), so during contact the solve is rank 1 + dashpots (<= 4). A floor of
+   1e-14 J (1% of eps0, DeltaT < ~2e-5 N, pitch effect < 1e-7) treats `V_KC` as zero so a decayed
+   string returns to the cheap path (energy tests set the floor to 0). The damper law scales the
+   string state outside the SAV, so after each damped sample `clampPsi()` lowers psi to
+   `sqrt(2(V + eps0))` if above (only removes energy; the same rule as SPEC-NL Drift control 2).
+3. **EA.** The core's axial stiffness `E_c pi d_c^2/4` (`axialStiffness`, SPEC-GEO) with the
+   preset's `E_c = 2.02e11 Pa` and the report's string diameter (Chabassier-Durufle RT-0425
+   appendix; for wound bass strings that diameter is the core, the winding is homogenised only in
+   density, so it adds no axial stiffness: "core-only EA"). A1: EA = 3.5e5 N for T = 1722 N
+   (key 24), A2: 1.8e5 N, T = 754 N, C4: 1.6e5 N, T = 741 N, C6: 1.3e5 N, T = 697 N. Nominal values
+   from the report, no measurement of this piano.
+4. **Polarisation.** Vertical only: the horizontal modes have no port on this board (no
+   perpendicular bridge conductance), stay linear and are driven by the bridge term only, so
+   `y_x^2 + z_x^2` is reduced to `y_x^2`. The tension acts on the string only; the extra tension's
+   own force on the bridge (kappa_T DeltaT, SPEC-GEO hook) is not transmitted (kappa_T = 0), as in
+   the core's own default; the core notes that the movable-bridge energy balance is then not exact
+   (SI-0015 issue). **Sympathetic (unstruck) strings stay linear**: their amplitude is 40-60 dB
+   below a struck string (DeltaT ~ amplitude^2), so the effect is below 1e-6 relative.
+5. **Longitudinal modes: not included.** Phantom partials in real pianos come mainly from
+   longitudinal string waves (`GeometricSegment`, A7-R2/R3: ~5 longitudinal modes at 48 kHz, an
+   O(N) pair-sum per mode per sample plus their own bridge port). They would need the vertical
+   bridge-force path (kappa_L) and a longitudinal board port. Cost: a few more passes per
+   string group per sample on top of the tension step (not measured); feasible for the bass keys the
+   plug-in already covers, not tried.
+
+### Tests (`ctest`: 7/7, new `piano-tension-energy`)
+
+- 0.5.2-T1 potential vs the core `TensionModulationPotential` (keys 24, 45, 60, 84): identical.
+- 0.5.2-T2 **lossless** string + hammer (muHC = 0, no drift relaxation, rigid bridge, 2 s of
+  ff and mf notes, keys 24, 33, 45, 60): modified energy (`savEnergy` + released hammer energy +
+  reset removals) conserved to **1.2e-12 relative at worst** (peak extra tension up to 41 N, key 60 at
+  nu = 1).
+- 0.5.2-T3 **lossy** (full loss law, felt dashpots, drift relaxation, keys 24, 33, 60, 84 at
+  nu = 1): never above the initial energy (max rise 0), final 67-87% of it.
+- 0.5.2-T4 tension off is bit-identical to `StruckNote` (keys 33, 60, 1 s).
+- 0.5.2-T5 a loud A1 (nu = 1, rigid bridge) rings **+5.2 cents** higher in mode 1 over 50-250 ms
+  than the same note without tension.
+- Unchanged and passing: `bridge-check` (shared board energy), `piano-check` (all 0.5.1 tests with
+  tension on), the CLAP and LV2 playback tests (LV2 `run()` allocation check included).
+The coupled string + board system with tension is not given an energy test: the missing kappa_T
+term (item 4) makes the moving-support balance inexact, and the board path adds loss; stability
+is covered by the playback tests and the Chopin render (0 numerical faults, peak 0.1537 vs
+0.1560).
+
+### Results
+
+Measurements (`tension_analysis.py` / `piano-tension-measure`, bridge force of the key on the full
+Piano with shared board, unisons, 3 s, `tension-measurements-0.5.2.json`). Pitch: a partial near
+700 Hz tracked by an analytic-signal phase slope, 0.5.2 minus 0.5.1 in cents:
+
+| Key | Velocity | 30-60 ms | 60-100 ms | 100-250 ms | 0.25-0.5 s | 1-1.5 s |
+| --- | --- | --- | --- | --- | --- | --- |
+| A1 (33) | 40 | +0.07 | +0.06 | +0.05 | +0.03 | +0.01 |
+| A1 | 92 | +0.62 | +0.57 | +0.41 | +0.28 | +0.12 |
+| A2 (45) | 40 | +0.16 | +0.14 | +0.10 | +0.06 | +0.02 |
+| A2 | 92 | **+1.52** | +1.39 | +1.03 | +0.61 | +0.20 |
+| C4 (60) | 40 | +0.08 | +0.06 | +0.04 | +0.03 | +0.00 |
+| C4 | 92 | +0.94 | +0.70 | +0.42 | +0.22 | +0.01 |
+
+Glide inside the note (30-100 ms against 1-1.5 s, minus the same quantity without tension, which
+is 0.3 cents and comes from board loading): A1 0.05 / 0.47, A2 0.13 / 1.24, C4 0.07 / 0.79 cents
+at velocity 40 / 92. C6 (key 84): 0.0 / 0.8 / 2.9 cents at velocity 40 / 92 / 127. **These are
+small: a few tenths of a cent to 1.5 cents, below pitch discrimination, because the model's
+bass strings reach a few N of DeltaT (11-13 N for a bare string at nu = 1, test T3; 0.2-0.8% of
+T) only in the first tens of ms and lose their energy to the board; velocity 127 on a bare string gives +5 cents (T5).**
+
+Inharmonic sideband power (fraction of 30 Hz-3 kHz power of the bridge force outside +-2 Hz or
+0.06% of any string partial; the 0.5.1 baseline is about -42 to -46 dB from board-coupled modes and
+leakage):
+
+| Key | Velocity | 0.5.1 | 0.5.2 | Change |
+| --- | --- | --- | --- | --- |
+| A0 (24) | 92 | -46.1 dB | -45.9 | +0.2 dB |
+| A0 | 127 | -46.1 | -43.6 | +2.4 |
+| A1 (33) | 92 | -44.1 | -44.1 | +0.05 |
+| A1 | 127 | -44.2 | -43.4 | +0.8 |
+| A2 (45) | 92 | -42.4 | -41.5 | +0.9 |
+| A2 | 127 | -42.3 | **-35.3** | **+7.1** |
+
+So phantom-type energy appears (and grows roughly as velocity^4) but only audibly (> 3 dB) at the
+hardest strikes; the strongest outside peaks sit at 222.5 Hz for A2 (the 2f0 region), 63.5 Hz
+for A0. Longitudinal waves (not modelled) are the stronger real source.
+
+Octave-band shares versus Salamander, model minus reference, dB, velocity 60 (`0.5.1 / 0.5.2`,
+band lower edges 62.5 ... 8000 Hz; all nine notes in `reference-calibration-0.5.2.json`):
+
+```
+A2 attack  -7.5/-7.5 +3.7/+3.7 +0.6/+0.6 -3.5/-3.5 -9.8/-9.8 +2.6/+2.6 +23.8/+23.8 -14.3/-14.3
+A2 late    -6.8/-6.8 +9.9/+9.9 +0.5/+0.3 -17.6/-17.8 -13.9/-13.0 -5.0/-5.1 +11.6/+12.2 -25.1/-25.1
+C4 attack  -3.1/-3.1 +12.0/+12.0 +1.0/+1.0 -1.2/-1.1 -1.4/-1.4 +4.2/+4.2 +12.4/+12.4 -0.6/-0.6
+C4 late    -21.2/-21.3 -31.1/-31.3 +5.2/+5.2 -17.3/-17.4 -10.8/-11.0 -7.2/-7.1 -3.2/-3.5 -13.4/-13.5
+C6 attack  -4.0/-4.0 -5.8/-5.7 -11.7/-11.7 -10.6/-10.6 +0.2/+0.2 -2.2/-2.2 +9.5/+9.5 -9.8/-9.6
+C6 late    -16.4/-16.7 -41.3/-41.6 -63.1/-63.1 -52.2/-52.7 +0.4/+0.4 -12.6/-13.0 +1.5/+1.3 -13.7/-14.0
+```
+
+Band shares move by at most 0.9 dB at velocity 60 (A2 late 1000-2000 Hz +0.9, 4-8 kHz +0.6); at
+velocity 92 the late window changes more (A2 +2.7 dB at 1-2 kHz, C6 -1.6 to -2.8 dB in the bands
+from 62 Hz to 8 kHz, i.e. the late tail of a loud C6 is a little quieter relative to the attack). Mean attack high-band error (energy share above 2 kHz): 0.4.9 5.68 dB, **0.5.1 3.80,
+0.5.2 3.83**. As expected, tension modulation does not change the calibration.
+
+CPU (single thread, -O3, no SIMD, this machine; plug-in settings = 12 voices, sympathetic cap 8):
+
+| Case | 0.5.1 | 0.5.2 all keys | 0.5.2 keys <= 47 |
+| --- | --- | --- | --- |
+| Chopin excerpt offline (66 s simulated, 88 voices) | 91-96 s | **113-115 s** (+24%) | n/a |
+| Plug-in settings, Chopin 52-58 s | 1.68x real time | 1.03x | **1.64x** |
+| Plug-in settings, pedalled 12-key cluster (48-59) | 0.90-0.97x | 0.50x | **0.97x** |
+| same, tension for keys <= 53 / <= 59 | | 0.64x / 0.47x | |
+
+The cost per struck string is about 2x with tension (the solve runs every sample, ~10 passes over
+the modes instead of one), more in the middle and treble where three strings sound. **Plug-in
+setting: tension for keys 21-47 (A0-B2) only** (`Piano::pluginTensionMaxKey`, `setTensionMaxKey`);
+that is where the effect is largest per string (long strings, large DeltaT) and the strings have
+one or two voices; the cluster stays at 0.97x as in 0.5.1. The pedalled cluster is already at
+real-time limit with or without tension on this machine; for a safer plug-in use a larger
+buffer or fewer voices. Offline renders use the full model.
+
+### How to listen, and what to listen for
+
+- `tension-demo-0.5.2.wav` (20 s, 24-bit, fixed rendering by `tension_demo.py`): A1, then A2, each
+  played at fortissimo as 0.5.1 followed by 0.5.2, initial level (100-400 ms RMS) matched. Listen
+  for: a very slight upward bend at the very start of the 0.5.2 note and a little extra
+  roughness or "growl" in the A2 sustain, small and mostly in the first 100-300 ms. If you cannot
+  hear it, that is consistent with the measurements (1.5 cents, +7 dB sidebands at velocity 127 only);
+  a difference you do hear would more likely be the changed decay-phase spectrum than pitch.
+- `chopin-prelude-0.5.1.wav` vs `chopin-prelude-0.5.2.wav` (same +12.04 dB gain, `-raw.wav` and
+  `-audit.json` alongside, `chopin-prelude-latest.wav` = 0.5.2): RMS 0.013738 vs 0.013761 (+0.014 dB),
+  peak 0.156 vs 0.154, left/right 1.06 vs 1.05 dB, octave-band levels (31 Hz ... 8 kHz) change by
+  +0.02, +0.60, +0.01, -0.01, +0.03, -0.02, -0.11, -0.05, -0.10 dB; the null between the two is
+  -18 dB re the signal (chaotic decorrelation of struck-string detail, no systematic timbre change).
+  Expect the bass chords in the loud passages to feel very slightly harder-edged, not different.
+- Known limits: no longitudinal modes (the main real source of phantom partials and bass
+  precursor/"twang"); vertical polarisation only; sympathetic strings linear; kappa_T = 0;
+  EA and everything else nominal; the hammer amplitudes follow the 0.5.1 velocity map, which
+  was not tuned for large-amplitude behaviour.
+
+### Why C4/C6 stay 28-65 dB low at 62-500 Hz (view for planning)
+
+From the code and the data (not a finding of this iteration): a C4 string has no energy below
+262 Hz and nothing a string does (tension modulation, phantom partials, longitudinal waves: all
+sit at multiples or differences of its partials, hence >= f0) can fill the 62 and 125 Hz bands, so
+that content is not the struck string. Candidates, with the cheapest test first:
+
+1. **Damper leakage / sympathetic response of damped strings** (cheapest, already measured with
+   existing code). The model never simulates damped strings, a real damper only lowers the Q.
+   Rendering C4 at velocity 60/127 with every other damper lifted (`liftDamper`, upper bound)
+   changes the late (0.5-1.5 s) octave shares from (62, 125 Hz) -22.8, -33.1 dB to **-3.8, +16.3 dB**
+   versus the reference: the whole deficit is within reach of sympathetic bass strings, overshooting
+   by about 16 dB at 125 Hz, i.e. a leakage factor of roughly -15 to -20 dB would fit. Next
+   experiment: a leaky damper (woken damped strings with the damper law at a fraction of full
+   damping), a few hours of work on the existing wake logic; verify against the reference spectrum
+   lines (are the late low lines at bass string partials?).
+2. Board/room low modes excited by the attack: check by looking at whether the reference late 62-250 Hz
+   lines sit at fixed frequencies independent of the played pitch (compare C4 and C6 reference
+   notes; offline, no engine change).
+3. Key-bed/action thump and hammer-shank noise: a decaying transient, so it should show in the
+   0-100 ms band, not the 0.5-1.5 s window (the model attack at 125 Hz is already +12 dB high), a
+   cheap check on the reference envelope but unlikely to explain the late window.
+4. Longitudinal string motion: excluded for these bands by the argument above.
+
 ## Update 0.5.1: one shared soundboard, sympathetic strings, key-dependent bridge points
 
 Listener feedback on 0.5.0/0.4.9: "still rather bright and small ... lacks wood and
@@ -181,20 +368,7 @@ after a loud A1, 10-20 dB below the struck force) and nothing here is tuned to a
 
 ### Notes for 0.5.2 (string tension modulation)
 
-The core has the A7 code, not exercised here: `pme::nl::TensionModulationPotential<S>`
-(`engine/src/nonlinear/include/pme/nonlinear/tension.hpp`; `configure(k2, c)` with
-`c = (EA - T)/(2 L)`, `deltaT(z)`, `value`, `gradient`, shares the segment's psi as a rank-one
-term) and `pme::string::GeometricSegment<S>` (`engine/src/string/include/pme/string/longitudinal_segment.hpp`,
-tension modulation and longitudinal modes with their bridge coupling, `BridgeCoupling`, per-segment
-flags). Cost of the potential is O(2N) per sample per string group (one sum of `k_n^2 q_n^2`
-over both polarisations, then the gradient), small against a 128-mode board port. Obstacles:
-the potential expects the layout V modes, H modes, lumped coordinates, whereas `StruckNote`'s
-SAV segment carries the vertical modes and the hammer only, so using it means adapting
-`StruckNote` (engine, read-only here) or composing a note from `GeometricSegment`; the light
-unstruck strings of this iteration would need the potential too to keep pitch glide consistent;
-the horizontal modes become driven by the nonlinear coupling, so the bridge point would need
-the perpendicular polarisation (conductance or board port in that direction), which this board
-does not have.
+Done in 0.5.2: see "Update 0.5.2" above.
 
 ## Update 0.5.0: full pedal set (polyphony, una corda, undamped treble)
 

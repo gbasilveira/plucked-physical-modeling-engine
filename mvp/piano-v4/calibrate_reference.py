@@ -64,7 +64,7 @@ def main():
             row=dict(note=note,key=key,layer=layer,selection_midi_velocity=velocity,
                      reference_sha256=hashlib.sha256(data).hexdigest(),reference_onset_seconds=onset,
                      reference=features(ref),models={})
-            versions=[('0.4.9','v049'),('0.5.1-pan','sharedpan'),('0.5.1','coupled')]
+            versions=[('0.4.9','v049'),('0.5.1','previous'),('0.5.2','coupled')]
             comparison=[('reference',ref)]
             for version,mode in versions:
                 rendered=directory/f'calibration-{note}-v{velocity}-{version}.wav'
@@ -79,7 +79,7 @@ def main():
                        for name,w in BAND_WINDOWS.items()}
                 row['models'][version]=dict(onset_seconds=onset,features=f,octave_band_db_vs_reference=bands,
                     mean_attack_high_band_error_db=float(np.mean(attack_errors)))
-                if version!='0.5.1-pan': comparison.append((version,a))
+                if version!='0.4.9': comparison.append((version,a))
             if note=='C4':
                 for label,a in comparison:
                     a=a[:int(2.5*FS)].copy()
@@ -102,11 +102,11 @@ def main():
                      'Calibration renders are 24-bit; octave shares are band energy over total energy, so low-band deficits raise all other bands.',
                      'A softer attack does not identify soundboard geometry or uniquely determine physical parameters.'],
         records=records,diagnostic_clip_order=clip_rows)
-    result['mean_attack_high_band_error_db']={v:float(np.mean([r['models'][v]['mean_attack_high_band_error_db'] for r in records])) for v in ['0.4.9','0.5.1-pan','0.5.1']}
-    (directory/'reference-calibration-0.5.1.json').write_text(json.dumps(result,indent=2)+'\n')
+    result['mean_attack_high_band_error_db']={v:float(np.mean([r['models'][v]['mean_attack_high_band_error_db'] for r in records])) for v in ['0.4.9','0.5.1','0.5.2']}
+    (directory/'reference-calibration-0.5.2.json').write_text(json.dumps(result,indent=2)+'\n')
     out=np.concatenate(clips)
     assert np.abs(out).max()<1 and len(out)/FS<30
-    with wave.open(str(directory/'C4-reference-0.4.9-0.5.1.wav'),'wb') as f:
+    with wave.open(str(directory/'C4-reference-0.5.1-0.5.2.wav'),'wb') as f:
         f.setparams((2,2,FS,0,'NONE','not compressed'));f.writeframes(np.rint(out*32767).astype('<i2').tobytes())
     print('Mean errors:',result['mean_attack_high_band_error_db'],flush=True)
 

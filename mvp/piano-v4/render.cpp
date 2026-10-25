@@ -19,23 +19,25 @@ int main(int argc, char** argv) {
         const double velocity = argc > 4 ? std::stod(argv[4]) : 0.75;
         const bool wide24 = argc == 6 && std::string(argv[5]) == "--24bit";
         if ((argc > 5 && !wide24) || argc > 6 || (argc > 2 && key != -1 && (key < 21 || key > 108)) ||
-            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "previous" && pathName != "v049" && pathName != "sharedpan" && pathName != "v048" && pathName != "v046") ||
+            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "previous" && pathName != "v050" && pathName != "v049" && pathName != "sharedpan" && pathName != "v048" && pathName != "v046") ||
             !std::isfinite(velocity) || velocity <= 0 || velocity > 1)
-            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous(0.5.0)|sharedpan|v049|v048|v046] [velocity 0..1] [--24bit]");
+            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous(0.5.1)|v050|sharedpan|v049|v048|v046] [velocity 0..1] [--24bit]");
         constexpr int fs = 48000, seconds = 14, frames = fs * seconds;
         piano_mvp_v4::Piano piano;
         piano.setBridgeFeedback(pathName != "fixed");
         piano.setUnisonStrings(pathName != "single");
-        const bool now0501 = pathName == "coupled" || pathName == "fixed" || pathName == "sharedpan";
-        piano.setSoftFelt(now0501 || pathName == "previous" || pathName == "v049" || pathName == "v048");
-        // 0.4.9 bridge/string physics stays on; "previous" is 0.5.0 (private bridges), "v049" is 0.4.9,
+        // "coupled"/"fixed" are 0.5.2; "previous" is 0.5.1 (no tension modulation); "v050" is 0.5.0.
+        const bool now0501 = pathName == "coupled" || pathName == "fixed" || pathName == "sharedpan" || pathName == "previous";
+        piano.setTensionModulation(pathName == "coupled" || pathName == "fixed");
+        piano.setSoftFelt(now0501 || pathName == "v050" || pathName == "v049" || pathName == "v048");
+        // 0.4.9 bridge/string physics stays on; "v050" is 0.5.0 (private bridges), "v049" is 0.4.9,
         // "v048" is 0.4.8, "v046" is 0.4.6, "sharedpan" is 0.5.1 coupling with 0.5.0 bridge positions.
-        const bool current = now0501 || pathName == "previous" || pathName == "v049";
-        piano.setResidualBridgeLoss(now0501 || pathName == "previous" || pathName == "v049" || pathName == "v048" || pathName == "v046");
+        const bool current = now0501 || pathName == "v050" || pathName == "v049";
+        piano.setResidualBridgeLoss(now0501 || pathName == "v050" || pathName == "v049" || pathName == "v048" || pathName == "v046");
         piano.setSharedBoard(now0501);
-        piano.setGrandBridgeGeometry(pathName != "sharedpan");
+        piano.setGrandBridgeGeometry(pathName != "sharedpan");  // v050 has no shared board, so it is moot
         // 0.5.0: offline renders never steal voices; "v049" and older keep 12.
-        const bool now = now0501 || pathName == "previous";
+        const bool now = now0501 || pathName == "v050";
         piano.setVoiceLimit(now ? piano_mvp_v4::Piano::maxPolyphony : piano_mvp_v4::Piano::maxVoices);
         piano.setUnaCorda(now); piano.setUndampedTreble(now);
         piano.setBridgeMassLoading(current);

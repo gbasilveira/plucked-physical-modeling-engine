@@ -1,9 +1,9 @@
-Piano MVP 4 - Shared soundboard (LV2 0.5.1, Linux)
+Piano MVP 4 - String tension (LV2 0.5.2, Linux)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Shared soundboard" under instruments/synthesizers.
+Look for "Piano MVP 4 - String tension" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
@@ -34,6 +34,13 @@ sympathetic strings are simulated in this plug-in (plus the 12 struck keys); a p
 chord is about 6 percent slower than 0.5.0. Strings start from rest when they wake. The
 board is a nominal rectangular plate with an assumed bridge curve; none of this is
 measured. See mvp/piano-v4/README.md ("Update 0.5.1").
+
+Version 0.5.2 adds geometric (tension-modulation) nonlinearity to the struck strings:
+large transverse motion raises the string tension, giving a small pitch rise at the strike
+and extra, slightly inharmonic partials (strongest in the bass at fortissimo). In this plug-in
+it is enabled only for keys A0 to B2 (MIDI 21-47) to stay near real time; the offline renders
+use all keys. Sympathetic (unstruck) strings stay linear. Effects are small by design
+(about 0.5-1.5 cents of pitch at velocity 92). See mvp/piano-v4/README.md ("Update 0.5.2").
 
 Source, listening comparisons and licence:
 https://github.com/gbasilveira/plucked-physical-modeling-engine/tree/mvp/piano

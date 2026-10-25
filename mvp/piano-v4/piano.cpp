@@ -5,6 +5,7 @@
 #include "string_loss.hpp"
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace piano_mvp_v4 {
 bool Piano::prepare(double fs) {
@@ -55,7 +56,15 @@ bool Piano::prepare(double fs) {
         if (feedback_ && v.bridge.configure({},shared_ ? pme::bridge::ParallelModel{} : localBridgeModel(v.pan),fs)
                 != pme::Status::Ok)
             return false;
-        if (v.note.configure(d,fs,feedback_ ? &v.bridge : nullptr) != pme::Status::Ok) return false;
+        // 0.5.2 SPEC-GEO: the core's axial stiffness EA = E_c pi d_c^2 / 4 (longitudinal.cpp
+        // axialStiffness); for wound bass strings d_c is the report's core diameter, so the winding
+        // adds no axial stiffness.
+        const double ea = preset.string.ECore * std::numbers::pi * preset.string.dCore * preset.string.dCore / 4.0;
+        const std::array<double, 3> eas{ea, ea, ea};
+        const bool useTension = tension_ && i + 21 <= tensionMaxKey_;
+        if (v.note.configure(d,fs,feedback_ ? &v.bridge : nullptr,
+                             useTension ? std::span<const double>(eas.data(), count) : std::span<const double>{}) != pme::Status::Ok)
+            return false;
     }
     if (shared_) {
         // Harmonic coincidence of key c's idle partials with key s's sounding partials (first 8
@@ -147,6 +156,7 @@ void Piano::sample(float& left, float& right) noexcept {
                     s.q()[off+n] *= releaseStep_; s.u()[off+n] *= releaseStep_;
                 }
             }
+            v.note.clampPsi();
         }
         const double w = feedback_ ? v.bridge.wV() : 0;
         peakBridgeMotion_ = std::max(peakBridgeMotion_,std::abs(w));
@@ -246,6 +256,7 @@ void Piano::sampleShared(float& left, float& right) noexcept {
                         s.q()[off+n] *= releaseStep_; s.u()[off+n] *= releaseStep_;
                     }
                 }
+                v.note.clampPsi();
             }
             const double w = v.bridge.wV();
             peakBridgeMotion_ = std::max(peakBridgeMotion_,std::abs(w));

@@ -12,8 +12,9 @@ add_library(piano_core STATIC
   ${CORE}/engine/src/bridge/model.cpp
   ${CORE}/engine/src/bridge/terms.cpp
   ${CORE}/engine/src/nonlinear/sav.cpp
+  ${CORE}/engine/src/nonlinear/tension.cpp
   ${CORE}/engine/src/exciters/hammer.cpp
-  piano.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
+  piano.cpp tension_note.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v2/preset.cpp
   ${CORE}/engine/src/simd/denormals.cpp)
 target_include_directories(piano_core PUBLIC ${CORE}/engine/include ${CMAKE_CURRENT_SOURCE_DIR})
@@ -41,6 +42,14 @@ add_executable(bridge-check bridge_check.cpp)
 target_link_libraries(bridge-check PRIVATE piano_core)
 add_test(NAME bridge-energy COMMAND bridge-check)
 set_tests_properties(bridge-energy PROPERTIES TIMEOUT 120)
+add_executable(piano-tension-check tension_check.cpp)
+target_link_libraries(piano-tension-check PRIVATE piano_core)
+add_test(NAME piano-tension-energy COMMAND piano-tension-check)
+set_tests_properties(piano-tension-energy PROPERTIES TIMEOUT 120)
+add_executable(piano-tension-measure tension_measure.cpp)
+target_link_libraries(piano-tension-measure PRIVATE piano_core)
+add_executable(piano-tension-bench tension_bench.cpp)
+target_link_libraries(piano-tension-bench PRIVATE piano_core)
 set(CLAP_INCLUDE_DIR "" CACHE PATH "Directory containing clap/clap.h (optional plug-in)")
 if(CLAP_INCLUDE_DIR)
   add_library(piano-mvp-v4 MODULE clap.cpp)
