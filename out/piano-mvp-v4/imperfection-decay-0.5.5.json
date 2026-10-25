@@ -1,0 +1,6 @@
+{
+  "key60_amount0": {"prompt_db_per_s": -12.2567, "after_db_per_s": -0.848901, "level_at_1s_db": -13.2575, "level_at_5s_db": -41.6772, "level_at_9s_db": -49.7532, "envelope_roughness_db_rms_1_9s": 5.24417},
+  "key60_amount1": {"prompt_db_per_s": -13.2077, "after_db_per_s": -2.55918, "level_at_1s_db": -13.1149, "level_at_5s_db": -49.1818, "level_at_9s_db": -54.0719, "envelope_roughness_db_rms_1_9s": 4.51487},
+  "key72_amount0": {"prompt_db_per_s": -25.0966, "after_db_per_s": -4.11323, "level_at_1s_db": -35.0173, "level_at_5s_db": -65.217, "level_at_9s_db": -83.3838, "envelope_roughness_db_rms_1_9s": 5.27327},
+  "key72_amount1": {"prompt_db_per_s": -23.5107, "after_db_per_s": -2.81794, "level_at_1s_db": -32.5262, "level_at_5s_db": -54.4583, "level_at_9s_db": -64.4619, "envelope_roughness_db_rms_1_9s": 1.85919}
+}
