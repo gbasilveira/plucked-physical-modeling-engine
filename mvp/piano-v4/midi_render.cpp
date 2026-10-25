@@ -19,8 +19,8 @@ static void word(std::ostream& f, std::uint32_t x, int bytes) {
 struct Event { int frame; std::array<std::uint8_t,3> data; };
 int main(int argc, char** argv) {
     try {
-        if (argc != 3 && !(argc==4 && std::string(argv[3])=="--legacy"))
-            throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy]");
+        if (argc != 3 && !(argc==4 && (std::string(argv[3])=="--legacy" || std::string(argv[3])=="--previous")))
+            throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy|--previous]");
         constexpr int fs=48000, start=40*fs, end=64*fs, finish=66*fs;
         std::ifstream input(argv[1]);
         if (!input) throw std::runtime_error("cannot read events");
@@ -38,7 +38,8 @@ int main(int argc, char** argv) {
         }
         if (!input.eof() || events.empty()) throw std::runtime_error("malformed/empty schedule");
         piano_mvp_v4::Piano piano;
-        piano.setResidualBridgeLoss(argc!=4);
+        piano.setResidualBridgeLoss(argc!=4 || std::string(argv[3])!="--legacy");
+        piano.setSoftFelt(argc!=4);
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
         std::ofstream out(argv[2],std::ios::binary);
         if (!out) throw std::runtime_error("cannot write WAV");

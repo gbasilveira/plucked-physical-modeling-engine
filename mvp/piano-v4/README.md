@@ -1,5 +1,41 @@
 # MVP 4: bridge feedback
 
+## Update 0.4.8: reference-guided felt voicing
+
+The listener finds 0.4.6 closer, but still too metallic and lacking wooden body
+character. We now compare against nine pinned original lossless recordings from
+Alexander Holm's **Salamander Grand Piano** (Yamaha C5), covering A2/C4/C6 at three
+strengths. The [reference instructions, attribution and limits](reference/README.md)
+are committed, along with per-file source hashes. Audio is a calibration reference;
+the instrument still synthesises its output without playing samples.
+
+This iteration reduces total contact stiffness to **35%** in the bass/mids through
+C5, returning smoothly to the original value between C5 and C6. It keeps the
+hammer mass, nonlinear exponent, velocity map, string geometry, board response
+and output gain fixed. The first full-range soft-felt candidate was rejected in
+the treble because it moved the attack spectrum further from the reference.
+
+Middle C's medium-strike contact grows from about 2.01 ms to 2.21 ms (audit velocity
+72); softer felt reduces high-frequency excitation at the source. This is a voicing
+choice, not a claim that the tabulated source K was wrong. Contact duration's role
+in spectral balance is described by
+[Askenfelt and Jansson](https://www.speech.kth.se/music/5_lectures/askenflt/stricont.html).
+Adding a darker tone alone does not establish the missing wooden body sound.
+The soundboard remains nominal and its response still needs independent calibration.
+
+Listen to `out/piano-mvp-v4/chopin-prelude-latest.wav` (26 seconds), comparing
+`chopin-prelude-0.4.6.wav` with `chopin-prelude-0.4.8.wav`. The source/event checksums,
+tempo, velocities, pedal, excerpt and fixed +12.04 dB listening gain are unchanged.
+The separate 24.75-second `C4-reference-previous-soft-felt.wav` compares actual piano,
+old model and candidate at each strength; it matches initial levels only for timbre
+comparison. The original FLAC source is not altered.
+
+`piano-hammer-audit` measures contact duration and force across six registers and
+three strengths. A new test requires shorter contacts and larger peak forces for
+harder strikes. `piano-midi-render ... --previous` reproduces 0.4.6;
+`--legacy` reproduces 0.4.4. The LV2 URI is unchanged; its name is now
+**Piano MVP 4 - Soft felt**. Historical outputs below retain their version labels.
+
 ## Update 0.4.6: omitted bridge-mode losses and a fixed classical excerpt
 
 The radiation path already contained 512 soundboard modes, while the real-time

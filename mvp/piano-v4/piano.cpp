@@ -35,6 +35,10 @@ bool Piano::prepare(double fs) {
         // Treat the tabulated felt stiffness as the whole contact patch and
         // distribute it across strings. Keep one full-mass shared hammer.
         d.hammer.K /= count;
+        // Voicing experiment: softer contact, same mass, exponent and velocity map.
+        // Reference comparison supports softening bass/mids, not the treble.
+        // The relative scale is a voicing choice, not measured felt stiffness.
+        if (softFelt_) d.hammer.K *= feltStiffnessScale(i+21);
         if (feedback_ && v.bridge.configure({},localBridgeModel(v.pan),fs) != pme::Status::Ok)
             return false;
         if (v.note.configure(d,fs,feedback_ ? &v.bridge : nullptr) != pme::Status::Ok) return false;
@@ -44,7 +48,8 @@ bool Piano::prepare(double fs) {
 }
 void Piano::reset() noexcept {
     for (auto& v : voices_) {
-        v.note.reset(); v.bridge.reset(); v.active = v.held = false; v.age = v.quiet = 0; v.release = 1;
+        v.note.reset(); v.note.clearDiagnostics(); v.bridge.reset();
+        v.active = v.held = false; v.age = v.quiet = 0; v.release = 1;
     }
     soundboard_.reset();
     pedal_ = false; clock_ = 0; numericalFaults_ = 0; voiceSteals_ = 0; peakBridgeMotion_ = 0;

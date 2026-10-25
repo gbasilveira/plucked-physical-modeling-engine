@@ -1,9 +1,9 @@
-Piano MVP 4 - Bridge loss (LV2 0.4.6, Linux)
+Piano MVP 4 - Soft felt (LV2 0.4.8, Linux)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Bridge loss" under instruments/synthesizers.
+Look for "Piano MVP 4 - Soft felt" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC120 panic, CC123 note release.
@@ -16,6 +16,8 @@ the middle and upper registers use three, sharing one hammer and bridge per key.
 Cross-key sympathetic ringing is still deferred.
 Version 0.4.6 adds a passive diagonal approximation to losses into soundboard
 modes omitted from the real-time mechanical bridge. The radiation model is unchanged.
+Version 0.4.8 adds softer felt in the bass/middle registers, guided by comparisons
+with lossless Salamander recordings. Treble voicing returns to the original setting.
 
 Source, listening comparisons and licence:
 https://github.com/gbasilveira/plucked-physical-modeling-engine/tree/mvp/piano

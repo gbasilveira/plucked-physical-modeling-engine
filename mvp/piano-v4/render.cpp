@@ -18,14 +18,15 @@ int main(int argc, char** argv) {
         const std::string pathName = argc > 3 ? argv[3] : "coupled";
         const double velocity = argc > 4 ? std::stod(argv[4]) : 0.75;
         if (argc > 5 || (argc > 2 && key != -1 && (key < 21 || key > 108)) ||
-            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons") ||
+            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "previous") ||
             !std::isfinite(velocity) || velocity <= 0 || velocity > 1)
-            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons] [velocity 0..1]");
+            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous] [velocity 0..1]");
         constexpr int fs = 48000, seconds = 14, frames = fs * seconds;
         piano_mvp_v4::Piano piano;
         piano.setBridgeFeedback(pathName != "fixed");
         piano.setUnisonStrings(pathName != "single");
-        piano.setResidualBridgeLoss(pathName == "coupled");
+        piano.setResidualBridgeLoss(pathName == "coupled" || pathName == "previous");
+        piano.setSoftFelt(pathName == "coupled" || pathName == "fixed");
         if (!piano.prepare(fs)) throw std::runtime_error("could not prepare piano");
         std::ofstream out(path, std::ios::binary);
         if (!out) throw std::runtime_error("could not open output");

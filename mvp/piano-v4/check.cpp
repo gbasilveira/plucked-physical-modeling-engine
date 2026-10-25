@@ -75,6 +75,10 @@ int main() {
         require(!p.setBridgeFeedback(false), "feedback changed after preparation");
         require(!p.setUnisonStrings(false), "string group changed after preparation");
         require(!p.setResidualBridgeLoss(false), "bridge loss changed after preparation");
+        require(!p.setSoftFelt(false), "felt voicing changed after preparation");
+        require(piano_mvp_v4::Piano::feltStiffnessScale(60)==0.35 &&
+                piano_mvp_v4::Piano::feltStiffnessScale(84)==1.0,
+                "felt voicing register anchors changed");
         p.noteOn(60, 0.2); const double soft = energy(p, 12000);
         require(p.peakBridgeMotion() > 1e-12, "enabled bridge did not move");
         p.reset(); p.noteOn(60, 0.9); const double loud = energy(p, 12000);

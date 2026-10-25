@@ -1,0 +1,99 @@
+{
+  "commit": "3382bf9496bba2486f5ab0de55a264d1dfc38404",
+  "files": [
+    {
+      "path": "Samples/A2v12.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5e09e9e0dee6a74ba90e133bd4f7d127b9f8490b",
+      "size": 1976480,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/5e09e9e0dee6a74ba90e133bd4f7d127b9f8490b"
+    },
+    {
+      "path": "Samples/A2v4.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "174e85b13bb2a848aa7a8d326d230e8118b45f26",
+      "size": 1898385,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/174e85b13bb2a848aa7a8d326d230e8118b45f26"
+    },
+    {
+      "path": "Samples/A2v8.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3859c5c2c2d54ffe7c50989bd38c39a4e0c2f05",
+      "size": 1901758,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/d3859c5c2c2d54ffe7c50989bd38c39a4e0c2f05"
+    },
+    {
+      "path": "Samples/C4v12.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "418e7e1b4ebedc6c9104f711118144941ee4cd06",
+      "size": 1776181,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/418e7e1b4ebedc6c9104f711118144941ee4cd06"
+    },
+    {
+      "path": "Samples/C4v4.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e117320966904afc39687b40d6a1285ba2af4083",
+      "size": 1628805,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/e117320966904afc39687b40d6a1285ba2af4083"
+    },
+    {
+      "path": "Samples/C4v8.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d1c81dd7ee1d21cbec2fa1f2f605c098cf19679",
+      "size": 1774472,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/5d1c81dd7ee1d21cbec2fa1f2f605c098cf19679"
+    },
+    {
+      "path": "Samples/C6v12.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7511b31db67a31f8555d83aa5d5f48fbe9365b87",
+      "size": 722945,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/7511b31db67a31f8555d83aa5d5f48fbe9365b87"
+    },
+    {
+      "path": "Samples/C6v4.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c92b02529426929342b3354731b32b1fd6f06aaf",
+      "size": 601137,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/c92b02529426929342b3354731b32b1fd6f06aaf"
+    },
+    {
+      "path": "Samples/C6v8.flac",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4728c69c56c82a98e54cf93a289afd282705317d",
+      "size": 695617,
+      "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/4728c69c56c82a98e54cf93a289afd282705317d"
+    }
+  ],
+  "repository": "sfzinstruments/SalamanderGrandPiano",
+  "author": "Alexander Holm",
+  "license": "CC-BY-3.0",
+  "instrument": "Yamaha C5",
+  "sample_rate": 48000,
+  "bits": 24,
+  "notes": [
+    45,
+    60,
+    84
+  ],
+  "layers": [
+    4,
+    8,
+    12
+  ],
+  "description": "Original natural-pitch FLAC samples; recorded AKG C414 AB approximately 12 cm above strings. Layer numbers are ordered strengths, not measured hammer velocities.",
+  "layer_selection_midi_velocities": {
+    "4": 40,
+    "8": 60,
+    "12": 92
+  }
+}

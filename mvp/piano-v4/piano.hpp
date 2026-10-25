@@ -25,8 +25,18 @@ public:
         if (ready_) return false;
         residualLoss_ = enabled; return true;
     }
+    bool setSoftFelt(bool enabled) noexcept {
+        if (ready_) return false;
+        softFelt_ = enabled; return true;
+    }
     static int stringsForKey(int key) noexcept {
         return key <= 32 ? 1 : (key <= 51 ? 2 : 3);
+    }
+    static double feltStiffnessScale(int key) noexcept {
+        if (key<=72) return 0.35;
+        if (key>=84) return 1.0;
+        const double t=(key-72)/12.0;
+        return 0.35+0.65*t*t*(3-2*t);
     }
     void reset() noexcept;
     void noteOn(int key, double velocity) noexcept;
@@ -37,6 +47,10 @@ public:
     std::uint64_t numericalFaults() const noexcept { return numericalFaults_; }
     std::uint64_t voiceSteals() const noexcept { return voiceSteals_; }
     double peakBridgeMotion() const noexcept { return peakBridgeMotion_; }
+    pme::exciters::HammerDiagnostics hammerDiagnostics(int key) const noexcept {
+        return key>=21 && key<=108 ? voices_[key-21].note.diagnostics()
+                                  : pme::exciters::HammerDiagnostics{};
+    }
 private:
     struct Voice {
         std::array<pme::StringModes, 3> modes;
@@ -52,6 +66,7 @@ private:
     bool feedback_{true};
     bool unisons_{true};
     bool residualLoss_{true};
+    bool softFelt_{true};
     double fs_{48000.0}, releaseStep_{}, peakBridgeMotion_{};
     std::uint64_t clock_{};
     std::uint64_t numericalFaults_{};

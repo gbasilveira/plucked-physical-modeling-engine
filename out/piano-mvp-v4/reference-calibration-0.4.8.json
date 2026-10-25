@@ -1,0 +1,1358 @@
+{
+  "source": {
+    "commit": "3382bf9496bba2486f5ab0de55a264d1dfc38404",
+    "files": [
+      {
+        "path": "Samples/A2v12.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5e09e9e0dee6a74ba90e133bd4f7d127b9f8490b",
+        "size": 1976480,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/5e09e9e0dee6a74ba90e133bd4f7d127b9f8490b"
+      },
+      {
+        "path": "Samples/A2v4.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "174e85b13bb2a848aa7a8d326d230e8118b45f26",
+        "size": 1898385,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/174e85b13bb2a848aa7a8d326d230e8118b45f26"
+      },
+      {
+        "path": "Samples/A2v8.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d3859c5c2c2d54ffe7c50989bd38c39a4e0c2f05",
+        "size": 1901758,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/d3859c5c2c2d54ffe7c50989bd38c39a4e0c2f05"
+      },
+      {
+        "path": "Samples/C4v12.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "418e7e1b4ebedc6c9104f711118144941ee4cd06",
+        "size": 1776181,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/418e7e1b4ebedc6c9104f711118144941ee4cd06"
+      },
+      {
+        "path": "Samples/C4v4.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e117320966904afc39687b40d6a1285ba2af4083",
+        "size": 1628805,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/e117320966904afc39687b40d6a1285ba2af4083"
+      },
+      {
+        "path": "Samples/C4v8.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5d1c81dd7ee1d21cbec2fa1f2f605c098cf19679",
+        "size": 1774472,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/5d1c81dd7ee1d21cbec2fa1f2f605c098cf19679"
+      },
+      {
+        "path": "Samples/C6v12.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7511b31db67a31f8555d83aa5d5f48fbe9365b87",
+        "size": 722945,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/7511b31db67a31f8555d83aa5d5f48fbe9365b87"
+      },
+      {
+        "path": "Samples/C6v4.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c92b02529426929342b3354731b32b1fd6f06aaf",
+        "size": 601137,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/c92b02529426929342b3354731b32b1fd6f06aaf"
+      },
+      {
+        "path": "Samples/C6v8.flac",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4728c69c56c82a98e54cf93a289afd282705317d",
+        "size": 695617,
+        "url": "https://api.github.com/repos/sfzinstruments/SalamanderGrandPiano/git/blobs/4728c69c56c82a98e54cf93a289afd282705317d"
+      }
+    ],
+    "repository": "sfzinstruments/SalamanderGrandPiano",
+    "author": "Alexander Holm",
+    "license": "CC-BY-3.0",
+    "instrument": "Yamaha C5",
+    "sample_rate": 48000,
+    "bits": 24,
+    "notes": [
+      45,
+      60,
+      84
+    ],
+    "layers": [
+      4,
+      8,
+      12
+    ],
+    "description": "Original natural-pitch FLAC samples; recorded AKG C414 AB approximately 12 cm above strings. Layer numbers are ordered strengths, not measured hammer velocities.",
+    "layer_selection_midi_velocities": {
+      "4": 40,
+      "8": 60,
+      "12": 92
+    }
+  },
+  "method": "onset: first 1 ms RMS block >3% of first-second maximum; stereo Hann-windowed power; DC removed per window",
+  "limitations": [
+    "Close-miked Yamaha C5 differs from the nominal far-field model.",
+    "MIDI layer selection is not a measured hammer velocity.",
+    "Nine notes/layers are a small target set, not an independent validation set.",
+    "A softer attack does not identify soundboard geometry or uniquely determine physical parameters."
+  ],
+  "records": [
+    {
+      "note": "A2",
+      "key": 45,
+      "layer": 4,
+      "selection_midi_velocity": 40,
+      "reference_sha256": "43563ad2ee61ba19560b969b79286b98edbd5ac6867b08bd956dac75bb376d27",
+      "reference_onset_seconds": 0.01,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -22.330946321873384,
+          "power_centroid_hz": 242.12444285645915,
+          "energy_above_2khz": 0.0001521520774290466
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -23.619979707864395,
+          "power_centroid_hz": 232.19327144284748,
+          "energy_above_2khz": 0.00011691250509416644
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -28.19791748065715,
+          "power_centroid_hz": 193.75039821920305,
+          "energy_above_2khz": 0.00013337384652963532
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -35.42148059493444,
+          "power_centroid_hz": 184.35191722441144,
+          "energy_above_2khz": 6.765240645950471e-05
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.008,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -43.5287997541824,
+              "power_centroid_hz": 278.0140119273276,
+              "energy_above_2khz": 0.0073902033661486415
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -44.53214619693504,
+              "power_centroid_hz": 257.5020393447169,
+              "energy_above_2khz": 0.0055962021352366316
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -46.97566978242523,
+              "power_centroid_hz": 165.17863194876318,
+              "energy_above_2khz": 0.0019851565699885785
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -50.26680222835531,
+              "power_centroid_hz": 146.00602518473693,
+              "energy_above_2khz": 0.00011405858377397321
+            }
+          ],
+          "mean_attack_high_band_error_db": 16.831733027962372
+        },
+        "0.4.8": {
+          "onset_seconds": 0.008,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -43.91693676177824,
+              "power_centroid_hz": 235.17431434335822,
+              "energy_above_2khz": 0.001432151557362558
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -44.878533815536386,
+              "power_centroid_hz": 219.93120926324596,
+              "energy_above_2khz": 0.001135006387288669
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -47.08685430507379,
+              "power_centroid_hz": 152.9941704484421,
+              "energy_above_2khz": 0.0003639528740294737
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -50.32474586088423,
+              "power_centroid_hz": 133.3971082419678,
+              "energy_above_2khz": 3.0514605369276747e-05
+            }
+          ],
+          "mean_attack_high_band_error_db": 9.803948016685526
+        }
+      }
+    },
+    {
+      "note": "A2",
+      "key": 45,
+      "layer": 8,
+      "selection_midi_velocity": 60,
+      "reference_sha256": "31dcdb3c1dea91943c4cccbb9f804dde2953ae1f16cb3990fe7def7acf60f944",
+      "reference_onset_seconds": 0.011,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -19.65806279979325,
+          "power_centroid_hz": 279.8104959146916,
+          "energy_above_2khz": 0.0004974593445929578
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -21.03881424711963,
+          "power_centroid_hz": 266.8615523563979,
+          "energy_above_2khz": 0.0005045383056802689
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -25.72405632801793,
+          "power_centroid_hz": 220.7274288899067,
+          "energy_above_2khz": 0.000547910826574115
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -33.06994878391649,
+          "power_centroid_hz": 199.20802180273614,
+          "energy_above_2khz": 0.00022860369106555788
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.008,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -39.172241614239994,
+              "power_centroid_hz": 306.74331638854596,
+              "energy_above_2khz": 0.017667554000675607
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -40.19715450520145,
+              "power_centroid_hz": 276.4713968032741,
+              "energy_above_2khz": 0.012445665046303915
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -42.642066236192306,
+              "power_centroid_hz": 173.8642288633416,
+              "energy_above_2khz": 0.004263124367612539
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -45.9664221003995,
+              "power_centroid_hz": 150.06028103306645,
+              "energy_above_2khz": 0.00022184364742388867
+            }
+          ],
+          "mean_attack_high_band_error_db": 14.712630275355364
+        },
+        "0.4.8": {
+          "onset_seconds": 0.008,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -39.47278127194637,
+              "power_centroid_hz": 251.08272628985904,
+              "energy_above_2khz": 0.005338360068891142
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -40.45845930398649,
+              "power_centroid_hz": 233.97789301020293,
+              "energy_above_2khz": 0.0040585699091898976
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -42.73342358719844,
+              "power_centroid_hz": 159.31993755870704,
+              "energy_above_2khz": 0.0013426623444139322
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -46.01636061492562,
+              "power_centroid_hz": 138.6922225433247,
+              "energy_above_2khz": 8.404374310129757e-05
+            }
+          ],
+          "mean_attack_high_band_error_db": 9.680568512135126
+        }
+      }
+    },
+    {
+      "note": "A2",
+      "key": 45,
+      "layer": 12,
+      "selection_midi_velocity": 92,
+      "reference_sha256": "f51451e0661c762b600b0f8f535f74dd8d73c41de1a228abbd037e5cc1783c0e",
+      "reference_onset_seconds": 0.011,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -16.76137404042703,
+          "power_centroid_hz": 322.16245300355,
+          "energy_above_2khz": 0.001986977313843542
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -18.06966313722691,
+          "power_centroid_hz": 309.5849841540549,
+          "energy_above_2khz": 0.0019987037723784135
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -22.859235818987212,
+          "power_centroid_hz": 250.89028990739888,
+          "energy_above_2khz": 0.0019068684216531255
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -30.423730525355516,
+          "power_centroid_hz": 214.34340145354133,
+          "energy_above_2khz": 0.0007960774946317683
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.007,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -34.15918126966333,
+              "power_centroid_hz": 367.6866050195771,
+              "energy_above_2khz": 0.0376044037517954
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -35.196185375294974,
+              "power_centroid_hz": 312.4636712099054,
+              "energy_above_2khz": 0.02519316516837564
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -37.64669306852311,
+              "power_centroid_hz": 185.91740159891913,
+              "energy_above_2khz": 0.008035549511052155
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -41.03043344901803,
+              "power_centroid_hz": 153.5349603624703,
+              "energy_above_2khz": 0.0004079071277297389
+            }
+          ],
+          "mean_attack_high_band_error_db": 11.8878801472548
+        },
+        "0.4.8": {
+          "onset_seconds": 0.008,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -34.40076442453508,
+              "power_centroid_hz": 284.8196940612892,
+              "energy_above_2khz": 0.016266638759582848
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -35.41607662543483,
+              "power_centroid_hz": 257.45871326139644,
+              "energy_above_2khz": 0.011477376674298514
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -37.7359591390769,
+              "power_centroid_hz": 169.02361840147285,
+              "energy_above_2khz": 0.0037190468736785246
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -41.0662022641141,
+              "power_centroid_hz": 144.07460956453147,
+              "energy_above_2khz": 0.00021891633124307278
+            }
+          ],
+          "mean_attack_high_band_error_db": 8.360977015772034
+        }
+      }
+    },
+    {
+      "note": "C4",
+      "key": 60,
+      "layer": 4,
+      "selection_midi_velocity": 40,
+      "reference_sha256": "c68ab13a20f4e84361843417a17521d0cf7bd9587a43fbb36c04db56045990ed",
+      "reference_onset_seconds": 0.014,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -20.899342837663863,
+          "power_centroid_hz": 411.00376469092896,
+          "energy_above_2khz": 9.930895636080756e-05
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -22.30735250871493,
+          "power_centroid_hz": 411.01387049226963,
+          "energy_above_2khz": 0.00010707737890375633
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -34.3230682343805,
+          "power_centroid_hz": 459.36556842102055,
+          "energy_above_2khz": 0.0005242446064529097
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -47.343880557266154,
+          "power_centroid_hz": 444.68967897964785,
+          "energy_above_2khz": 0.0005854529403212329
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.006,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -42.42520178909204,
+              "power_centroid_hz": 477.4211532054342,
+              "energy_above_2khz": 0.015799720696195316
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -44.539055872156126,
+              "power_centroid_hz": 403.3741129985303,
+              "energy_above_2khz": 0.006710811846852823
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -53.001531685808686,
+              "power_centroid_hz": 319.77441021490966,
+              "energy_above_2khz": 0.006566658124727449
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -63.869093097939675,
+              "power_centroid_hz": 737.1877524040762,
+              "energy_above_2khz": 0.0003400487506943092
+            }
+          ],
+          "mean_attack_high_band_error_db": 19.99327479035207
+        },
+        "0.4.8": {
+          "onset_seconds": 0.006,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -43.12340923201968,
+              "power_centroid_hz": 371.90896605479827,
+              "energy_above_2khz": 0.003211801343761567
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -45.06038192187702,
+              "power_centroid_hz": 356.63199675339894,
+              "energy_above_2khz": 0.0014237103886172334
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -53.242997611930285,
+              "power_centroid_hz": 297.9491163461198,
+              "energy_above_2khz": 0.0013060059155831692
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -64.06401649478396,
+              "power_centroid_hz": 726.2739301253625,
+              "energy_above_2khz": 0.0002169543496427531
+            }
+          ],
+          "mean_attack_high_band_error_db": 13.167021479776132
+        }
+      }
+    },
+    {
+      "note": "C4",
+      "key": 60,
+      "layer": 8,
+      "selection_midi_velocity": 60,
+      "reference_sha256": "36fb0535a1f21fe1dfc367c361dedda73710144e8c4940b40e97e6e5f8a3c694",
+      "reference_onset_seconds": 0.014,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -17.37216448350495,
+          "power_centroid_hz": 435.73279984286836,
+          "energy_above_2khz": 0.0009584537839505906
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -18.854011641511033,
+          "power_centroid_hz": 437.26345052967116,
+          "energy_above_2khz": 0.0010111653021764365
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -30.814635088040173,
+          "power_centroid_hz": 485.5646133388284,
+          "energy_above_2khz": 0.0022622244858563592
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -44.07521216720174,
+          "power_centroid_hz": 462.69641976613394,
+          "energy_above_2khz": 0.002034171463970046
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.005,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -37.7548795054757,
+              "power_centroid_hz": 572.1956592201427,
+              "energy_above_2khz": 0.038348617556326216
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -40.00498648118071,
+              "power_centroid_hz": 441.65820582718,
+              "energy_above_2khz": 0.01624322810657928
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -48.63114388713808,
+              "power_centroid_hz": 347.49576213553905,
+              "energy_above_2khz": 0.015875676843651806
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -59.54234341136271,
+              "power_centroid_hz": 741.2069908938832,
+              "energy_above_2khz": 0.000492913763795158
+            }
+          ],
+          "mean_attack_high_band_error_db": 14.04010137701962
+        },
+        "0.4.8": {
+          "onset_seconds": 0.006,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -38.43263673939318,
+              "power_centroid_hz": 435.6365119088215,
+              "energy_above_2khz": 0.013477796085378866
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -40.466517874254606,
+              "power_centroid_hz": 386.2244007482758,
+              "energy_above_2khz": 0.005838323762076658
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -48.82000461709991,
+              "power_centroid_hz": 313.8454606920163,
+              "energy_above_2khz": 0.005619279252778934
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -59.62604644744994,
+              "power_centroid_hz": 731.9297936930006,
+              "energy_above_2khz": 0.00022085717593679744
+            }
+          ],
+          "mean_attack_high_band_error_db": 9.547529807220403
+        }
+      }
+    },
+    {
+      "note": "C4",
+      "key": 60,
+      "layer": 12,
+      "selection_midi_velocity": 92,
+      "reference_sha256": "21ebd25176ad28fabe364f22357cd8b7471b449c91b10ab4400c9c1408c74128",
+      "reference_onset_seconds": 0.013,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -13.065160184495372,
+          "power_centroid_hz": 485.59554032736503,
+          "energy_above_2khz": 0.007664142105906908
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -14.505906815338198,
+          "power_centroid_hz": 478.14219888445194,
+          "energy_above_2khz": 0.0071002097528773105
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -26.384820666236337,
+          "power_centroid_hz": 510.6644720327263,
+          "energy_above_2khz": 0.005529768482907417
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -40.79524373945919,
+          "power_centroid_hz": 487.80217810861143,
+          "energy_above_2khz": 0.004664801911596439
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.005,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -32.51715376612503,
+              "power_centroid_hz": 687.9080161775432,
+              "energy_above_2khz": 0.07304251324499283
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -34.86974571663998,
+              "power_centroid_hz": 485.3549788701121,
+              "energy_above_2khz": 0.03086065120231743
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -43.60247684140284,
+              "power_centroid_hz": 387.9664416675598,
+              "energy_above_2khz": 0.030985680339471362
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -54.55501287420316,
+              "power_centroid_hz": 745.8780088047121,
+              "energy_above_2khz": 0.0009708918039889956
+            }
+          ],
+          "mean_attack_high_band_error_db": 8.086225442247207
+        },
+        "0.4.8": {
+          "onset_seconds": 0.005,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -33.05887927713397,
+              "power_centroid_hz": 532.1307985640246,
+              "energy_above_2khz": 0.037209989928038506
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -35.23031316753163,
+              "power_centroid_hz": 427.0359025724947,
+              "energy_above_2khz": 0.016166578928565423
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -43.77300833421087,
+              "power_centroid_hz": 343.7310168059241,
+              "energy_above_2khz": 0.016094816140528774
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -54.70588145619394,
+              "power_centroid_hz": 737.6937985479144,
+              "energy_above_2khz": 0.0005220037522180634
+            }
+          ],
+          "mean_attack_high_band_error_db": 5.217710794931112
+        }
+      }
+    },
+    {
+      "note": "C6",
+      "key": 84,
+      "layer": 4,
+      "selection_midi_velocity": 40,
+      "reference_sha256": "1f3f32e401bbd2a87a9c5b094aa6f748213fe762f3026554eb60305c02399ef7",
+      "reference_onset_seconds": 0.013,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -28.761261102114517,
+          "power_centroid_hz": 972.3636219034353,
+          "energy_above_2khz": 0.00984010899496526
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -34.195507607724906,
+          "power_centroid_hz": 975.4658952618784,
+          "energy_above_2khz": 0.004188508961537571
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -47.81947723821668,
+          "power_centroid_hz": 836.3344111855433,
+          "energy_above_2khz": 0.0007505393964120602
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -57.79386827240263,
+          "power_centroid_hz": 39.13601941659183,
+          "energy_above_2khz": 0.0005655415851800982
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.004,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -51.899944125375214,
+              "power_centroid_hz": 1346.2838929392121,
+              "energy_above_2khz": 0.2240562145185092
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -57.47287995628536,
+              "power_centroid_hz": 1258.628093170562,
+              "energy_above_2khz": 0.24055472919023269
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -74.78522621533808,
+              "power_centroid_hz": 500.8484415578359,
+              "energy_above_2khz": 0.14329401550471627
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -88.12298559786272,
+              "power_centroid_hz": 1145.747004286108,
+              "energy_above_2khz": 0.045313965289276274
+            }
+          ],
+          "mean_attack_high_band_error_db": 15.582550474056717
+        },
+        "0.4.8": {
+          "onset_seconds": 0.004,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -51.899944125375214,
+              "power_centroid_hz": 1346.2838929392121,
+              "energy_above_2khz": 0.2240562145185092
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -57.47287995628536,
+              "power_centroid_hz": 1258.628093170562,
+              "energy_above_2khz": 0.24055472919023269
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -74.78522621533808,
+              "power_centroid_hz": 500.8484415578359,
+              "energy_above_2khz": 0.14329401550471627
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -88.12298559786272,
+              "power_centroid_hz": 1145.747004286108,
+              "energy_above_2khz": 0.045313965289276274
+            }
+          ],
+          "mean_attack_high_band_error_db": 15.582550474056717
+        }
+      }
+    },
+    {
+      "note": "C6",
+      "key": 84,
+      "layer": 8,
+      "selection_midi_velocity": 60,
+      "reference_sha256": "e5d5db275007d4b0e35ce94b00e0b53f6c659707517ee1326bd77eeba119693b",
+      "reference_onset_seconds": 0.015,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -24.09026519416319,
+          "power_centroid_hz": 1040.7793923101942,
+          "energy_above_2khz": 0.0687723294896791
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -29.345974351136967,
+          "power_centroid_hz": 1020.4626905833035,
+          "energy_above_2khz": 0.014759310396744942
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -44.034508733014626,
+          "power_centroid_hz": 988.462590804008,
+          "energy_above_2khz": 0.006312501979755156
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -57.84674231696443,
+          "power_centroid_hz": 61.890657652598634,
+          "energy_above_2khz": 0.0009661687603213848
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.004,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -44.267217241057246,
+              "power_centroid_hz": 1711.5597427965577,
+              "energy_above_2khz": 0.3056623573032322
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -50.2390591559156,
+              "power_centroid_hz": 1390.071772380203,
+              "energy_above_2khz": 0.20114395647491423
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -69.99667346491464,
+              "power_centroid_hz": 483.95981796180916,
+              "energy_above_2khz": 0.07208524244500354
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -81.57892810069866,
+              "power_centroid_hz": 1019.4263362282126,
+              "energy_above_2khz": 0.010958926760971611
+            }
+          ],
+          "mean_attack_high_band_error_db": 8.911344116902706
+        },
+        "0.4.8": {
+          "onset_seconds": 0.004,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -44.267217241057246,
+              "power_centroid_hz": 1711.5597427965577,
+              "energy_above_2khz": 0.3056623573032322
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -50.2390591559156,
+              "power_centroid_hz": 1390.071772380203,
+              "energy_above_2khz": 0.20114395647491423
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -69.99667346491464,
+              "power_centroid_hz": 483.95981796180916,
+              "energy_above_2khz": 0.07208524244500354
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -81.57892810069866,
+              "power_centroid_hz": 1019.4263362282126,
+              "energy_above_2khz": 0.010958926760971611
+            }
+          ],
+          "mean_attack_high_band_error_db": 8.911344116902706
+        }
+      }
+    },
+    {
+      "note": "C6",
+      "key": 84,
+      "layer": 12,
+      "selection_midi_velocity": 92,
+      "reference_sha256": "a3bd4d493607a6683ecd0c9d638febf643f94130042828e77253dda60d5d3761",
+      "reference_onset_seconds": 0.011,
+      "reference": [
+        {
+          "window_seconds": [
+            0.01,
+            0.1
+          ],
+          "rms_dbfs": -16.55924994670075,
+          "power_centroid_hz": 1279.7179941351105,
+          "energy_above_2khz": 0.2286101760346529
+        },
+        {
+          "window_seconds": [
+            0.05,
+            0.25
+          ],
+          "rms_dbfs": -21.700689200510986,
+          "power_centroid_hz": 1122.9177304284888,
+          "energy_above_2khz": 0.08121039493796171
+        },
+        {
+          "window_seconds": [
+            0.5,
+            1
+          ],
+          "rms_dbfs": -37.89702473250334,
+          "power_centroid_hz": 1061.3523206276911,
+          "energy_above_2khz": 0.03235626444824334
+        },
+        {
+          "window_seconds": [
+            2,
+            2.5
+          ],
+          "rms_dbfs": -57.231767589136204,
+          "power_centroid_hz": 131.4907863430511,
+          "energy_above_2khz": 0.0072029689062283846
+        }
+      ],
+      "models": {
+        "0.4.6": {
+          "onset_seconds": 0.004,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -35.644426955091916,
+              "power_centroid_hz": 2391.212002566232,
+              "energy_above_2khz": 0.51797089412674
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -41.99463056906238,
+              "power_centroid_hz": 1758.9227051115558,
+              "energy_above_2khz": 0.31246782625875646
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -63.925054049294154,
+              "power_centroid_hz": 626.2077419252512,
+              "energy_above_2khz": 0.06424925274755916
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -74.71938668578917,
+              "power_centroid_hz": 975.516223538928,
+              "energy_above_2khz": 0.002245261522794763
+            }
+          ],
+          "mean_attack_high_band_error_db": 4.70201715943077
+        },
+        "0.4.8": {
+          "onset_seconds": 0.004,
+          "features": [
+            {
+              "window_seconds": [
+                0.01,
+                0.1
+              ],
+              "rms_dbfs": -35.644426955091916,
+              "power_centroid_hz": 2391.212002566232,
+              "energy_above_2khz": 0.51797089412674
+            },
+            {
+              "window_seconds": [
+                0.05,
+                0.25
+              ],
+              "rms_dbfs": -41.99463056906238,
+              "power_centroid_hz": 1758.9227051115558,
+              "energy_above_2khz": 0.31246782625875646
+            },
+            {
+              "window_seconds": [
+                0.5,
+                1
+              ],
+              "rms_dbfs": -63.925054049294154,
+              "power_centroid_hz": 626.2077419252512,
+              "energy_above_2khz": 0.06424925274755916
+            },
+            {
+              "window_seconds": [
+                2,
+                2.5
+              ],
+              "rms_dbfs": -74.71938668578917,
+              "power_centroid_hz": 975.516223538928,
+              "energy_above_2khz": 0.002245261522794763
+            }
+          ],
+          "mean_attack_high_band_error_db": 4.70201715943077
+        }
+      }
+    }
+  ],
+  "diagnostic_clip_order": [
+    {
+      "velocity": 40,
+      "label": "reference",
+      "start_seconds": 0.0,
+      "gain_db": -1.6927666161703652
+    },
+    {
+      "velocity": 40,
+      "label": "0.4.6",
+      "start_seconds": 2.75,
+      "gain_db": 20.538727730331633
+    },
+    {
+      "velocity": 40,
+      "label": "0.4.8",
+      "start_seconds": 5.5,
+      "gain_db": 21.06014709623573
+    },
+    {
+      "velocity": 60,
+      "label": "reference",
+      "start_seconds": 8.25,
+      "gain_db": -5.146108814994826
+    },
+    {
+      "velocity": 60,
+      "label": "0.4.6",
+      "start_seconds": 11.0,
+      "gain_db": 16.004964383239468
+    },
+    {
+      "velocity": 60,
+      "label": "0.4.8",
+      "start_seconds": 13.75,
+      "gain_db": 16.46620288991191
+    },
+    {
+      "velocity": 92,
+      "label": "reference",
+      "start_seconds": 16.5,
+      "gain_db": -9.494137803799703
+    },
+    {
+      "velocity": 92,
+      "label": "0.4.6",
+      "start_seconds": 19.25,
+      "gain_db": 10.869732967057995
+    },
+    {
+      "velocity": 92,
+      "label": "0.4.8",
+      "start_seconds": 22.0,
+      "gain_db": 11.230288678652368
+    }
+  ],
+  "mean_attack_high_band_error_db": {
+    "0.4.6": 12.749750756731292,
+    "0.4.8": 9.441518597434502
+  }
+}

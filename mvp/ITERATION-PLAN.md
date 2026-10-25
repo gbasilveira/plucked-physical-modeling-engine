@@ -6,6 +6,16 @@ Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano
 
 ## Current listening diagnosis (2026-10-25)
 
+0.4.8 tests reference-guided softer felt: the listener finds 0.4.6 closer but too
+metallic and lacking wood. Nine pinned lossless Salamander Grand Piano recordings
+(Yamaha C5, Alexander Holm) now provide onset, spectrum and decay comparisons.
+Uniform softening improved bass/mid attack high-band balance but worsened treble,
+so K is scaled by 0.35 through C5 and smoothly restored by C6. This is a measured
+comparison supporting a voicing experiment, not a fully calibrated physical model.
+See `piano-v4/reference/README.md`. Next, evaluate the unchanged decay and body
+response mismatch; do not equate darker output with authentic wood or fit a board
+impulse response directly from a note recording.
+
 0.4.6 now tests an identified mechanical/radiation mismatch: radiation used 512
 board modes but only 128 participated in mechanical energy transfer. The omitted
 modes' real admittance is projected into passive diagonal string loss; this leaves
