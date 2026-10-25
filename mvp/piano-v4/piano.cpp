@@ -11,6 +11,9 @@ bool Piano::prepare(double fs) {
     ready_ = false;
     if (!std::isfinite(fs) || fs < 22050 || fs > 192000) return false;
     fs_ = fs;
+    shared_ = sharedBoard_ && feedback_;
+    std::vector<double> phi;
+    if (shared_) buildParticipation(grandGeometry_, phi);
     releaseStep_ = std::exp(-35.0 / fs);
     for (int i = 0; i < 88; ++i) {
         auto& v = voices_[i];
@@ -30,12 +33,15 @@ bool Piano::prepare(double fs) {
             if (saturatingLoss_ && applySaturatingStringLoss(v.modes[j], preset.source.transverse_viscosity_s,
                     kStringLossCornerHz) != pme::Status::Ok)
                 return false;
-            if (feedback_ && residualLoss_ && applyResidualBridgeLoss(v.modes[j],v.pan)!=pme::Status::Ok)
+            if (feedback_ && residualLoss_ &&
+                (shared_ ? applyResidualBridgeLoss(v.modes[j],phi.data()+i*kBoardModeCount+kLocalBridgeModes)
+                         : applyResidualBridgeLoss(v.modes[j],v.pan))!=pme::Status::Ok)
                 return false;
             if (pme::compileBridgeTerms(v.modes[j], pme::BridgeEnd::AtL, v.terms[j]) != pme::Status::Ok)
                 return false;
             d.strings.push_back(&v.modes[j]);
         }
+        if (shared_ && !v.light.configure(v.modes.data(), count, sympatheticCutHz)) return false;
         d.hammer = preset.hammer;
         // Treat the tabulated felt stiffness as the whole contact patch and
         // distribute it across strings. Keep one full-mass shared hammer.
@@ -44,50 +50,90 @@ bool Piano::prepare(double fs) {
         // Reference comparison supports softening bass/mids, not the treble.
         // The relative scale is a voicing choice, not measured felt stiffness.
         if (softFelt_) d.hammer.K *= feltStiffnessScale(i+21);
-        if (feedback_ && v.bridge.configure({},localBridgeModel(v.pan),fs) != pme::Status::Ok)
+        // Shared board: the point has no modes of its own; its motion is the board's port motion
+        // fed through the engine's external-velocity hook (SPEC-BODY Sympathetic path).
+        if (feedback_ && v.bridge.configure({},shared_ ? pme::bridge::ParallelModel{} : localBridgeModel(v.pan),fs)
+                != pme::Status::Ok)
             return false;
         if (v.note.configure(d,fs,feedback_ ? &v.bridge : nullptr) != pme::Status::Ok) return false;
     }
-    if (!soundboard_.prepare(fs)) return false;
+    if (shared_) {
+        // Harmonic coincidence of key c's idle partials with key s's sounding partials (first 8
+        // each, within 20 cents, weight 1/(m n)): ranks which unstruck strings to simulate when
+        // the sympathetic limit is reached. A heuristic, not a measured coupling.
+        coincidence_.assign(88 * 88, 0.0f);
+        for (int c = 0; c < 88; ++c) for (int s = 0; s < 88; ++s) {
+            if (c == s) continue;
+            const auto& oc = voices_[c].modes[0].omega; const auto& os = voices_[s].modes[0].omega;
+            for (std::size_t n = 0; n < std::min<std::size_t>(8, oc.size()); ++n)
+                for (std::size_t m = 0; m < std::min<std::size_t>(8, os.size()); ++m)
+                    if (std::abs(1200 * std::log2(os[m] / oc[n])) < 20) coincidence_[c * 88 + s] += 1.0f / float((n + 1) * (m + 1));
+        }
+        if (!board_.configure(fs,std::move(phi),kLocalBridgeModes,false,bridgeMass_)) return false;
+    } else if (!soundboard_.prepare(fs)) return false;
     bridgeMassFilter_.prepare(fs);
     ready_ = true; reset(); return true;
 }
 void Piano::reset() noexcept {
     for (auto& v : voices_) {
-        v.note.reset(); v.note.clearDiagnostics(); v.bridge.reset();
-        v.active = v.held = false; v.age = v.quiet = 0; v.release = 1;
+        v.note.reset(); v.note.clearDiagnostics(); v.bridge.reset(); v.light.reset(); v.lightW = v.dwPrev = 0;
+        v.active = v.held = v.struck = v.sympathetic = false; v.age = v.quiet = 0; v.release = 1; v.force = 0;
     }
-    soundboard_.reset(); bridgeMassFilter_.reset();
+    sampleClock_ = 0;
+    soundboard_.reset(); if (shared_) board_.reset(); bridgeMassFilter_.reset();
     pedal_ = false; unaCordaDown_ = false; clock_ = 0; numericalFaults_ = 0; voiceSteals_ = 0; peakBridgeMotion_ = 0;
 }
 int Piano::activeVoices() const noexcept {
-    int n = 0; for (const auto& v : voices_) n += v.active; return n;
+    int n = 0; for (const auto& v : voices_) n += v.active && v.struck; return n;
+}
+int Piano::sympatheticVoices() const noexcept {
+    int n = 0; for (const auto& v : voices_) n += v.active && !v.struck; return n;
 }
 void Piano::noteOn(int key, double velocity) noexcept {
     if (!ready_ || key < 21 || key > 108 || !std::isfinite(velocity)) return;
     if (velocity <= 0) { noteOff(key); return; }
     auto& v = voices_[key - 21];
-    if (!v.active && activeVoices() >= voiceLimit_) {
+    if (!v.struck && activeVoices() >= voiceLimit_) {
         Voice* oldest = nullptr;
-        for (auto& x : voices_) if (x.active && (!oldest || x.age < oldest->age)) oldest = &x;
+        for (auto& x : voices_) if (x.active && x.struck && (!oldest || x.age < oldest->age)) oldest = &x;
         if (oldest) {
             ++voiceSteals_;
-            oldest->active = oldest->held = false; oldest->note.reset(); oldest->bridge.reset();
+            oldest->active = oldest->held = oldest->struck = oldest->sympathetic = false;
+            oldest->note.reset(); oldest->bridge.reset(); oldest->force = 0;
         }
     }
-    if (!v.active) { v.note.reset(); v.bridge.reset(); }
+    const bool wasSympathetic = shared_ && v.active && !v.struck;
+    if (!v.active) { v.note.reset(); v.bridge.reset(); if (shared_) board_.resetPort(key - 21); }
+    if (shared_ && !v.struck) {
+        // A struck string joins the board with the board's current motion as history, so the
+        // first acceleration is not a step. A ringing unstruck string hands its vertical modes over.
+        if (wasSympathetic) {
+            v.note.reset(); v.bridge.reset();
+            auto& s = v.note.segment();
+            for (std::size_t j = 0; j < v.light.strings(); ++j) {
+                const auto off = v.note.modeOffset(j);
+                for (std::size_t n = 0; n < v.light.modeCount(j); ++n) { s.q()[off+n] = v.light.q(j)[n]; s.u()[off+n] = v.light.u(j)[n]; }
+            }
+        }
+        primeBridge(v, key - 21);
+    }
     if (// SPEC-HAM Una corda: shift s = 1 while the soft pedal is down at launch (a hammer in
     // flight is never moved: setShift happens only inside launch()).
     v.note.launch(std::clamp(velocity, 0.001, 1.0), unaCordaDown_ ? 1.0 : 0.0) != pme::Status::Ok) return;
-    v.active = v.held = true; v.release = 1; v.age = ++clock_; v.quiet = 0;
+    v.active = v.held = v.struck = true; v.sympathetic = false; v.release = 1; v.age = ++clock_; v.quiet = 0;
 }
 void Piano::noteOff(int key) noexcept {
     if (key >= 21 && key <= 108) voices_[key - 21].held = false;
+}
+void Piano::primeBridge(Voice& v, int port) noexcept {
+    v.bridge.setExternalVelocity(board_.portIncrement(port) * fs_);
+    v.bridge.advance();   // no force on a modeless, conductance-free point: only the history moves
 }
 void Piano::sustain(bool down) noexcept { pedal_ = down; }
 void Piano::sample(float& left, float& right) noexcept {
     double l = 0, r = 0;
     if (!ready_) { left = right = 0; return; }
+    if (shared_) { sampleShared(left, right); return; }
     for (auto& v : voices_) {
         if (!v.active) continue;
         v.note.step();
@@ -113,7 +159,7 @@ void Piano::sample(float& left, float& right) noexcept {
         l += force * (1 - v.pan); r += force * v.pan;
         if (std::abs(force) < 1e-7 && !v.note.inFlight()) ++v.quiet; else v.quiet = 0;
         if (v.release < 1e-6 || v.quiet > static_cast<std::uint64_t>(fs_)) {
-            v.active = false; v.note.reset(); v.bridge.reset();
+            v.active = v.struck = false; v.note.reset(); v.bridge.reset();
         }
     }
     // 0.4.9: the board sees the force through the bridge-top mass (series-mass low pass).
@@ -125,6 +171,115 @@ void Piano::sample(float& left, float& right) noexcept {
     right = static_cast<float>(0.05 * pressureR);
     if (!std::isfinite(left) || !std::isfinite(right)) {
         ++numericalFaults_; left = right = 0; soundboard_.reset();
+    }
+}
+
+// 0.5.1 shared board. Per-sample order (SPEC-BRG Discrete coupling order, generalised to many
+// bridge points): (1) every active port adds its F^n = sum_strings F_b,s(q^n, w^n) to the board;
+// (2) the board advances all modes with those forces; (3) each port's w^{n+1}-w^n reaches its
+// strings: struck voices get it through the engine's external-velocity hook, so that
+// BridgePoint::advance forms delta_tt w^n = (dw^n - dw^{n-1})/dt^2 of the board exactly (the point
+// has no modes or conductance of its own); unstruck voices form the same acceleration directly;
+// (4) the strings advance (hammer, SAV, bridge reaction).
+void Piano::wakeSympathetic() noexcept {
+    int free = sympLimit_ - sympatheticVoices();
+    if (free <= 0) return;
+    std::array<double, 88> speed;
+    int candidates = 0;
+    for (int i = 0; i < 88; ++i) {
+        const auto& v = voices_[i];
+        const bool lifted = v.held || pedal_ || v.undamped;
+        speed[i] = (!v.active && lifted) ? std::abs(board_.portVelocity(i)) : 0.0;
+        candidates += speed[i] > wakeVelocity;
+    }
+    if (!candidates) return;
+    // Score candidates by harmonic coincidence with the loudest sounding struck strings; used
+    // only when the limit is smaller than the number of candidates. Ties: lower key.
+    std::array<double, 88> score{};
+    const bool rank = candidates > free;
+    if (rank)
+        for (int s = 0; s < 88; ++s) {
+            const auto& v = voices_[s];
+            if (!v.active || !v.struck) continue;
+            const double weight = std::abs(v.force);
+            for (int c = 0; c < 88; ++c) score[c] += weight * coincidence_[c * 88 + s];
+        }
+    while (free-- > 0) {
+        int best = -1; double bestScore = -1;
+        for (int i = 0; i < 88; ++i) {
+            if (!(speed[i] > wakeVelocity)) continue;
+            const double sc = rank ? score[i] : 0.0;
+            if (sc > bestScore) { best = i; bestScore = sc; }
+        }
+        if (best < 0) break;
+        speed[best] = 0;
+        auto& v = voices_[best];
+        v.light.reset(); board_.resetPort(best); v.lightW = 0; v.dwPrev = board_.portIncrement(best);
+        v.active = v.sympathetic = true; v.struck = false;   // strings start from rest here
+        v.release = 1; v.age = 0; v.quiet = 0; v.force = 0;
+    }
+}
+void Piano::sampleShared(float& left, float& right) noexcept {
+    if (sympathetic_ && (sampleClock_++ & 31u) == 0) wakeSympathetic();
+    std::array<int, 88> ports; int count = 0;
+    for (int i = 0; i < 88; ++i) {
+        const auto& v = voices_[i];
+        if (!v.active) continue;
+        ports[count++] = i;
+        board_.addForce(i, v.force);
+    }
+    board_.advanceCoupled();
+    for (int k = 0; k < count; ++k) {
+        auto& v = voices_[ports[k]];
+        const double dw = board_.portIncrement(ports[k]);
+        const bool damped = !v.held && !pedal_ && !v.undamped;
+        double force;
+        if (v.struck) {
+            v.bridge.setExternalVelocity(dw * fs_);
+            v.note.step();
+            auto& s = v.note.segment();
+            if (damped) {
+                v.release *= releaseStep_;
+                for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
+                    const auto off = v.note.modeOffset(j);
+                    for (std::size_t n = 0; n < v.note.modeCount(j); ++n) {
+                        s.q()[off+n] *= releaseStep_; s.u()[off+n] *= releaseStep_;
+                    }
+                }
+            }
+            const double w = v.bridge.wV();
+            peakBridgeMotion_ = std::max(peakBridgeMotion_,std::abs(w));
+            force = 0;
+            for (std::size_t j = 0; j < v.note.stringCount(); ++j)
+                force += pme::bridge::bridgeForce<double>(v.terms[j], s.q() + v.note.modeOffset(j), w);
+        } else {
+            v.light.advance((dw - v.dwPrev) * fs_ * fs_);
+            v.dwPrev = dw; v.lightW += dw;
+            if (damped) { v.release *= releaseStep_; v.light.damp(releaseStep_); }
+            peakBridgeMotion_ = std::max(peakBridgeMotion_,std::abs(v.lightW));
+            force = v.light.force(v.lightW);
+        }
+        if (!std::isfinite(force)) {
+            ++numericalFaults_; v.note.reset(); v.bridge.reset(); v.light.reset();
+            v.active = v.struck = v.sympathetic = false; v.force = 0; continue;
+        }
+        v.force = force;
+        board_.radiate(ports[k], force, v.struck ? kBoardModeCount : kLightRadiatingModes);
+        if (std::abs(force) < 1e-7 && !(v.struck && v.note.inFlight()) && std::abs(dw) * fs_ < 0.5 * wakeVelocity) ++v.quiet;
+        else v.quiet = 0;
+        if (v.release < 1e-6 || v.quiet > static_cast<std::uint64_t>(fs_)) {
+            v.active = v.struck = v.sympathetic = false; v.note.reset(); v.bridge.reset(); v.light.reset(); v.force = 0;
+        }
+    }
+    double pressureL, pressureR;
+    board_.radiation(pressureL, pressureR);
+    left = static_cast<float>(0.05 * pressureL);
+    right = static_cast<float>(0.05 * pressureR);
+    if (!std::isfinite(left) || !std::isfinite(right)) {
+        ++numericalFaults_; left = right = 0; board_.reset();
+        for (auto& v : voices_) if (v.active) {
+            v.note.reset(); v.bridge.reset(); v.light.reset(); v.active = v.struck = v.sympathetic = false; v.force = 0;
+        }
     }
 }
 }

@@ -5,6 +5,10 @@
 #include "bridge_mass.hpp"
 #include "midi.hpp"
 #include "pme/simd/denormals.hpp"
+#include "grand_board.hpp"
+#include "soundboard_table.hpp"
+#include <algorithm>
+#include <vector>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -203,9 +207,12 @@ int main() {
             // The board keeps radiating after a damped release, so compare the first 0.1-0.2 s after
             // note-off (string energy still dominant) and whether the string voice survives 1 s.
             const auto tail = [](int key, bool undamped, int& active) {
-                piano_mvp_v4::Piano q; require(q.setUndampedTreble(undamped) && q.prepare(48000), "treble prepare failed");
+                piano_mvp_v4::Piano q; require(q.setUndampedTreble(undamped) && q.setSympatheticStrings(false) && q.prepare(48000), "treble prepare failed");
                 q.noteOn(key, 0.7); energy(q, 4800); q.noteOff(key); energy(q, 4800);
-                const double e = energy(q, 4800);
+                // String force on the board (N^2): independent of which board modes happen to
+                // radiate this key's partials (0.5.1 bridge positions are key dependent).
+                double e = 0;
+                for (int i = 0; i < 4800; ++i) { float l, r; q.sample(l, r); e += q.portForce(key) * q.portForce(key); }
                 energy(q, 38400); active = q.activeVoices();
                 return e;
             };
@@ -220,6 +227,95 @@ int main() {
             q.noteOn(100, 0.7); q.noteOff(100); energy(q, 4800);
             require(q.activeVoices() == 1, "undamped key retired at note-off");
         }
-        std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset, 0.5.0 polyphony/una corda/undamped treble\n";
+        {   // 0.5.1-T1 key-dependent coupling: modes are evaluated at each key's own bridge point.
+            // The analytic shapes must reproduce the MVP 3 columns at the two nominal bridge points.
+            double worst = 0;
+            for (std::size_t i = 0; i < piano_mvp_v4::kBoardModeCount; ++i) {
+                worst = std::max(worst, std::abs(piano_mvp_v4::boardModeShape(i, 0.42, 0.91) - piano_mvp_v3::kSoundboardModes[i][2]));
+                worst = std::max(worst, std::abs(piano_mvp_v4::boardModeShape(i, 0.97, 0.58) - piano_mvp_v3::kSoundboardModes[i][3]));
+            }
+            require(worst < 1e-9, "board mode indices do not reproduce the MVP 3 drive columns");
+            std::vector<double> grand, pan;
+            piano_mvp_v4::buildParticipation(true, grand); piano_mvp_v4::buildParticipation(false, pan);
+            const auto distance = [](const std::vector<double>& t, int a, int b) {
+                double d = 0, n = 0;
+                for (std::size_t i = 0; i < 128; ++i) {
+                    const double x = t[a*512+i], y = t[b*512+i];
+                    d += (x-y)*(x-y); n += x*x + y*y;
+                }
+                return std::sqrt(d / n);
+            };
+            for (int key : {21, 44, 45, 60, 76, 108}) {
+                double x, y; piano_mvp_v4::bridgePoint(key, x, y);
+                require(x >= 0.15 && x <= 1.25 && y >= 0.15 && y <= 1.45, "bridge point too close to the plate edge");
+            }
+            for (int key = 21; key < 108; ++key)   // neighbours differ, distant keys differ a lot
+                require(distance(grand, key-21, key-20) > 1e-3, "adjacent keys see identical coupling");
+            require(distance(grand, 24-21, 60-21) > 0.5 && distance(grand, 60-21, 100-21) > 0.5, "distant keys see similar coupling");
+            require(distance(grand, 66-21, 81-21) > 0.1 && std::abs(distance(grand, 66-21, 81-21) - distance(pan, 66-21, 81-21)) > 1e-3,
+                    "geometry matches the pan blend");
+        }
+        {   // 0.5.1-T2 one voice on the shared board equals the 0.5.0 private bridge to rounding
+            // (same modes, same forces; the series mass and residual loss are the same).
+            for (int key : {33, 60, 84}) {
+                piano_mvp_v4::Piano priv, shared;
+                require(priv.setSharedBoard(false) && priv.prepare(48000), "private prepare failed");
+                require(shared.setGrandBridgeGeometry(false) && shared.setSympatheticStrings(false) && shared.prepare(48000) && shared.sharedBoardActive(), "shared prepare failed");
+                priv.noteOn(key, 0.7); shared.noteOn(key, 0.7);
+                double diff = 0, ref = 0;
+                for (int i = 0; i < 24000; ++i) {
+                    float a, b, c, d; priv.sample(a, b); shared.sample(c, d);
+                    diff += double(a-c)*(a-c) + double(b-d)*(b-d); ref += double(a)*a + double(b)*b;
+                }
+                require(ref > 0 && std::sqrt(diff / ref) < 1e-6, "one-voice shared board differs from the private bridge");
+            }
+        }
+        {   // 0.5.1-T3 sympathetic transfer: an undamped (pedal / held / treble) unstruck string
+            // wakes and gains energy from the board; a damped one does not.
+            const auto run = [](bool pedal, bool lift, bool sympathetic, int limit, int& awake, double& peak) {
+                piano_mvp_v4::Piano q;
+                require(q.setSympatheticStrings(sympathetic) && q.setSympatheticLimit(limit) && q.prepare(48000), "sympathetic prepare failed");
+                if (pedal) q.sustain(true);
+                if (lift) q.liftDamper(60);
+                q.noteOn(48, 0.9);   // C3 struck: its octave, C4, shares partials
+                peak = 0;
+                for (int i = 0; i < 48000; ++i) { float l, r; q.sample(l, r); peak = std::max(peak, std::abs(q.portForce(60))); }
+                require(q.numericalFaults() == 0, "sympathetic fault");
+                awake = q.voiceActive(60);
+            };
+            int awake; double peak;
+            run(true, false, true, 88, awake, peak);
+            require(awake && peak > 1e-6, "undamped unstruck string did not gain energy");
+            const double pedalPeak = peak;
+            run(false, true, true, 88, awake, peak);
+            require(awake && peak > 1e-6, "held key did not ring sympathetically");
+            run(false, false, true, 88, awake, peak);
+            require(!awake && peak == 0, "damped unstruck string rang");
+            run(true, false, false, 88, awake, peak);
+            require(!awake && peak == 0, "disabled sympathetic strings woke");
+            run(true, false, true, 0, awake, peak);
+            require(!awake && peak == 0, "sympathetic limit 0 woke a string");
+            // Releasing the pedal damps woken strings: they retire within a second.
+            piano_mvp_v4::Piano q; require(q.prepare(48000), "prepare failed");
+            q.sustain(true); q.noteOn(48, 0.9); energy(q, 24000);
+            require(q.sympatheticVoices() > 0, "pedal did not wake sympathetic strings");
+            q.noteOff(48); q.sustain(false); energy(q, 48000);
+            require(!q.voiceActive(60), "released pedal left a sympathetic string undamped");
+            // Pedal pressed while the board is already ringing: strings start from rest then.
+            piano_mvp_v4::Piano late; require(late.prepare(48000), "prepare failed");
+            late.noteOn(48, 0.9); energy(late, 12000);
+            require(!late.voiceActive(60), "damped string woke before the pedal");
+            late.sustain(true); energy(late, 24000);
+            require(late.voiceActive(60), "pedal after the strike did not wake the string");
+            (void)pedalPeak;
+            // Determinism: identical input gives identical bits.
+            piano_mvp_v4::Piano d1, d2; require(d1.prepare(48000) && d2.prepare(48000), "prepare failed");
+            for (auto* x : {&d1, &d2}) { x->sustain(true); x->noteOn(40, 0.8); x->noteOn(64, 0.5); }
+            for (int i = 0; i < 12000; ++i) {
+                float a, b, c, d; d1.sample(a, b); d2.sample(c, d);
+                require(a == c && b == d, "shared board is not deterministic");
+            }
+        }
+        std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset, 0.5.0 polyphony/una corda/undamped treble, 0.5.1 shared board (geometry, one-voice equivalence, sympathetic transfer, determinism)\n";
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

@@ -9,8 +9,8 @@ namespace {
 constexpr const char* features[] = {CLAP_PLUGIN_FEATURE_INSTRUMENT, CLAP_PLUGIN_FEATURE_SYNTHESIZER,
                                    CLAP_PLUGIN_FEATURE_STEREO, nullptr};
 const clap_plugin_descriptor_t descriptor = {
-    CLAP_VERSION, "org.pme.experimental.piano-mvp-v4", "Piano MVP 4 - Full pedal", "PME",
-    "", "", "", "0.5.0", "Experimental coupled-unison piano: una corda (CC67), undamped treble, 12 voices", features};
+    CLAP_VERSION, "org.pme.experimental.piano-mvp-v4", "Piano MVP 4 - Shared soundboard", "PME",
+    "", "", "", "0.5.1", "Experimental coupled-unison piano: one shared soundboard, sympathetic strings, una corda (CC67), undamped treble, 12 voices", features};
 struct Instance {
     clap_plugin_t plugin{};
     piano_mvp_v4::Piano piano;
@@ -79,7 +79,7 @@ const clap_plugin_t* CLAP_ABI create(const clap_plugin_factory_t*, const clap_ho
             [](const clap_plugin_t* p) { delete &self(p); },
             [](const clap_plugin_t* p, double fs, std::uint32_t min, std::uint32_t max) {
                 if (!min || max < min) return false;
-                try { self(p).piano.setVoiceLimit(piano_mvp_v4::Piano::maxVoices); return self(p).active = self(p).piano.prepare(fs); }
+                try { self(p).piano.setVoiceLimit(piano_mvp_v4::Piano::maxVoices); self(p).piano.setSympatheticLimit(piano_mvp_v4::Piano::pluginSympatheticLimit); return self(p).active = self(p).piano.prepare(fs); }
                 catch (...) { return self(p).active = false; }
             },
             [](const clap_plugin_t* p) { self(p).active = self(p).processing = false; self(p).piano.reset(); },

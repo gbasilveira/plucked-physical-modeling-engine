@@ -28,6 +28,36 @@ double residualBridgeConductance(double omega, double pan) noexcept {
     }
     return conductance;
 }
+double residualBridgeConductance(double omega, const double* phiTail) noexcept {
+    if (!std::isfinite(omega) || omega <= 0 || !phiTail) return 0;
+    double conductance = 0;
+    for (std::size_t i = kLocalBridgeModes; i < piano_mvp_v3::kSoundboardModes.size(); ++i) {
+        const auto& row = piano_mvp_v3::kSoundboardModes[i];
+        const double phi = phiTail[i-kLocalBridgeModes];
+        const double detuning = row[0]*row[0] - omega*omega;
+        const double loss = 2*row[1]*omega;
+        conductance += phi*phi*loss*omega/(detuning*detuning + loss*loss);
+    }
+    return conductance;
+}
+pme::Status applyResidualBridgeLoss(pme::StringModes& modes, const double* phiTail) {
+    if (!phiTail || modes.omega.size()!=modes.sigma.size() ||
+        modes.k.size()!=modes.omega.size() || modes.oscV.size()!=modes.omega.size() ||
+        modes.oscH.size()!=modes.omega.size() || modes.omega.empty() ||
+        modes.rhoA<=0 || modes.L<=0)
+        return pme::Status::InvalidArgument;
+    auto updated = modes;
+    for (std::size_t n=0;n<modes.omega.size();++n) {
+        const double omega = modes.omega[n];
+        const double g2 = 2/(modes.L*modes.k[n]*modes.k[n]);
+        updated.sigma[n] += 0.5*modes.rhoA*omega*omega*g2*residualBridgeConductance(omega,phiTail);
+        if (pme::compileOscillator(omega,updated.sigma[n],modes.fs,updated.oscV[n])!=pme::Status::Ok ||
+            pme::compileOscillator(omega,updated.sigma[n],modes.fs,updated.oscH[n])!=pme::Status::Ok)
+            return pme::Status::Rejected;
+    }
+    modes = std::move(updated);
+    return pme::Status::Ok;
+}
 pme::Status applyResidualBridgeLoss(pme::StringModes& modes, double pan) {
     if (!std::isfinite(pan) || pan < 0 || pan > 1 || modes.omega.size()!=modes.sigma.size() ||
         modes.k.size()!=modes.omega.size() || modes.oscV.size()!=modes.omega.size() ||

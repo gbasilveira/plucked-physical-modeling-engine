@@ -1,0 +1,128 @@
+{
+  "source_audit": {
+    "piece": "Chopin: Prelude in E minor, Op. 28 No. 4",
+    "midi_author": "Bernd Krueger",
+    "source_sha256": "8b8984ae232642ff1979b84af642d5d5db60f7f7f20b3745f2d4b4f17cdaf908",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Chopin_-_Prelude_in_E_Minor.mid",
+    "license": "CC-BY-SA-3.0-DE",
+    "mido_version": "1.3.3",
+    "midi_format": 1,
+    "ticks_per_beat": 480,
+    "tracks": 9,
+    "total_note_ons": 604,
+    "tempo_changes": 335,
+    "sustain_events": 133,
+    "max_simultaneously_held_keys": 7,
+    "unmatched_note_offs": 0,
+    "overlapping_same_key_ons": [
+      [
+        3366083,
+        52
+      ],
+      [
+        3550823,
+        52
+      ],
+      [
+        3925620,
+        52
+      ]
+    ],
+    "overlap_note": "three overlaps occur after 64 s, outside all rendered/preroll events",
+    "note_velocity_range": [
+      16,
+      92
+    ],
+    "excerpt_start_seconds": 40,
+    "excerpt_end_seconds": 64,
+    "tail_seconds": 2,
+    "wav_duration_seconds": 26,
+    "preroll": "simulate source from time zero; export from 40 s",
+    "excerpt_note_ons": 174,
+    "excerpt_velocity_range": [
+      18,
+      92
+    ],
+    "excerpt_key_range": [
+      35,
+      84
+    ],
+    "midi_edits": "none; preserve notes, velocities, tempo map and sustain; round timestamps to 48 kHz",
+    "ignored_mixer_controls": [
+      [
+        0,
+        7,
+        100
+      ],
+      [
+        0,
+        10,
+        64
+      ],
+      [
+        0,
+        91,
+        127
+      ],
+      [
+        0,
+        7,
+        100
+      ],
+      [
+        0,
+        10,
+        64
+      ],
+      [
+        0,
+        7,
+        127
+      ],
+      [
+        0,
+        10,
+        64
+      ],
+      [
+        0,
+        7,
+        127
+      ],
+      [
+        0,
+        10,
+        64
+      ]
+    ],
+    "ignored_control_explanation": "CC7 volume, CC10 pan and CC91 external reverb are not synthesizer controls; source retained unchanged",
+    "event_schedule_sha256": "d22f176c7cefd58b51846d7a732b98433be3cfb1c464d35813af91fa5684f8d8"
+  },
+  "version": "0.5.1",
+  "common_gain_db": 12.041199826559248,
+  "duration_seconds": 26,
+  "normalisation": "fixed common +12.0412 dB; no per-version normalisation",
+  "boundary_fades": "10 ms start on listening copies; last 50 ms after release in raw and listening copies",
+  "renders": [
+    {
+      "version": "0.5.0",
+      "raw_file": "chopin-prelude-0.5.0-raw.wav",
+      "raw_pcm_sha256": "a8ab35e1cc57390664ce9d6cc915a65a4bedcc5fb9418599df159c486e1cebab",
+      "peak": 0.145050048828125,
+      "rms": 0.013694818689533397,
+      "render_report": "26 s stereo 48 kHz; source 40\u201364 s + 2 s release; peak 0.145065; RMS 0.0136952; numerical faults 0; excerpt voice steals 0; render time 35.7472 s; realtime factor 0.727329",
+      "listening_file": "chopin-prelude-0.5.0.wav",
+      "listening_file_sha256": "0681d68af7b3f9caa4dfaa7630be02130c4b16d2d95f8cedbfcf74276ba99210"
+    },
+    {
+      "version": "0.5.1",
+      "raw_file": "chopin-prelude-0.5.1-raw.wav",
+      "raw_pcm_sha256": "b978053c5c0b6f5ba9752cbdb0ab5dac3909107fed44ed39150350ac34985142",
+      "peak": 0.156005859375,
+      "rms": 0.013738191688649691,
+      "render_report": "26 s stereo 48 kHz; source 40\u201364 s + 2 s release; peak 0.156014; RMS 0.0137386; numerical faults 0; excerpt voice steals 0; render time 90.49 s; realtime factor 0.287325",
+      "listening_file": "chopin-prelude-0.5.1.wav",
+      "listening_file_sha256": "579b5be7e135ed42f293b693f79e1495ac11b4f8193f5dcc7971bf2a9b296a15"
+    }
+  ]
+}

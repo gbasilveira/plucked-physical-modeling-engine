@@ -31,7 +31,7 @@ LV2_Handle instantiate(const LV2_Descriptor*,double fs,const char*,const LV2_Fea
         s->sequenceType = map->map(map->handle,LV2_ATOM__Sequence);
         s->frameTime = map->map(map->handle,LV2_ATOM__frameTime);
         s->beatTime = map->map(map->handle,LV2_ATOM__beatTime);
-        if (!s->midiType || !s->sequenceType || !s->frameTime || !s->beatTime || !s->piano.setVoiceLimit(piano_mvp_v4::Piano::maxVoices) || !s->piano.prepare(fs)) return nullptr;
+        if (!s->midiType || !s->sequenceType || !s->frameTime || !s->beatTime || !s->piano.setVoiceLimit(piano_mvp_v4::Piano::maxVoices) || !s->piano.setSympatheticLimit(piano_mvp_v4::Piano::pluginSympatheticLimit) || !s->piano.prepare(fs)) return nullptr;
         return s.release();
     } catch (...) { return nullptr; }
 }

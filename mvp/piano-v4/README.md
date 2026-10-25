@@ -1,5 +1,201 @@
 # MVP 4: bridge feedback
 
+## Update 0.5.1: one shared soundboard, sympathetic strings, key-dependent bridge points
+
+Listener feedback on 0.5.0/0.4.9: "still rather bright and small ... lacks wood and
+dimension", and "on a real long piano its shape imposes different harmonics on different
+strings". Until now every key had a private 128-mode bridge and unstruck strings did not
+exist. This iteration changes two things, each with its own setter (before `prepare`), on by
+default so the listener can attribute differences.
+
+| What | Setter | Off means |
+| --- | --- | --- |
+| One shared board; every simulated string coupled to it at its own bridge point | `setSharedBoard` | 0.5.0 private bridges, bit-for-bit |
+| Key-dependent bridge points on a bass + treble bridge curve | `setGrandBridgeGeometry` | the 0.5.0 two-column pan blend (shared board only) |
+| Unstruck strings with lifted dampers are simulated | `setSympatheticStrings`, `setSympatheticLimit(n)` | no sympathetic ringing |
+
+`piano-midi-render ... --previous` is now **0.5.0** and reproduces the committed
+`chopin-prelude-0.5.0-raw.wav` byte-for-byte (verified: `cmp` identical). `--shared-pan` is
+0.5.1 coupling with the 0.5.0 bridge positions; `--v049` is the former `--previous`; `--v048`,
+`--v046`, `--legacy` are unchanged. `piano-render` takes `previous` (0.5.0), `sharedpan`,
+`v049`, `v048`, `v046`.
+
+### Design
+
+1. **Shared board (`grand_board.*`).** The 128 board modes that were private per key are now one
+   set. Mode force is `sum_s phi_s,i F_s` and the motion of port `s` is
+   `w_s = sum_i phi_s,i r_i`: the discretisation of `pme::bridge::BridgePoint` (SPEC-OSC
+   difference form, forces at step n, accelerations `delta_tt w` from increments), generalised
+   from one port to 88 (the engine's `BridgePoint` has a single `phi` per mode, so it cannot
+   serve several bridge positions; its coefficients come from the same
+   `compileBridgeMode`). Each key's `StruckNote` still owns a `BridgePoint`, but that point has no
+   modes or conductance: the board's port increment `w^{n+1}-w^n` enters through the engine's
+   external-velocity hook (SPEC-BODY Sympathetic path), so the string sees exactly the board's
+   `delta_tt w`. Per sample: ports add `F^n`, the board advances, strings advance, then each port
+   adds `F^{n+1}` to the radiating modes (as 0.5.0 did). All 512 modes still radiate with the
+   MVP 3 zero-order-hold formulation, fed the same forces through the 0.4.9 bridge-mass low-pass;
+   modes 129-512 are driven one way and reach the strings only as the passive residual loss, now
+   evaluated with each key's own participation. **Documented simplification:** the 128 coupled
+   modes exist twice, as mechanical (raw force) and as radiating (low-passed force) states of the
+   same equations; this keeps the 0.4.9 high-frequency calibration intact and makes the
+   one-voice case equal 0.5.0 (relative difference 2e-8, `piano-check` 0.5.1-T2).
+2. **Sympathetic strings.** A string group is simulated while it is struck or while its damper is
+   lifted (sustain pedal down, key held, or undamped treble, keys >= F#6) and the board moves its
+   bridge point faster than `Piano::wakeVelocity` = 1e-4 m/s (assumption: about -55 dB re a
+   loud strike's 0.06 m/s; checked every 32 samples, deterministic, allocation free). An
+   unstruck group (`sympathetic_string.hpp`) is the engine's `ModalSegment` equations,
+   vertical polarisation only (horizontal modes are never driven at a point without
+   perpendicular conductance) and only modes below 2 kHz (the board is coupled to 1.87 kHz;
+   truncating a passive system is passive). Checked against the full string model: the same
+   A1 strike gives sympathetic forces of 8.0 vs 8.1 N (key 21), 1.8 vs 1.8 N (key 22), etc.
+   Strings **start from rest** when they wake: if the pedal goes down while the board is
+   already ringing, each string begins to follow the board at that moment (nothing is
+   back-calculated), and a string struck while ringing hands its vertical modes over to the
+   hammer voice. Releasing the pedal (or the key) damps woken strings with the existing damper
+   law and they retire. Idle strings go back to sleep after 1 s with force below 1e-7 N and
+   board speed below half the wake threshold. `liftDamper(key)` lifts a damper without a strike
+   (used by the demo; there is no MIDI message for it). Cap: `setSympatheticLimit(n)`
+   (offline default 88; plug-ins 8, `Piano::pluginSympatheticLimit`). When more strings are
+   eligible than slots, those with the highest harmonic coincidence (partials 1-8 within 20 cents,
+   weight 1/(m n)) with the loudest sounding struck strings are woken first. This ranking is a
+   heuristic.
+3. **Key-dependent bridge points.** Mode shapes are the analytic ones of the MVP 3 plate
+   (simply supported 1.4 x 1.6 m orthotropic spruce plate with homogenised ribs; Chabassier &
+   Durufle RT-0425 material, other numbers nominal) evaluated at each key's bridge point:
+   `phi_mn = 2/sqrt(mu lx ly) sin(m pi x/lx) sin(n pi y/ly)`. `generate_grand_board.py`
+   re-derives the (m, n) of each table row and checks all 512 omegas against the MVP 3 table to
+   1e-12 (`grand_board_table.hpp`); a test shows the shapes reproduce the two old drive columns at
+   the old bridge points (0.42, 0.91) and (0.97, 0.58) to 1e-9. **Bridge curve (assumption, not
+   measured, no source):** bass bridge keys 21-44 straight from (0.30, 1.15) to (0.55, 0.82) m;
+   long (treble) bridge keys 45-108 a quadratic Bezier from (0.62, 0.90) through control point
+   (0.95, 0.78) to (1.25, 0.25) m, keys evenly spaced in the parameter (about 1.8 cm per key
+   on the bass bridge, 1.5 cm on the treble bridge), at least 0.15 m from the plate edge. Split
+   at key 44 is a guess (a real grand's bass bridge usually carries the wound strings). The
+   rectangle is **not a grand outline**.
+   **B2 body FEM:** `compiler/pme_compiler/body` can mesh an arbitrary outline with rib and
+   bridge beams (Gmsh + scikit-fem + SciPy) but those packages are not installed here, and the
+   MVP radiation table is built from the analytic plate, so a FEM board would also need a new
+   radiation table. Not done; a grand outline with explicit ribs from B2 is the obvious next
+   step for the board. Stereo stays the nominal two-microphone radiation (fixed microphones at x = 0.2 and 1.2 m):
+   the right/left level of a 0.7-velocity note is within +-2.5 dB for keys 21-60 in both versions,
+   and scatters in the treble (key 81: +14 dB in 0.5.0, +11 dB now; key 87: -9 dB now). There is
+   no systematic bass-left/treble-right tendency, as in 0.5.0.
+
+### Tests (all pass; `ctest`: 6/6)
+
+- `bridge-check` (extended): 8 strings (keys 36-84) on the shared 128-mode board, energy =
+  board modes + every segment. Lossless: maximum relative drift **5.1e-15** (pan columns) and
+  **2.0e-14** (grand geometry) over 40 000 steps; lossy: never above the initial energy, final
+  45% / 29% of it. Energy moves between strings: up to 56% / 27% of the initial energy sits in the
+  seven unexcited strings (lossless), 23% / 11% with damping.
+- `piano-check` 0.5.1-T1 key-dependent coupling (shapes reproduce the old columns; all bridge points
+  inside the plate margins; adjacent keys differ, distant keys decorrelate, geometry differs from
+  the pan blend), -T2 one voice on the shared board equals the 0.5.0 bridge to 1e-6 for keys
+  33/60/84, -T3 sympathetic transfer (pedal, held key: an unstruck octave string wakes and has
+  >1e-6 N force; damped, disabled, limit 0: it does not; pedal release damps it; pedal pressed
+  after the strike wakes it later; two pianos produce identical bits).
+- The existing LV2 playback test (no `operator new` during `run()`, identical output to the
+  engine) passes with sympathetic strings on (limit 8).
+
+### Results
+
+CPU (single thread, -O3, no SIMD, this machine):
+
+| Case | 0.5.0 | 0.5.1 |
+| --- | --- | --- |
+| Chopin excerpt offline (66 s simulated, 88 voices, pedal heavy) | 33 s (0.79x excerpt length) | **93 s** (0.28x excerpt length, 0.71x real time overall) |
+| Full keyboard cluster, pedal, 88 struck | 23.0 s per 4 s | 22.1 s per 4 s |
+| Pedal down, one loud A1, 87 sympathetic strings | 4.04x real time | **0.80x real time** (worst case) |
+| Plug-in settings (12 voices, cap 8), Chopin 52-58 s | 1.83x real time | 1.62x real time |
+| Plug-in settings, 12-key cluster with pedal | 1.12x real time | 1.05x real time |
+
+The plug-ins are capped at 8 sympathetic strings; a 12-key cluster with a cap of 16 runs at 0.99x.
+The cost per awake unstruck string is dominated by its 128-mode port (force, readout) rather than
+its few modes; threading or SIMD would be the next lever and are not used.
+
+Reference calibration (`reference-calibration-0.5.1.json`, 24-bit `calibration-*-0.5.1.wav`
+plus `-0.5.1-pan.wav`, mean attack energy-share error above 2 kHz): **0.4.9 5.68 dB, 0.5.1-pan
+5.63 dB, 0.5.1 3.80 dB.** The change from 0.4.9 to the new geometry is partly luck of the
+modal sampling at each key's bridge point (C6 velocity 40 improves 13.3 to 4.5 dB, C6 velocity
+92 worsens 1.5 to 5.0 dB): with only nine reference points do not read this as a calibrated
+gain. Octave-band shares (band lower edges 62.5 ... 8000 Hz, model minus Salamander, dB), velocity 60:
+
+```
+A2 attack 0.4.9  +0.5 +0.8 -4.1 -0.7 -7.0 +4.5 +20.5 -17.5   0.5.1 -7.5 +3.7 +0.6 -3.5 -9.8 +2.6 +23.8 -14.3
+A2 late   0.4.9  -0.1 +4.7 -6.5 -10.9 -10.6 -1.5 +8.9 -30.0  0.5.1 -6.8 +9.9 +0.5 -17.6 -13.9 -5.0 +11.6 -25.1
+C4 attack 0.4.9  -5.1 +10.4 +2.2 -4.2 -0.5 +4.6 +10.5 -5.1   0.5.1 -3.1 +12.0 +1.0 -1.2 -1.4 +4.2 +12.4 -0.6
+C4 late   0.4.9 -25.3 -31.8 +4.9 -8.8 -8.7 -3.1 -1.3 -19.1   0.5.1 -21.2 -31.1 +5.2 -17.3 -10.8 -7.2 -3.2 -13.4
+C6 attack 0.4.9  -8.3 +1.4 -10.0 -6.6 -0.3 +5.3 +17.5 -8.6   0.5.1 -4.0 -5.8 -11.7 -10.6 +0.2 -2.2 +9.5 -9.8
+C6 late   0.4.9 -14.6 -36.2 -57.3 -47.2 -0.1 +11.5 +13.2 -11.5 0.5.1 -16.4 -41.3 -63.1 -52.2 +0.4 -12.6 +1.5 -13.7
+```
+
+Velocities 40 and 92 and the `-pan` variant are in the JSON. **The low-band deficit is not
+fixed.** C4 and C6 late 125-500 Hz stay 28-65 dB below the reference (C4 late 62-125 Hz improves
+by about 4 dB, C6 does not), and the attack 62-500 Hz of C6 gets slightly worse. This is the
+honest outcome of the experiment: the Salamander notes were recorded with the dampers down on
+all other keys and no pedal, so for an isolated note only the undamped treble (>= F#6, here an
+assumed boundary) can ring sympathetically in the model; damped strings, which are not simulated,
+leak a little in reality. The reference's late-window 62-500 Hz content of C6 is about 15 dB above
+the recording's own end-of-file floor, so it is not just converter noise, but whether it is key-bed or
+action thump, room, damper leakage or longitudinal string motion cannot be told from these
+files. The shared board moves energy between bands (late 500-1000 Hz share of A2 and C4 falls 7-9 dB;
+late C6 2-4 kHz falls 24 dB and 4-8 kHz 12 dB, overshooting the reference) and the 4-8 kHz attack
+excess is not removed (A2 +24, C4 +12, C6 +9.5 at velocity 60).
+
+Chopin Op.28 No.4 excerpt, same fixed +12.04 dB listening gain: `chopin-prelude-0.5.1.wav` (+
+`-raw.wav`, `-audit.json`, copied to `chopin-prelude-latest.wav`) next to the re-rendered
+`chopin-prelude-0.5.0.wav`. RMS 0.013739 vs 0.013695 (+0.03 dB), peak 0.156 vs 0.145,
+no voice steals, 0 numerical faults. Octave-band level change (0.5.1 minus 0.5.0, 31 Hz to 8 kHz
+octaves): +9.2, +2.1, -0.8, +1.8, +0.9, -2.2, -1.5, 0.0, +1.5 dB; the lowest octave rises because
+pedalled bass strings now ring with the board. Left/right balance +1.06 dB vs -0.47 dB.
+
+`sympathetic-demo-0.5.1.wav` (and `-0.5.0.wav`, `-0.5.1-pan.wav`, 14 s, `piano-sympathetic-demo`,
+fixed +12.04 dB gain): 0-6.5 s C3+E3+G3 have their dampers lifted but are never struck; staccato
+C4 at 1 s and C5 at 3 s. 7-14 s pedal down and one loud A1.
+
+| Window | 0.5.0 | 0.5.1-pan | 0.5.1 |
+| --- | --- | --- | --- |
+| C4 staccato 1.0-1.3 s | -23.7 dBFS | -24.5 | -20.5 |
+| after C4, 1.5-2.9 s | **-60.2** | -38.0 | **-39.7** |
+| after C5, 3.5-6.4 s | -62.8 | -45.0 | -48.9 |
+| A1 with pedal, 8-10 s | -24.6 | -25.0 | -24.5 |
+
+In (a) the unstruck C3-E3-G3 chord rings about 20 dB above the 0.5.0 silence after a staccato note.
+In (b) the total level hardly changes (the pedalled A1 already rings by itself); above 1 kHz
+the 0.5.1 tail is 2.7 dB lower, below 200 Hz 1.1 dB higher.
+
+### How to listen, and what to listen for
+
+Play `sympathetic-demo-0.5.0.wav` then `-0.5.1.wav`: after each staccato note the chord should
+bloom softly (octave, fifth and third partials) instead of stopping dead. Then the Chopin pair
+(`chopin-prelude-0.5.0.wav` vs `-0.5.1.wav`, same gain): look for a fuller low register with
+the pedal, less transparent sustain, and key-to-key tone differences from the bridge geometry.
+`--shared-pan` isolates the board coupling from the geometry. What it cannot
+yet do: a wood-like knock, a grand outline, damped-string leakage, or any nonlinearity.
+
+Known limits: the wake threshold, the 2 kHz cut, the treble undamped boundary, the
+bridge curve, the board outline and all board numbers are assumptions; the radiating low modes
+duplicate the coupled ones; sympathetic strings above 1.87 kHz are driven by nothing; the rank
+heuristic is not physics; the sympathetic forces are large (up to 8 N peak at a bass string
+after a loud A1, 10-20 dB below the struck force) and nothing here is tuned to a measurement of a real piano.
+
+### Notes for 0.5.2 (string tension modulation)
+
+The core has the A7 code, not exercised here: `pme::nl::TensionModulationPotential<S>`
+(`engine/src/nonlinear/include/pme/nonlinear/tension.hpp`; `configure(k2, c)` with
+`c = (EA - T)/(2 L)`, `deltaT(z)`, `value`, `gradient`, shares the segment's psi as a rank-one
+term) and `pme::string::GeometricSegment<S>` (`engine/src/string/include/pme/string/longitudinal_segment.hpp`,
+tension modulation and longitudinal modes with their bridge coupling, `BridgeCoupling`, per-segment
+flags). Cost of the potential is O(2N) per sample per string group (one sum of `k_n^2 q_n^2`
+over both polarisations, then the gradient), small against a 128-mode board port. Obstacles:
+the potential expects the layout V modes, H modes, lumped coordinates, whereas `StruckNote`'s
+SAV segment carries the vertical modes and the hammer only, so using it means adapting
+`StruckNote` (engine, read-only here) or composing a note from `GeometricSegment`; the light
+unstruck strings of this iteration would need the potential too to keep pitch glide consistent;
+the horizontal modes become driven by the nonlinear coupling, so the bridge point would need
+the perpendicular polarisation (conductance or board port in that direction), which this board
+does not have.
+
 ## Update 0.5.0: full pedal set (polyphony, una corda, undamped treble)
 
 The listener found 0.4.9 "small". Three cheap changes with no new physics; each has its

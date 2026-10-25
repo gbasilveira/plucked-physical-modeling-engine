@@ -6,6 +6,23 @@ Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano
 
 ## Current listening diagnosis (2026-10-25)
 
+0.5.1 replaces the 88 private bridges by one shared, bidirectionally coupled soundboard
+(the lowest 128 modes are mechanically coupled to every simulated string through the same
+passive scheme as `BridgePoint`; the 512 modes still radiate), with key-dependent bridge points
+on an assumed bass + treble bridge curve of the nominal plate, and simulates unstruck strings
+whose dampers are lifted (pedal, held key, treble above F#6) so they ring sympathetically
+(setters `setSharedBoard`, `setGrandBridgeGeometry`, `setSympatheticStrings/Limit`;
+`--previous` is 0.5.0 bit-for-bit). Many-string energy tests pass (lossless drift 2e-14).
+Offline cost is 2.8x higher on the pedal-heavy Chopin excerpt (93 s vs 33 s); plug-ins cap
+sympathetic strings at 8. The reference low-band deficit (C4/C6, 125-500 Hz) is **not** fixed:
+isolated Salamander notes have dampers down on all other keys, so only the undamped treble can
+ring, and what supplies that low-frequency energy in the recordings is unidentified. Listener
+confirmation pending. The board is still a rectangle, bridge curve and wake threshold are
+assumptions. Next (0.5.2): string tension modulation (A7 code), then a ribbed grand-outline
+board from the B2 FEM compiler and its radiation table. Details in `piano-v4/README.md`.
+
+## Previous diagnosis (2026-10-25, 0.5.0)
+
 0.5.0 (listener: 0.4.9 sounds "small") makes three no-new-physics changes: runtime voice
 limit (offline 88, plug-ins 12; Chopin steals 13 -> 0), una corda on CC67 through the
 engine's grand soft-pedal map (engine-default parameters assumed; the Chopin MIDI has no
@@ -73,7 +90,7 @@ experiments. These are hypotheses, not a claim that one change guarantees realis
 | 3 | Bridge mobility and feedback | Compare fixed-end/body-filter experiment with an energy-checked coupled bridge; measure partial decay changes | Implemented in MVP 4; listener reports more piano-like but still a weak synthetic harpsichord |
 | 4 | Appropriate unison string groups | Coupled two-/three-string notes versus single string; beat frequencies and decay envelopes; coherent hammer/string mass treatment | Prototype implemented in 0.4.4; shared hammer/bridge, split total felt stiffness, declared tuning spread; listening and reference calibration pending |
 | 5 | Hammer/attack calibration | Soft/medium/hard strikes; contact duration, force peak and initial partial distribution versus a cited reference | Planned |
-| 6 | Sympathetic strings and pedal behaviour | Pedal up/down, released keys, repeated notes, chords; CPU/voice accounting | Planned |
+| 6 | Sympathetic strings and pedal behaviour | Pedal up/down, released keys, repeated notes, chords; CPU/voice accounting | Implemented in 0.5.1 (shared board, unstruck strings with lifted dampers, key-dependent bridge points); listening pending |
 
 For step 2, the AudioLabs Yamaha C3 measurement page was inspected. It documents
 the procedure and offers audio demonstrations but no linked downloadable soundboard

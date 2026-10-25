@@ -1,9 +1,9 @@
-Piano MVP 4 - Full pedal (LV2 0.5.0, Linux)
+Piano MVP 4 - Shared soundboard (LV2 0.5.1, Linux)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Full pedal" under instruments/synthesizers.
+Look for "Piano MVP 4 - Shared soundboard" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
@@ -13,7 +13,6 @@ This is the same experimental piano model as the CLAP version; format conversion
 does not change its timbre. See mvp/piano-v4/README.md in the source repository.
 The instrument is limited to 12 active keys. Bass uses one or two strings;
 the middle and upper registers use three, sharing one hammer and bridge per key.
-Cross-key sympathetic ringing is still deferred.
 Version 0.4.6 adds a passive diagonal approximation to losses into soundboard
 modes omitted from the real-time mechanical bridge. The radiation model is unchanged.
 Version 0.4.8 adds softer felt in the bass/middle registers, guided by comparisons
@@ -26,6 +25,15 @@ response (knock, low modes, sympathetic ringing) is unchanged and still lacking.
 
 Version 0.5.0 adds CC67 una corda (applies to notes struck while down), and keys from
 F#6 (MIDI 90) upward have no dampers (ring on after note-off). Voice limit stays 12.
+
+Version 0.5.1 couples all strings to one shared soundboard (the lowest 128 board modes
+are shared by every string and act in both directions), with a different bridge position
+for each key, and simulates strings whose dampers are lifted (sustain pedal down, keys
+from F#6 up) even when not struck, so they ring sympathetically. CPU: at most 8
+sympathetic strings are simulated in this plug-in (plus the 12 struck keys); a pedalled
+chord is about 6 percent slower than 0.5.0. Strings start from rest when they wake. The
+board is a nominal rectangular plate with an assumed bridge curve; none of this is
+measured. See mvp/piano-v4/README.md ("Update 0.5.1").
 
 Source, listening comparisons and licence:
 https://github.com/gbasilveira/plucked-physical-modeling-engine/tree/mvp/piano

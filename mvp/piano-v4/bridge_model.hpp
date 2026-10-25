@@ -14,4 +14,8 @@ double residualBridgeConductance(double omega, double pan) noexcept;
 // Weak-coupling diagonal approximation to energy lost into omitted board modes.
 // Non-audio thread. Leaves the explicit 128-mode coupling in place.
 pme::Status applyResidualBridgeLoss(pme::StringModes& modes, double pan);
+// 0.5.1: same projection with explicit participations phi[i] of board modes
+// kLocalBridgeModes..511 at the key's bridge point (row pointer + kLocalBridgeModes).
+double residualBridgeConductance(double omega, const double* phiTail) noexcept;
+pme::Status applyResidualBridgeLoss(pme::StringModes& modes, const double* phiTail);
 }

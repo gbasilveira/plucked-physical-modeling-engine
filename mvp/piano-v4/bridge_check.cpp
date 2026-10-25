@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "bridge_model.hpp"
+#include "grand_board.hpp"
 #include "preset.hpp"
 #include "pme/bridge/bridge_point.hpp"
 #include "pme/bridge/modal_segment.hpp"
@@ -9,6 +10,7 @@
 #include <iostream>
 #include <numbers>
 #include <stdexcept>
+#include <vector>
 
 static void require(bool ok, const char* why) { if (!ok) throw std::runtime_error(why); }
 static void check(int key, double fs, bool lossless) {
@@ -55,6 +57,71 @@ static void check(int key, double fs, bool lossless) {
     std::cout << "key " << key << ", " << fs << " Hz, lossless=" << lossless
               << ": max deviation " << deviation << ", final/initial " << final << '\n';
 }
+// 0.5.1: many strings on one shared board, same partitioned scheme as BridgePoint (forces F^n
+// from q^n and w^n; modes advance; strings see delta_tt w^n). Energy = coupled board modes +
+// every string segment. Only the key-60 string is excited; octave and fifth neighbours must
+// receive energy through the board.
+static void sharedCheck(bool lossless, bool grand) {
+    const double fs = 48000;
+    const int keys[] = {36, 48, 55, 60, 64, 67, 72, 84};
+    constexpr int n = 8;
+    std::vector<double> phi; piano_mvp_v4::buildParticipation(grand, phi);
+    piano_mvp_v4::GrandBoard board;
+    require(board.configure(fs, phi, piano_mvp_v4::kLocalBridgeModes, lossless, false), "board configure failed");
+    std::vector<pme::bridge::ModalSegment<double>> segments(n);
+    for (int s = 0; s < n; ++s) {
+        pme::StringModes modes;
+        const auto preset = piano_mvp_v2::parametersForKey(keys[s]);
+        if (lossless) {
+            auto p = preset.string;
+            require(pme::compileString(p,fs,std::min(12000.0,fs*0.42),{},modes) == pme::Status::Ok, "string compile failed");
+        } else require(piano_mvp_v2::compilePresetString(preset,fs,modes) == pme::Status::Ok, "string compile failed");
+        require(segments[s].configure(modes,pme::BridgeEnd::AtL) == pme::Status::Ok, "segment configure failed");
+    }
+    for (std::size_t m = 0; m < segments[3].modeCount(); ++m)
+        segments[3].qV()[m] = 1e-5/std::pow(static_cast<double>(m+1),2);
+    double w[n]{}, dwPrev[n]{}, dw[n]{};
+    double sympathetic = 0;
+    const auto step = [&] {
+        for (int s = 0; s < n; ++s) board.addForce(keys[s]-21, segments[s].forceV(w[s]));
+        board.advanceCoupled();
+        for (int s = 0; s < n; ++s) {
+            const std::size_t port = keys[s]-21;
+            dw[s] = board.portIncrement(port); w[s] = board.portDisplacement(port);
+            segments[s].advance((dw[s]-dwPrev[s]) * fs * fs, 0);
+            dwPrev[s] = dw[s];
+        }
+    };
+    const auto energy = [&](double* own = nullptr) {
+        double e = board.coupledEnergy(), others = 0;
+        for (int s = 0; s < n; ++s) {
+            const double se = segments[s].energy(w[s], dw[s], 0, 0);
+            e += se; if (s != 3) others += se;
+        }
+        if (own) *own = others;
+        return e;
+    };
+    step(); const double initial = energy();
+    require(initial > 0, "non-positive shared energy");
+    double deviation = 0, maximum = initial;
+    for (int i = 0; i < 40000; ++i) {
+        step();
+        if (i%32 == 0) {
+            double others; const double e = energy(&others);
+            require(std::isfinite(e) && e >= 0, "unstable or negative shared-board energy");
+            maximum = std::max(maximum, e);
+            deviation = std::max(deviation, std::abs(e/initial-1));
+            sympathetic = std::max(sympathetic, others/initial);
+        }
+    }
+    const double final = energy()/initial;
+    if (lossless) require(deviation < 1e-6, "lossless shared-board energy drift");
+    else require(maximum/initial < 1+1e-6 && final < 1, "damped shared board injects net energy");
+    require(sympathetic > 1e-9, "no energy reached the other strings through the board");
+    std::cout << "shared board, 8 strings, lossless=" << lossless << " grand=" << grand << ": max deviation "
+              << deviation << ", final/initial " << final << ", peak energy in the 7 unexcited strings "
+              << sympathetic << " of initial\n";
+}
 int main() {
     pme::simd::ScopedFlushDenormals denormals;
     try {
@@ -91,5 +158,6 @@ int main() {
         }
         for (int key : {21,60,84}) for (bool lossless : {false,true}) check(key,48000,lossless);
         for (double fs : {44100.,96000.}) for (bool lossless : {false,true}) check(60,fs,lossless);
+        for (bool lossless : {true,false}) for (bool grand : {false,true}) sharedCheck(lossless, grand);
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

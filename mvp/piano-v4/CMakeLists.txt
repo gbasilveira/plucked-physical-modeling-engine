@@ -13,7 +13,7 @@ add_library(piano_core STATIC
   ${CORE}/engine/src/bridge/terms.cpp
   ${CORE}/engine/src/nonlinear/sav.cpp
   ${CORE}/engine/src/exciters/hammer.cpp
-  piano.cpp bridge_model.cpp string_loss.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
+  piano.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v2/preset.cpp
   ${CORE}/engine/src/simd/denormals.cpp)
 target_include_directories(piano_core PUBLIC ${CORE}/engine/include ${CMAKE_CURRENT_SOURCE_DIR})
@@ -26,6 +26,8 @@ add_executable(piano-render render.cpp)
 target_link_libraries(piano-render PRIVATE piano_core)
 add_executable(piano-midi-render midi_render.cpp)
 target_link_libraries(piano-midi-render PRIVATE piano_core)
+add_executable(piano-sympathetic-demo sympathetic_demo.cpp)
+target_link_libraries(piano-sympathetic-demo PRIVATE piano_core)
 add_executable(piano-hammer-audit hammer_audit.cpp)
 target_link_libraries(piano-hammer-audit PRIVATE piano_core)
 enable_testing()

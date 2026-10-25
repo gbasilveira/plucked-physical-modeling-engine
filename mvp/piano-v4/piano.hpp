@@ -5,6 +5,8 @@
 #include "pme/exciters/hammer.hpp"
 #include "pme/bridge/terms.hpp"
 #include "soundboard.hpp"
+#include "grand_board.hpp"
+#include "sympathetic_string.hpp"
 #include "bridge_mass.hpp"
 
 namespace piano_mvp_v4 {
@@ -59,6 +61,41 @@ public:
         if (ready_) return false;
         undampedTreble_ = enabled; return true;
     }
+    // 0.5.1, all before prepare(); each default on and independent (see README 0.5.1).
+    // Shared board: one bidirectionally coupled soundboard for all strings (needs bridge
+    // feedback; off reproduces the 0.5.0 private per-key bridges bit-for-bit).
+    bool setSharedBoard(bool enabled) noexcept {
+        if (ready_) return false;
+        sharedBoard_ = enabled; return true;
+    }
+    // Key-dependent bridge points on the bass/treble bridge curve (off: 0.5.0 pan blend).
+    // Only affects the shared board.
+    bool setGrandBridgeGeometry(bool enabled) noexcept {
+        if (ready_) return false;
+        grandGeometry_ = enabled; return true;
+    }
+    // Simulate unstruck strings whose dampers are lifted (pedal, held key, undamped treble) when
+    // the board moves their bridge point. Only affects the shared board.
+    bool setSympatheticStrings(bool enabled) noexcept {
+        if (ready_) return false;
+        sympathetic_ = enabled; return true;
+    }
+    // Largest number of simultaneously simulated unstruck strings, 0..88 (default 88).
+    bool setSympatheticLimit(int n) noexcept {
+        if (ready_ || n < 0 || n > maxPolyphony) return false;
+        sympLimit_ = n; return true;
+    }
+    // Plug-in cap on sympathetic strings (CPU, README 0.5.1).
+    static constexpr int pluginSympatheticLimit = 8;
+    // Board bridge-point speed (m/s) above which a lifted, idle string starts to be simulated,
+    // and below which (half of it) an idle sympathetic string may go back to sleep. Assumption.
+    static constexpr double wakeVelocity = 1e-4;
+    // Unstruck strings keep only vertical modes below this (the board is coupled up to 1.87 kHz).
+    static constexpr double sympatheticCutHz = 2000.0;
+    // Lift the damper of a key without striking it (diagnostic/test; noteOff releases it).
+    void liftDamper(int key) noexcept {
+        if (ready_ && key >= 21 && key <= 108) voices_[key - 21].held = true;
+    }
     static int stringsForKey(int key) noexcept {
         return key <= 32 ? 1 : (key <= 51 ? 2 : 3);
     }
@@ -75,7 +112,13 @@ public:
     void softPedal(bool down) noexcept { unaCordaDown_ = unaCordaEnabled_ && down; }
     bool softPedalDown() const noexcept { return unaCordaDown_; }
     void sample(float& left, float& right) noexcept;
-    int activeVoices() const noexcept;
+    int activeVoices() const noexcept;             // struck (hammer-driven) voices
+    int sympatheticVoices() const noexcept;        // simulated but never struck since waking
+    const GrandBoard& board() const noexcept { return board_; }
+    bool sharedBoardActive() const noexcept { return shared_; }
+    bool voiceActive(int key) const noexcept { return key >= 21 && key <= 108 && voices_[key-21].active; }
+    // Last bridge force (N) this key's strings put on the board (shared board only).
+    double portForce(int key) const noexcept { return key >= 21 && key <= 108 ? voices_[key-21].force : 0.0; }
     std::uint64_t numericalFaults() const noexcept { return numericalFaults_; }
     std::uint64_t voiceSteals() const noexcept { return voiceSteals_; }
     double peakBridgeMotion() const noexcept { return peakBridgeMotion_; }
@@ -89,12 +132,23 @@ private:
         std::array<pme::SegmentBridgeTerms, 3> terms;
         pme::exciters::StruckNote<double> note;
         pme::bridge::BridgePoint<double> bridge;
-        bool active{}, held{}, undamped{};
+        bool active{}, held{}, undamped{}, struck{}, sympathetic{};
+        double force{};     // F^n of this voice's strings on the shared board (0.5.1)
+        SympatheticString light;        // unstruck-string model (sympathetic voices)
+        double lightW{}, dwPrev{};      // its bridge displacement since waking; last board increment
         std::uint64_t age{}, quiet{};
         double release{1.0}, pan{};
     };
     std::array<Voice, 88> voices_;
     piano_mvp_v3::Soundboard soundboard_;
+    GrandBoard board_;
+    bool sharedBoard_{true}, grandGeometry_{true}, sympathetic_{true}, shared_{};
+    int sympLimit_{maxPolyphony};
+    std::uint64_t sampleClock_{};
+    void sampleShared(float& left, float& right) noexcept;
+    void wakeSympathetic() noexcept;
+    void primeBridge(Voice& v, int port) noexcept;
+    std::vector<float> coincidence_;   // [candidate*88 + sounding] harmonic coincidence score
     bool feedback_{true};
     bool unisons_{true};
     bool residualLoss_{true};
