@@ -135,3 +135,36 @@ plug-in, using the same pinned CLAP 1.2.10 headers as MVP 2/3.
 The body and preset implementations are shared with MVPs 3 and 2 respectively.
 Existing versions and audio are unchanged. CMake caches and object files are not
 committed; Linux test executables, plug-in and listening files are included.
+
+## LV2 version
+
+`out/piano-mvp-v4/piano-mvp-v4-lv2-linux-x86_64.zip` contains a complete Linux
+LV2 bundle of the same instrument. Extract it into `~/.lv2/` and restart/rescan
+Carla or Ardour. The directory must be `~/.lv2/piano-mvp-v4.lv2/`, containing
+the `.so` binary and both `.ttl` files together. Do not install just the `.so`.
+It is listed as **Piano MVP 4 - Bridge feedback**. Route MIDI into it and connect
+the two audio outputs to playback. There is no custom GUI; use the host's keyboard
+or a MIDI controller. The format change does not alter the sound model.
+
+The LV2 bundle has one MIDI Atom Sequence input and two float audio outputs, and
+requires the host's standard `urid:map` feature. It accepts default or explicit
+frame-based event timestamps; MIDI events are applied at their sample offsets.
+Unsupported time units, truncated events and MIDI messages are ignored safely.
+Activation resets the instrument. CLAP and LV2 share the MIDI dispatcher and core.
+
+The LV2 callback is tested against the core sample by sample, with identical
+float output at 44.1/48/96 kHz for velocity, timed notes, sustain, panic and reset.
+The test also checks malformed events and C++ operator-new allocations during
+playback. Metadata passes `lv2_validate`. Carla's installed native discovery tool
+recognises the bundle as a synthesizer with one MIDI input and two audio outputs;
+this is discovery verification, not a claim of interactive GUI/audio-device testing.
+
+The existing standalone build now requires LV2 development headers on Linux by
+default. Set `-DPME_MVP_BUILD_LV2=OFF` to build only the renderer/CLAP without them.
+Use `-DLV2_INCLUDE_DIR=/path/to/include` for headers in a nonstandard location.
+Build and package with:
+
+```bash
+cmake --build out/piano-mvp-v4 --target piano-lv2-package -j2
+ctest --test-dir out/piano-mvp-v4 -R piano-lv2 --output-on-failure
+```

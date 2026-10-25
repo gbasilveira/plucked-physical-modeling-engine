@@ -8,7 +8,7 @@ Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano
 | --- | --- | --- | --- |
 | 1 | Published string/hammer inputs | Source provenance, compiled tensions and loss projection, 88-key tests | Implemented in MVP 2; listener still reports electric-guitar character |
 | 2 | Remove output saturation and direct force mix; add explicit force-to-pressure soundboard path | Same middle-C excitation through old, linear-baseline and body-only paths; matched-level WAVs and metrics; linearity/impulse/stability tests | Implemented in MVP 3; listening feedback pending |
-| 3 | Bridge mobility and feedback | Compare fixed-end/body-filter experiment with an energy-checked coupled bridge; measure partial decay changes | Implemented in MVP 4 as local per-key feedback; listening pending |
+| 3 | Bridge mobility and feedback | Compare fixed-end/body-filter experiment with an energy-checked coupled bridge; measure partial decay changes | Implemented in MVP 4; listener reports more piano-like but still a weak synthetic harpsichord |
 | 4 | Appropriate unison string groups | Coupled two-/three-string notes versus single string; beat frequencies and decay envelopes; coherent hammer/string mass treatment | Planned |
 | 5 | Hammer/attack calibration | Soft/medium/hard strikes; contact duration, force peak and initial partial distribution versus a cited reference | Planned |
 | 6 | Sympathetic strings and pedal behaviour | Pedal up/down, released keys, repeated notes, chords; CPU/voice accounting | Planned |
@@ -62,6 +62,28 @@ natural or too dead, which register improves, and whether the attack is still
 plucked/electric. If decay is wrong, calibrate the bridge/board before stacking
 unison effects on top. If decay improves but the identity remains thin, step 4 is
 the next controlled comparison.
+
+New listener feedback: the sound is closer, but now resembles a synthesised
+harpsichord with a weak/thin character. Treat this as a hypothesis about attack,
+decay and fullness, not proof of one faulty parameter. Before adding unison,
+prioritise a controlled attack/decay calibration:
+
+1. Render the same middle note at soft/medium/strong velocities, keeping a fixed
+   playback gain for dynamics comparisons. Check hammer contact duration, peak
+   force and early partial distribution; felt dissipation is still an MVP assumption.
+2. Compare fixed bridge and current feedback, plus an explicitly characterised
+   alternative bridge mobility. Check whether energy is leaving the string too
+   quickly, especially in the treble. Do not hide this with gain normalisation or
+   sustain/reverb effects.
+3. Use an appropriately licensed real-piano reference at the same pitch/dynamic
+   when available. Separate numerical correctness from a perceptual match.
+4. Once attack and decay are acceptable, compare physical two-/three-string unison
+   groups sharing a hammer, accounting for the string/hammer mass ratio, to address
+   fullness and aftersound. Avoid arbitrary chorus as a substitute for coupling.
+
+An LV2 wrapper of MVP 4 is supplied for testing in the listener's installed host;
+its MIDI/audio equivalence is checked independently. This is a format change and
+does not count as a new timbre iteration.
 
 Publish each completed experiment with a short change note, a single-note A/B,
 the same melody/chord demo, reproducible commands and explicit approximations.

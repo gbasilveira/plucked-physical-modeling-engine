@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+@prefix lv2: <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<https://gbasilveira.github.io/plucked-physical-modeling-engine/mvp/piano-v4>
+    a lv2:Plugin ;
+    lv2:binary <piano-mvp-v4.so> ;
+    rdfs:seeAlso <piano.ttl> .

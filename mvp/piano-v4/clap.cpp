@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include <clap/clap.h>
 #include "piano.hpp"
+#include "midi.hpp"
 #include "pme/simd/denormals.hpp"
 #include <cstring>
 
@@ -16,18 +17,6 @@ struct Instance {
     bool active{}, processing{};
 };
 Instance& self(const clap_plugin_t* p) { return *static_cast<Instance*>(p->plugin_data); }
-void midi(piano_mvp_v4::Piano& p, const std::uint8_t* m) noexcept {
-    switch (m[0] & 0xf0) {
-        case 0x90: p.noteOn(m[1], m[2] / 127.0); break;
-        case 0x80: p.noteOff(m[1]); break;
-        case 0xb0:
-            if (m[1] == 64) p.sustain(m[2] >= 64);
-            if (m[1] == 120) p.reset();
-            if (m[1] == 123) for (int k = 21; k <= 108; ++k) p.noteOff(k);
-            if (m[1] == 121) p.sustain(false);
-            break;
-    }
-}
 clap_process_status CLAP_ABI process(const clap_plugin_t* plugin, const clap_process_t* block) {
     pme::simd::ScopedFlushDenormals denormals;
     auto& s = self(plugin);
@@ -47,7 +36,7 @@ clap_process_status CLAP_ABI process(const clap_plugin_t* plugin, const clap_pro
             if (e->space_id == CLAP_CORE_EVENT_SPACE_ID && e->type == CLAP_EVENT_MIDI &&
                 e->size >= sizeof(clap_event_midi_t)) {
                 const auto* m = reinterpret_cast<const clap_event_midi_t*>(e);
-                if (m->port_index == 0) midi(s.piano, m->data);
+                if (m->port_index == 0) piano_mvp_v4::dispatchMidi(s.piano,m->data,3);
             }
             ++next;
         }
