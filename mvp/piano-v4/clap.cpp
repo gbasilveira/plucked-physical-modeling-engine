@@ -9,8 +9,8 @@ namespace {
 constexpr const char* features[] = {CLAP_PLUGIN_FEATURE_INSTRUMENT, CLAP_PLUGIN_FEATURE_SYNTHESIZER,
                                    CLAP_PLUGIN_FEATURE_STEREO, nullptr};
 const clap_plugin_descriptor_t descriptor = {
-    CLAP_VERSION, "org.pme.experimental.piano-mvp-v4", "Piano MVP 4 — Bridge feedback", "PME",
-    "", "", "", "0.4.0", "Experimental moving-bridge piano: 88 keys, 16 voices, sustain", features};
+    CLAP_VERSION, "org.pme.experimental.piano-mvp-v4", "Piano MVP 4 — Bridge loss", "PME",
+    "", "", "", "0.4.6", "Experimental coupled-unison piano: residual bridge loss, 12 voices", features};
 struct Instance {
     clap_plugin_t plugin{};
     piano_mvp_v4::Piano piano;

@@ -1,0 +1,18 @@
+{
+  "order": "single 0\u20135 seconds; unisons 5.5\u201310.5 seconds",
+  "matching": "RMS 0.05\u20130.25 s at -24 dBFS; decay left unchanged",
+  "measurements": [
+    {
+      "file": "single-C4.wav",
+      "attack_rms": 0.013734261282046521,
+      "gain_db": 13.243893895976722,
+      "early_late_db": -9.922077707239366
+    },
+    {
+      "file": "unisons-C4.wav",
+      "attack_rms": 0.019439534837143002,
+      "gain_db": 10.226282627782304,
+      "early_late_db": -14.254886559150544
+    }
+  ]
+}

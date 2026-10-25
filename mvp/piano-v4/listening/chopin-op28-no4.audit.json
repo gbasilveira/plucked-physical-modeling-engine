@@ -1,0 +1,99 @@
+{
+  "piece": "Chopin: Prelude in E minor, Op. 28 No. 4",
+  "midi_author": "Bernd Krueger",
+  "source_sha256": "8b8984ae232642ff1979b84af642d5d5db60f7f7f20b3745f2d4b4f17cdaf908",
+  "source_url": "https://commons.wikimedia.org/wiki/File:Chopin_-_Prelude_in_E_Minor.mid",
+  "license": "CC-BY-SA-3.0-DE",
+  "mido_version": "1.3.3",
+  "midi_format": 1,
+  "ticks_per_beat": 480,
+  "tracks": 9,
+  "total_note_ons": 604,
+  "tempo_changes": 335,
+  "sustain_events": 133,
+  "max_simultaneously_held_keys": 7,
+  "unmatched_note_offs": 0,
+  "overlapping_same_key_ons": [
+    [
+      3366083,
+      52
+    ],
+    [
+      3550823,
+      52
+    ],
+    [
+      3925620,
+      52
+    ]
+  ],
+  "overlap_note": "three overlaps occur after 64 s, outside all rendered/preroll events",
+  "note_velocity_range": [
+    16,
+    92
+  ],
+  "excerpt_start_seconds": 40,
+  "excerpt_end_seconds": 64,
+  "tail_seconds": 2,
+  "wav_duration_seconds": 26,
+  "preroll": "simulate source from time zero; export from 40 s",
+  "excerpt_note_ons": 174,
+  "excerpt_velocity_range": [
+    18,
+    92
+  ],
+  "excerpt_key_range": [
+    35,
+    84
+  ],
+  "midi_edits": "none; preserve notes, velocities, tempo map and sustain; round timestamps to 48 kHz",
+  "ignored_mixer_controls": [
+    [
+      0,
+      7,
+      100
+    ],
+    [
+      0,
+      10,
+      64
+    ],
+    [
+      0,
+      91,
+      127
+    ],
+    [
+      0,
+      7,
+      100
+    ],
+    [
+      0,
+      10,
+      64
+    ],
+    [
+      0,
+      7,
+      127
+    ],
+    [
+      0,
+      10,
+      64
+    ],
+    [
+      0,
+      7,
+      127
+    ],
+    [
+      0,
+      10,
+      64
+    ]
+  ],
+  "ignored_control_explanation": "CC7 volume, CC10 pan and CC91 external reverb are not synthesizer controls; source retained unchanged",
+  "event_schedule_sha256": "d22f176c7cefd58b51846d7a732b98433be3cfb1c464d35813af91fa5684f8d8"
+}

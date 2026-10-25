@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <numbers>
 #include <stdexcept>
 
 static void require(bool ok, const char* why) { if (!ok) throw std::runtime_error(why); }
@@ -57,6 +58,37 @@ static void check(int key, double fs, bool lossless) {
 int main() {
     pme::simd::ScopedFlushDenormals denormals;
     try {
+        for (double fs : {44100.,48000.,96000.}) {
+            pme::StringModes modes;
+            require(piano_mvp_v2::compilePresetString(piano_mvp_v2::parametersForKey(60),fs,modes)
+                    ==pme::Status::Ok,"residual test preset failed");
+            const auto before = modes;
+            require(piano_mvp_v4::applyResidualBridgeLoss(modes,0.5)==pme::Status::Ok,
+                    "residual loss compilation failed");
+            require(modes.tension==before.tension && modes.omega==before.omega,
+                    "residual loss changed string pitch/geometry");
+            require(modes.sigma[0]-before.sigma[0]<0.01,
+                    "omitted high modes excessively damp the fundamental");
+            bool highLoss=false;
+            for (std::size_t n=0;n<modes.omega.size();++n) {
+                require(modes.sigma[n]>=before.sigma[n],"residual bridge injected energy");
+                if (modes.omega[n]>2*std::numbers::pi*2000 &&
+                    modes.sigma[n]-before.sigma[n]>0.1) highLoss=true;
+                // An isolated string mode with these coefficients must lose energy.
+                double q=1e-5,u=0;
+                const auto& c=modes.oscV[n];
+                const double e0=u*u+c.omegaHat2*q*q;
+                for (int i=0;i<1000;++i) {
+                    const double delta=c.beta*u-c.kappa*q;
+                    q+=delta;u=delta;
+                }
+                // u here is a per-step displacement, so use compatible units.
+                const double e1=u*u*fs*fs+c.omegaHat2*q*(q-u);
+                require(std::isfinite(e1) && e1>=0 && e1<=e0*(1+1e-5),
+                        "residual modal oscillator is not passive");
+            }
+            require(highLoss,"missing high-frequency bridge loss");
+        }
         for (int key : {21,60,84}) for (bool lossless : {false,true}) check(key,48000,lossless);
         for (double fs : {44100.,96000.}) for (bool lossless : {false,true}) check(60,fs,lossless);
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }

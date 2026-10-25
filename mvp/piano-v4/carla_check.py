@@ -39,15 +39,24 @@ def main():
                 "https://gbasilveira.github.io/plucked-physical-modeling-engine/mvp/piano-v4",0,None,0):
                 raise RuntimeError(host.get_last_error())
             host.set_active(0,True)
-            host.send_midi_note(0,0,60,90)
-            peak = 0.0
-            for _ in range(100):
-                host.engine_idle()
-                peak = max(peak,host.get_output_peak_value(0,True),host.get_output_peak_value(0,False))
-                time.sleep(0.01)
-            host.send_midi_note(0,0,60,0)
-            if peak < 1e-5: raise RuntimeError("Actual Carla playback is silent")
-            print(f"PASS: real Carla host, MIDI note 60 velocity 90, peak {peak:.6f}")
+            peaks = []
+            for velocity in [32,72,112]:
+                host.set_active(0,False)
+                host.set_active(0,True)
+                time.sleep(0.03)
+                host.send_midi_note(0,0,60,velocity)
+                peak = 0.0
+                for _ in range(100):
+                    host.engine_idle()
+                    peak = max(peak,host.get_output_peak_value(0,True),host.get_output_peak_value(0,False))
+                    time.sleep(0.01)
+                host.send_midi_note(0,0,60,0)
+                peaks.append(peak)
+                print(f"Velocity {velocity}: actual Carla peak {peak:.6f}",flush=True)
+            if not (peaks[0]>1e-5 and peaks[0]<peaks[1]<peaks[2] and peaks[2]>2*peaks[0]):
+                raise RuntimeError("Actual Carla velocity response is flat or silent")
+            import math
+            print(f"PASS: actual Carla MIDI velocity, hard/soft peak difference {20*math.log10(peaks[2]/peaks[0]):.2f} dB")
         finally:
             host.remove_all_plugins()
             host.engine_close()

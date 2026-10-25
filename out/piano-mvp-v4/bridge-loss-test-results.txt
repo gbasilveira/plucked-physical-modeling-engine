@@ -1,0 +1,95 @@
+Start testing: Oct 25 11:31 WET
+----------------------------------------------------------
+1/5 Testing: piano-behaviour
+1/5 Test: piano-behaviour
+Command: "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/piano-check"
+Directory: /home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4
+"piano-behaviour" start time: Oct 25 11:31 WET
+Output:
+----------------------------------------------------------
+PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset
+<end of output>
+Test time =  19.43 sec
+----------------------------------------------------------
+Test Passed.
+"piano-behaviour" end time: Oct 25 11:32 WET
+"piano-behaviour" time elapsed: 00:00:19
+----------------------------------------------------------
+
+2/5 Testing: bridge-energy
+2/5 Test: bridge-energy
+Command: "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/bridge-check"
+Directory: /home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4
+"bridge-energy" start time: Oct 25 11:32 WET
+Output:
+----------------------------------------------------------
+key 21, 48000 Hz, lossless=0: max deviation 0.17598, final/initial 0.823822
+key 21, 48000 Hz, lossless=1: max deviation 7.21645e-15, final/initial 1
+key 60, 48000 Hz, lossless=0: max deviation 0.487023, final/initial 0.51255
+key 60, 48000 Hz, lossless=1: max deviation 9.10383e-15, final/initial 1
+key 84, 48000 Hz, lossless=0: max deviation 0.843351, final/initial 0.156294
+key 84, 48000 Hz, lossless=1: max deviation 6.99441e-15, final/initial 1
+key 60, 44100 Hz, lossless=0: max deviation 0.51346, final/initial 0.485805
+key 60, 44100 Hz, lossless=1: max deviation 1.19904e-14, final/initial 1
+key 60, 96000 Hz, lossless=0: max deviation 0.29935, final/initial 0.700453
+key 60, 96000 Hz, lossless=1: max deviation 5.77316e-15, final/initial 1
+<end of output>
+Test time =   0.10 sec
+----------------------------------------------------------
+Test Passed.
+"bridge-energy" end time: Oct 25 11:32 WET
+"bridge-energy" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/5 Testing: piano-clap-playback
+3/5 Test: piano-clap-playback
+Command: "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/piano-host-check" "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/piano-mvp-v4.clap"
+Directory: /home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4
+"piano-clap-playback" start time: Oct 25 11:32 WET
+Output:
+----------------------------------------------------------
+PASS: plug-in load, ports, MIDI offset, stereo float/double, reset; 10 s at voice limit in 9.40699 s (offline throughput, not a dropout test), peak 0.37136
+<end of output>
+Test time =   9.56 sec
+----------------------------------------------------------
+Test Passed.
+"piano-clap-playback" end time: Oct 25 11:32 WET
+"piano-clap-playback" time elapsed: 00:00:09
+----------------------------------------------------------
+
+4/5 Testing: piano-lv2-playback
+4/5 Test: piano-lv2-playback
+Command: "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/piano-lv2-check" "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/piano-mvp-v4.lv2/piano-mvp-v4.so"
+Directory: /home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4
+"piano-lv2-playback" start time: Oct 25 11:32 WET
+Output:
+----------------------------------------------------------
+44100 Hz: PASS bit-exact audio, offsets, velocity, sustain, panic, reset, malformed events; C++ run allocations=0
+48000 Hz: PASS bit-exact audio, offsets, velocity, sustain, panic, reset, malformed events; C++ run allocations=0
+96000 Hz: PASS bit-exact audio, offsets, velocity, sustain, panic, reset, malformed events; C++ run allocations=0
+<end of output>
+Test time =   1.88 sec
+----------------------------------------------------------
+Test Passed.
+"piano-lv2-playback" end time: Oct 25 11:32 WET
+"piano-lv2-playback" time elapsed: 00:00:01
+----------------------------------------------------------
+
+5/5 Testing: piano-lv2-metadata
+5/5 Test: piano-lv2-metadata
+Command: "/usr/bin/lv2_validate" "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/piano-mvp-v4.lv2/manifest.ttl" "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/piano-mvp-v4.lv2/piano.ttl"
+Directory: /home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4
+"piano-lv2-metadata" start time: Oct 25 11:32 WET
+Output:
+----------------------------------------------------------
+Skipping file /usr/lib64/lv2/core.lv2/lv2core.doap.ttl
+Found 0 errors among 84 files (checked 1920 restrictions)
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"piano-lv2-metadata" end time: Oct 25 11:32 WET
+"piano-lv2-metadata" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 25 11:32 WET

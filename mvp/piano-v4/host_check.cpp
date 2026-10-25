@@ -48,7 +48,8 @@ int main(int argc, char** argv) {
             energy += left[i] * left[i] + right[i] * right[i];
         }
         require(energy > 1e-6, "MIDI produced silence");
-        // Stress all voice slots for 10 audio seconds, including 64-bit output buffers.
+        // Request 16 keys (the instrument steals to its 12-key limit), then stress
+        // playback for 10 audio seconds, including 64-bit output buffers.
         plugin->reset(plugin);
         for (int key = 48; key < 64; ++key) {
             event.header.time = 0; event.data[1] = static_cast<std::uint8_t>(key);
@@ -73,7 +74,7 @@ int main(int argc, char** argv) {
         for (int i = 0; i < 512; ++i) require(l64[i] == 0 && r64[i] == 0, "reset not silent");
         plugin->stop_processing(plugin); plugin->deactivate(plugin); plugin->destroy(plugin);
         entry->deinit(); dlclose(library);
-        std::cout << "PASS: plug-in load, ports, MIDI offset, stereo float/double, reset; 10 s of 16 voices in "
+        std::cout << "PASS: plug-in load, ports, MIDI offset, stereo float/double, reset; 10 s at voice limit in "
                   << seconds << " s (offline throughput, not a dropout test), peak " << peak << '\n';
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

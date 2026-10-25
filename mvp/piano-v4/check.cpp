@@ -58,6 +58,10 @@ int main() {
         const double sigma1 = 0.18 + 2.6e-9 * 741 / middle.rhoA * std::pow(std::numbers::pi / 0.657, 2);
         require(std::abs(middle.sigma.front() - sigma1) < 1e-12, "source damping mapping failed");
         piano_mvp_v4::Piano p;
+        require(piano_mvp_v4::Piano::stringsForKey(21) == 1 &&
+                piano_mvp_v4::Piano::stringsForKey(33) == 2 &&
+                piano_mvp_v4::Piano::stringsForKey(60) == 3,
+                "unison register mapping failed");
         require(!p.prepare(0), "invalid sample rate accepted");
         for (double fs : {44100., 48000., 96000.}) {
             require(p.prepare(fs), "prepare failed");
@@ -69,6 +73,8 @@ int main() {
         }
         require(p.prepare(48000), "prepare failed");
         require(!p.setBridgeFeedback(false), "feedback changed after preparation");
+        require(!p.setUnisonStrings(false), "string group changed after preparation");
+        require(!p.setResidualBridgeLoss(false), "bridge loss changed after preparation");
         p.noteOn(60, 0.2); const double soft = energy(p, 12000);
         require(p.peakBridgeMotion() > 1e-12, "enabled bridge did not move");
         p.reset(); p.noteOn(60, 0.9); const double loud = energy(p, 12000);
@@ -79,7 +85,7 @@ int main() {
         require(p.activeVoices() == 0, "released note did not retire");
         p.reset();
         for (int key = 21; key <= 108; ++key) p.noteOn(key, 0.8);
-        require(p.activeVoices() == 16, "polyphony limit failed");
+        require(p.activeVoices() == piano_mvp_v4::Piano::maxVoices, "polyphony limit failed");
         require(energy(p, 24000) > 1e-5, "chord silent");
         for (int first : {21, 48, 81}) {
             p.reset();
@@ -91,6 +97,11 @@ int main() {
         require(fixed.setBridgeFeedback(false) && fixed.prepare(48000), "fixed control failed");
         fixed.noteOn(60,0.75); require(energy(fixed,12000) > 1e-5,"fixed control is silent");
         require(fixed.peakBridgeMotion() == 0,"fixed control bridge moved");
-        std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, velocity, sustain, release, 16 voices, reset\n";
+        piano_mvp_v4::Piano single;
+        require(single.setUnisonStrings(false) && single.prepare(48000), "single control failed");
+        single.noteOn(60,0.9);
+        const double singleEnergy = energy(single,12000);
+        require(std::abs(singleEnergy/loud-1) > 0.01, "unisons have no audible-path effect");
+        std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset\n";
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

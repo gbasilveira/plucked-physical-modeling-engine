@@ -15,13 +15,26 @@ bool Piano::prepare(double fs) {
         auto& v = voices_[i];
         v.pan = 0.2 + 0.6 * i / 87.0;
         const auto preset = piano_mvp_v2::parametersForKey(i + 21);
-        if (piano_mvp_v2::compilePresetString(preset, fs, v.modes) != pme::Status::Ok)
-            return false;
-        if (pme::compileBridgeTerms(v.modes, pme::BridgeEnd::AtL, v.terms) != pme::Status::Ok)
-            return false;
         pme::exciters::StruckNoteDesc d;
-        d.strings = {&v.modes};
+        const int count = unisons_ ? stringsForKey(i + 21) : 1;
+        for (int j = 0; j < count; ++j) {
+            auto string = preset;
+            // Small symmetric unison spread: an explicit tuning assumption, not
+            // measured data. Compile each string, including its own bridge terms.
+            const double cents = count == 1 ? 0 : (j - (count - 1) * 0.5) * 0.8;
+            string.string.f1Target *= std::exp2(cents / 1200.0);
+            if (piano_mvp_v2::compilePresetString(string, fs, v.modes[j]) != pme::Status::Ok)
+                return false;
+            if (feedback_ && residualLoss_ && applyResidualBridgeLoss(v.modes[j],v.pan)!=pme::Status::Ok)
+                return false;
+            if (pme::compileBridgeTerms(v.modes[j], pme::BridgeEnd::AtL, v.terms[j]) != pme::Status::Ok)
+                return false;
+            d.strings.push_back(&v.modes[j]);
+        }
         d.hammer = preset.hammer;
+        // Treat the tabulated felt stiffness as the whole contact patch and
+        // distribute it across strings. Keep one full-mass shared hammer.
+        d.hammer.K /= count;
         if (feedback_ && v.bridge.configure({},localBridgeModel(v.pan),fs) != pme::Status::Ok)
             return false;
         if (v.note.configure(d,fs,feedback_ ? &v.bridge : nullptr) != pme::Status::Ok) return false;
@@ -34,7 +47,7 @@ void Piano::reset() noexcept {
         v.note.reset(); v.bridge.reset(); v.active = v.held = false; v.age = v.quiet = 0; v.release = 1;
     }
     soundboard_.reset();
-    pedal_ = false; clock_ = 0; numericalFaults_ = 0; peakBridgeMotion_ = 0;
+    pedal_ = false; clock_ = 0; numericalFaults_ = 0; voiceSteals_ = 0; peakBridgeMotion_ = 0;
 }
 int Piano::activeVoices() const noexcept {
     int n = 0; for (const auto& v : voices_) n += v.active; return n;
@@ -43,10 +56,13 @@ void Piano::noteOn(int key, double velocity) noexcept {
     if (!ready_ || key < 21 || key > 108 || !std::isfinite(velocity)) return;
     if (velocity <= 0) { noteOff(key); return; }
     auto& v = voices_[key - 21];
-    if (!v.active && activeVoices() >= 16) {
+    if (!v.active && activeVoices() >= maxVoices) {
         Voice* oldest = nullptr;
         for (auto& x : voices_) if (x.active && (!oldest || x.age < oldest->age)) oldest = &x;
-        if (oldest) { oldest->active = oldest->held = false; oldest->note.reset(); oldest->bridge.reset(); }
+        if (oldest) {
+            ++voiceSteals_;
+            oldest->active = oldest->held = false; oldest->note.reset(); oldest->bridge.reset();
+        }
     }
     if (!v.active) { v.note.reset(); v.bridge.reset(); }
     if (v.note.launch(std::clamp(velocity, 0.001, 1.0), 0) != pme::Status::Ok) return;
@@ -66,13 +82,18 @@ void Piano::sample(float& left, float& right) noexcept {
         if (!v.held && !pedal_) {
             v.release *= releaseStep_;
             // MVP diagonal damper: remove energy from string coordinates only.
-            for (std::size_t n = 0; n < v.note.modeCount(0); ++n) {
-                s.q()[n] *= releaseStep_; s.u()[n] *= releaseStep_;
+            for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
+                const auto off = v.note.modeOffset(j);
+                for (std::size_t n = 0; n < v.note.modeCount(j); ++n) {
+                    s.q()[off+n] *= releaseStep_; s.u()[off+n] *= releaseStep_;
+                }
             }
         }
         const double w = feedback_ ? v.bridge.wV() : 0;
         peakBridgeMotion_ = std::max(peakBridgeMotion_,std::abs(w));
-        double force = pme::bridge::bridgeForce<double>(v.terms, s.q(), w);
+        double force = 0;
+        for (std::size_t j = 0; j < v.note.stringCount(); ++j)
+            force += pme::bridge::bridgeForce<double>(v.terms[j], s.q() + v.note.modeOffset(j), w);
         if (!std::isfinite(force)) {
             ++numericalFaults_; v.note.reset(); v.bridge.reset(); v.active = false; continue;
         }

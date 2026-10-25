@@ -1,0 +1,33 @@
+{
+  "notes": [
+    {
+      "midi_velocity": 32,
+      "peak": 0.015899658203125,
+      "rms": 0.003859547928617119,
+      "rms_dbfs": -48.26927123094219,
+      "attack_centroid_hz": 454.49901258805767,
+      "attack_energy_above_2khz": 0.010657287252090869
+    },
+    {
+      "midi_velocity": 72,
+      "peak": 0.0516357421875,
+      "rms": 0.010707629796272922,
+      "rms_dbfs": -39.40613304894596,
+      "attack_centroid_hz": 662.7671949668322,
+      "attack_energy_above_2khz": 0.06018807691274863
+    },
+    {
+      "midi_velocity": 112,
+      "peak": 0.102294921875,
+      "rms": 0.019976134518842538,
+      "rms_dbfs": -33.989770922350914,
+      "attack_centroid_hz": 800.451858131642,
+      "attack_energy_above_2khz": 0.10324008069159046
+    }
+  ],
+  "common_playback_gain_db": 16.704879300314715,
+  "hard_soft_rms_difference_db": 14.279500308591281,
+  "order": "32: 0\u20136 s; 72: 6.5\u201312.5 s; 112: 13\u201319 s",
+  "keyboard_velocity_verified": false,
+  "note": "Core/renderer velocity audit. Shared gain preserves dynamics. Hardware input requires a separate MIDI capture."
+}

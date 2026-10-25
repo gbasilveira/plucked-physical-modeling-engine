@@ -1,5 +1,88 @@
 # MVP 4: bridge feedback
 
+## Update 0.4.6: omitted bridge-mode losses and a fixed classical excerpt
+
+The radiation path already contained 512 soundboard modes, while the real-time
+mechanical bridge retained only the lowest 128 (through 1868.6 Hz). This truncation
+underrepresented the high-frequency energy escaping the strings. This iteration
+adds the **real mechanical admittance of modes 129–512** as a passive, diagonal
+string-loss approximation, calculated at each partial frequency during prepare.
+There is no extra audio EQ, modulation, reverb or playback-time modal work.
+
+For a mass-normalised board mode with drive phi, natural frequency Omega and
+decay sigma, the residual conductance at string frequency omega is:
+
+```
+Re Y = sum(phi^2 * 2*sigma*omega^2 /
+           ((Omega^2 - omega^2)^2 + (2*sigma*omega)^2))
+extra string sigma_n = rhoA * omega_n^2 * g_n^2 * Re Y / 2
+```
+
+The first expression is the dissipative part of the omitted modal mobility. The
+second equates average bridge power to the string mode's energy loss. It is a
+weak-coupling approximation: it does not reproduce the omitted modes' reactive
+pitch shift or cross-string correlations. The explicit low 128 modes still couple
+the strings. The underlying board is still nominal, not a measured piano; this
+is a test of the metallic-ring hypothesis, not a claim of calibrated realism.
+The modal-mobility approach is discussed by
+[Boutillon and Ege (2013)](https://ppi-lms.polytechnique.fr/xavier.boutillon/Annexes/Boutillon2013.pdf).
+
+For the same middle-C strike, energy above 2 kHz in the 0.5–1 s window falls from
+13.81% to 3.22% of that window's spectral energy. Initial 50–250 ms RMS changes by
+only −0.05 dB. These are signal measurements, not a listening assessment.
+
+New listening outputs use **Chopin, Prelude Op. 28 No. 4**, MIDI performance by
+Bernd Krueger. The [fixed source, licence and validation](listening/README.md)
+are committed. Listen to `out/piano-mvp-v4/chopin-prelude-latest.wav` (26 seconds),
+or compare `chopin-prelude-0.4.4.wav` and `chopin-prelude-0.4.6.wav`. Both use the
+same source notes, velocities 18–92, tempo map, pedal, excerpt, and fixed +12.04 dB
+listening gain. Source time 40–64 s is followed by a two-second release.
+`chopin-prelude-0.4.6-audit.json` records the source/event/WAV checksums and render
+reports. There are 13 voice steals under sustain in this excerpt at the unchanged
+12-key limit. This limitation is shared by both comparison versions.
+
+Reproduce with `render_classical.py` as described in the fixture README.
+`piano-midi-render ... --legacy` and the single-note renderer's `unisons` mode
+disable only this new residual loss, preserving the 0.4.4 model.
+The installed LV2 keeps its URI and is named **Piano MVP 4 - Bridge loss**.
+Previous demos and comparison files below remain labelled historical baselines.
+
+## Update 0.4.4: coupled unison strings
+
+This update supersedes the single-string description below. MIDI keys 21–32 use
+one string, 33–51 use two, and 52–108 use three. These register boundaries are
+explicit prototype assumptions, not measurements of the source piano. Each key
+uses one shared full-mass hammer and one shared moving bridge; every string has
+its own compiled modes, tension, loss terms and state. Felt stiffness is divided
+between the contacts, treating the published K as the whole contact patch. That
+interpretation still needs experimental calibration. The tuning offsets are
+±0.4 cents for pairs and −0.8/0/+0.8 cents for triples, also declared assumptions.
+
+All strings contribute to radiation and all are damped on key release. Cross-key
+sympathetic ringing and calibrated soundboard geometry remain unfinished. The
+soundboard, output gain and velocity curve are unchanged. Polyphony is now 12
+active keys to control the additional CPU cost; oldest keys are stolen at the limit.
+
+Listen to `out/piano-mvp-v4/coupled-unisons-demo.wav`, then
+`single-vs-unisons-C4.wav` (single at 0 s, new unisons at 5.5 s). Only the initial
+50–250 ms RMS is matched in that comparison; later decay is preserved. The
+early/late energy change is −9.92 dB for the single versus −14.25 dB for the group.
+This demonstrates changed decay, not verified acoustic-piano realism.
+`velocity-soft-medium-hard.wav` plays velocities 32/72/112 at 0/6.5/13 s using
+one common gain; the updated soft/hard RMS difference is 14.28 dB.
+
+Reproduce with `python3 mvp/piano-v4/unison_compare.py out/piano-mvp-v4` and
+`python3 mvp/piano-v4/velocity_check.py out/piano-mvp-v4`.
+The renderer's `single` mode retains the previous coupled single-string control.
+The installed LV2 keeps its existing URI and is named **Piano MVP 4 - Coupled unisons**.
+All five CTest checks pass, including 88 keys at 44.1/48/96 kHz and sample-exact
+LV2/core playback. Actual Carla peaks at velocities 32/72/112 were
+0.012155/0.042394/0.082726. At the 12-key limit, the offline plug-in stress test
+rendered 10 seconds in 9.38 seconds on this machine: headroom remains tight and
+this is not a guarantee of dropout-free live playback.
+
+## Original 0.4 baseline
+
 This iteration changes the mechanical interaction between the string and bridge.
 The bridge can now move under the string's force, and its acceleration feeds back
 into the string. Harmonics can therefore decay at different rates as energy enters
@@ -198,3 +281,14 @@ This needs an existing JACK/PipeWire server and Carla's Python backend/library;
 paths can be overridden with `--backend-dir` and `--library`. It is a local host
 integration check, not part of unattended CTest. After installing the updated
 bundle, reload the instrument or restart Carla to unload the old binary from memory.
+
+### Velocity audit
+
+`python3 mvp/piano-v4/velocity_check.py out/piano-mvp-v4` renders middle C at MIDI
+velocities 32, 72 and 112. `velocity-soft-medium-hard.wav` plays those strengths
+at 0, 6.5 and 13 seconds, using one common gain to preserve their level differences.
+Raw renders and `velocity-metrics.json` are retained alongside it. The measured
+soft/hard RMS difference is 14.41 dB; harder strikes also have more high-frequency
+attack energy. The actual Carla test now checks all three velocities too.
+This verifies the synthesis/host path, not the physical keyboard's transmitted
+velocities. No timbre or installed instrument binary changed in this audit.

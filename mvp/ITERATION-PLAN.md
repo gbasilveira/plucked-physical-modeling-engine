@@ -4,12 +4,45 @@ Goal: improve the acoustic-piano character, with one change at a time and audibl
 reproducible comparisons. A passing numerical test is not a listening endorsement.
 Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano`.
 
+## Current listening diagnosis (2026-10-25)
+
+0.4.6 now tests an identified mechanical/radiation mismatch: radiation used 512
+board modes but only 128 participated in mechanical energy transfer. The omitted
+modes' real admittance is projected into passive diagonal string loss; this leaves
+the low-mode shared bridge in place. Middle-C late high-partial energy is reduced,
+while initial RMS is almost unchanged. Listener confirmation is pending. No claim
+is made that this is the particular resonance heard by the listener.
+
+All following iterations should render the pinned expressive Chopin Op.28 No.4
+fixture in `piano-v4/listening/`, source 40–64 s plus 2 s release. Validate source
+and event-schedule SHA-256 with `prepare_classical.py --check` before rendering;
+use `render_classical.py`, preserve the fixed common gain and versioned WAV/audit,
+and publish the listening WAVs alongside changes. Next priorities are the listener's
+assessment of ringing, measured body/attack calibration, and reducing voice stealing
+without exhausting the real-time CPU budget.
+
+The listener reported 0.4.4 was closer, with an electronic-sounding resonance.
+0.4.4 implemented two-/three-string groups with a shared full-mass hammer and
+bridge, distributing the total assumed felt stiffness over the contacts. Bank's
+*Physics-Based Sound Synthesis of the Piano*, section 6.1.1, discusses the importance
+of hammer/string mass balance for a single-string surrogate:
+https://home.mit.bme.hu/~bank/thesis/pianomod.pdf .
+Velocity is verified through the core and actual Carla/LV2; the 0.4.4 common-gain
+soft/medium/hard clip has a 14.28 dB soft/hard RMS difference. Physical-controller
+velocity remains unverified because no live keyboard notes were captured.
+
+Then calibrate attack/contact and partial decay against a recorded acoustic-piano
+reference, and calibrate bridge mobility/radiation. Existing string lengths are
+published inputs; the board geometry remains nominal and unvalidated. Add cross-key
+sympathetic coupling after the isolated note is convincing; case/lid/room are later
+experiments. These are hypotheses, not a claim that one change guarantees realism.
+
 | Step | Experiment | Evidence before proceeding | State |
 | --- | --- | --- | --- |
 | 1 | Published string/hammer inputs | Source provenance, compiled tensions and loss projection, 88-key tests | Implemented in MVP 2; listener still reports electric-guitar character |
 | 2 | Remove output saturation and direct force mix; add explicit force-to-pressure soundboard path | Same middle-C excitation through old, linear-baseline and body-only paths; matched-level WAVs and metrics; linearity/impulse/stability tests | Implemented in MVP 3; listening feedback pending |
 | 3 | Bridge mobility and feedback | Compare fixed-end/body-filter experiment with an energy-checked coupled bridge; measure partial decay changes | Implemented in MVP 4; listener reports more piano-like but still a weak synthetic harpsichord |
-| 4 | Appropriate unison string groups | Coupled two-/three-string notes versus single string; beat frequencies and decay envelopes; coherent hammer/string mass treatment | Planned |
+| 4 | Appropriate unison string groups | Coupled two-/three-string notes versus single string; beat frequencies and decay envelopes; coherent hammer/string mass treatment | Prototype implemented in 0.4.4; shared hammer/bridge, split total felt stiffness, declared tuning spread; listening and reference calibration pending |
 | 5 | Hammer/attack calibration | Soft/medium/hard strikes; contact duration, force peak and initial partial distribution versus a cited reference | Planned |
 | 6 | Sympathetic strings and pedal behaviour | Pedal up/down, released keys, repeated notes, chords; CPU/voice accounting | Planned |
 
