@@ -6,12 +6,15 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <thread>
+#include <cstdlib>
 
 namespace piano_mvp_v4 {
 bool Piano::prepare(double fs) {
     ready_ = false;
     if (!std::isfinite(fs) || fs < 22050 || fs > 192000) return false;
     fs_ = fs;
+    if (!qualitySet_) tensionLimit_ = tensionMaxKey_;
     shared_ = sharedBoard_ && feedback_;
     leakyActive_ = leaky_ && shared_;
     std::vector<double> phi;
@@ -75,6 +78,10 @@ bool Piano::prepare(double fs) {
         if (v.note.configure(d,fs,feedback_ ? &v.bridge : nullptr,
                              useTension ? std::span<const double>(eas.data(), count) : std::span<const double>{}) != pme::Status::Ok)
             return false;
+        for (int j = 0; j < count; ++j) v.note.setTermCoefficients(static_cast<std::size_t>(j), v.terms[j].a, v.terms[j].tOverL);
+        v.note.setFastKernels(fast_); v.light.setFast(fast_); board_.setFast(fast_);
+        v.note.setTruncation(truncation_);
+        v.note.setTensionEnabled(i + 21 <= tensionLimit_);
     }
     if (shared_) {
         // Harmonic coincidence of key c's idle partials with key s's sounding partials (first 8
@@ -91,13 +98,32 @@ bool Piano::prepare(double fs) {
         if (!board_.configure(fs,std::move(phi),kLocalBridgeModes,false,bridgeMass_)) return false;
     } else if (!soundboard_.prepare(fs)) return false;
     bridgeMassFilter_.prepare(fs);
-    ready_ = true; reset(); return true;
+    sleepSamples_ = static_cast<std::uint64_t>(sleepSeconds_ * fs);
+    radThread_.stop(); pool_.stop();
+    ring_.keys.assign(std::size_t{ringSize} * 88, 0); ring_.count.assign(ringSize, 0);
+    ring_.g.assign(std::size_t{ringSize} * 88, 0.0);
+    ring_.outL.assign(ringSize, 0.0f); ring_.outR.assign(ringSize, 0.0f);
+    blockL_.assign(maxBlockFrames, 0.0f); blockR_.assign(maxBlockFrames, 0.0f);
+    produced_.store(0); consumed_.store(0); radLock_.store(0); radFault_.store(false);
+    ready_ = true; reset();
+    return startThreads();
 }
 void Piano::reset() noexcept {
+    idle_ = false; idleCount_ = 0;
+    // A reset inside a block (MIDI CC120) must not discard the radiation of frames already stepped: finish
+    // the pending records first (no-op outside a block).
+    while (consumed_.load(std::memory_order_acquire) < produced_.load(std::memory_order_relaxed))
+        if (!pumpRecords(~0u)) {
+#if defined(__x86_64__) || defined(__i386__)
+            _mm_pause();
+#endif
+        }
     for (auto& v : voices_) {
         v.note.reset(); v.note.clearDiagnostics(); v.bridge.reset(); v.light.reset(); v.lightW = v.dwPrev = 0;
         v.active = v.held = v.struck = v.sympathetic = false; v.age = v.quiet = 0; v.release = 1; v.force = 0;
+        v.slot = -1; v.peakForce = 0; v.sinceTruncation = 0;
     }
+    heldCount_.fill(0); slotLoad_.fill(0.0); slotsDirty_ = true;
     sampleClock_ = 0;
     soundboard_.reset(); if (shared_) board_.reset(); bridgeMassFilter_.reset();
     pedal_ = false; unaCordaDown_ = false; clock_ = 0; numericalFaults_ = 0; voiceSteals_ = 0; peakBridgeMotion_ = 0;
@@ -111,7 +137,10 @@ int Piano::sympatheticVoices() const noexcept {
 void Piano::noteOn(int key, double velocity) noexcept {
     if (!ready_ || key < 21 || key > 108 || !std::isfinite(velocity)) return;
     if (velocity <= 0) { noteOff(key); return; }
+    idle_ = false; idleCount_ = 0;
     auto& v = voices_[key - 21];
+    // Steal the oldest struck voices until a slot is free (a lower limit set at run time by
+    // setQuality may leave more voices than the limit sounding; they are released one per note-on).
     if (!v.struck && activeVoices() >= voiceLimit_) {
         Voice* oldest = nullptr;
         for (auto& x : voices_) if (x.active && x.struck && (!oldest || x.age < oldest->age)) oldest = &x;
@@ -119,6 +148,7 @@ void Piano::noteOn(int key, double velocity) noexcept {
             ++voiceSteals_;
             oldest->active = oldest->held = oldest->struck = oldest->sympathetic = false;
             oldest->note.reset(); oldest->bridge.reset(); oldest->force = 0;
+            heldCount_[static_cast<std::size_t>(oldest - voices_.data())] = 0;
         }
     }
     const bool wasSympathetic = shared_ && v.active && !v.struck;
@@ -139,10 +169,18 @@ void Piano::noteOn(int key, double velocity) noexcept {
     if (// SPEC-HAM Una corda: shift s = 1 while the soft pedal is down at launch (a hammer in
     // flight is never moved: setShift happens only inside launch()).
     v.note.launch(std::clamp(velocity, 0.001, 1.0), unaCordaDown_ ? 1.0 : 0.0) != pme::Status::Ok) return;
+    v.note.setTensionEnabled(key <= tensionLimit_); v.note.setTruncation(truncation_); v.note.setTensionFloor(tensionFloor_);
+    v.peakForce = 0; v.sinceTruncation = 0;
+    if (heldCount_[key - 21] < 255) ++heldCount_[key - 21];
     v.active = v.held = v.struck = true; v.sympathetic = false; v.release = 1; v.age = ++clock_; v.quiet = 0;
 }
 void Piano::noteOff(int key) noexcept {
-    if (key >= 21 && key <= 108) voices_[key - 21].held = false;
+    if (key < 21 || key > 108) return;
+    auto& n = heldCount_[key - 21];
+    // 0.5.4: overlapping note-ons of one key (note-on, note-on, note-off) release the key only when
+    // the last of them is released; the 0.5.3 flag released it at the first note-off.
+    if (heldCount_on_ && n > 1) { --n; return; }
+    n = 0; voices_[key - 21].held = false;
 }
 void Piano::primeBridge(Voice& v, int port) noexcept {
     v.bridge.setExternalVelocity(board_.portIncrement(port) * fs_);
@@ -250,80 +288,318 @@ void Piano::wakeSympathetic() noexcept {
     wake(speedLift, freeLift, rankLift);
     wake(speedLeak, freeLeak, rankLeak);
 }
-void Piano::sampleShared(float& left, float& right) noexcept {
+const Piano::Preset& Piano::preset(Quality q) noexcept {
+    //                                 voices sympathetic leaky tensionMaxKey truncation fast  sleepForce sleepSeconds
+    static const Preset live{16, 12, 6, 40, 1e-6, true, 1e-6, 0.5, 1e-10, true};
+    static const Preset balanced{24, 16, 8, 47, 1e-7, true, 3e-7, 0.75, 1e-12, true};
+    static const Preset full{maxPolyphony, maxPolyphony, maxPolyphony, 108, 0.0, false, 1e-7, 1.0, 1e-14, false};
+    return q == Quality::Live ? live : (q == Quality::Balanced ? balanced : full);
+}
+void Piano::setQuality(Quality q) noexcept { applyPreset(q, preset(q)); }
+void Piano::applyPreset(Quality q, const Preset& p) noexcept {
+    quality_ = q; qualitySet_ = true;
+    voiceLimit_ = p.voices; sympLimit_ = p.sympathetic; leakyLimit_ = p.leaky; tensionLimit_ = p.tensionMaxKey;
+    truncation_ = p.truncation; fast_ = p.fast; sleepForce_ = p.sleepForce; sleepSeconds_ = p.sleepSeconds; tensionFloor_ = p.tensionFloor; idleSkip_ = p.idleSkip; if (!idleSkip_) idle_ = false;
+    sleepSamples_ = static_cast<std::uint64_t>(p.sleepSeconds * fs_);
+    // Sounding notes keep their tension model (changed at the next note-on); truncation and fast sums
+    // apply to them from now on. Modes already truncated stay off until the key is struck again.
+    board_.setFast(fast_);
+    for (auto& v : voices_) { v.note.setFastKernels(fast_); v.light.setFast(fast_); v.note.setTruncation(truncation_); v.note.setTensionFloor(tensionFloor_); }
+}
+void Piano::warmUp() noexcept {
+    if (!ready_) return;
+    reset();
+    sustain(true);
+    for (int key : {28, 45, 60, 76, 100}) noteOn(key, 0.9);
+    std::array<float, maxBlockFrames> l{}, r{};
+    for (int b = 0; b < 40; ++b) {
+        blockBegin(maxBlockFrames);
+        for (std::uint32_t i = 0; i < maxBlockFrames; ++i) { if (b == 20 && i == 0) for (int key : {33, 52, 67, 88}) noteOn(key, 0.7); blockStep(); }
+        blockEnd(l.data(), r.data());
+    }
+    reset();
+}
+void Piano::stopThreads() noexcept {
+    radOn_ = false;
+    radThread_.stop();
+    pool_.stop();
+    // Anything still in the ring was produced by blockStep() and is drained by the caller's blockEnd().
+}
+bool Piano::startThreads() {
+    if (!ready_) return false;
+    if (!pool_.start(workerThreads_ > 1 ? workerThreads_ - 1 : 0)) return false;
+    if (workerThreads_ >= 1 && shared_ && !radThread_.running() && !radThread_.start(&Piano::radiationPump, this)) return false;
+    setActiveWorkers(activeWorkers_);
+    return true;
+}
+void Piano::setActiveWorkers(int n) noexcept {
+    // Worker 1 is the radiation thread (block interface), workers 2.. help with the voices.
+    if (n < 0) n = 0;
+    if (n > workerThreads_) n = workerThreads_;
+    activeWorkers_ = n;
+    radOn_ = n >= 1 && radThread_.running();
+    pool_.setActive(n > 0 ? n - 1 : 0);
+    slotsDirty_ = true;
+}
+int Piano::defaultWorkerThreads() noexcept {
+    const unsigned hw = std::thread::hardware_concurrency();
+    return hw > 1 ? static_cast<int>(std::min(3u, hw - 1)) : 0;
+}
+double Piano::voiceCost(const Voice& v) const noexcept {
+    if (v.struck) return 120.0 + 4.0 * static_cast<double>(v.note.activeModeTotal());
+    std::size_t n = 0; for (std::size_t j = 0; j < v.light.strings(); ++j) n += v.light.modeCount(j);
+    return 100.0 + 2.0 * static_cast<double>(n);
+}
+// Sticky assignment of every sounding voice to a pool slot (0 = audio thread): a new voice goes to
+// the least loaded slot, so a voice keeps its cache-warm state on one core. Deterministic, serial.
+void Piano::assignSlots() noexcept {
+    const int slots = pool_.active() + 1;
+    if (slotsDirty_) { slotLoad_.fill(0.0); for (auto& v : voices_) v.slot = -1; slotsDirty_ = false; }
+    for (int i = 0; i < 88; ++i) {
+        auto& v = voices_[i];
+        if (!v.active) {
+            if (v.slot >= 0) { slotLoad_[v.slot] -= v.slotCost; v.slot = -1; }
+            continue;
+        }
+        if (v.slot >= 0) continue;
+        int best = 0;
+        for (int s = 1; s < slots; ++s) if (slotLoad_[s] < slotLoad_[best]) best = s;
+        v.slot = best; v.slotCost = voiceCost(v); slotLoad_[best] += v.slotCost;
+    }
+}
+void Piano::voiceTask(void* self, int k) {
+    auto* p = static_cast<Piano*>(self);
+    p->voiceStep(p->ports_[k]);
+}
+// One port's string update (phase 2). Touches only this voice and reads the board's coupled-mode
+// state, so the voices of a sample are independent tasks.
+void Piano::voiceStep(int port) noexcept {
+    auto& v = voices_[port];
+    const double dw = board_.portIncrement(port);
+    const bool damped = !v.held && !pedal_ && !v.undamped;
+    double force;
+    v.faulted = false; v.radiated = false; v.peakMotion = 0;
+    if (v.struck) {
+        v.bridge.setExternalVelocity(dw * fs_);
+        v.note.step();
+        auto& s = v.note.segment();
+        if (damped && leakyActive_ && leakyRelease_) {
+            // 0.5.3 SPEC-OSC difference form with the felt's added damping, per mode.
+            for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
+                const auto off = v.note.modeOffset(j);
+                kern::scaleQUPerMode(s.q() + off, s.u() + off, v.leak[j].data(), v.note.activeModes(j));
+            }
+            v.note.clampPsi();
+        } else if (damped) {
+            v.release *= releaseStep_;
+            for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
+                const auto off = v.note.modeOffset(j);
+                kern::scaleQU(s.q() + off, s.u() + off, releaseStep_, v.note.activeModes(j));
+            }
+            v.note.clampPsi();
+        }
+        const double w = v.bridge.wV();
+        v.peakMotion = std::abs(w);
+        force = v.note.bridgeForceNow(w);
+        v.peakForce = std::max(v.peakForce, std::abs(force));
+        if (truncation_ > 0 && ++v.sinceTruncation >= 32) { v.sinceTruncation = 0; v.note.truncate(v.peakForce); }
+    } else {
+        v.light.advance((dw - v.dwPrev) * fs_ * fs_);
+        v.dwPrev = dw; v.lightW += dw;
+        if (damped) {
+            if (leakyActive_) v.light.dampLeak();
+            else { v.release *= releaseStep_; v.light.damp(releaseStep_); }
+        }
+        v.peakMotion = std::abs(v.lightW);
+        force = v.light.force(v.lightW);
+    }
+    if (!std::isfinite(force)) {
+        v.faulted = true; v.note.reset(); v.bridge.reset(); v.light.reset();
+        v.active = v.struck = v.sympathetic = false; v.force = 0; return;
+    }
+    v.force = force;
+    v.g = board_.lowpassStep(port, force);
+    v.radModes = v.struck ? static_cast<unsigned>(kBoardModeCount) : static_cast<unsigned>(kLightRadiatingModes);
+    v.radiated = true;
+    // Idle-skip qualities judge an unstruck string by its modal force only: the static term -(T/L) w of a
+    // string woken while the board was displaced never vanishes (a constant force and a DC drive), which kept
+    // such strings awake for ever in 0.5.3. Full keeps the 0.5.3 rule.
+    const double sleepForce = (!v.struck && idleSkip_) ? force + v.light.staticStiffness() * v.lightW : force;
+    if (std::abs(sleepForce) < sleepForce_ && !(v.struck && v.note.inFlight()) && std::abs(dw) * fs_ < 0.5 * wakeVelocity) ++v.quiet;
+    else v.quiet = 0;
+    if (v.release < 1e-6 || v.quiet > sleepSamples_) {
+        v.active = v.struck = v.sympathetic = false; v.note.reset(); v.bridge.reset(); v.light.reset(); v.force = 0;
+    }
+}
+void Piano::stringsStep() noexcept {
     if (sympathetic_ && (sampleClock_++ & 31u) == 0) wakeSympathetic();
-    std::array<int, 88> ports; int count = 0;
+    nPorts_ = 0;
     for (int i = 0; i < 88; ++i) {
         const auto& v = voices_[i];
         if (!v.active) continue;
-        ports[count++] = i;
+        ports_[nPorts_++] = i;
         board_.addForce(i, v.force);
     }
     board_.advanceCoupled();
-    for (int k = 0; k < count; ++k) {
-        auto& v = voices_[ports[k]];
-        const double dw = board_.portIncrement(ports[k]);
-        const bool damped = !v.held && !pedal_ && !v.undamped;
-        double force;
-        if (v.struck) {
-            v.bridge.setExternalVelocity(dw * fs_);
-            v.note.step();
-            auto& s = v.note.segment();
-            if (damped && leakyActive_ && leakyRelease_) {
-                // 0.5.3 SPEC-OSC difference form with the felt's added damping, per mode.
-                for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
-                    const auto off = v.note.modeOffset(j);
-                    for (std::size_t n = 0; n < v.note.modeCount(j); ++n) {
-                        s.q()[off+n] *= v.leak[j][n]; s.u()[off+n] *= v.leak[j][n];
-                    }
-                }
-                v.note.clampPsi();
-            } else if (damped) {
-                v.release *= releaseStep_;
-                for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
-                    const auto off = v.note.modeOffset(j);
-                    for (std::size_t n = 0; n < v.note.modeCount(j); ++n) {
-                        s.q()[off+n] *= releaseStep_; s.u()[off+n] *= releaseStep_;
-                    }
-                }
-                v.note.clampPsi();
-            }
-            const double w = v.bridge.wV();
-            peakBridgeMotion_ = std::max(peakBridgeMotion_,std::abs(w));
-            force = 0;
-            for (std::size_t j = 0; j < v.note.stringCount(); ++j)
-                force += pme::bridge::bridgeForce<double>(v.terms[j], s.q() + v.note.modeOffset(j), w);
-        } else {
-            v.light.advance((dw - v.dwPrev) * fs_ * fs_);
-            v.dwPrev = dw; v.lightW += dw;
-            if (damped) {
-                if (leakyActive_) v.light.dampLeak();
-                else { v.release *= releaseStep_; v.light.damp(releaseStep_); }
-            }
-            peakBridgeMotion_ = std::max(peakBridgeMotion_,std::abs(v.lightW));
-            force = v.light.force(v.lightW);
-        }
-        if (!std::isfinite(force)) {
-            ++numericalFaults_; v.note.reset(); v.bridge.reset(); v.light.reset();
-            v.active = v.struck = v.sympathetic = false; v.force = 0; continue;
-        }
-        v.force = force;
-        board_.radiate(ports[k], force, v.struck ? kBoardModeCount : kLightRadiatingModes);
-        if (std::abs(force) < 1e-7 && !(v.struck && v.note.inFlight()) && std::abs(dw) * fs_ < 0.5 * wakeVelocity) ++v.quiet;
-        else v.quiet = 0;
-        if (v.release < 1e-6 || v.quiet > static_cast<std::uint64_t>(fs_)) {
-            v.active = v.struck = v.sympathetic = false; v.note.reset(); v.bridge.reset(); v.light.reset(); v.force = 0;
-        }
+    // Every port's strings: independent tasks with sticky owners; the board's coupled state is read-only.
+    const int helpers = pool_.active();
+    bool parallel = helpers > 0 && nPorts_ >= 3;
+    if (parallel) {
+        assignSlots();
+        double cost = 0;
+        for (int k = 0; k < nPorts_; ++k) { cost += voiceCost(voices_[ports_[k]]); owner_[k] = static_cast<std::uint8_t>(voices_[ports_[k]].slot); }
+        parallel = cost > 3000.0;
     }
+    if (parallel) pool_.run(&Piano::voiceTask, this, nPorts_, owner_.data());
+    else for (int k = 0; k < nPorts_; ++k) voiceStep(ports_[k]);
+    for (int k = 0; k < nPorts_; ++k) {
+        auto& v = voices_[ports_[k]];
+        peakBridgeMotion_ = std::max(peakBridgeMotion_, v.peakMotion);
+        if (v.faulted) ++numericalFaults_;
+    }
+}
+void Piano::resetAfterNonFinite() noexcept {
+    ++numericalFaults_; board_.reset();
+    for (auto& v : voices_) if (v.active) {
+        v.note.reset(); v.bridge.reset(); v.light.reset(); v.active = v.struck = v.sympathetic = false; v.force = 0;
+    }
+}
+void Piano::radiateInline(float& left, float& right) noexcept {
+    // The drive of the radiating modes from every port in port order (the order of the 0.5.3 radiate
+    // calls), the modal update, and the pressure sum in mode order.
+    for (int k = 0; k < nPorts_; ++k) {
+        const auto& v = voices_[ports_[k]];
+        if (v.radiated) board_.accumulateDrive(ports_[k], v.g, 0, v.radModes);
+    }
+    board_.radiationModes(0, kBoardModeCount);
     double pressureL, pressureR;
-    board_.radiation(pressureL, pressureR);
+    board_.radiationFinish(pressureL, pressureR);
     left = static_cast<float>(0.05 * pressureL);
     right = static_cast<float>(0.05 * pressureR);
-    if (!std::isfinite(left) || !std::isfinite(right)) {
-        ++numericalFaults_; left = right = 0; board_.reset();
-        for (auto& v : voices_) if (v.active) {
-            v.note.reset(); v.bridge.reset(); v.light.reset(); v.active = v.struck = v.sympathetic = false; v.force = 0;
+    if (!std::isfinite(left) || !std::isfinite(right)) { left = right = 0; resetAfterNonFinite(); }
+}
+bool Piano::idleStep() noexcept {
+    // Called before stepping a frame: skip it when idle.
+    return idle_;
+}
+void Piano::trackIdle() noexcept {
+    if (!idleSkip_) return;
+    if (nPorts_ != 0) idleCount_ = 0; else if (idleCount_ < (1 << 30)) ++idleCount_;
+}
+// Only where the radiation is drained (end of a block, or sample()): the board state is then stable.
+void Piano::checkIdle() noexcept {
+    if (idleSkip_ && !idle_ && idleCount_ >= idleHoldSamples && board_.quiet(idleThreshold)) idle_ = true;
+}
+void Piano::sampleShared(float& left, float& right) noexcept {
+    if (idle_) { left = right = 0; return; }
+    stringsStep();
+    radiateInline(left, right);
+    trackIdle();
+    if ((idleCount_ & 255) == 0) checkIdle();
+}
+
+// ---- Block interface: the radiation runs on its own thread ----
+// Record n of the ring holds the active ports of sample n with their bridge-mass-filtered drive g. The
+// producer (audio thread) writes it and publishes `produced_`; whoever holds `radLock_` (the radiation
+// thread, or the audio thread at the end of the block) consumes records in order, so the radiation
+// state has one writer at a time and the arithmetic is that of radiateInline().
+void Piano::radiateRecord(std::uint64_t n) noexcept {
+    const std::size_t slot = static_cast<std::size_t>(n & (ringSize - 1));
+    const unsigned count = ring_.count[slot];
+    const std::uint8_t* keys = ring_.keys.data() + slot * 88;
+    const double* g = ring_.g.data() + slot * 88;
+    for (unsigned k = 0; k < count; ++k) {
+        const unsigned port = keys[k] & 0x7fu;
+        board_.accumulateDrive(port, g[k], 0, (keys[k] & 0x80u) ? kLightRadiatingModes : kBoardModeCount);
+    }
+    board_.radiationModes(0, kBoardModeCount);
+    double pressureL, pressureR;
+    board_.radiationFinish(pressureL, pressureR);
+    float l = static_cast<float>(0.05 * pressureL), r = static_cast<float>(0.05 * pressureR);
+    if (!std::isfinite(l) || !std::isfinite(r)) { l = r = 0; radFault_.store(true, std::memory_order_relaxed); board_.resetRadiation(); }
+    ring_.outL[slot] = l; ring_.outR[slot] = r;
+}
+bool Piano::pumpRecords(std::uint32_t maxRecords) noexcept {
+    std::uint32_t expected = 0;
+    if (!radLock_.compare_exchange_strong(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) return false;
+    std::uint64_t done = consumed_.load(std::memory_order_relaxed);
+    const std::uint64_t avail = produced_.load(std::memory_order_acquire);
+    std::uint32_t n = 0;
+    while (done < avail && n < maxRecords) { radiateRecord(done); ++done; ++n; consumed_.store(done, std::memory_order_release); }
+    radLock_.store(0, std::memory_order_release);
+    return n > 0;
+}
+bool Piano::radiationPump(void* self) noexcept {
+    auto* p = static_cast<Piano*>(self);
+    if (p->consumed_.load(std::memory_order_relaxed) >= p->produced_.load(std::memory_order_acquire)) return false;
+    return p->pumpRecords(8);
+}
+void Piano::blockBegin(std::uint32_t frames) noexcept {
+    blockFrames_ = frames > maxBlockFrames ? maxBlockFrames : frames;
+    blockStart_ = produced_.load(std::memory_order_relaxed);
+    if (radOn_) radThread_.announce();
+}
+void Piano::blockStep() noexcept {
+    const std::uint64_t n = produced_.load(std::memory_order_relaxed);
+    if (!ready_) { const std::size_t s = n & (ringSize - 1); ring_.outL[s] = ring_.outR[s] = 0; produced_.store(n + 1, std::memory_order_release); consumed_.store(n + 1, std::memory_order_release); return; }
+    if (!shared_) {
+        const std::size_t s = n & (ringSize - 1);
+        sample(ring_.outL[s], ring_.outR[s]);
+        produced_.store(n + 1, std::memory_order_relaxed); consumed_.store(n + 1, std::memory_order_relaxed);
+        return;
+    }
+    if (idle_) {   // nothing sounds: silent frame (sample-accurate wake-up happens in noteOn)
+        const std::size_t z = static_cast<std::size_t>(n & (ringSize - 1));
+        ring_.outL[z] = ring_.outR[z] = 0;
+        produced_.store(n + 1, std::memory_order_release);
+        consumed_.store(n + 1, std::memory_order_release);
+        return;
+    }
+    stringsStep();
+    trackIdle();
+    const std::size_t s = static_cast<std::size_t>(n & (ringSize - 1));
+    if (!radOn_) {
+        radiateInline(ring_.outL[s], ring_.outR[s]);
+        produced_.store(n + 1, std::memory_order_relaxed); consumed_.store(n + 1, std::memory_order_relaxed);
+        return;
+    }
+    std::uint8_t* keys = ring_.keys.data() + s * 88;
+    double* g = ring_.g.data() + s * 88;
+    unsigned count = 0;
+    for (int k = 0; k < nPorts_; ++k) {
+        const auto& v = voices_[ports_[k]];
+        if (!v.radiated) continue;
+        keys[count] = static_cast<std::uint8_t>(ports_[k] | (v.radModes == kLightRadiatingModes ? 0x80 : 0));   // as radiateInline
+        g[count++] = v.g;
+    }
+    ring_.count[s] = static_cast<std::uint8_t>(count);
+    produced_.store(n + 1, std::memory_order_release);
+}
+void Piano::blockEnd(float* left, float* right) noexcept {
+    const std::uint64_t end = produced_.load(std::memory_order_relaxed);
+    // Finish the radiation of the block: helping is allowed whenever the lock is free; wait otherwise
+    // (the holder is at most a few records from done).
+    while (consumed_.load(std::memory_order_acquire) < end) {
+        if (!pumpRecords(~0u)) {
+#if defined(__x86_64__) || defined(__i386__)
+            _mm_pause();
+#endif
         }
+    }
+    if (radFault_.exchange(false, std::memory_order_relaxed)) resetAfterNonFinite();
+    checkIdle();
+    for (std::uint32_t i = 0; i < blockFrames_; ++i) {
+        const std::size_t s = static_cast<std::size_t>((blockStart_ + i) & (ringSize - 1));
+        if (left) left[i] = ring_.outL[s];
+        if (right) right[i] = ring_.outR[s];
+    }
+}
+void Piano::blockEnd(double* left, double* right) noexcept {
+    std::array<float, maxBlockFrames> l, r;
+    blockEnd(l.data(), r.data());
+    for (std::uint32_t i = 0; i < blockFrames_; ++i) {
+        if (left) left[i] = l[i];
+        if (right) right[i] = r[i];
     }
 }
 }

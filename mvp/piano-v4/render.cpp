@@ -33,21 +33,22 @@ int main(int argc0, char** argv0) {
         char** argv = positional.data();
         const std::string path = argc > 1 ? argv[1] : "piano-v4-demo.wav";
         const int key = argc > 2 ? std::stoi(argv[2]) : -1;
-        const std::string pathName = argc > 3 ? argv[3] : "coupled";
+        std::string pathName = argc > 3 ? argv[3] : "coupled";
+        if (pathName == "previous") pathName = "coupled";   // 0.5.4: previous = 0.5.3 (= current model); v052 = old previous
         const double velocity = argc > 4 ? std::stod(argv[4]) : 0.75;
         const bool wide24 = argc == 6 && std::string(argv[5]) == "--24bit";
         if ((argc > 5 && !wide24) || argc > 6 || (argc > 2 && key != -1 && (key < 21 || key > 108)) ||
-            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "previous" && pathName != "v051" && pathName != "v050" && pathName != "v049" && pathName != "sharedpan" && pathName != "v048" && pathName != "v046") ||
+            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "v052" && pathName != "v051" && pathName != "v050" && pathName != "v049" && pathName != "sharedpan" && pathName != "v048" && pathName != "v046") ||
             !std::isfinite(velocity) || velocity <= 0 || velocity > 1)
-            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous(0.5.2)|v051|v050|sharedpan|v049|v048|v046] [velocity 0..1] [--24bit]");
+            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous(0.5.3)|v052|v051|v050|sharedpan|v049|v048|v046] [velocity 0..1] [--24bit]");
         constexpr int fs = 48000, seconds = 14, frames = fs * seconds;
         piano_mvp_v4::Piano piano;
         piano.setBridgeFeedback(pathName != "fixed");
         piano.setUnisonStrings(pathName != "single");
-        // "coupled"/"fixed" are 0.5.3; "previous" is 0.5.2 (no leaky dampers); "v051" is 0.5.1 (also no
+        // "coupled"/"fixed" are 0.5.3; "v052" is 0.5.2 (no leaky dampers); "previous" is 0.5.3; "v051" is 0.5.1 (also no
         // tension modulation); "v050" is 0.5.0.
-        const bool now0501 = pathName == "coupled" || pathName == "fixed" || pathName == "sharedpan" || pathName == "previous" || pathName == "v051";
-        piano.setTensionModulation(pathName == "coupled" || pathName == "fixed" || pathName == "previous");
+        const bool now0501 = pathName == "coupled" || pathName == "fixed" || pathName == "sharedpan" || pathName == "v052" || pathName == "v051";
+        piano.setTensionModulation(pathName == "coupled" || pathName == "fixed" || pathName == "v052");
         piano.setLeakyDampers(pathName == "coupled" || pathName == "fixed");
         if (!piano.setDamperLaw(damperRate, damperExp) || !piano.setLeakyLimit(leakyLimit)) throw std::runtime_error("bad damper options");
         piano.setLeakyRelease(leakyRelease);

@@ -75,20 +75,30 @@ static void exercise(const LV2_Descriptor* d,double fs) {
     const auto instance = d->instantiate(d,fs,"",features);
     require(instance,"LV2 instantiate failed");
     piano_mvp_v4::Piano reference;
-    require(reference.setVoiceLimit(piano_mvp_v4::Piano::maxVoices) && reference.setSympatheticLimit(piano_mvp_v4::Piano::pluginSympatheticLimit) && reference.setTensionMaxKey(piano_mvp_v4::Piano::pluginTensionMaxKey) && reference.setLeakyLimit(piano_mvp_v4::Piano::pluginLeakyLimit) && reference.prepare(fs),"reference preparation failed");
+    // Single-threaded reference with the plug-in's default quality; the plug-in runs helper threads and must
+    // match it bit for bit.
+    require(reference.setWorkerThreads(0) && reference.prepare(fs),"reference preparation failed");
+    reference.setQuality(piano_mvp_v4::Piano::Quality::Live);
+    float qualityPort = 0, threadsPort = 1, freeWheelPort = 0;
     std::array<float,512> left{},right{};
     Sequence seq; seq.reset();
     d->connect_port(instance,0,seq.get());
     d->connect_port(instance,1,left.data()); d->connect_port(instance,2,right.data());
+    d->connect_port(instance,3,&qualityPort); d->connect_port(instance,4,&threadsPort); d->connect_port(instance,5,&freeWheelPort);
     d->activate(instance);
     double outputEnergy = 0;
     const auto block = [&](std::uint32_t count,std::initializer_list<Message> messages) {
         seq.reset(); for (const auto& m : messages) seq.append(m);
+        {   // ports are read at the start of run(); the reference follows
+            int q = static_cast<int>(qualityPort+0.5f); if (freeWheelPort > 0.5f) q = 2;
+            reference.setQuality(static_cast<piano_mvp_v4::Piano::Quality>(q));
+        }
         inRun = true; d->run(instance,count); inRun = false;
         for (std::uint32_t frame = 0; frame < count; ++frame) {
             for (const auto& m : messages) if (m.frame == frame) apply(reference,m);
             float l,r; reference.sample(l,r);
             require(std::isfinite(left[frame]) && std::isfinite(right[frame]),"non-finite LV2 audio");
+            if (left[frame] != l || right[frame] != r) std::cerr << "frame " << frame << " of " << count << ": plug-in " << left[frame] << " " << right[frame] << " reference " << l << " " << r << "\n";
             require(left[frame] == l && right[frame] == r,"LV2 output differs from sample-timed engine");
             outputEnergy += l*l+r*r;
         }
@@ -132,6 +142,22 @@ static void exercise(const LV2_Descriptor* d,double fs) {
         compatibilityEnergy += l*l+r*r;
     }
     require(compatibilityEnergy > 1e-9 && runAllocations == 0,"Carla MIDI compatibility test failed");
+    // Quality and thread ports: switching while notes sound, and the free-wheeling designation, stay
+    // bit-identical to the single-thread reference with the same settings.
+    d->deactivate(instance); d->activate(instance); reference.reset(); qualityPort = 0; freeWheelPort = 0;
+    block(300,{{0,{0x90,48,110}},{0,{0x90,55,100}},{5,{0xb0,64,127}},{100,{0x90,40,120}}});
+    qualityPort = 2; block(300,{{20,{0x90,62,90}}});            // Live -> Full while sounding
+    threadsPort = 0; block(300,{});                              // single-thread
+    threadsPort = 3; qualityPort = 1; block(257,{{3,{0x90,66,100}}});
+    qualityPort = 0; freeWheelPort = 1; block(300,{{0,{0x90,70,100}}});   // free-wheeling selects Full
+    freeWheelPort = 0; threadsPort = 1; block(512,{{0,{0x80,48,0}},{1,{0xb0,64,0}}});
+    for (int i = 0; i < 20; ++i) block(512,{});
+    // The Full tail is non-trivial (voices > 12 may sound): chord of 14 keys in Full mode is not stolen.
+    qualityPort = 2; reference.reset(); d->deactivate(instance); d->activate(instance);
+    for (int k = 0; k < 14; ++k) block(8,{{0,{0x90,static_cast<std::uint8_t>(40+k),100}}});
+    block(512,{});
+    require(reference.activeVoices() == 14,"Full quality stole voices");
+    qualityPort = 0; block(512,{});
     left.fill(0.123f); seq.reset(); d->run(instance,0);
     require(left.front() == 0.123f,"zero-size block wrote audio");
     d->deactivate(instance); d->cleanup(instance);

@@ -1,17 +1,27 @@
-Piano MVP 4 - Leaky dampers (LV2 0.5.3, Linux)
+Piano MVP 4 - Real time (LV2 0.5.4, Linux)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Leaky dampers" under instruments/synthesizers.
+Look for "Piano MVP 4 - Real time" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
-One fixed preset; no custom GUI. Start at a 512- or 1024-sample buffer.
+One fixed preset; no custom GUI. For low latency set the host block size to 128 (2.7 ms at 48 kHz)
+or 256 (5.3 ms); the model adds no latency of its own. Control ports:
+  Quality: Live (default; the real-time caps, tuned for >= 2x real time on the worst-case chords at
+    128 samples), Balanced, Full (the complete offline model: 88 voices, nothing capped; for bouncing).
+    Changing it while notes sound is safe: notes keep ringing, the new limits apply to the next notes.
+  Worker threads (default 1): one helper thread renders the soundboard radiation beside the strings (the
+    output is identical for any value; 0 = everything on the audio thread, about 2x real time on the
+    worst case). Values 2 and 3 add per-sample voice helpers and were measured to be no better.
+  Free-wheeling (optional, lv2:freeWheeling designation): a host that bounces offline raises it and
+    the plug-in uses Full.
+When nothing sounds the plug-in stops simulating and costs well under 1 percent of a core.
 
 This is the same experimental piano model as the CLAP version; format conversion
 does not change its timbre. See mvp/piano-v4/README.md in the source repository.
-The instrument is limited to 12 active keys. Bass uses one or two strings;
+Live is limited to 16 active keys (Full: all 88). Bass uses one or two strings;
 the middle and upper registers use three, sharing one hammer and bridge per key.
 Version 0.4.6 adds a passive diagonal approximation to losses into soundboard
 modes omitted from the real-time mechanical bridge. The radiation model is unchanged.
@@ -50,3 +60,8 @@ simulated at once (CPU). Note-off release is unchanged. See mvp/piano-v4/README.
 
 Source, listening comparisons and licence:
 https://github.com/gbasilveira/plucked-physical-modeling-engine/tree/mvp/piano
+
+Version 0.5.4 is the real-time iteration: same sound in Full, the cost of Live is cut about 2.5x by faster
+kernels and a helper thread for the radiation. Live uses at most 16 struck keys, 12 lifted and 6 damped
+simulated strings, tension modulation for keys up to E2, and drops string modes that are more than 100 dB
+below their note's peak. See mvp/piano-v4/README.md ("Update 0.5.4").

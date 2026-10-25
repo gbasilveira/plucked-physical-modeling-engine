@@ -21,13 +21,22 @@ int main(int argc, char** argv) {
     try {
         // --full (any position after the output): render the whole schedule from frame 0 to the
         // last event plus a 4 s release tail. Default behaviour (40-64 s excerpt) is unchanged.
+        int threads=1; std::string qualityName="full";
+        for (int i=1;i<argc;) {
+            const std::string a=argv[i];
+            if ((a=="--threads" || a=="--quality") && i+1<argc) {
+                (a=="--threads" ? threads=std::stoi(argv[i+1]) : (qualityName=argv[i+1],0));
+                for (int j=i;j<argc-2;++j) argv[j]=argv[j+2];
+                argc-=2;
+            } else ++i;
+        }
         bool full=false;
         for (int i=1;i<argc;) {
             if (std::string(argv[i])=="--full") { full=true; for (int j=i;j<argc-1;++j) argv[j]=argv[j+1]; --argc; }
             else ++i;
         }
-        if (argc != 3 && !(argc==4 && (std::string(argv[3])=="--legacy" || std::string(argv[3])=="--previous" || std::string(argv[3])=="--v051" || std::string(argv[3])=="--v050" || std::string(argv[3])=="--shared-pan" || std::string(argv[3])=="--v049" || std::string(argv[3])=="--v048" || std::string(argv[3])=="--v046")))
-            throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy|--v046|--v048|--v049|--v050|--v051|--previous(0.5.2, no leaky dampers)|--shared-pan(0.5.1 coupling, 0.5.0 bridge positions)]");
+        if (argc != 3 && !(argc==4 && (std::string(argv[3])=="--legacy" || std::string(argv[3])=="--previous" || std::string(argv[3])=="--v052" || std::string(argv[3])=="--v051" || std::string(argv[3])=="--v050" || std::string(argv[3])=="--shared-pan" || std::string(argv[3])=="--v049" || std::string(argv[3])=="--v048" || std::string(argv[3])=="--v046")))
+            throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy|--v046|--v048|--v049|--v050|--v051|--v052(0.5.2, no leaky dampers)|--previous(0.5.3, bit-exact)|--shared-pan(0.5.1 coupling, 0.5.0 bridge positions)]");
         constexpr int fs=48000;
         int start=40*fs, end=64*fs, finish=66*fs;
         std::ifstream input(argv[1]);
@@ -49,9 +58,10 @@ int main(int argc, char** argv) {
         piano_mvp_v4::Piano piano;
         piano.setResidualBridgeLoss(argc!=4 || std::string(argv[3])!="--legacy");
         const std::string mode = argc==4 ? argv[3] : "";
-        // current: 0.5.3 default, --previous (0.5.2: no leaky dampers), --v051 (no tension either) or
+        // current: 0.5.4 default (same model as 0.5.3), --previous (0.5.3 exactly: also the 0.5.3 single
+        // held-note flag), --v052 (0.5.2: no leaky dampers), --v051 (no tension either) or
         // --shared-pan; v050: --v050 (0.5.0, private bridges).
-        const bool current = mode.empty() || mode=="--previous" || mode=="--v051" || mode=="--shared-pan", v050 = mode=="--v050";
+        const bool current = mode.empty() || mode=="--previous" || mode=="--v052" || mode=="--v051" || mode=="--shared-pan", v050 = mode=="--v050";
         piano.setSoftFelt(current || v050 || mode=="--v049" || mode=="--v048");
         // 0.4.9 physics is kept by --v049 and later; 0.5.0 adds polyphony, una corda, undamped treble.
         piano.setBridgeMassLoading(current || v050 || mode=="--v049");
@@ -60,13 +70,19 @@ int main(int argc, char** argv) {
         piano.setUndampedTreble(current || v050);
         // 0.5.1 shared board and key-dependent bridge points (each off in --previous).
         piano.setSharedBoard(current);
-        piano.setGrandBridgeGeometry(mode.empty() || mode=="--previous" || mode=="--v051");
+        piano.setGrandBridgeGeometry(mode.empty() || mode=="--previous" || mode=="--v052" || mode=="--v051");
         // 0.5.2 tension modulation of the struck strings (off in every earlier version).
-        piano.setTensionModulation(mode.empty() || mode=="--previous");
+        piano.setTensionModulation(mode.empty() || mode=="--previous" || mode=="--v052");
         // 0.5.3 leaky dampers (off in every earlier version).
-        piano.setLeakyDampers(mode.empty());
+        piano.setLeakyDampers(mode.empty() || mode=="--previous");
+        // 0.5.4: per-key held-note count (overlapping same-key notes); every older mode keeps the single flag.
+        piano.setHeldNoteCount(mode.empty());
         // Offline: no voice stealing by default; earlier versions keep their 12-voice limit.
         piano.setVoiceLimit(current || v050 ? piano_mvp_v4::Piano::maxPolyphony : piano_mvp_v4::Piano::maxVoices);
+        if (qualityName=="live") piano.setQuality(piano_mvp_v4::Piano::Quality::Live);
+        else if (qualityName=="balanced") piano.setQuality(piano_mvp_v4::Piano::Quality::Balanced);
+        else if (qualityName!="full") throw std::runtime_error("--quality live|balanced|full");
+        if (!piano.setWorkerThreads(threads)) throw std::runtime_error("--threads 0..7");
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
         std::ofstream out(argv[2],std::ios::binary);
         if (!out) throw std::runtime_error("cannot write WAV");
@@ -79,19 +95,10 @@ int main(int argc, char** argv) {
         double peak=0, energy=0;
         std::uint64_t stealsAtStart=0;
         const auto begin=std::chrono::steady_clock::now();
-        for (int i=0;i<finish;++i) {
-            if (i==start) stealsAtStart=piano.voiceSteals();
-            if (i<end) {
-                while (cursor<events.size() && events[cursor].frame==i) {
-                    piano_mvp_v4::dispatchMidi(piano,events[cursor].data.data(),3);++cursor;
-                }
-            }
-            if (i==end) {
-                piano.sustain(false);
-                for (int k=21;k<=108;++k) piano.noteOff(k);
-            }
-            float l,r;piano.sample(l,r);
-            if (i<start) continue;
+        // The block interface is bit-identical to sample() for every thread count; with a helper thread the
+        // board radiation runs beside the strings (README 0.5.4).
+        const auto emit=[&](int i,float l,float r) {
+            if (i<start) return;
             // Only the end boundary fades, after 1.95 seconds of natural release.
             const double fade=std::min(1.0,(finish-1-i)/(0.05*fs));
             for (double x : {l*fade,r*fade}) {
@@ -100,6 +107,26 @@ int main(int argc, char** argv) {
                 peak=std::max(peak,std::abs(x));energy+=x*x;
                 word(out,static_cast<std::uint16_t>(static_cast<std::int16_t>(std::lround(x*32767))),2);
             }
+        };
+        std::array<float,piano_mvp_v4::Piano::maxBlockFrames> bl{},br{};
+        for (int i0=0;i0<finish;i0+=static_cast<int>(piano_mvp_v4::Piano::maxBlockFrames)) {
+            const int n=std::min<int>(piano_mvp_v4::Piano::maxBlockFrames,finish-i0);
+            piano.blockBegin(n);
+            for (int i=i0;i<i0+n;++i) {
+                if (i==start) stealsAtStart=piano.voiceSteals();
+                if (i<end) {
+                    while (cursor<events.size() && events[cursor].frame==i) {
+                        piano_mvp_v4::dispatchMidi(piano,events[cursor].data.data(),3);++cursor;
+                    }
+                }
+                if (i==end) {
+                    piano.sustain(false);
+                    piano.allNotesOff();
+                }
+                piano.blockStep();
+            }
+            piano.blockEnd(bl.data(),br.data());
+            for (int k=0;k<n;++k) emit(i0+k,bl[k],br[k]);
         }
         const double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
         if (!out || piano.numericalFaults() || peak<1e-5) throw std::runtime_error("failed/silent render");
@@ -107,6 +134,6 @@ int main(int argc, char** argv) {
                   << "; RMS " << std::sqrt(energy/(2*(finish-start)))
                   << "; numerical faults " << piano.numericalFaults()
                   << (full ? "; voice steals " : "; excerpt voice steals ") << piano.voiceSteals()-stealsAtStart
-                  << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
+                  << "; threads " << threads << "; quality " << qualityName << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
     } catch (const std::exception& e) { std::cerr<<e.what()<<'\n';return 1; }
 }

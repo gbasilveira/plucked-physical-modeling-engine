@@ -3,18 +3,19 @@
 @prefix doap: <http://usefulinc.com/ns/doap#> .
 @prefix lv2: <http://lv2plug.in/ns/lv2core#> .
 @prefix midi: <http://lv2plug.in/ns/ext/midi#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix rsz: <http://lv2plug.in/ns/ext/resize-port#> .
 @prefix urid: <http://lv2plug.in/ns/ext/urid#> .
 
 <https://gbasilveira.github.io/plucked-physical-modeling-engine/mvp/piano-v4>
     a lv2:Plugin, lv2:InstrumentPlugin ;
-    doap:name "Piano MVP 4 - Leaky dampers" ;
+    doap:name "Piano MVP 4 - Real time" ;
     doap:license <https://opensource.org/license/mit> ;
     lv2:minorVersion 5 ;
-    lv2:microVersion 3 ;
+    lv2:microVersion 4 ;
     lv2:requiredFeature urid:map ;
-    rdfs:comment "Experimental physical piano with velocity, sustain and a fixed preset." ;
+    rdfs:comment "Experimental physical piano with velocity, sustain and a fixed preset; quality Live / Balanced / Full." ;
     lv2:port [
         a lv2:InputPort, atom:AtomPort ;
         lv2:index 0 ; lv2:symbol "midi_in" ; lv2:name "MIDI input" ;
@@ -26,4 +27,23 @@
     ], [
         a lv2:OutputPort, lv2:AudioPort ;
         lv2:index 2 ; lv2:symbol "out_r" ; lv2:name "Right"
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 3 ; lv2:symbol "quality" ; lv2:name "Quality" ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:scalePoint [ rdfs:label "Live (real time)" ; rdf:value 0 ] ,
+                       [ rdfs:label "Balanced" ; rdf:value 1 ] ,
+                       [ rdfs:label "Full (offline model)" ; rdf:value 2 ]
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 4 ; lv2:symbol "threads" ; lv2:name "Worker threads" ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
+        lv2:portProperty lv2:integer
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 5 ; lv2:symbol "freewheel" ; lv2:name "Free-wheeling (offline: Full)" ;
+        lv2:designation lv2:freeWheeling ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:portProperty lv2:toggled, lv2:connectionOptional
     ] .

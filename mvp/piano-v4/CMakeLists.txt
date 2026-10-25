@@ -14,10 +14,12 @@ add_library(piano_core STATIC
   ${CORE}/engine/src/nonlinear/sav.cpp
   ${CORE}/engine/src/nonlinear/tension.cpp
   ${CORE}/engine/src/exciters/hammer.cpp
-  piano.cpp tension_note.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
+  piano.cpp kernels.cpp tension_note.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v2/preset.cpp
   ${CORE}/engine/src/simd/denormals.cpp)
 target_include_directories(piano_core PUBLIC ${CORE}/engine/include ${CMAKE_CURRENT_SOURCE_DIR})
+find_package(Threads REQUIRED)
+target_link_libraries(piano_core PUBLIC Threads::Threads)
 target_include_directories(piano_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v2)
 target_include_directories(piano_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3)
 foreach(module osc string bridge nonlinear exciters simd)
@@ -48,6 +50,18 @@ add_executable(piano-tension-check tension_check.cpp)
 target_link_libraries(piano-tension-check PRIVATE piano_core)
 add_test(NAME piano-tension-energy COMMAND piano-tension-check)
 set_tests_properties(piano-tension-energy PROPERTIES TIMEOUT 120)
+add_test(NAME piano-previous-bitexact COMMAND ${CMAKE_COMMAND}
+  -DRENDER=$<TARGET_FILE:piano-midi-render> -DEVENTS=${CMAKE_CURRENT_SOURCE_DIR}/listening/chopin-op28-no4.events
+  -DREFERENCE=${CMAKE_CURRENT_SOURCE_DIR}/../../out/piano-mvp-v4/chopin-prelude-0.5.3-raw.wav -DOUT=${CMAKE_CURRENT_BINARY_DIR}/previous-check.wav
+  -P ${CMAKE_CURRENT_SOURCE_DIR}/compare_previous.cmake)
+set_tests_properties(piano-previous-bitexact PROPERTIES TIMEOUT 900)
+add_executable(piano-rt-check rt_check.cpp)
+target_link_libraries(piano-rt-check PRIVATE piano_core)
+add_test(NAME piano-rt-behaviour COMMAND piano-rt-check)
+set_tests_properties(piano-rt-behaviour PROPERTIES TIMEOUT 600)
+add_executable(piano-hash-bench hash_bench.cpp)
+target_compile_definitions(piano-hash-bench PRIVATE PIANO_HAS_QUALITY)
+target_link_libraries(piano-hash-bench PRIVATE piano_core)
 add_executable(piano-tension-measure tension_measure.cpp)
 target_link_libraries(piano-tension-measure PRIVATE piano_core)
 add_executable(piano-tension-bench tension_bench.cpp)
@@ -59,6 +73,17 @@ if(CLAP_INCLUDE_DIR)
   target_link_libraries(piano-mvp-v4 PRIVATE piano_core)
   set_target_properties(piano-mvp-v4 PROPERTIES PREFIX "" SUFFIX ".clap")
   if(UNIX AND NOT APPLE)
+    add_executable(piano-rt-stress rt_stress.cpp)
+    target_include_directories(piano-rt-stress PRIVATE ${CLAP_INCLUDE_DIR})
+    target_link_libraries(piano-rt-stress PRIVATE ${CMAKE_DL_LIBS} Threads::Threads)
+    add_test(NAME piano-rt-equal-threads COMMAND piano-rt-stress $<TARGET_FILE:piano-mvp-v4> --scenario chords --seconds 3 --quality live --threads 3 --expect-equal)
+    set_tests_properties(piano-rt-equal-threads PROPERTIES TIMEOUT 120)
+    add_test(NAME piano-rt-equal-full COMMAND piano-rt-stress $<TARGET_FILE:piano-mvp-v4> --scenario cluster --seconds 1.5 --quality full --threads 1 --block 256 --expect-equal)
+    set_tests_properties(piano-rt-equal-full PROPERTIES TIMEOUT 240)
+    add_test(NAME piano-rt-idle COMMAND piano-rt-stress $<TARGET_FILE:piano-mvp-v4> --scenario idle --seconds 3 --quality live --threads 1 --min-rtf 150)
+    set_tests_properties(piano-rt-idle PROPERTIES TIMEOUT 60)
+    add_test(NAME piano-rt-deadlines COMMAND piano-rt-stress $<TARGET_FILE:piano-mvp-v4> --scenario cluster --seconds 3 --quality live --threads 1)
+    set_tests_properties(piano-rt-deadlines PROPERTIES TIMEOUT 120)
     add_executable(piano-host-check host_check.cpp)
     target_include_directories(piano-host-check PRIVATE ${CLAP_INCLUDE_DIR})
     target_link_libraries(piano-host-check PRIVATE ${CMAKE_DL_LIBS})

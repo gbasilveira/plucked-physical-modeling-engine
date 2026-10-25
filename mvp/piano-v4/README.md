@@ -1,5 +1,208 @@
 # MVP 4: bridge feedback
 
+## Update 0.5.4: real time (display name "Piano MVP 4 - Real time")
+
+Goal: sub-5 ms and sub-10 ms response in the plug-ins. The model adds no latency (events are
+sample-accurate), so the response time is the host block size: **128 samples at 48 kHz = 2.7 ms, 256 = 5.3 ms**.
+The obstacle was throughput: with the 0.5.3 plug-in settings (12 voices, sympathetic cap 8, leaky cap 4,
+tension up to key 47) the pedalled 12-key cluster ran at 0.90x real time, the unpedalled one at 0.94x and the
+Chopin excerpt at 1.57x on one thread of the i3-8100 (4 cores, 3.6 GHz). Now (Live, default, block 128, one helper
+thread): **pedalled cluster 3.96x, unpedalled cluster 3.82x, Chopin excerpt 4.45x real time, no missed
+deadline in the cluster runs**, and the full offline model (Full) is still **bit-identical to 0.5.3**.
+
+### How to play with low latency
+
+1. In Carla/JACK/Ardour set the block size to **128** (2.7 ms) or **256** (5.3 ms) at 48 kHz. The model has no look-ahead;
+   the first block after a long silence is the most expensive one (the plug-in warms up when it is activated).
+2. Leave **Quality = Live** (default) and **Worker threads = 1** (default). Live is for playing; it keeps up with
+   fast repeated 12-note chords on this machine (tables below) and limits the model as listed.
+3. For a bounce or a render choose **Full** (CLAP: the host's offline render mode selects it automatically; LV2: set
+   Quality = Full, and hosts that raise the free-wheeling port get it automatically). Full is the complete offline model
+   (88 voices, nothing capped, tension on every key); it runs at 0.3-0.9x real time here, so use it only offline.
+   **Balanced** sits between (24 voices, tension to key 47, weaker savings): about 3x real time on the clusters and
+   1.4-1.6x on the 12-note chord stress; use it at 256 samples or on a faster machine.
+4. A larger block does not make Live more reliable, it only moves the deadline. If you hear clicks at 128, check that the
+   host does not run other busy plug-ins on the same core, then try 256. The cost is bursty: the attack of a 12-note chord
+   costs about three times the sustained cost for the length of the hammer contact (about 3 ms).
+5. When nothing sounds the plug-in stops simulating (idle skip) and costs well under 1 percent of a core (about 240x real
+   time in the harness); the next note-on wakes it in the same sample. After a note, the tail of woken strings can keep
+   the plug-in busy for about 15 s (it is silent long before).
+
+### Quality setting (parameter in CLAP and LV2)
+
+| | Live (default) | Balanced | Full |
+| --- | --- | --- | --- |
+| struck voices | 16 | 24 | 88 (never stolen) |
+| sympathetic (lifted-damper) strings | 12 | 16 | 88 |
+| leaky (damped) strings | 6 | 8 | 88 |
+| tension modulation, keys | 21-40 (to E2) | 21-47 | 21-108 |
+| tension floor (J) below which the free update is used | 1e-10 | 1e-12 | 1e-14 |
+| string modes dropped below (relative to the note's peak) | 1e-6 (-120 dB) | 1e-7 | never |
+| unstruck string sleeps after force below / for | 1e-6 N / 0.5 s | 3e-7 / 0.75 s | 1e-7 / 1 s (static force counts, as 0.5.3) |
+| dot products | reassociated (fast) | fast | sequential reference order |
+| idle skip | yes | yes | no |
+
+Changing the quality is real-time safe (the plug-ins prepare the model for Full in `prepare`; switching only changes limits and
+flags: no allocation, no thread start). Sounding notes keep ringing; modes already dropped stay off until the key is struck again;
+the tension model of a sounding note changes at its next note-on; a lower voice limit steals the oldest struck voices at the
+following note-ons. CLAP: `clap.render` offline mode forces Full for its duration (the Quality parameter is ignored then). CLAP
+parameters: `Quality` (0 Live, 1 Balanced, 2 Full; stepped, automatable), `Worker threads` (0-3, default 1); state is saved. LV2
+control ports: 3 quality, 4 threads, 5 free-wheeling (optional, `lv2:freeWheeling`).
+
+### Profile (before: 0.5.3 plug-in settings, one thread, cycles per sample at 3.6 GHz, rdtsc)
+
+| part | pedalled 12-key cluster (76.6k, 0.90x) | Chopin 52-58 s (43k, 1.57x) |
+| --- | --- | --- |
+| struck strings: free modal update, three sequential force dot products, horizontal modes, a division per mode | 43.8k (57%) | 17.4k (40%) |
+| radiating board modes: update of 512 modes and pressure sum | 11.2k (15%) | 10.7k (25%) |
+| radiating board modes: drive of 512 modes by every active port | 10.5k (14%) | 6.4k (15%) |
+| coupled board: force of every port into 128 modes, advance | 5.0k (6.5%) | 4.2k (10%) |
+| port motion (128-mode dot product per port) | 2.9k (3.8%) | 2.6k (6%) |
+| unstruck (sympathetic/leaky) strings | 3.2k (4.2%) | 1.7k (4%) |
+
+The struck-string cost was mostly latency-bound sequential dot products and divisions, not arithmetic. The radiation (28-40%)
+never feeds back into the strings.
+
+### Design
+
+1. **Exact kernel work (all qualities).** `kernels.cpp`: the difference form is elementwise and compiled twice (`target_clones`
+   "avx2"/"default" on x86-64 Linux, dispatched at load time; the AVX2 clone does not enable FMA, so the bits equal the scalar
+   code). The three sequential force dot products of a voice are interleaved (independent chains, each summed in index order);
+   horizontal modes are skipped while their state is exactly zero (a point without perpendicular conductance never drives them);
+   the `savStep` skip path is fused (`TensionStruckNote::tryBypass`) under the same preconditions as the engine's skip rule.
+   Result: 0.9x to 1.6x on the pedalled cluster on one thread with **identical output bits**.
+2. **Multi-core: a radiation pipeline, not a per-sample barrier.** The board's 512 radiating modes are driven by the port forces
+   and never act back on the strings, so the exact coupling stays on the audio thread (strings and the 128 coupled board modes,
+   per sample) while a helper thread consumes per-sample records (active ports and their bridge-mass-filtered drive) from a ring
+   and produces the output. `Piano::blockBegin/blockStep/blockEnd` (used by both plug-ins and `piano-midi-render`; chunks of at
+   most 256 frames) hide it; `sample()` keeps the one-sample interface. The radiation state has one writer at a time (a lock taken
+   in batches of 8 records); at the end of a block the audio thread helps or waits, so a sleeping or late helper costs the audio
+   thread only the radiation of that block. Helper threads are created in `prepare`/`activate`, joined in `deactivate`
+   (`stopThreads`), spin for 4 ms after the last work, then poll every 100 us; they copy the audio thread's real-time scheduling
+   class (one priority lower) and its FTZ/DAZ state. The audio thread never allocates, locks a mutex, waits on a condition
+   variable or makes a system call (the LV2 `run()` allocation check runs with threads on).
+   *Tried, not the default:* a per-sample fork/join of the voices over a fixed sticky partition (`WorkerPool`, Worker threads >= 2:
+   tasks claimed with a stamped compare-and-swap, stolen after 2.8 us, late workers left out for a while). It is bit-identical too,
+   but it never beat the pipeline on this machine (the voice phase moves about 20 cache lines of port data per sample) and it
+   produced misses when a helper was preempted (columns "threads 3" in `realtime-report-0.5.4.json`); it stays for experiments.
+3. **Determinism.** Results do not depend on the thread count or on which thread runs a task: every reduction has a fixed order
+   (the radiation sum is the sequential mode-order sum; fast dot products use fixed accumulator counts). Tests: `piano-rt-behaviour`
+   RT-1 (0..3 helpers, sample vs block interface; Live, Balanced, Full), `piano-rt-equal-threads/-full` (the CLAP plug-in at 0 vs N
+   helpers), the LV2 check against a single-thread reference including quality and thread switches, and `piano-previous-bitexact`.
+4. **Quiet-string savings (Live/Balanced).** (a) String modes whose force amplitude `|a_n| sqrt(q_n^2 + (u_n/(omega_n dt))^2)` falls below
+   `truncation` times the note's peak bridge force are zeroed from the top down every 32 samples and skipped until the next strike
+   (zeroing only removes energy). (b) Tension floor and tension keys (table). (c) Unstruck strings sleep earlier, and a string woken
+   while the board was displaced is judged by its modal force only: its static term `-(T/L) w` never vanished in 0.5.3, so woken
+   strings stayed awake for ever (18 simulated strings 55 s after a single note), kept the board and the CPU busy and left a
+   constant DC drive; they now retire after about 15 s. (d) Idle skip: after 0.1 s without a simulated string, every 256 samples the
+   board and radiation state is bounded; below 1e-9 (about -186 dBFS) frames are zeros until the next note-on.
+5. **Fast kernels (Live/Balanced).** Eight-accumulator dot products (port motion, bridge force, tension sum), a division-free free
+   update, a cached force dot product and a fused hammer-flight SAV step (`TensionStruckNote::flightFast`, ranks 1-4, the same
+   equations as `pme::nl::savStep`, three passes) replace the sequential versions. Agreement with the sequential versions: 292 dB below
+   the signal (rounding level) for the dot products and 285 dB for the flight step (chords). Threaded and single-thread output remain
+   bit-identical for the same settings; vs the exact path the difference is documented here, not bit-identical.
+6. **Repeated-note bug.** `Piano::noteOff` released the key at the first note-off of overlapping same-key notes; it now counts held
+   note-ons per key (bounded `uint8`, no allocation) and releases when the count reaches zero (CC123 clears all). Applied in
+   `dispatchMidi` (CLAP, LV2, renderers). `setHeldNoteCount(false)` and `--previous` keep the 0.5.3 flag. Test RT-3. The full-piece
+   converter workaround is unchanged (it gives identical results).
+
+### Measured differences from Full (Chopin excerpt 40-64 s, whole piece simulated)
+
+Signal rms -36.6 dBFS, peak -16.0 dBFS; octave bands 62 Hz ... 16 kHz of the mono sum.
+
+| change (against Full) | band energy difference, dB | total energy | waveform difference |
+| --- | --- | --- | --- |
+| fast kernels only | 0.00 in all bands | 0.00 dB | max -276 dBFS (rounding) |
+| fast + mode truncation 1e-6 | within 0.01 | 0.00 dB | rms -78.7 dBFS, max -55 dBFS |
+| ... + sleep 1e-6/0.5 s + floor 1e-10 + idle skip | within 0.01 | 0.00 dB | rms -78.6 dBFS, max -56 dBFS |
+| Live (everything, incl. caps 16/12/6, tension to key 40) | -0.2 +0.4 -0.6 +0.6 -1.9 -0.3 +0.1 +0.1 | +0.66 dB | decorrelated |
+| Balanced | -0.3 +0.3 -0.5 +0.5 -1.8 -0.3 +0.1 0.0 | +0.64 dB | decorrelated |
+
+The truncation threshold alone is not what limits the waveform difference. Without tension in the reference (cluster, tension off) the
+rms difference is -63 / -76 / -86 dBFS for thresholds 1e-3 / 1e-4 / 1e-5 (SNR 35 / 48 / 58 dB). With tension on every key in the reference a
+perturbation as small as 1e-6 already gives -79 dBFS rms, because the tension model amplifies small differences, so waveform SNR is not
+a meaningful measure for Live vs Full (the dropped modes themselves are more than 120 dB below their note's peak); octave-band energy is.
+Live differs audibly from Full only in what the table states: at most 16 simultaneous struck keys, fewer woken strings,
+tension modulation only up to E2. On this excerpt the 1-2 kHz octave is 1.9 dB lower in Live.
+
+### Real-time results (`piano-rt-stress`, the CLAP plug-in, 48 kHz)
+
+Method: back-to-back `process()` calls at 128 and 256 frames; every block is timed against its deadline (block/fs); the first 16 blocks
+after activation are warm-up (counted in the real-time factor, not as misses); the audio thread asks for SCHED_FIFO 50 (helpers mirror
+it). Machine: i3-8100 (4 cores, no SMT, 3.6 GHz, Linux) with the usual desktop load. `realtime-report-0.5.4.json` has every row. "x" is
+the real-time factor, "p99.9" the 99.9th percentile of block time / deadline (1.0 = the deadline), misses = blocks later than the deadline.
+
+Scenarios: *cluster* keys 48-59 velocity 120 with the sustain pedal (the worst case asked for); *cluster, no pedal*; *chords* a 12-note
+chord every 75 ms with pedal (attack bursts); *repeat* the same every 60 ms; *Chopin excerpt* 24 s.
+
+**Live**
+
+| scenario | block | 0 helpers: x real time / misses / p99.9 | 1 helper (default): x / misses / p99.9 |
+| --- | --- | --- | --- |
+| cluster, pedal | 128 | 2.09 / 0 / 0.60 | 3.96 / 0 / 0.29 |
+| cluster, pedal | 256 | 2.10 / 0 / 0.51 | 4.03 / 0 / 0.28 |
+| cluster, no pedal | 128 | 1.96 / 0 / 0.55 | 3.82 / 0 / 0.29 |
+| cluster, no pedal | 256 | 1.97 / 0 / 0.57 | 3.75 / 0 / 0.29 |
+| chords (pedal) | 128 | 1.69 / 88 / 1.23 | 2.97 / 0 / 0.98 |
+| chords (pedal) | 256 | 1.62 / 40 / 3.27 | 3.10 / 0 / 0.85 |
+| repeat (pedal) | 128 | 1.71 / 82 / 1.19 | 3.26 / 0 / 0.91 |
+| repeat (pedal) | 256 | 1.76 / 20 / 1.11 | 3.25 / 0 / 0.86 |
+| Chopin excerpt | 128 | 2.34 / 10 / 1.01 | 4.45 / 0 / 0.76 |
+| Chopin excerpt | 256 | 2.37 / 3 / 0.98 | 4.42 / 1 / 0.74 |
+
+**Balanced**
+
+| scenario | block | 0 helpers: x real time / misses / p99.9 | 1 helper (default): x / misses / p99.9 |
+| --- | --- | --- | --- |
+| cluster, pedal | 128 | 1.75 / 0 / 0.59 | 3.11 / 0 / 0.35 |
+| cluster, pedal | 256 | 1.76 / 0 / 0.59 | 3.11 / 2 / 6.25 |
+| cluster, no pedal | 128 | 1.73 / 0 / 0.61 | 3.02 / 0 / 0.35 |
+| cluster, no pedal | 256 | 1.68 / 0 / 0.62 | 2.98 / 0 / 0.36 |
+| chords (pedal) | 128 | 0.95 / 1066 / 1.75 | 1.44 / 94 / 1.39 |
+| chords (pedal) | 256 | 0.97 / 138 / 10.79 | 1.44 / 47 / 1.26 |
+| repeat (pedal) | 128 | 1.08 / 135 / 1.64 | 1.57 / 66 / 1.37 |
+| repeat (pedal) | 256 | 1.06 / 144 / 1.53 | 1.65 / 22 / 1.16 |
+| Chopin excerpt | 128 | 1.97 / 3 / 1.09 | 3.18 / 0 / 0.87 |
+| Chopin excerpt | 256 | 1.94 / 1 / 1.01 | 3.13 / 1 / 4.23 |
+
+**Full** (offline model, 1 helper): cluster 0.48x, unpedalled 0.49x, chords 0.34x, Chopin excerpt 0.94x (0.41 / 0.42 / 0.29 / 0.69x without a
+helper); not a real-time setting. `piano-midi-render` (offline Chopin excerpt, 26 s): 123 s in 0.5.3, about 82 s in 0.5.4 with one helper
+(timed while other jobs ran), output bit-identical.
+
+Honest limits. (1) With the helper, the audio thread occasionally waits for it at the end of a block; if the helper is descheduled while it
+holds the lock, the block is late. In the tables this appears as isolated misses of a few milliseconds (rows with a non-zero miss count, for
+example 1 of 9000 blocks on the Chopin excerpt), and the same stalls appear in a plain spin-loop test of this machine (`chrt -f 60`, one thread:
+six gaps of up to 17 ms in 20 s), so part of it is the machine, not the code. With 0 helpers the clusters pass (about 2x, p99.9 0.55-0.6) but
+the chord stresses and the last chords of the excerpt miss (1.2-1.7x). (2) Burst cost: a block containing 12 hammer contacts costs up to 0.98
+of its deadline at 128 on this machine (chords, p99.9), so 128 is at the edge for fast 12-note chords; 256 has about 0.85. (3) Worker threads
+2 and 3 (per-sample voice helpers) are not recommended (misses). (4) The first note after a long silence meets a cold helper; activation
+renders a warm-up burst, but one 3-8 ms outlier at that note was still seen in some runs.
+
+### Verification
+
+`cmake --build out/piano-mvp-v4 -j8 && ctest --test-dir out/piano-mvp-v4 --output-on-failure` (13 tests): the 7 existing ones, plus
+`piano-rt-behaviour` (RT-1 thread/block identity, RT-3 repeated note, RT-4 idle skip incl. cost and wake-up, RT-5 quality switch while
+sounding, RT-6 thread stop/start), `piano-previous-bitexact` (`--previous` renders the committed `chopin-prelude-0.5.3-raw.wav` byte for
+byte), `piano-rt-equal-threads`, `piano-rt-equal-full`, `piano-rt-idle` (>= 150x real time when idle), `piano-rt-deadlines` (a report and a
+clean shutdown), and the extended LV2/CLAP checks (quality, thread and free-wheeling ports, parameters, render mode, state, run() allocation
+count 0 with threads on). `piano-rt-stress PLUGIN.clap --scenario S --block N --quality Q --threads T --seconds D [--events FILE] [--rt]
+[--json] [--expect-equal] [--min-rtf X]` is the deadline harness; `piano-hash-bench` prints an FNV hash and the real-time factor of a
+scenario at the Piano level (`--o-NAME VALUE` overrides preset fields).
+
+### Flags
+
+`piano-midi-render EVENTS OUT.wav [--previous|--v052|--v051|...] [--threads N] [--quality live|balanced|full] [--full]`. **`--previous` is
+0.5.3** (bit-for-bit, verified against the committed raw render); the former `--previous` (0.5.2, no leaky dampers) is now `--v052`; the
+default is the 0.5.4 offline model (Full), which equals 0.5.3 on the excerpt (`chopin-prelude-0.5.4-raw.wav` is byte-identical to
+`chopin-prelude-0.5.3-raw.wav`). Same renaming in `piano-render` (`previous` = 0.5.3, `v052`) and `piano-sympathetic-demo`.
+
+### For 0.5.5 (stereo width)
+
+CPU headroom in Live at block 128 with one helper: pedalled cluster 3.96x, Chopin excerpt 4.45x. The radiation stage costs about 5 us per
+sample (24% of the budget) on the helper; a per-key radiation decorrelation or microphone model placed after the board adds work only to that
+stage, which can take roughly twice as much before it limits the real-time factor, and the audio thread is unaffected. The radiation never feeds
+back into the strings, so a linear post-board stage has no coupling constraints.
+
 ## Update 0.5.3: leaky dampers
 
 Listener feedback on 0.5.2: "almost perfect; unsustained strings feel rather muffled; the box

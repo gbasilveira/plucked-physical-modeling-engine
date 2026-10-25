@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <chrono>
+#include <cstring>
+#include <string>
 
 static void require(bool ok, const char* why) { if (!ok) throw std::runtime_error(why); }
 int main(int argc, char** argv) {
@@ -72,6 +74,38 @@ int main(int argc, char** argv) {
         plugin->reset(plugin);
         require(plugin->process(plugin, &block) != CLAP_PROCESS_ERROR, "reset failed");
         for (int i = 0; i < 512; ++i) require(l64[i] == 0 && r64[i] == 0, "reset not silent");
+        // Parameters, render mode and state (0.5.4).
+        const auto* params = static_cast<const clap_plugin_params_t*>(plugin->get_extension(plugin, CLAP_EXT_PARAMS));
+        const auto* render = static_cast<const clap_plugin_render_t*>(plugin->get_extension(plugin, CLAP_EXT_RENDER));
+        const auto* state = static_cast<const clap_plugin_state_t*>(plugin->get_extension(plugin, CLAP_EXT_STATE));
+        require(params && render && state && params->count(plugin) == 2, "quality/threads parameters missing");
+        clap_param_info_t pinfo{};
+        require(params->get_info(plugin, 0, &pinfo) && std::string(pinfo.name) == "Quality" && pinfo.max_value == 2 &&
+                (pinfo.flags & CLAP_PARAM_IS_STEPPED), "quality parameter info wrong");
+        char text[32];
+        require(params->value_to_text(plugin, pinfo.id, 2, text, sizeof text) && std::string(text) == "Full", "quality text wrong");
+        double parsed = -1;
+        require(params->text_to_value(plugin, pinfo.id, "balanced", &parsed) && parsed == 1, "quality parse wrong");
+        // The same note renders differently in Live (real time) and Full (offline render mode): the full model
+        // has tension modulation on every key; Live keeps it to the lowest keys.
+        const auto chord = [&](bool offline) {
+            plugin->reset(plugin);
+            require(render->set(plugin, offline ? CLAP_RENDER_OFFLINE : CLAP_RENDER_REALTIME), "render mode refused");
+            audio.data64 = nullptr; audio.data32 = channels; block.in_events = &events;
+            event.header.time = 0; event.data[1] = 70; event.data[2] = 120;
+            require(plugin->process(plugin, &block) != CLAP_PROCESS_ERROR, "process failed");
+            block.in_events = nullptr;
+            double sum = 0;
+            for (int b = 0; b < 8; ++b) { plugin->process(plugin, &block); for (int i = 0; i < 512; ++i) sum += left[i] * double(left[i]) * (i + 1); }
+            return sum;
+        };
+        const double live = chord(false), full = chord(true), full2 = chord(true), live2 = chord(false);
+        require(live == live2 && full == full2, "render is not repeatable");
+        require(live != full && std::isfinite(live) && live > 0 && full > 0, "offline render mode did not select the full model");
+        unsigned char saved[16]; std::size_t stored = 0;
+        clap_ostream_t out{saved, [](const clap_ostream_t* s, const void* b, std::uint64_t n) -> std::int64_t {
+            auto* self = static_cast<unsigned char*>(s->ctx); std::memcpy(self, b, n); return static_cast<std::int64_t>(n); }};
+        require(state->save(plugin, &out) , "state save failed"); (void)stored;
         plugin->stop_processing(plugin); plugin->deactivate(plugin); plugin->destroy(plugin);
         entry->deinit(); dlclose(library);
         std::cout << "PASS: plug-in load, ports, MIDI offset, stereo float/double, reset; 10 s at voice limit in "

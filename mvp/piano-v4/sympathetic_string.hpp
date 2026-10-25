@@ -8,6 +8,7 @@
 #include "pme/bridge/terms.hpp"
 #include "pme/osc/mode_bank.hpp"
 #include "pme/string.hpp"
+#include "kernels.hpp"
 
 namespace piano_mvp_v4 {
 // Unstruck string group on the shared board: the vertical modes below `cutHz` of up to three
@@ -50,18 +51,22 @@ public:
         double total = 0;
         for (std::size_t j = 0; j < strings_; ++j) {
             double s = 0;
-            for (std::size_t i = offset_[j]; i < offset_[j] + count_[j]; ++i) s += a_[i] * q_[i];
+            if (fast_) s = kern::dotFast(a_.data() + offset_[j], q_.data() + offset_[j], count_[j]);
+            else for (std::size_t i = offset_[j]; i < offset_[j] + count_[j]; ++i) s += a_[i] * q_[i];
             total += s - tOverL_[j] * w;
         }
         return total;
     }
+    // 0.5.4: reassociated (eight-accumulator) force sums; not bit-identical to the sequential sum.
+    void setFast(bool f) noexcept { fast_ = f; }
+    // Sum of T/L over the strings: the static part of force(w) is -staticStiffness() * w.
+    double staticStiffness() const noexcept { double k = 0; for (std::size_t j = 0; j < strings_; ++j) k += tOverL_[j]; return k; }
     // SPEC-BRG discrete coupling order step 3: modal force -g_n delta_tt w^n.
     void advance(double acceleration) noexcept {
-        for (std::size_t i = 0; i < total_; ++i) f_[i] = -g_[i] * acceleration;
-        pme::osc::stepModes<double, double>(q_.data(), u_.data(), beta_.data(), kappa_.data(), gamma_.data(),
-                                            f_.data(), total_);
+        kern::lightStep(q_.data(), u_.data(), beta_.data(), kappa_.data(), gamma_.data(), g_.data(), f_.data(),
+                        acceleration, total_);   // f = -g acc, then SPEC-OSC difference form
     }
-    void damp(double factor) noexcept { for (std::size_t i = 0; i < total_; ++i) { q_[i] *= factor; u_[i] *= factor; } }
+    void damp(double factor) noexcept { kern::scaleQU(q_.data(), u_.data(), factor, total_); }
     // 0.5.3 leaky damper: per-mode step factors exp(-sigma_d(f_n)/fs) <= 1 (SPEC-OSC losses plus the
     // felt's added modal damping); multiplying q and u by a factor <= 1 never adds energy.
     void configureLeak(const pme::StringModes* modes, double rate, double exponent, double refHz) {
@@ -75,13 +80,14 @@ public:
         const double sigma = exponent == 0 ? rate : rate * std::pow(std::max(hz, 1.0) / refHz, -exponent);
         return std::exp(-sigma / fs);
     }
-    void dampLeak() noexcept { for (std::size_t i = 0; i < total_; ++i) { q_[i] *= leak_[i]; u_[i] *= leak_[i]; } }
+    void dampLeak() noexcept { kern::scaleQUPerMode(q_.data(), u_.data(), leak_.data(), total_); }
     std::size_t strings() const noexcept { return strings_; }
     std::size_t modeCount(std::size_t j) const noexcept { return count_[j]; }
     const double* q(std::size_t j) const noexcept { return q_.data() + offset_[j]; }
     const double* u(std::size_t j) const noexcept { return u_.data() + offset_[j]; }
 private:
     std::size_t strings_{}, total_{};
+    bool fast_{false};
     std::array<std::size_t, maxStrings> offset_{}, count_{};
     std::array<double, maxStrings> tOverL_{};
     std::vector<double> beta_, kappa_, gamma_, a_, g_, q_, u_, f_, leak_;

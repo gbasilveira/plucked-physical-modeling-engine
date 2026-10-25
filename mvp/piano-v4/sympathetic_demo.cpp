@@ -18,15 +18,15 @@ static void word(std::ostream& f, std::uint32_t n, int bytes) {
 }
 int main(int argc, char** argv) {
     try {
-        if (argc < 2 || argc > 3) throw std::runtime_error("usage: piano-sympathetic-demo out.wav [--shared-pan|--previous(0.5.2)|--v051|--v050]");
+        if (argc < 2 || argc > 3) throw std::runtime_error("usage: piano-sympathetic-demo out.wav [--shared-pan|--previous(0.5.3)|--v052|--v051|--v050]");
         const std::string mode = argc == 3 ? argv[2] : "";
-        if (!mode.empty() && mode != "--shared-pan" && mode != "--previous" && mode != "--v051" && mode != "--v050") throw std::runtime_error("unknown mode");
+        if (!mode.empty() && mode != "--shared-pan" && mode != "--previous" && mode != "--v052" && mode != "--v051" && mode != "--v050") throw std::runtime_error("unknown mode");
         constexpr int fs = 48000, frames = 14 * fs;
         piano_mvp_v4::Piano piano;
         piano.setSharedBoard(mode != "--v050");
-        piano.setGrandBridgeGeometry(mode.empty() || mode == "--previous" || mode == "--v051");
-        piano.setTensionModulation(mode.empty() || mode == "--previous");
-        piano.setLeakyDampers(mode.empty());
+        piano.setGrandBridgeGeometry(mode.empty() || mode == "--previous" || mode == "--v052" || mode == "--v051");
+        piano.setTensionModulation(mode.empty() || mode == "--previous" || mode == "--v052");
+        piano.setLeakyDampers(mode.empty() || mode == "--previous");
         piano.setVoiceLimit(piano_mvp_v4::Piano::maxPolyphony);
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
         std::ofstream out(argv[1], std::ios::binary);

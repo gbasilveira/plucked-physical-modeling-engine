@@ -4,6 +4,19 @@ Goal: improve the acoustic-piano character, with one change at a time and audibl
 reproducible comparisons. A passing numerical test is not a listening endorsement.
 Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano`.
 
+## Real-time iteration (2026-10-25, 0.5.4)
+
+0.5.4 is about response time, not sound. The model has no latency of its own (sample-accurate events), so response = host block
+size: 128 samples at 48 kHz = 2.7 ms, 256 = 5.3 ms. The plug-ins were too slow for that (0.9x real time on the pedalled 12-key
+cluster, one thread). Now: a **Quality** parameter (Live default / Balanced / Full), a radiation helper thread (bit-identical output
+for any thread count), exact SIMD-friendly kernels, Live/Balanced savings (mode truncation, earlier sleep, tension floor, fast sums, a
+fused hammer-flight step, idle skip) and a repeated-note fix (per-key held count). Live at block 128: pedalled cluster 3.96x, unpedalled
+3.82x, Chopin excerpt 4.45x real time; Full (the offline model, selected automatically by CLAP offline render mode) is bit-identical to
+0.5.3 (`--previous`; the old `--previous` is `--v052`). `chopin-prelude-0.5.4*.wav` equals the 0.5.3 render byte for byte (the offline
+model is unchanged): listen to the Live/Balanced character in the plug-in. Residual risk: a descheduled helper can make a block late
+(isolated misses in `realtime-report-0.5.4.json`); with 0 helpers the clusters pass at about 2x. Next (0.5.5): stereo width (per-key
+radiation decorrelation / microphone model); the radiation stage has about 2x headroom. Details: `piano-v4/README.md`, "Update 0.5.4".
+
 ## Current listening diagnosis (2026-10-25, 0.5.3)
 
 Listener on 0.5.2: almost perfect; unpedalled notes muffled, box feels small; pedalled almost

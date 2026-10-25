@@ -54,6 +54,7 @@ bool GrandBoard::configure(double fs, std::vector<double> phi, std::size_t coupl
         if (pme::bridge::compileBridgeMode(row[0], lossless ? 0.0 : row[1], fs, c) != pme::Status::Ok) return false;
         beta_[i] = c.beta; kappa_[i] = c.kappa; gamma_[i] = c.gamma; omegaHat2_[i] = c.omegaHat2;
     }
+    termL_.assign(n, 0.0); termR_.assign(n, 0.0);
     omega_.assign(n, 0); sigma_ = c00_ = c01_ = c10_ = c11_ = q_ = v_ = drive_ = reL_ = imL_ = reR_ = imR_ = omega_;
     for (std::size_t i = 0; i < n; ++i) {
         const auto& r = piano_mvp_v3::kSoundboardModes[i];
@@ -73,44 +74,56 @@ void GrandBoard::reset() noexcept {
     std::fill(r_.begin(), r_.end(), 0.0); std::fill(u_.begin(), u_.end(), 0.0);
     std::fill(force_.begin(), force_.end(), 0.0); std::fill(drive_.begin(), drive_.end(), 0.0);
     std::fill(q_.begin(), q_.end(), 0.0); std::fill(v_.begin(), v_.end(), 0.0);
-    lowpass_.fill(0);
+    for (auto& l : lowpass_) l.v = 0;
+    for (auto& ch : delayLine_) ch.fill(0);
+    cursor_ = 0;
+}
+void GrandBoard::resetRadiation() noexcept {
+    std::fill(drive_.begin(), drive_.end(), 0.0); std::fill(q_.begin(), q_.end(), 0.0);
+    std::fill(v_.begin(), v_.end(), 0.0);
     for (auto& ch : delayLine_) ch.fill(0);
     cursor_ = 0;
 }
 void GrandBoard::addForce(std::size_t port, double f) noexcept {
-    const double* phi = participation(port);
-    double* force = force_.data();
-    for (std::size_t i = 0; i < coupled_; ++i) force[i] += phi[i] * f;   // coupled: raw force
+    kern::axpy(force_.data(), participation(port), f, coupled_);   // coupled: raw force
 }
 void GrandBoard::radiate(std::size_t port, double f, std::size_t modes) noexcept {
     const double* phi = participation(port);
     double g = f;
-    if (mass_) { lowpass_[port] += lowA_ * (f - lowpass_[port]); g = lowpass_[port]; }  // 0.4.9 bridge mass
-    double* drive = drive_.data();
-    for (std::size_t i = 0; i < modes; ++i) drive[i] += phi[i] * g;
+    if (mass_) { lowpass_[port].v += lowA_ * (f - lowpass_[port].v); g = lowpass_[port].v; }  // 0.4.9 bridge mass
+    kern::axpy(drive_.data(), phi, g, modes);
 }
 void GrandBoard::advanceCoupled() noexcept {
     // SPEC-OSC difference form, explicit in the force at step n (as BridgePoint::advance).
-    pme::osc::stepModes<double, double>(r_.data(), u_.data(), beta_.data(), kappa_.data(), gamma_.data(),
-                                        force_.data(), coupled_);
-    std::fill(force_.begin(), force_.end(), 0.0);
+    kern::modeStepClearForce(r_.data(), u_.data(), beta_.data(), kappa_.data(), gamma_.data(),
+                             force_.data(), coupled_);
+    std::fill(force_.begin() + static_cast<std::ptrdiff_t>(coupled_), force_.end(), 0.0);
 }
-void GrandBoard::radiation(double& left, double& right) noexcept {
-    left = right = 0;
-    if (!ready_) return;
+double GrandBoard::outputBound() const noexcept {
+    double out = 0;
     for (std::size_t i = 0; i < kBoardModeCount; ++i) {
-        const double forcing = drive_[i];
-        const double equilibrium = forcing / (omega_[i] * omega_[i]);
-        const double shifted = q_[i] - equilibrium;
-        const double q = c00_[i] * shifted + c01_[i] * v_[i] + equilibrium;
-        const double v = c10_[i] * shifted + c11_[i] * v_[i];
-        q_[i] = q; v_[i] = v;
-        const double acceleration = forcing - 2 * sigma_[i] * v - omega_[i] * omega_[i] * q;
-        // Re(A*q'' phasor) as piano_mvp_v3::modalPressure.
-        left += reL_[i] * acceleration - imL_[i] * omega_[i] * v;
-        right += reR_[i] * acceleration - imR_[i] * omega_[i] * v;
-        drive_[i] = 0;
+        const double a = omega_[i] * omega_[i] * std::abs(q_[i]) + 2 * sigma_[i] * std::abs(v_[i]) + std::abs(drive_[i]);
+        const double w = omega_[i] * std::abs(v_[i]);
+        out += (std::abs(reL_[i]) + std::abs(reR_[i])) * a + (std::abs(imL_[i]) + std::abs(imR_[i])) * w;
     }
+    for (const auto& ch : delayLine_) for (double x : ch) out = std::max(out, std::abs(x));
+    return out;
+}
+double GrandBoard::coupledBound() const noexcept {
+    double coupled = 0;
+    for (std::size_t i = 0; i < coupled_; ++i) coupled += std::abs(u_[i]) * fs_ + std::abs(force_[i]);
+    return coupled;
+}
+bool GrandBoard::quiet(double eps) const noexcept { return !ready_ || (outputBound() < eps && coupledBound() < eps); }
+void GrandBoard::radiationModes(std::size_t lo, std::size_t hi) noexcept {
+    kern::RadiationArrays a{omega_.data(), sigma_.data(), c00_.data(), c01_.data(), c10_.data(), c11_.data(),
+                            reL_.data(), imL_.data(), reR_.data(), imR_.data(),
+                            q_.data(), v_.data(), drive_.data(), termL_.data(), termR_.data()};
+    kern::radiationModes(a, lo, hi);
+}
+void GrandBoard::radiationFinish(double& left, double& right) noexcept {
+    left = right = 0;
+    for (std::size_t i = 0; i < kBoardModeCount; ++i) { left += termL_[i]; right += termR_[i]; }
     delayLine_[0][cursor_] = left; delayLine_[1][cursor_] = right;
     const auto whole = static_cast<std::size_t>(delay_);
     const double fraction = delay_ - static_cast<double>(whole);
@@ -120,19 +133,15 @@ void GrandBoard::radiation(double& left, double& right) noexcept {
     right = (1 - fraction) * delayLine_[1][a] + fraction * delayLine_[1][b];
     cursor_ = (cursor_ + 1) % delayLine_[0].size();
 }
-// Dot product with four independent accumulators in a fixed order ((a0+a1)+(a2+a3), then the
-// remainder in index order): deterministic, and not latency bound like a single running sum.
-static double dot4(const double* a, const double* b, std::size_t n) noexcept {
-    double s0 = 0, s1 = 0, s2 = 0, s3 = 0;
-    std::size_t i = 0;
-    for (; i + 4 <= n; i += 4) {
-        s0 += a[i] * b[i]; s1 += a[i+1] * b[i+1]; s2 += a[i+2] * b[i+2]; s3 += a[i+3] * b[i+3];
-    }
-    double s = (s0 + s1) + (s2 + s3);
-    for (; i < n; ++i) s += a[i] * b[i];
-    return s;
+void GrandBoard::radiation(double& left, double& right) noexcept {
+    left = right = 0;
+    if (!ready_) return;
+    radiationModes(0, kBoardModeCount);
+    radiationFinish(left, right);
 }
+static double dot4(const double* a, const double* b, std::size_t n) noexcept { return kern::dot4(a, b, n); }
 double GrandBoard::portIncrement(std::size_t port) const noexcept {
+    if (fast_) return kern::dotFast(participation(port), u_.data(), coupled_);
     return dot4(participation(port), u_.data(), coupled_);
 }
 double GrandBoard::portDisplacement(std::size_t port) const noexcept {

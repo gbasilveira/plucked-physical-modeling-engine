@@ -11,13 +11,28 @@
 
 namespace {
 constexpr const char* kUri = "https://gbasilveira.github.io/plucked-physical-modeling-engine/mvp/piano-v4";
+constexpr int kMaxThreads = 3;
 struct Instance {
     piano_mvp_v4::Piano piano;
     const LV2_Atom_Sequence* midi{};
     float* left{};
     float* right{};
+    const float* quality{};      // port 3: 0 Live, 1 Balanced, 2 Full
+    const float* threads{};      // port 4: helper threads taking part (0..3)
+    const float* freeWheel{};    // port 5 (optional, designation lv2:freeWheeling): offline bounce -> Full
+    int appliedQuality{-1}, appliedThreads{-1};
     LV2_URID midiType{}, sequenceType{}, frameTime{}, beatTime{};
     bool active{};
+    // Audio thread: make the engine match the control ports (cheap; no allocation). A host that bounces
+    // offline raises the free-wheeling port, which selects the full model.
+    void applySettings() noexcept {
+        int q = quality ? static_cast<int>(*quality + 0.5f) : 0;
+        if (freeWheel && *freeWheel > 0.5f) q = 2;
+        q = std::clamp(q, 0, 2);
+        if (q != appliedQuality) { piano.setQuality(static_cast<piano_mvp_v4::Piano::Quality>(q)); appliedQuality = q; }
+        const int t = std::clamp(threads ? static_cast<int>(*threads + 0.5f) : 1, 0, kMaxThreads);
+        if (t != appliedThreads) { piano.setActiveWorkers(t); appliedThreads = t; }
+    }
 };
 LV2_Handle instantiate(const LV2_Descriptor*,double fs,const char*,const LV2_Feature* const* features) {
     const LV2_URID_Map* map = nullptr;
@@ -31,7 +46,12 @@ LV2_Handle instantiate(const LV2_Descriptor*,double fs,const char*,const LV2_Fea
         s->sequenceType = map->map(map->handle,LV2_ATOM__Sequence);
         s->frameTime = map->map(map->handle,LV2_ATOM__frameTime);
         s->beatTime = map->map(map->handle,LV2_ATOM__beatTime);
-        if (!s->midiType || !s->sequenceType || !s->frameTime || !s->beatTime || !s->piano.setVoiceLimit(piano_mvp_v4::Piano::maxVoices) || !s->piano.setSympatheticLimit(piano_mvp_v4::Piano::pluginSympatheticLimit) || !s->piano.setTensionMaxKey(piano_mvp_v4::Piano::pluginTensionMaxKey) || !s->piano.setLeakyLimit(piano_mvp_v4::Piano::pluginLeakyLimit) || !s->piano.prepare(fs)) return nullptr;
+        // Threads are created here and in activate(), joined in deactivate(); never in run().
+        if (!s->midiType || !s->sequenceType || !s->frameTime || !s->beatTime ||
+            !s->piano.setWorkerThreads(std::min(piano_mvp_v4::Piano::defaultWorkerThreads(), kMaxThreads)) ||
+            !s->piano.prepare(fs)) return nullptr;
+        s->piano.setQuality(piano_mvp_v4::Piano::Quality::Live);
+        s->applySettings();
         return s.release();
     } catch (...) { return nullptr; }
 }
@@ -40,10 +60,15 @@ void connect(LV2_Handle handle,std::uint32_t port,void* data) {
     if (port == 0) s.midi = static_cast<const LV2_Atom_Sequence*>(data);
     if (port == 1) s.left = static_cast<float*>(data);
     if (port == 2) s.right = static_cast<float*>(data);
+    if (port == 3) s.quality = static_cast<const float*>(data);
+    if (port == 4) s.threads = static_cast<const float*>(data);
+    if (port == 5) s.freeWheel = static_cast<const float*>(data);
 }
 void activate(LV2_Handle handle) {
     auto& s = *static_cast<Instance*>(handle);
-    s.piano.reset(); s.active = true;
+    s.piano.startThreads();
+    s.applySettings(); s.piano.warmUp();
+    s.piano.reset(); s.active = true; s.appliedQuality = s.appliedThreads = -1;
 }
 void run(LV2_Handle handle,std::uint32_t frames) {
     pme::simd::ScopedFlushDenormals denormals;
@@ -53,13 +78,25 @@ void run(LV2_Handle handle,std::uint32_t frames) {
         if (s.right) std::fill_n(s.right,frames,0.0f);
         return;
     }
-    std::uint32_t cursor = 0;
+    s.applySettings();
+    std::uint32_t cursor = 0, chunkStart = 0;
+    bool open = false;
+    // Frames are stepped in chunks of at most Piano::maxBlockFrames; blockEnd() delivers the output of the
+    // chunk (the radiation runs on a helper thread meanwhile). Events never close a chunk.
+    const auto closeChunk = [&]() {
+        if (!open) return;
+        s.piano.blockEnd(s.left ? s.left + chunkStart : nullptr, s.right ? s.right + chunkStart : nullptr);
+        open = false;
+    };
     const auto renderUntil = [&](std::uint32_t end) {
         while (cursor < end) {
-            float l,r; s.piano.sample(l,r);
-            if (s.left) s.left[cursor] = l;
-            if (s.right) s.right[cursor] = r;
+            if (!open) {
+                chunkStart = cursor; open = true;
+                s.piano.blockBegin(std::min<std::uint32_t>(piano_mvp_v4::Piano::maxBlockFrames, frames - cursor));
+            }
+            s.piano.blockStep();
             ++cursor;
+            if (cursor - chunkStart >= piano_mvp_v4::Piano::maxBlockFrames) closeChunk();
         }
     };
     const auto* seq = s.midi;
@@ -87,8 +124,12 @@ void run(LV2_Handle handle,std::uint32_t frames) {
         }
     }
     renderUntil(frames);
+    closeChunk();
 }
-void deactivate(LV2_Handle handle) { static_cast<Instance*>(handle)->active = false; }
+void deactivate(LV2_Handle handle) {
+    auto& s = *static_cast<Instance*>(handle);
+    s.active = false; s.piano.stopThreads();
+}
 void cleanup(LV2_Handle handle) { delete static_cast<Instance*>(handle); }
 const void* extension(const char*) { return nullptr; }
 const LV2_Descriptor descriptor{kUri,instantiate,connect,activate,run,deactivate,cleanup,extension};

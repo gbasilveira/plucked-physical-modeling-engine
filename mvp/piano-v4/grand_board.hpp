@@ -5,6 +5,7 @@
 #include <vector>
 #include "grand_board_table.hpp"
 #include "pme/osc/mode_bank.hpp"
+#include "kernels.hpp"
 
 namespace piano_mvp_v4 {
 inline constexpr std::size_t kBoardModeCount = 512;   // radiating modes (MVP 3 table)
@@ -35,7 +36,9 @@ public:
     bool configure(double fs, std::vector<double> phi, std::size_t coupledModes, bool lossless,
                    bool massLoading);
     void reset() noexcept;
-    void resetPort(std::size_t port) noexcept { lowpass_[port] = 0; }
+    // Radiation state only (drive, modes, delay line): safe while the strings keep stepping.
+    void resetRadiation() noexcept;
+    void resetPort(std::size_t port) noexcept { lowpass_[port].v = 0; }
     // Per sample: addForce(F^n) for every active port, then advanceCoupled(); the strings advance
     // and then radiate(port, F^{n+1}, ...) for every port and radiation(L, R) closes the sample.
     // (0.5.0 fed the radiating modes the force after the string step; so does this.)
@@ -44,8 +47,29 @@ public:
     // `modes` limits the radiating modes driven (unstruck strings carry nothing above ~2 kHz).
     void radiate(std::size_t port, double force, std::size_t modes = kBoardModeCount) noexcept;
     void radiation(double& pressureL, double& pressureR) noexcept;
+    // 0.5.4 split of radiate()/radiation() for the worker pool; the arithmetic is the same.
+    // Bridge-mass low pass of a port force (state per port): the drive amplitude g of radiate().
+    double lowpassStep(std::size_t port, double force) noexcept {
+        if (!mass_) return force;
+        lowpass_[port].v += lowA_ * (force - lowpass_[port].v);
+        return lowpass_[port].v;
+    }
+    // drive[lo,hi) += phi g: ports must be applied in a fixed order for a reproducible sum.
+    void accumulateDrive(std::size_t port, double g, std::size_t lo, std::size_t hi) noexcept {
+        kern::axpy(drive_.data() + lo, participation(port) + lo, g, hi - lo);
+    }
+    // Upper bound of the output amplitude and of the coupled-mode speed: true when both are below `eps`.
+    bool quiet(double eps) const noexcept;
+    double outputBound() const noexcept;      // the bound quiet() tests (output amplitude bound)
+    double coupledBound() const noexcept;
+    // Update radiating modes [lo,hi) (independent of each other) and store their pressure terms.
+    void radiationModes(std::size_t lo, std::size_t hi) noexcept;
+    // Sum the terms in index order and apply the radiation delay line (call after all chunks).
+    void radiationFinish(double& pressureL, double& pressureR) noexcept;
     // After advanceCoupled(): w_s^{n+1}-w_s^n (coupled modes), the port displacement and velocity.
     double portIncrement(std::size_t port) const noexcept;
+    // 0.5.4: eight-accumulator dot product for the port motion (not bit-identical to the four-accumulator reference).
+    void setFast(bool f) noexcept { fast_ = f; }
     double portDisplacement(std::size_t port) const noexcept;
     double portVelocity(std::size_t port) const noexcept { return portIncrement(port) * fs_; }
     // Discrete energy of the coupled modes (as BridgePoint::modeEnergy), unit modal mass.
@@ -56,13 +80,15 @@ public:
 private:
     std::size_t coupled_{};
     double fs_{48000}, delay_{}, lowA_{1};
-    bool mass_{true};
+    bool mass_{true}, fast_{false};
     std::vector<double> phi_;
     // Coupled modes (difference form).
     std::vector<double> beta_, kappa_, gamma_, omegaHat2_, r_, u_, force_;
     // Radiating modes (zero-order-hold, MVP 3 formulation).
+    std::vector<double> termL_, termR_;
     std::vector<double> omega_, sigma_, c00_, c01_, c10_, c11_, q_, v_, drive_, reL_, imL_, reR_, imR_;
-    std::array<double, kBoardPortCount> lowpass_{};
+    struct alignas(64) PaddedDouble { double v{}; };   // per-port state on its own cache line (threads write ports)
+    std::array<PaddedDouble, kBoardPortCount> lowpass_{};
     std::array<std::array<double, 1024>, 2> delayLine_{};
     std::size_t cursor_{};
     bool ready_{};

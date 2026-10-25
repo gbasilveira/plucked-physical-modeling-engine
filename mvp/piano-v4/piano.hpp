@@ -10,6 +10,10 @@
 #include "sympathetic_string.hpp"
 #include "bridge_mass.hpp"
 #include "tension_note.hpp"
+#include "pool.hpp"
+#include "kernels.hpp"
+#include <atomic>
+#include <cstdint>
 
 namespace piano_mvp_v4 {
 // Experimental fixed preset. All allocations happen in prepare(), never during playback.
@@ -20,6 +24,67 @@ public:
     // 0.5.0 assumption: dampers cover keys below F#6 (MIDI 90); F#6 and above are undamped,
     // as on most grands (stated range varies, roughly the top 1.5 octaves). Not measured.
     static constexpr int firstUndampedKey = 90;
+    // Quality presets (0.5.4). Live: the real-time caps and quiet-string savings tuned for >= 2x
+    // real time on the worst-case clusters at 128-sample blocks. Balanced: in between. Full: the
+    // complete offline model (88 voices, no caps, tension on all keys, no truncation, exact sums).
+    enum class Quality : int { Live = 0, Balanced = 1, Full = 2 };
+    // Real-time safe at any time on the audio thread (no allocation): see README 0.5.4 for what
+    // happens to sounding notes. Needs prepare() with tension configured for every key to get the
+    // Full tension model (setTensionMaxKey(108), the default); otherwise tension keys stay as prepared.
+    void setQuality(Quality q) noexcept;
+    Quality quality() const noexcept { return quality_; }
+    // Preset values (public for tests and documentation).
+    struct Preset { int voices, sympathetic, leaky, tensionMaxKey; double truncation; bool fast; double sleepForce, sleepSeconds, tensionFloor; bool idleSkip; };
+    static const Preset& preset(Quality q) noexcept;
+    // setQuality with explicit values (measurements; `q` is the level reported by quality()).
+    void applyPreset(Quality q, const Preset& p) noexcept;
+    // Worker threads (0.5.4), before prepare(): number of helper threads created in prepare()
+    // (0 = single thread, the default). The audio thread always takes part. Results are bit-identical
+    // for any thread count.
+    bool setWorkerThreads(int n) noexcept {
+        if (ready_ || n < 0 || n > WorkerPool::kMaxWorkers) return false;
+        workerThreads_ = n; activeWorkers_ = n; return true;
+    }
+    // Runtime (audio thread): how many of the created workers take part, 0..workerThreads().
+    void setActiveWorkers(int n) noexcept;
+    // ---- Block interface (0.5.4), used by the plug-ins ----
+    // The radiation of the board never feeds back into the strings, so with a worker thread the
+    // audio thread steps the strings and hands per-sample port drives to a radiation thread through a
+    // ring; the output of the block is complete at blockEnd(). Results are bit-identical to calling
+    // sample() for every frame. frames <= maxBlockFrames per begin/end pair.
+    static constexpr std::uint32_t maxBlockFrames = 256;
+    void blockBegin(std::uint32_t frames) noexcept;
+    void blockStep() noexcept;                       // one frame: events were dispatched before it
+    void blockEnd(float* left, float* right) noexcept;      // fills `frames` outputs of the block
+    void blockEnd(double* left, double* right) noexcept;
+    bool radiationThreadActive() const noexcept { return radThread_.running(); }
+    // Non-audio. Joins the helper threads (deactivate); startThreads() re-creates them (activate).
+    // While they are stopped everything runs on the calling thread with identical output.
+    void stopThreads() noexcept;
+    bool startThreads();
+    // Non-audio: renders a few hundred milliseconds of notes in the current quality and resets, so that
+    // code pages, kernel dispatch and helper threads are warm before the first real note (a cold first
+    // note after idle cost up to 20 ms in measurements). Call after prepare()/setQuality().
+    void warmUp() noexcept;
+    int activeWorkers() const noexcept { return pool_.active(); }
+    int workerThreads() const noexcept { return pool_.workers(); }
+    static int defaultWorkerThreads() noexcept;   // min(3, hardware threads - 1)
+    std::uint64_t stolenTasks() const noexcept { return pool_.stolenTasks(); }
+    std::uint64_t tasksRunBy(int slot) const noexcept { return pool_.tasksRunBy(slot); }
+    std::uint64_t poolStalls() const noexcept { return pool_.stalls(); }
+    // Idle skip (0.5.4, Live and Balanced): once no string is simulated and the board and radiation state
+    // are below idleThreshold (an amplitude bound of the output, about -186 dBFS), frames are zeros at
+    // a negligible cost until the next note-on. Full never skips (bit-exact tails).
+    static constexpr double idleThreshold = 1e-9;
+    static constexpr int idleHoldSamples = 4800;       // no simulated string for this long first
+    bool idle() const noexcept { return idle_; }
+    // Per-key held-note count (0.5.4): a note-off releases the key only when every overlapping note-on
+    // of the key has been released (default on; off is the 0.5.3 single flag).
+    bool setHeldNoteCount(bool enabled) noexcept {
+        if (ready_) return false;
+        heldCount_on_ = enabled; return true;
+    }
+    int sleepSamples() const noexcept { return static_cast<int>(sleepSamples_); }
     bool prepare(double sampleRate);
     // Set before prepare(), while playback is stopped.
     bool setBridgeFeedback(bool enabled) noexcept {
@@ -153,6 +218,8 @@ public:
     void reset() noexcept;
     void noteOn(int key, double velocity) noexcept;
     void noteOff(int key) noexcept;
+    // All keys released at once (MIDI CC123): clears the held-note counts.
+    void allNotesOff() noexcept { heldCount_.fill(0); for (auto& v : voices_) v.held = false; }
     void sustain(bool down) noexcept;
     void softPedal(bool down) noexcept { unaCordaDown_ = unaCordaEnabled_ && down; }
     bool softPedalDown() const noexcept { return unaCordaDown_; }
@@ -184,7 +251,59 @@ private:
         double lightW{}, dwPrev{};      // its bridge displacement since waking; last board increment
         std::uint64_t age{}, quiet{};
         double release{1.0}, pan{};
+        // 0.5.4 per-sample hand-over between the pool phases
+        double g{}, peakMotion{}, peakForce{}, slotCost{};
+        unsigned radModes{};
+        int slot{-1}, sinceTruncation{};
+        bool radiated{}, faulted{};
     };
+    // Voice phase of the pool (see stringsStep).
+    static void voiceTask(void* self, int k);
+    void voiceStep(int port) noexcept;
+    void stringsStep() noexcept;                     // wake, coupled board, all strings of one sample
+    void radiateInline(float& left, float& right) noexcept;   // radiation of the sample just stepped
+    void resetAfterNonFinite() noexcept;
+    bool radOn_{};
+    void assignSlots() noexcept;
+    double voiceCost(const Voice& v) const noexcept;
+    WorkerPool pool_;
+    // Radiation pipeline: sample records (active ports and their drive) -> radiation thread.
+    static constexpr std::uint32_t ringSize = 1024;      // records; power of two, >= 2 * maxBlockFrames
+    struct Ring {
+        std::vector<std::uint8_t> keys, count;           // [rec*88 + k] port | 0x80 for unstruck; [rec]
+        std::vector<double> g;                           // [rec*88 + k]
+        std::vector<float> outL, outR;                   // [rec]
+    } ring_;
+    alignas(64) std::atomic<std::uint64_t> produced_{0};
+    alignas(64) std::atomic<std::uint64_t> consumed_{0};
+    alignas(64) std::atomic<std::uint32_t> radLock_{0};
+    std::atomic<bool> radFault_{false};
+    std::atomic<unsigned> audioCsr_{0};
+    std::uint64_t blockStart_{0};
+    std::uint32_t blockFrames_{0};
+    std::vector<float> blockL_, blockR_;                 // single-thread block output
+    static bool radiationPump(void* self) noexcept;      // worker: process pending records
+    bool pumpRecords(std::uint32_t maxRecords) noexcept; // takes the lock; false if nothing was done
+    void radiateRecord(std::uint64_t index) noexcept;
+    PipelineThread radThread_;
+    int workerThreads_{0}, activeWorkers_{0};
+    std::array<int, 88> ports_{};
+    int nPorts_{};
+    std::array<std::uint8_t, WorkerPool::kMaxTasks> owner_{};
+    std::array<double, WorkerPool::kMaxWorkers + 1> slotLoad_{};
+    bool slotsDirty_{true};
+    std::array<std::uint8_t, 88> heldCount_{};
+    bool heldCount_on_{true};
+    Quality quality_{Quality::Full};
+    double truncation_{0.0}, sleepForce_{1e-7}, sleepSeconds_{1.0}, tensionFloor_{1e-14};
+    bool qualitySet_{}, idleSkip_{}, idle_{};
+    int idleCount_{};
+    bool idleStep() noexcept;       // true (and idle_) when the frame can be skipped
+    void trackIdle() noexcept;
+    void checkIdle() noexcept;
+    std::uint64_t sleepSamples_{48000};
+    bool fast_{false};
+    int tensionLimit_{108};
     std::array<Voice, 88> voices_;
     piano_mvp_v3::Soundboard soundboard_;
     GrandBoard board_;

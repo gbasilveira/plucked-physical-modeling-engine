@@ -28,28 +28,19 @@ public:
     void configure(std::vector<Slice> s) { slices_ = std::move(s); }
     bool empty() const noexcept { return slices_.empty(); }
     // S_s (m) of string s.
-    double sum(std::span<const double> z, std::size_t s) const noexcept {
-        const auto& sl = slices_[s]; double acc = 0;
-        for (std::size_t n = 0; n < sl.k2.size(); ++n) acc += sl.k2[n] * z[sl.offset + n] * z[sl.offset + n];
-        return acc;
-    }
+    double sum(std::span<const double> z, std::size_t s) const noexcept;
     // Delta T_s = c_s S_s (N).
     double deltaT(std::span<const double> z, std::size_t s) const noexcept { return slices_[s].c * sum(z, s); }
-    double value(std::span<const double> z) const noexcept override {
-        double v = 0;
-        for (std::size_t s = 0; s < slices_.size(); ++s) { const double S = sum(z, s); v += 0.25 * slices_[s].c * S * S; }
-        return v;
-    }
-    void gradient(std::span<const double> z, std::span<double> grad) const noexcept override {
-        for (auto& g : grad) g = 0;
-        for (std::size_t s = 0; s < slices_.size(); ++s) {
-            const auto& sl = slices_[s];
-            const double dT = sl.c * sum(z, s);
-            for (std::size_t n = 0; n < sl.k2.size(); ++n) grad[sl.offset + n] = dT * sl.k2[n] * z[sl.offset + n];
-        }
-    }
+    double value(std::span<const double> z) const noexcept override;
+    void gradient(std::span<const double> z, std::span<double> grad) const noexcept override;
     std::size_t strings() const noexcept { return slices_.size(); }
+    // 0.5.4: fast reassociated sums (kern::sumSqFast) instead of the sequential reference sum.
+    void setFast(bool f) noexcept { fast_ = f; }
+    // Modes beyond limit[s] are zero (truncated voice): the sum stops there.
+    void setLimits(const std::size_t* limit) noexcept { limits_ = limit; }
 private:
+    bool fast_{false};
+    const std::size_t* limits_{nullptr};
     std::vector<Slice> slices_;
 };
 
@@ -68,6 +59,36 @@ public:
     // After the owner scaled the string state (damper), lower |psi| to sqrt(2(V + eps0)) if above
     // (only removes energy; SPEC-NL Drift control 2 applied immediately).
     void clampPsi() noexcept;
+    // ---- 0.5.4 ----
+    // Runtime gate for the tension potential (a note configured with tension behaves as 0.5.1 when
+    // off; applied by the owner at note-on, not mid-note).
+    void setTensionEnabled(bool on) noexcept { tensionOn_ = on; }
+    bool tensionEnabled() const noexcept { return tensionOn_ && !tension_.empty(); }
+    // Fast reassociated sums in the bridge-force and tension dot products (not bit-identical).
+    void setFastKernels(bool f) noexcept { fast_ = f; dotValid_ = false; tension_.setFast(f); }
+    // Tension potential floor (J): below it the cheap free update is used (default 1e-14).
+    double tensionFloor() const noexcept { return floor_; }
+    // Copy of the compiled float bridge coefficients of string s (SegmentBridgeTerms::a), widened.
+    void setTermCoefficients(std::size_t s, std::span<const float> a, double tOverL);
+    // Total vertical bridge force of all strings for bridge displacement w (what Piano used to sum
+    // from SegmentBridgeTerms): exact sequential sums unless fast kernels are on.
+    double bridgeForceNow(double w) noexcept;
+    // Mode truncation: after every `truncate(peak)` call the highest modes whose contribution
+    // |a_n| sqrt(q^2 + (u/(omega dt))^2) is below `relative * peak` are set to zero and skipped
+    // until the next launch(). Zeroing only removes energy. relative 0 disables.
+    void setTruncation(double relative) noexcept { truncRel_ = relative; }
+    // The owner changed string state behind the note's back (hand-over from an unstruck string).
+    void invalidateForceCache() noexcept { dotValid_ = false; }
+    void truncate(double peakForce) noexcept;
+    std::size_t activeModes(std::size_t s) const noexcept { return nAct_[s]; }
+    bool truncated() const noexcept {
+        for (std::size_t s = 0; s < strings_.size(); ++s) if (nAct_[s] < strings_[s].n) return true;
+        return false;
+    }
+    // Number of vertical mode updates done by one step (CPU accounting).
+    std::size_t activeModeTotal() const noexcept {
+        std::size_t t = 0; for (std::size_t s = 0; s < strings_.size(); ++s) t += nAct_[s]; return t;
+    }
     pme::nl::SavSegment<double>& segment() noexcept { return seg_; }
     const pme::nl::SavSegment<double>& segment() const noexcept { return seg_; }
     bool inFlight() const noexcept { return inFlight_; }
@@ -90,8 +111,18 @@ private:
     struct String {
         std::size_t off{}, n{};
         double rhoA{}, tOverL{};
-        std::vector<double> aV, aH, forceCoef, g, beta, kappa, gamma, qH, uH, fH;
+        std::vector<double> aV, aH, forceCoef, g, beta, kappa, gamma, qH, uH, fH, wdt, aTerm, gf;
+        double tOverLTerm{};
     };
+    void zeroTruncated() noexcept;
+    // Fast hammer-flight SAV step (single hammer potential, rank one); false: use the engine step.
+    bool flightFast(double vNow, std::span<const pme::nl::Dashpot<double>> dashpots) noexcept;
+    std::vector<double> fg_, fz_, fa_, invMass_;
+    std::array<std::vector<double>, 4> fh_, fw_;
+    std::uint32_t fastContact_{0}, fastDriftThreshold_{0};
+    double fastDriftDecay_{0};
+    bool tryBypass(double accV, double accH, double* vTensionOut) noexcept;
+    void stepHorizontal(double accH) noexcept;
     void closeContact(double endSample) noexcept;
     void release() noexcept;
     void trackContact(double maxDelta) noexcept;
@@ -109,6 +140,10 @@ private:
     pme::exciters::SoftPedal pedal_{pme::exciters::SoftPedal::UnaCorda};
     std::size_t hammerIdx_{0};
     double sE_{1.0}, dt_{0.0}, shift_{0.0}, floor_{1e-14};
+    bool tensionOn_{true}, fast_{false}, hZero_{true}, dotValid_{false};
+    std::array<double, 3> dotCache_{};
+    double truncRel_{0.0}, psi0_{0.0};
+    std::array<std::size_t, 3> nAct_{};   // active (not truncated) vertical modes per string
     bool inFlight_{false};
     double prevMax_{-1.0e300};
     std::uint64_t prevSample_{0};
