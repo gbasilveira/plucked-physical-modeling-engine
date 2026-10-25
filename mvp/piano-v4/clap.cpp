@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 #include "piano.hpp"
 #include "midi.hpp"
 #include "pme/simd/denormals.hpp"
@@ -14,10 +15,11 @@ namespace {
 constexpr const char* features[] = {CLAP_PLUGIN_FEATURE_INSTRUMENT, CLAP_PLUGIN_FEATURE_SYNTHESIZER,
                                    CLAP_PLUGIN_FEATURE_STEREO, nullptr};
 const clap_plugin_descriptor_t descriptor = {
-    CLAP_VERSION, "org.pme.experimental.piano-mvp-v4", "Piano MVP 4 - Real time", "PME",
-    "", "", "", "0.5.4.1", "Experimental coupled-unison piano: one shared soundboard, sympathetic strings, leaky dampers, string tension modulation, una corda (CC67), undamped treble; quality Live / Balanced / Full (Full is selected automatically while the host renders offline)", features};
+    CLAP_VERSION, "org.pme.experimental.piano-mvp-v4", "Piano MVP 4 - Imperfections", "PME",
+    "", "", "", "0.5.5", "Experimental coupled-unison piano with per-key unison mistuning, uneven hammer contact and false-string partials (Imperfection amount), a Voices setting and: one shared soundboard, sympathetic strings, leaky dampers, string tension modulation, una corda (CC67), undamped treble; quality Live / Balanced / Full (Full is selected automatically while the host renders offline)", features};
 using piano_mvp_v4::Piano;
-enum : clap_id { kParamQuality = 0, kParamThreads = 1, kParamAdaptive = 2 };
+enum : clap_id { kParamQuality = 0, kParamThreads = 1, kParamAdaptive = 2, kParamImperfection = 3, kParamVoices = 4 };
+constexpr int kVoiceChoices[] = {0, 16, 32, 48, 64};   // Voices parameter: index -> struck-voice limit (0 = Auto)
 constexpr int kMaxThreads = 3;
 struct Instance {
     clap_plugin_t plugin{};
@@ -26,12 +28,16 @@ struct Instance {
     std::atomic<int> quality{0};                 // 0 Live, 1 Balanced, 2 Full (the parameter)
     std::atomic<int> threads{1};                 // helper threads taking part, 0..kMaxThreads
     std::atomic<int> adaptive{1};                // 0.5.4.1 adaptive load shedding (Live/Balanced), default on
+    std::atomic<double> imperfection{Piano::defaultImperfection};   // 0..2 (the parameter)
+    std::atomic<int> voices{0};                  // index into kVoiceChoices (the parameter)
     std::atomic<int> offline{0};                 // clap.render: offline rendering forces Full
     int appliedQuality{-1}, appliedThreads{-1}, appliedAdaptive{-1};  // audio thread
     // Audio thread: make the engine match the parameters (cheap; no allocation).
     void applySettings() noexcept {
         const int q = offline.load(std::memory_order_relaxed) ? 2 : quality.load(std::memory_order_relaxed);
         if (q != appliedQuality) { piano.setQuality(static_cast<Piano::Quality>(q)); appliedQuality = q; }
+        piano.setVoices(kVoiceChoices[std::clamp(voices.load(std::memory_order_relaxed), 0, 4)]);
+        piano.setImperfection(imperfection.load(std::memory_order_relaxed));   // taken by each key at its next note-on
         const int t = threads.load(std::memory_order_relaxed);
         if (t != appliedThreads) { piano.setActiveWorkers(t); appliedThreads = t; }
         const int a = (adaptive.load(std::memory_order_relaxed) != 0 && q != 2) ? 1 : 0;
@@ -72,6 +78,8 @@ clap_process_status CLAP_ABI process(const clap_plugin_t* plugin, const clap_pro
                     if (p->param_id == kParamQuality) s.quality.store(std::clamp(static_cast<int>(p->value + 0.5), 0, 2));
                     if (p->param_id == kParamThreads) s.threads.store(std::clamp(static_cast<int>(p->value + 0.5), 0, kMaxThreads));
                     if (p->param_id == kParamAdaptive) s.adaptive.store(std::clamp(static_cast<int>(p->value + 0.5), 0, 1));
+                    if (p->param_id == kParamVoices) s.voices.store(std::clamp(static_cast<int>(p->value + 0.5), 0, 4));
+                    if (p->param_id == kParamImperfection) s.imperfection.store(std::clamp(p->value, 0.0, Piano::maxImperfection));
                     s.applySettings();
                 }
                 ++next;
@@ -101,14 +109,21 @@ const clap_plugin_note_ports_t notePorts = {
     }};
 const char* const qualityNames[] = {"Live", "Balanced", "Full"};
 const clap_plugin_params_t params = {
-    [](const clap_plugin_t*) -> std::uint32_t { return 3; },
+    [](const clap_plugin_t*) -> std::uint32_t { return 5; },
     [](const clap_plugin_t*, std::uint32_t i, clap_param_info_t* info) {
-        if (i > 2 || !info) return false;
+        if (i > 4 || !info) return false;
         *info = {};
         info->flags = CLAP_PARAM_IS_STEPPED | CLAP_PARAM_IS_ENUM | CLAP_PARAM_IS_AUTOMATABLE;
         if (i == 0) {
             info->id = kParamQuality; std::strcpy(info->name, "Quality"); std::strcpy(info->module, "Engine");
             info->min_value = 0; info->max_value = 2; info->default_value = 0;
+        } else if (i == 4) {
+            info->id = kParamVoices; std::strcpy(info->name, "Voices"); std::strcpy(info->module, "Engine");
+            info->min_value = 0; info->max_value = 4; info->default_value = 0;
+        } else if (i == 3) {
+            info->flags = CLAP_PARAM_IS_AUTOMATABLE;   // continuous
+            info->id = kParamImperfection; std::strcpy(info->name, "Imperfection"); std::strcpy(info->module, "Engine");
+            info->min_value = 0; info->max_value = Piano::maxImperfection; info->default_value = Piano::defaultImperfection;
         } else if (i == 2) {
             info->id = kParamAdaptive; std::strcpy(info->name, "Adaptive load shedding"); std::strcpy(info->module, "Engine");
             info->min_value = 0; info->max_value = 1; info->default_value = 1;
@@ -123,6 +138,8 @@ const clap_plugin_params_t params = {
         if (id == kParamQuality) { *v = self(p).quality.load(); return true; }
         if (id == kParamThreads) { *v = self(p).threads.load(); return true; }
         if (id == kParamAdaptive) { *v = self(p).adaptive.load(); return true; }
+        if (id == kParamImperfection) { *v = self(p).imperfection.load(); return true; }
+        if (id == kParamVoices) { *v = self(p).voices.load(); return true; }
         return false;
     },
     [](const clap_plugin_t*, clap_id id, double v, char* out, std::uint32_t cap) {
@@ -130,6 +147,8 @@ const clap_plugin_params_t params = {
         if (id == kParamQuality) { std::snprintf(out, cap, "%s", qualityNames[std::clamp(static_cast<int>(v + 0.5), 0, 2)]); return true; }
         if (id == kParamThreads) { std::snprintf(out, cap, "%d", static_cast<int>(v + 0.5)); return true; }
         if (id == kParamAdaptive) { std::snprintf(out, cap, "%s", v > 0.5 ? "On" : "Off"); return true; }
+        if (id == kParamImperfection) { std::snprintf(out, cap, "%.2f", v); return true; }
+        if (id == kParamVoices) { const int i = std::clamp(static_cast<int>(v + 0.5), 0, 4); if (i == 0) std::snprintf(out, cap, "Auto"); else std::snprintf(out, cap, "%d", kVoiceChoices[i]); return true; }
         return false;
     },
     [](const clap_plugin_t*, clap_id id, const char* text, double* v) {
@@ -140,6 +159,12 @@ const clap_plugin_params_t params = {
         }
         if (id == kParamThreads) { *v = std::clamp(std::atoi(text), 0, kMaxThreads); return true; }
         if (id == kParamAdaptive) { *v = (!strcasecmp(text, "off") || !std::strcmp(text, "0")) ? 0 : 1; return true; }
+        if (id == kParamImperfection) { *v = std::clamp(std::atof(text), 0.0, Piano::maxImperfection); return true; }
+        if (id == kParamVoices) {
+            if (!strcasecmp(text, "auto")) { *v = 0; return true; }
+            for (int i = 1; i < 5; ++i) if (std::atoi(text) == kVoiceChoices[i]) { *v = i; return true; }
+            return false;
+        }
         return false;
     },
     // Not processing: parameter changes arrive here.
@@ -153,6 +178,8 @@ const clap_plugin_params_t params = {
             if (pv->param_id == kParamQuality) self(p).quality.store(std::clamp(static_cast<int>(pv->value + 0.5), 0, 2));
             if (pv->param_id == kParamThreads) self(p).threads.store(std::clamp(static_cast<int>(pv->value + 0.5), 0, kMaxThreads));
             if (pv->param_id == kParamAdaptive) self(p).adaptive.store(std::clamp(static_cast<int>(pv->value + 0.5), 0, 1));
+            if (pv->param_id == kParamVoices) self(p).voices.store(std::clamp(static_cast<int>(pv->value + 0.5), 0, 4));
+            if (pv->param_id == kParamImperfection) self(p).imperfection.store(std::clamp(pv->value, 0.0, Piano::maxImperfection));
         }
     }};
 // clap.render: while the host renders offline the plug-in uses the full model (Quality is ignored).
@@ -162,20 +189,27 @@ const clap_plugin_render_t renderExt = {
         self(p).offline.store(mode == CLAP_RENDER_OFFLINE ? 1 : 0);
         return true;
     }};
-// State: magic, quality, threads (three bytes after the magic).
+// State: magic, quality, threads, adaptive-off (byte 6, 0.5.4.1), imperfection (byte 7: 0 = not stored, default; else round(100 x amount) + 1),
+// voices (byte 8: 0 = not stored, Auto; else index + 1). States of 0.5.4 / 0.5.4.1 have 7 bytes and load with the defaults.
 constexpr char kStateMagic[4] = {'P', 'M', 'S', '4'};
 const clap_plugin_state_t stateExt = {
     [](const clap_plugin_t* p, const clap_ostream_t* stream) {
-        unsigned char buf[7] = {kStateMagic[0], kStateMagic[1], kStateMagic[2], kStateMagic[3],
+        unsigned char buf[9] = {kStateMagic[0], kStateMagic[1], kStateMagic[2], kStateMagic[3],
                                 static_cast<unsigned char>(self(p).quality.load()),
                                 static_cast<unsigned char>(self(p).threads.load()),
-                                static_cast<unsigned char>(self(p).adaptive.load() ? 0 : 1)};   // byte 6: adaptive off
-        return stream && stream->write(stream, buf, 7) == 7;
+                                static_cast<unsigned char>(self(p).adaptive.load() ? 0 : 1),   // byte 6: adaptive off
+                                static_cast<unsigned char>(std::lround(100.0 * self(p).imperfection.load()) + 1),
+                                static_cast<unsigned char>(self(p).voices.load() + 1)};
+        return stream && stream->write(stream, buf, 9) == 9;
     },
     [](const clap_plugin_t* p, const clap_istream_t* stream) {
-        unsigned char buf[7] = {};
+        unsigned char buf[9] = {};
         if (!stream || stream->read(stream, buf, 7) != 7 || std::memcmp(buf, kStateMagic, 4)) return false;
         self(p).quality.store(std::clamp<int>(buf[4], 0, 2)); self(p).threads.store(std::clamp<int>(buf[5], 0, kMaxThreads)); self(p).adaptive.store(buf[6] ? 0 : 1);
+        if (stream->read(stream, buf + 7, 1) != 1) buf[7] = 0;   // older state: no imperfection / voices bytes
+        else if (stream->read(stream, buf + 8, 1) != 1) buf[8] = 0;
+        self(p).imperfection.store(buf[7] == 0 ? Piano::defaultImperfection : std::clamp((buf[7] - 1) / 100.0, 0.0, Piano::maxImperfection));
+        self(p).voices.store(buf[8] == 0 ? 0 : std::clamp<int>(buf[8] - 1, 0, 4));
         return true;
     }};
 const void* CLAP_ABI extension(const clap_plugin_t*, const char* id) {

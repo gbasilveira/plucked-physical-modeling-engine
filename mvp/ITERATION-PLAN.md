@@ -4,6 +4,20 @@ Goal: improve the acoustic-piano character, with one change at a time and audibl
 reproducible comparisons. A passing numerical test is not a listening endorsement.
 Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano`.
 
+## Imperfections and Voices (2026-10-25, 0.5.5)
+
+Listener: "the string sounds too perfect... are the three strings all in tune? spread them a bit, like a unison"; and long overlapping pedalled
+chords are thinned by the 16-voice cap. 0.5.5 adds, with an **Imperfection** amount (0 = 0.5.4 bit for bit, 1 default, 2 max; CLAP id 3, LV2
+port 7; takes effect at a key's next note-on): per-key deterministic unison mistuning (0.3-2 cents spread, smaller in the treble, zero mean;
+Weinreich 1977 for the double decay), uneven hammer contact (5-15 % strength, 30-90 us lag per string, passive, `contact.hpp`) and false-string
+partial splitting (35 % of the multi-string keys, 2-4 partials, 0.3-2 Hz). All numbers are assumptions. Also a **Voices** setting (Auto / 16 / 32 /
+48 / 64; CLAP id 4, LV2 port 8) capped by the adaptive shed levels of 0.5.4.1, and stealing the quietest voice with an 8 ms fade instead of
+cutting the oldest. Measured: imperfections cost nothing; five-octave pedalled chords do not run in real time at any Voices value on the i3-8100
+(Live mean 1.0-1.6 deadlines, bass tension and woken strings dominate), so the Auto cap stays 16 and adaptive shedding (default on) keeps the
+plug-in alive at the cost of thinner chords; Full offline plays them complete (`big-chords-0.5.5.wav`). Listen: `imperfection-demo-0.5.5.wav`,
+`chopin-prelude-0.5.5.wav`, `big-chords-0.5.5.wav`. Details: `piano-v4/README.md`, "Update 0.5.5". Next: bass chords at Live (tension and woken
+strings), the radiation stereo width.
+
 ## Hotfix 0.5.4.1 (2026-10-25): 64-frame blocks, xruns, "delay per strike"
 
 The user's PipeWire runs at 64 frames / 48 kHz (1.33 ms). Findings: the audio path adds no latency (onset = hammer flight, 4.5-8.4 ms,

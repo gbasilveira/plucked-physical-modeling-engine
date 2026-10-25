@@ -79,6 +79,7 @@ static void exercise(const LV2_Descriptor* d,double fs) {
     // match it bit for bit.
     require(reference.setWorkerThreads(0) && reference.prepare(fs),"reference preparation failed");
     reference.setQuality(piano_mvp_v4::Piano::Quality::Live);
+    reference.setImperfection(piano_mvp_v4::Piano::defaultImperfection);   // 0.5.5: the plug-in default (port 7 not connected)
     float qualityPort = 0, threadsPort = 1, freeWheelPort = 0, adaptivePort = 0;   // adaptive shedding off: bit-exact comparison
     std::array<float,512> left{},right{};
     Sequence seq; seq.reset();

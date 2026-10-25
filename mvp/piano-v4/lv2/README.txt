@@ -1,9 +1,9 @@
-Piano MVP 4 - Real time 0.5.4.1 (LV2, Linux)
+Piano MVP 4 - Imperfections (LV2 0.5.5, Linux)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Real time 0.5.4.1" under instruments/synthesizers.
+Look for "Piano MVP 4 - Imperfections" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
@@ -17,9 +17,19 @@ deschedules is detected and its work moves to the audio thread. Control ports:
   Worker threads (default 1): one helper thread renders the soundboard radiation beside the strings (the
     output is identical for any value; 0 = everything on the audio thread, about 2x real time on the
     worst case). Values 2 and 3 add per-sample voice helpers and were measured to be no better.
-  Adaptive load shedding (default on; Live and Balanced): when blocks get close to the host's deadline the plug-in
+  Adaptive load shedding (port 6, default on; Live and Balanced): when blocks get close to the host's deadline the plug-in
     reduces work in steps (fewer struck voices, sympathetic and leaky strings, then no tension modulation) and
-    restores it after silence or 4 s of low load. Switch it off for exact, repeatable Live output.
+    restores it after silence or 4 s of low load. Switch it off for exact, repeatable Live output. The shed levels cap
+    whatever Voices is set to.
+  Imperfection (port 7, 0..2, default 1): 0 = the perfectly even strings of 0.5.4 (bit for bit); 1 = per-key
+    slightly mistuned unison strings (0.3-2 cents spread, smaller in the treble), uneven hammer contact
+    (5-15 percent strength, 30-90 us timing) and a few split partials on about a third of the keys; 2 = twice
+    the deviations. Changing it is real-time safe; each key takes it at its next note-on.
+  Voices (port 8, Auto / 16 / 32 / 48 / 64, default Auto): the number of struck keys that can sound at once in Live
+    and Balanced (Full always has 88). Auto is the quality's own cap (Live 16, Balanced 24). More voices keep long,
+    overlapping pedalled chords complete (less thinning) at a higher CPU cost; the sympathetic and leaky caps scale
+    with the square root of the ratio. When more keys ring than allowed, the quietest struck voice fades out over 8 ms
+    (it used to be the oldest, cut). See the README for what the i3-8100 measurements allow.
   Free-wheeling (optional, lv2:freeWheeling designation): a host that bounces offline raises it and
     the plug-in uses Full.
 When nothing sounds the plug-in stops simulating and costs well under 1 percent of a core.
@@ -70,3 +80,8 @@ Version 0.5.4 is the real-time iteration: same sound in Full, the cost of Live i
 kernels and a helper thread for the radiation. Live uses at most 16 struck keys, 12 lifted and 6 damped
 simulated strings, tension modulation for keys up to E2, and drops string modes that are more than 100 dB
 below their note's peak. See mvp/piano-v4/README.md ("Update 0.5.4").
+
+Version 0.5.5 adds the Imperfection control (above): the 0.5.4 piano had identical unison strings on every key and a
+perfectly even hammer; real strings are never exactly in tune with each other, which gives the slow beating and the
+double decay (a prompt sound, then a longer aftersound) of a real piano. All deviations are assumptions, not
+measurements. See mvp/piano-v4/README.md ("Update 0.5.5").

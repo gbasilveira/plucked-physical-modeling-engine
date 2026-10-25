@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <vector>
 #include "pme/exciters/hammer.hpp"
@@ -232,6 +234,40 @@ public:
         const double t=(key-72)/12.0;
         return 0.35+0.65*t*t*(3-2*t);
     }
+    // ---- 0.5.5 Voices setting ----
+    // Struck-voice limit independent of Quality: 0 = Auto (the quality's own cap: Live 16, Balanced 24), else
+    // 1..88. Explicit values apply to Live and Balanced; Full always has 88 (never steals). The sympathetic and
+    // leaky caps of the quality scale with sqrt(N / auto voices), rounded up, at most 88 (README 0.5.5). Real-time
+    // safe (changes limits only); sounding notes keep ringing, a lower limit takes effect at following note-ons.
+    void setVoices(int n) noexcept { voicesSetting_ = std::clamp(n, 0, maxPolyphony); applyLimits(); }
+    int voices() const noexcept { return voicesSetting_; }
+    int voiceLimit() const noexcept { return voiceLimit_; }
+    int sympatheticLimit() const noexcept { return sympLimit_; }
+    int leakyLimit() const noexcept { return leakyLimit_; }
+    // Steal fade (samples): a stolen voice is faded to -80 dB over this time instead of cut.
+    int stealFadeSamples() const noexcept { return fadeSamples_; }
+    // Test hook: fade length in samples (1 = effectively a cut). Resets to 8 ms at prepare().
+    void setStealFadeSamples(int n) noexcept { fadeSamples_ = std::max(1, n); fadeStep_ = std::exp(std::log(1e-4) / fadeSamples_); }
+    // ---- 0.5.5 imperfections (README "Update 0.5.5") ----
+    // Amount 0..2 (0 = exactly 0.5.4, 1 = default, 2 = twice the assumed deviations). Real-time safe at any
+    // time; a key takes the new amount at its next note-on (its strings are retuned then; no allocation).
+    static constexpr double defaultImperfection = 1.0, maxImperfection = 2.0;
+    void setImperfection(double amount) noexcept {
+        imperfection_.store(std::isfinite(amount) ? std::clamp(amount, 0.0, maxImperfection) : 0.0, std::memory_order_relaxed);
+    }
+    double imperfection() const noexcept { return imperfection_.load(std::memory_order_relaxed); }
+    // Per-key deterministic plan (a hash of the key index; the same on every thread, block size and run).
+    // Offsets are those of amount 1; the amount scales the change from the 0.5.4 values.
+    struct ImperfectionPlan {
+        std::array<double, 3> baseCents{}, cents{};   // unison offsets (cents): 0.5.4 symmetric 0.8 spacing, and amount 1
+        std::array<double, 3> strengthDev{};          // contact strength deviation (fraction, +-0.05..0.15)
+        std::array<double, 3> lagSeconds{};           // contact timing lag of each string (s), min 0
+        int falseCount{};                             // split partials
+        std::array<int, 4> falseMode{}, falseString{};// mode index (partial - 1), string
+        std::array<double, 4> falseHz{};              // frequency shift of that partial on that string (Hz)
+    };
+    const ImperfectionPlan& imperfectionPlan(int key) const noexcept { return plans_[key - 21]; }
+    static ImperfectionPlan makeImperfectionPlan(int key, int strings, std::size_t modes) noexcept;
     void reset() noexcept;
     void noteOn(int key, double velocity) noexcept;
     void noteOff(int key) noexcept;
@@ -273,7 +309,20 @@ private:
         unsigned radModes{};
         int slot{-1}, sinceTruncation{};
         bool radiated{}, faulted{};
+        double tuneApplied{};           // 0.5.5: imperfection amount the compiled coefficients carry (0 = as compiled)
+        double env{};                   // 0.5.5 decaying peak of |force| (steal policy)
+        std::uint64_t sinceOn{};        // samples since the note-on (steal protection)
+        int fade{};                     // >0: being stolen, samples left of the fade-out
     };
+    void applyImperfection(Voice& v, int key) noexcept;
+    std::array<ImperfectionPlan, 88> plans_{};
+    std::atomic<double> imperfection_{0.0};
+    std::vector<double> ratioScratch_;
+    int voicesSetting_{0}, fadeSamples_{384};
+    double fadeStep_{1.0}, envDecay_{0.999};
+    Preset basePreset_{16, 12, 6, 40, 1e-6, true, 1e-6, 0.5, 1e-10, true};
+    void applyLimits() noexcept;
+    Voice* pickSteal() noexcept;
     // Voice phase of the pool (see stringsStep).
     static void voiceTask(void* self, int k);
     void voiceStep(int port) noexcept;

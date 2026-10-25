@@ -10,10 +10,10 @@
 
 <https://gbasilveira.github.io/plucked-physical-modeling-engine/mvp/piano-v4>
     a lv2:Plugin, lv2:InstrumentPlugin ;
-    doap:name "Piano MVP 4 - Real time 0.5.4.1" ;
+    doap:name "Piano MVP 4 - Imperfections" ;
     doap:license <https://opensource.org/license/mit> ;
     lv2:minorVersion 5 ;
-    lv2:microVersion 5 ;
+    lv2:microVersion 6 ;
     lv2:requiredFeature urid:map ;
     rdfs:comment "Experimental physical piano with velocity, sustain and a fixed preset; quality Live / Balanced / Full." ;
     lv2:port [
@@ -51,4 +51,21 @@
         lv2:index 6 ; lv2:symbol "adaptive" ; lv2:name "Adaptive load shedding" ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:portProperty lv2:toggled, lv2:connectionOptional
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 7 ; lv2:symbol "imperfection" ; lv2:name "Imperfection" ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        rdfs:comment "0 = perfectly even strings (0.5.4); 1 = slightly mistuned unisons, uneven hammer contact, a few split partials; up to 2. A key takes a new value at its next note-on." ;
+        lv2:portProperty lv2:connectionOptional
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 8 ; lv2:symbol "voices" ; lv2:name "Voices" ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 4 ;
+        rdfs:comment "Struck-voice limit for Live and Balanced: Auto = the quality's own cap, or 16 / 32 / 48 / 64. More voices keep long, overlapping pedalled chords complete at a higher CPU cost; adaptive load shedding still caps it." ;
+        lv2:portProperty lv2:integer, lv2:enumeration, lv2:connectionOptional ;
+        lv2:scalePoint [ rdfs:label "Auto" ; rdf:value 0 ] ,
+                       [ rdfs:label "16" ; rdf:value 1 ] ,
+                       [ rdfs:label "32" ; rdf:value 2 ] ,
+                       [ rdfs:label "48" ; rdf:value 3 ] ,
+                       [ rdfs:label "64" ; rdf:value 4 ]
     ] .

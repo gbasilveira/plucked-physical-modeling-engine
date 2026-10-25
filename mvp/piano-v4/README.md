@@ -1,5 +1,152 @@
 # MVP 4: bridge feedback
 
+## Update 0.5.5: imperfections and a Voices setting (display name "Piano MVP 4 - Imperfections")
+
+Listener feedback on 0.5.4: "the string sounds too perfect, almost unrealistic... a piano has three strings per note, are they all
+100 % in tune?" and "long, overlapping pedalled chords get thinned". 0.5.5 adds (1) imperfections of the strings and the hammer, with an
+**Imperfection** amount, and (2) a **Voices** setting with a better steal policy. With Imperfection 0 the model is **bit-identical to
+0.5.4** (test `piano-previous-bitexact`: the Chopin excerpt, `--previous` = imperfection 0, against `chopin-prelude-0.5.4-raw.wav`).
+
+### What is added (every number is an assumption, not a measurement)
+
+All deviations are fixed per key by a hash of the key index (splitmix64), computed once in `prepare()`: no random state on the audio
+thread, identical on every thread, block size and run. At amount `a` a key's strings are moved from the 0.5.4 values by `a` times the
+change to the "amount 1" values, so amount 0 is exactly 0.5.4 and amount 2 extrapolates.
+
+1. **Unison mistuning.** 0.5.4 detuned the strings of every key by the same symmetric 0.8-cent steps. Now each key (two or three strings,
+   keys 33-108) gets its own offsets with zero mean and a total spread (max - min) `S = base(key) (0.6 + 0.8 u)`, `u` a per-key draw,
+   `base` = 1.1 cents at key 33, 1.6 at key 60, 0.8 at key 84, 0.4 at key 108 (linear between), `S` clamped to 0.3-2.0 cents; the
+   offsets inside the spread are random (not symmetric; the middle of three strings is anywhere). Real tuners leave unisons a fraction
+   of a cent apart and tighten the treble, where the beating would be too fast. Slight mistuning is what gives the double decay of a
+   real piano (a prompt sound, then a longer aftersound, Weinreich 1977, "Coupled piano strings", J. Acoust. Soc. Am. 62): strings in
+   phase drive the bridge and lose energy quickly, the out-of-phase part decays slowly. Realised by multiplying every vertical and
+   horizontal mode frequency of the string (omegaHat^2 by ratio^2, damping unchanged) at note-on (`TensionStruckNote::retuneString`,
+   `SavSegment::setCoordinate`, no allocation, state kept). Keys 21-32 have one string and are not changed.
+2. **Uneven hammer contact.** Per key and string: contact strength factor `1 + a d_s` (the strike weight of the felt contact `w_s`),
+   `d_s` of zero mean with amplitude 5-15 % (largest deviation of the key), and a contact lag of 0 to `T` = 30-90 microseconds (the
+   nearest string 0): string `s` is touched `lag_s` later than the first, implemented as a gap `lag_s x hammer speed` (metres) in the
+   felt contact (`contact.hpp`: MVP-local copy of the engine's `HammerPotential`/`HammerFelt` with a per-string constant gap; gap 0 is
+   the engine arithmetic, `piano-tension-energy` T4 still compares bit for bit with `StruckNote`). A constant gap does not change the
+   gradient directions and the contact stays convex in the penetration, so the SAV scheme stays passive (test 0.5.5-T2: lossless
+   energy drift 1e-13, lossy energy never rises, at amounts 1 and 2). The gap is set when a new hammer flight starts, not during a
+   repetition.
+3. **False strings (partial splitting).** 35 % of the multi-string keys (29 of 76 at amount 1) have 2-4 partials among 2-14 shifted
+   on one string of the key by 0.3-2 Hz, either sign: that partial of that string then beats against the same partial of its
+   unison neighbours at 0.3-2 Hz (non-uniform string or termination in a real piano). A cheap modification of the same retuning
+   (the modal string is unchanged otherwise). The assumption: a real false string splits a mode into two close ones; here one
+   string of the unison carries the shifted mode, which only works for keys with 2-3 strings (keys 21-32 are single wound strings
+   and get no false strings in this version, although they are where false strings are strongest in a real piano).
+4. **Runtime control.** `Piano::setImperfection(0..2)` (real-time safe, an atomic). A key takes the new amount at its next note-on
+   (the retuning is applied then, only when the amount changed; sounding notes are never touched: test 0.5.5-T5). Default: plug-ins
+   1.0 (CLAP parameter "Imperfection", id 3, continuous, automatable, saved in the state; LV2 port 7), offline renderers 1.0
+   (`piano-midi-render --imperfection X`, `piano-render --imperfection X`); the library default is 0. `--previous` of
+   `piano-midi-render` now means 0.5.4 (imperfection 0, per-key held-note count); `--v053` is the old meaning (0.5.3, bit-exact).
+   Unstruck (sympathetic and leaky) strings are not retuned (documented limit); a ringing unstruck string handed over to a hammer
+   keeps its perfect tuning for that note.
+
+### Results
+
+Plan for the A/B keys (amount 1; cents of the three strings, the 0.5.4 values were -0.8, 0, +0.8): C4 (60) +0.57 / -0.40 / -0.17
+(spread 0.97), contact strengths +10 / -5 / -5 %, lags 55 / 19 / 0 us, four false partials; C5 (72) +0.65 / -1.01 / +0.37
+(spread 1.66), strengths -1.5 / +7 / -5.6 %, lags 64 / 38 / 0 us, three false partials. Over the 76 multi-string keys: spread
+0.35-2.0 cents, mean offset 1e-15, contact deviation amplitude 5.0-14.7 %, lag up to 89.8 us, false-partial shifts 0.31-1.97 Hz
+(test 0.5.5-T1).
+
+Two-stage decay of single notes (velocity 0.62, no pedal, Full, mono mix, 50 ms RMS envelope, `piano-imperfection-measure decay`,
+`imperfection-decay-0.5.5.json`):
+
+| note, amount | prompt slope 0.25-1.5 s (dB/s) | aftersound slope 3-9 s (dB/s) | level at 5 s / 9 s re 0.1 s (dB) | envelope roughness 1-9 s (dB rms) |
+| --- | --- | --- | --- | --- |
+| C4, 0 | -12.3 | -0.85 | -41.7 / -49.8 | 5.2 |
+| C4, 1 | -13.2 | -2.56 | -49.2 / -54.1 | 4.5 |
+| C5, 0 | -25.1 | -4.11 | -65.2 / -83.4 | 5.3 |
+| C5, 1 | -23.5 | -2.82 | -54.5 / -64.5 | 1.9 |
+
+Honest reading: the effect depends on the key's drawn offsets. C5 gains a clearly stronger and smoother aftersound (+11 dB at 5 s,
++19 dB at 9 s, less beating roughness); C4's drawn offsets (spread 0.97 cent against 1.6 cent in 0.5.4) make the aftersound weaker and
+faster than 0.5.4's, i.e. a tighter unison. The 0.5.4 model already had a two-stage decay from its fixed 0.8-cent spacing and from
+the shared board; 0.5.5 changes it per key rather than making it uniformly "more". Whether it sounds more real is for listening:
+`imperfection-demo-0.5.5.wav` (C4 and C5, mf, held 4 s, each perfect then imperfect, then a six-note chord both ways) and
+`chopin-prelude-0.5.5.wav` (+ `-raw`, `-audit.json`, `chopin-prelude-latest.wav`; `chopin-prelude-0.5.4*` is the same render at
+amount 0). Chopin excerpt, Full: peak 0.1625 against 0.1581, RMS 0.01412 against 0.01421.
+
+Cost: none measurable (retuning runs only when the amount changes, the contact lag and strengths are a few multiplications at
+note-on). `piano-block-bench`, Live, one helper, i3-8100, 64-frame blocks (and 128), amount 0 / 1: pedalled 12-key cluster mean 0.27 /
+0.25 deadlines (p99.9 0.72 / 0.84, max 2.05 / 2.03, 3 late blocks of 3750 in both, all in the first attack block); rolling chords from
+key 43: mean 0.32 / 0.32 (p99.9 0.94 / 0.95, none late); Chopin 52-58 s: mean 0.21 / 0.21 (p99.9 0.65 / 0.65, none late). At 128: the
+same within noise (cluster 0.25 / 0.25, chords 0.32 / 0.32, Chopin 0.20 / 0.20).
+
+### Voices setting and steal policy
+
+Complaint: long, overlapping, pedalled chords are thinned by Live's 16-voice cap. **Voices** (CLAP parameter id 4: Auto, 16, 32, 48,
+64, stepped, saved in the state; LV2 port 8) sets the number of struck keys that can sound at once in Live and Balanced (Full always
+88). Auto is the quality's own cap (Live 16, Balanced 24): the default is unchanged. The sympathetic and leaky caps scale with
+`sqrt(N / auto voices)`, rounded up: Live 32 -> 32 voices, 17 sympathetic, 9 leaky; 48 -> 48/21/11; 64 -> 64/24/12 (Balanced 48 -> 48/23/12).
+The adaptive load shedding of 0.5.4.1 takes the minimum with its level tables, so **the shed levels cap whatever Voices is set to**
+(level 3 is 8 voices). Changing it is real-time safe (limits only; all 88 voices exist), sounding notes keep ringing.
+
+Steal policy (shared board): 0.5.4 cut the **oldest** struck voice. Now the **quietest** one is chosen (decaying peak of its bridge
+force, 100 ms time constant; voices struck less than 100 ms ago or with the hammer in flight are protected; ties and the all-protected
+case fall back to the oldest) and it **fades by 80 dB over 8 ms** (the damper scaling of the string state, allocation free) before it is
+retired; it stops counting against the limit at once. Test `piano-voices` (24 pedalled notes, 8 steals at 16 voices): the largest one-sample
+step of the difference to the run that keeps every voice, inside the steal windows, is 0.0017 with the fade and 0.0035 with a 1-sample cut
+(the signal's own largest step is 0.021); identical output for `sample()` and blocks with 0, 1 and 3 helper threads; a limit above the demand
+changes nothing bit for bit. Honest limit: the quietest voice is by definition quiet, so a cut would not click much either; the fade halves
+the step, and the rest of the difference comes from the missing board load of the removed string.
+
+### Big-chords stress (i3-8100, one helper, Live, `piano-block-bench --bigchords`, same pattern as `piano-rt-stress --scenario bigchords`)
+
+Pattern: a pedalled 10-note chord (keys 28-83, spread 5 octaves, velocity 96-120) every 1.5 s, each note held 5 s, so three to four chords
+(30-40 strings) ring at once, 14 s. Deadline ratio = block time / block duration; misses = blocks over 1.0.
+
+| block | Voices | adaptive off: mean / p99.9 / late | steals | adaptive on: mean / p99.9 / late | steals (shed level reached) |
+| --- | --- | --- | --- | --- | --- |
+| 64 | Auto (16) | 1.03 / 2.09 / 8262 of 10500 | 77 | 0.23 / 1.02 / 14 | 87 (3) |
+| 64 | 32 | 1.51 / 5.66 / 8262 | 27 | 0.27 / 1.08 / 28 | 87 (3) |
+| 64 | 48 | 1.59 / 2.53 / 9034 | 0 | 0.25 / 1.06 / 20 | 87 (3) |
+| 64 | 64 | 1.57 / 2.56 / 9378 | 0 | 0.26 / 1.07 / 24 | 87 (3) |
+| 128 | Auto | 1.03 / 2.11 / 4131 of 5250 | 77 | 0.23 / 0.99 / 5 | 87 (3) |
+| 128 | 32 | 1.47 / 2.44 / 4162 | 27 | 0.27 / 1.06 / 13 | 87 (3) |
+| 128 | 48 | 1.66 / 3.12 / 4335 | 0 | 0.28 / 1.06 / 15 | 87 (3) |
+| 128 | 64 | 1.58 / 2.56 / 4689 | 0 | 0.32 / 1.14 / 20 | 87 (3) |
+| 256 | Auto | 1.04 / 2.11 / 2066 of 2625 | 77 | 0.45 / 1.23 / 9 | 87 (3) |
+| 256 | 32 | 1.63 / 3.24 / 2075 | 27 | 0.36 / 1.14 / 6 | 82 (3) |
+| 256 | 48 | 1.63 / 2.93 / 2265 | 0 | 0.29 / 1.05 / 5 | 87 (3) |
+| 256 | 64 | 1.61 / 2.53 / 2292 | 0 | 0.46 / 1.40 / 14 | 87 (3) |
+
+Variant without the bass (keys below 48 lifted by 14 semitones, so no tension-modulated string; adaptive off): Auto mean 0.54 /
+p99.9 1.17 / 57 late at 64 frames, 0.64 / 1.49 / 91 late at 128; Voices 32: 0.86 / 1.85 / 1349 late (64), 0.99 / 2.40 / 3177 late (128);
+Voices 64: 1.42 / 14.3 / 7844 late (64), 1.02 / 2.94 / 3716 late (128). (CLAP harness `piano-rt-stress` at 128 on a loaded desktop gave
+the same ordering with noisier absolute numbers; the cluster/chords scenarios of 0.5.4 are unchanged at 3.9x and 1.9x.)
+
+Findings and recommendation: (1) **no Voices value is real-time safe for this scenario on this CPU**: even Auto misses most deadlines (mean
+1.03), because five-octave pedalled chords with bass keys pay for tension modulation, woken sympathetic/leaky strings and hammers
+at once; more voices cost roughly linearly more (mean 1.5-1.65 at 32-64) and never get below 1. The p99.9 <= 0.7 criterion for raising
+the Live Auto cap is not met by any setting (without the bass only Auto at 64 frames is close, mean 0.54, p99.9 1.17), so **the Live Auto
+cap stays 16**. (2) With adaptive shedding on (the plug-in default) the plug-in survives (mean 0.23-0.46, 5-28 late blocks of thousands) by
+shedding to level 3 (8 voices, 1 sympathetic, 1 leaky, no tension modulation) within about a second; it therefore plays the thinner
+chords the user complained about, whatever Voices is set to. (3) Voices 32-64 is for hosts with a larger block, a faster CPU, lighter or
+higher-register playing (even without the bass, Voices 32 and 64 were not safe here), or Balanced (not measured with the big
+chords); turn Adaptive off only if you accept dropouts. (4) For the full ringing of such chords use Full offline: `big-chords-0.5.5.wav`
+(`piano-bigchords render`) plays the pattern in Live Voices 16 (77 steals), Live Voices 32 (27 steals) and Full (none), 14 s each.
+
+### Tests (all in ctest)
+
+`piano-imperfections` (0.5.5-T1 plan bounds, T2 passivity with retuned strings and uneven hammer at amounts 1 and 2, T3 `sample()`
+= blocks = 0..3 helper threads for Live, Balanced and Full, T4 amount 0 bit-identical also after a detour through amount 1.7, T5 the
+amount reaches a key only at its next note-on, T6 amount 1 differs from 0: relative rms 0.17-0.19); `piano-voices` (V1 limit
+mapping, V2/V3 steal and fade, V4 determinism, V5 headroom changes nothing); `piano-previous-bitexact` (amount 0 against 0.5.4);
+`piano-clap-playback` (five parameters; 9-byte state round trip; the 7-byte states of 0.5.4 and 0.5.4.1 still load with Imperfection 1
+and Voices Auto); `piano-lv2-playback` (the reference engine uses the plug-in default amount). Not tested: the shed levels capping a
+Voices setting (they take a minimum in `applyLimits`; shedding depends on timing).
+
+### Limits
+
+Amounts, spreads, strengths, lags and false-string counts are assumptions, not measured from a piano; a key's character is fixed by
+its hash (no per-session or per-tuning variation, no slow drift of the tuning). Single-string bass keys are unchanged. Unstruck strings
+are not detuned. The contact lag is a constant gap, not a model of string height or of hammer rotation. Voices above 16 do not run in real
+time on this machine for dense bass chords (above).
+
 ## Update 0.5.4.1: hotfix, 64-frame blocks and load shedding (display name "Piano MVP 4 - Real time 0.5.4.1")
 
 Two user reports against 0.5.4 (and 0.5.3): (1) "from the 2nd note, a considerable delay is added each strike"; (2) in Carla the CPU

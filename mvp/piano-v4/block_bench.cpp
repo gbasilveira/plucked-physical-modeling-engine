@@ -4,6 +4,7 @@
 // distribution, the output peak and the number of samples above 1.0.
 //   piano-block-bench --events FILE [--from S] [--to S] | --keys 36,43,48 [--pedal] [--seconds S]
 //       [--block N] [--fs HZ] [--quality live|balanced|full] [--threads N] [--velocity V] [--adaptive]
+//       [--imperfection X (default 1)] [--voices N (0 Auto)] [--bigchords [notension]]
 //       | --chords BASEKEY [--gap S] [--pedal] [--velocity V]
 //       [--o-NAME VALUE ...]   (preset overrides: voices sym leaky tension trunc floor sleepforce sleeps)
 #include "piano.hpp"
@@ -24,7 +25,7 @@ int main(int argc, char** argv) {
     using namespace piano_mvp_v4;
     std::string eventsFile, quality = "live", keyList; int chordBase = 0; double chordGap = 0.15;
     double from = 0, to = -1, fs = 48000, velocity = 0.8, seconds = 4;
-    int block = 64, threads = 1; bool pedal = false, adaptive = false;
+    int block = 64, threads = 1; bool pedal = false, adaptive = false, bigchords = false, notension = false; double imperfection = 1.0; int voices = 0;
     std::vector<std::pair<std::string, double>> overrides;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -35,6 +36,8 @@ int main(int argc, char** argv) {
         else if (a == "--block") block = std::stoi(next()); else if (a == "--fs") fs = std::stod(next());
         else if (a == "--quality") quality = next(); else if (a == "--threads") threads = std::stoi(next());
         else if (a == "--velocity") velocity = std::stod(next()); else if (a == "--adaptive") adaptive = true;
+        else if (a == "--imperfection") imperfection = std::stod(next()); else if (a == "--voices") voices = std::stoi(next());
+        else if (a == "--bigchords") bigchords = true; else if (a == "--bigchords-notension") bigchords = notension = true;
         else if (a.rfind("--o-", 0) == 0) overrides.push_back({a.substr(4), std::stod(next())});
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return 2; }
     }
@@ -43,6 +46,7 @@ int main(int argc, char** argv) {
     if (!piano.setWorkerThreads(threads) || !piano.prepare(fs)) return 1;
     piano.setQuality(q);
     piano.setActiveWorkers(threads);
+    piano.setImperfection(imperfection); piano.setVoices(voices);
     if (adaptive) piano.setAdaptive(true);
     if (!overrides.empty()) {
         auto o = Piano::preset(q);
@@ -63,6 +67,17 @@ int main(int argc, char** argv) {
         int frame, status, a, b;
         while (in >> frame >> status >> a >> b) events.push_back({frame, {std::uint8_t(status), std::uint8_t(a), std::uint8_t(b)}});
         f0 = int(from * fs); f1 = int((to > 0 ? to : from + seconds) * fs);
+    } else if (bigchords) {   // 0.5.5: a pedalled 10-note chord every 1.5 s, each note held 5 s (same pattern as piano-rt-stress)
+        static const int chord[] = {28, 35, 40, 47, 52, 59, 64, 69, 76, 83};
+        events.push_back({0, {176, 64, 127}});
+        for (int r = 0; r * 1.5 < seconds; ++r) for (int i = 0; i < 10; ++i) {
+            int key = chord[i] + ((r * 5 + i) % 4) * 2 - (i > 6 ? 2 : 0);
+            if (notension && key < 48) key += 14;
+            const int on = 1 + r * int(fs * 1.5) + i * 60;
+            events.push_back({on, {144, std::uint8_t(key), std::uint8_t(96 + (i * 7 + r * 3) % 24)}});
+            events.push_back({on + int(fs * 5), {128, std::uint8_t(key), 0}});
+        }
+        std::stable_sort(events.begin(), events.end(), [](const Event& x, const Event& y) { return x.frame < y.frame; });
     } else if (chordBase) {   // rolling 4-note chords from `chordBase`, every `gap` seconds (+ pedal when asked)
         if (pedal) events.push_back({0, {176, 64, 127}});
         for (int r = 0; r * chordGap < seconds; ++r)
@@ -100,7 +115,7 @@ int main(int argc, char** argv) {
     double mean = 0; for (double x : ratio) mean += x; mean /= double(ratio.size());
     std::size_t miss = 0; for (double x : ratio) miss += x > 1.0;
     const auto pct = [&](double p) { return u[std::min(u.size() - 1, std::size_t(double(u.size()) * p))]; };
-    std::printf("%s block %d fs %.0f threads %d%s: mean %.2f p99 %.2f p99.9 %.2f max %.2f misses %zu/%zu peak %.3f over1 %llu stalls %llu shed %d\n",
-                quality.c_str(), block, fs, threads, adaptive ? " adaptive" : "", mean, pct(0.99), pct(0.999), u.back(), miss, ratio.size(), peak,
-                (unsigned long long)over, (unsigned long long)piano.radiationStalls(), piano.shedLevel());
+    std::printf("%s voices %d imp %.1f block %d fs %.0f threads %d%s: mean %.2f p99 %.2f p99.9 %.2f max %.2f misses %zu/%zu peak %.3f over1 %llu stalls %llu shed %d (events %llu) steals %llu\n",
+                quality.c_str(), voices, imperfection, block, fs, threads, adaptive ? " adaptive" : "", mean, pct(0.99), pct(0.999), u.back(), miss, ratio.size(), peak,
+                (unsigned long long)over, (unsigned long long)piano.radiationStalls(), piano.shedLevel(), (unsigned long long)piano.shedEvents(), (unsigned long long)piano.voiceSteals());
 }

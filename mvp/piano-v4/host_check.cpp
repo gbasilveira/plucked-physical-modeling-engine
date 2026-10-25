@@ -78,8 +78,11 @@ int main(int argc, char** argv) {
         const auto* params = static_cast<const clap_plugin_params_t*>(plugin->get_extension(plugin, CLAP_EXT_PARAMS));
         const auto* render = static_cast<const clap_plugin_render_t*>(plugin->get_extension(plugin, CLAP_EXT_RENDER));
         const auto* state = static_cast<const clap_plugin_state_t*>(plugin->get_extension(plugin, CLAP_EXT_STATE));
-        require(params && render && state && params->count(plugin) == 3, "quality/threads/adaptive parameters missing");
+        require(params && render && state && params->count(plugin) == 5, "quality/threads/adaptive/imperfection/voices parameters missing");
         clap_param_info_t pinfo{};
+        require(params->get_info(plugin, 3, &pinfo) && std::string(pinfo.name) == "Imperfection" && pinfo.max_value == 2 && pinfo.default_value == 1 &&
+                !(pinfo.flags & CLAP_PARAM_IS_STEPPED), "imperfection parameter info wrong");
+        require(params->get_info(plugin, 4, &pinfo) && std::string(pinfo.name) == "Voices" && pinfo.max_value == 4 && pinfo.default_value == 0, "voices parameter info wrong");
         require(params->get_info(plugin, 0, &pinfo) && std::string(pinfo.name) == "Quality" && pinfo.max_value == 2 &&
                 (pinfo.flags & CLAP_PARAM_IS_STEPPED), "quality parameter info wrong");
         char text[32];
@@ -102,10 +105,21 @@ int main(int argc, char** argv) {
         const double live = chord(false), full = chord(true), full2 = chord(true), live2 = chord(false);
         require(live == live2 && full == full2, "render is not repeatable");
         require(live != full && std::isfinite(live) && live > 0 && full > 0, "offline render mode did not select the full model");
-        unsigned char saved[16]; std::size_t stored = 0;
+        unsigned char saved[16] = {}; std::size_t stored = 0;
         clap_ostream_t out{saved, [](const clap_ostream_t* s, const void* b, std::uint64_t n) -> std::int64_t {
             auto* self = static_cast<unsigned char*>(s->ctx); std::memcpy(self, b, n); return static_cast<std::int64_t>(n); }};
         require(state->save(plugin, &out) , "state save failed"); (void)stored;
+        // State (0.5.5): 9 bytes round trip; the 7-byte states of 0.5.4 / 0.5.4.1 still load, with Imperfection 1 and Voices Auto.
+        struct Src { const unsigned char* d; std::size_t n, pos; };
+        const auto read = [](const clap_istream_t* s, void* b, std::uint64_t n) -> std::int64_t {
+            auto* src = static_cast<Src*>(s->ctx); const std::size_t k = std::min<std::size_t>(n, src->n - src->pos);
+            std::memcpy(b, src->d + src->pos, k); src->pos += k; return static_cast<std::int64_t>(k); };
+        const auto load = [&](const unsigned char* d, std::size_t n) { Src src{d, n, 0}; clap_istream_t in{&src, read}; return state->load(plugin, &in); };
+        const auto value = [&](clap_id id) { double v = -1; params->get_value(plugin, id, &v); return v; };
+        require(saved[7] == 101 && saved[8] == 1, "state bytes: imperfection 1.00 -> 101, voices Auto -> 1");
+        unsigned char custom[9]; std::memcpy(custom, saved, 9); custom[7] = 51; custom[8] = 4;   // 0.50, 48 voices
+        require(load(custom, 9) && value(3) == 0.5 && value(4) == 3, "9-byte state did not restore imperfection and voices");
+        require(load(saved, 7) && value(3) == 1.0 && value(4) == 0, "7-byte (0.5.4.1) state did not load with the defaults");
         plugin->stop_processing(plugin); plugin->deactivate(plugin); plugin->destroy(plugin);
         entry->deinit(); dlclose(library);
         std::cout << "PASS: plug-in load, ports, MIDI offset, stereo float/double, reset; 10 s at voice limit in "

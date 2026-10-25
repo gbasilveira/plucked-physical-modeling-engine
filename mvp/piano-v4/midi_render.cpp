@@ -21,9 +21,15 @@ int main(int argc, char** argv) {
     try {
         // --full (any position after the output): render the whole schedule from frame 0 to the
         // last event plus a 4 s release tail. Default behaviour (40-64 s excerpt) is unchanged.
-        int threads=1; std::string qualityName="full";
+        int threads=1; std::string qualityName="full"; double imperfection=1.0; bool imperfectionSet=false;
         for (int i=1;i<argc;) {
             const std::string a=argv[i];
+            if (a=="--imperfection" && i+1<argc) {   // 0.5.5: 0 = exactly 0.5.4, 1 = default, up to 2
+                imperfection=std::stod(argv[i+1]); imperfectionSet=true;
+                for (int j=i;j<argc-2;++j) argv[j]=argv[j+2];
+                argc-=2;
+                continue;
+            }
             if ((a=="--threads" || a=="--quality") && i+1<argc) {
                 (a=="--threads" ? threads=std::stoi(argv[i+1]) : (qualityName=argv[i+1],0));
                 for (int j=i;j<argc-2;++j) argv[j]=argv[j+2];
@@ -35,8 +41,8 @@ int main(int argc, char** argv) {
             if (std::string(argv[i])=="--full") { full=true; for (int j=i;j<argc-1;++j) argv[j]=argv[j+1]; --argc; }
             else ++i;
         }
-        if (argc != 3 && !(argc==4 && (std::string(argv[3])=="--legacy" || std::string(argv[3])=="--previous" || std::string(argv[3])=="--v052" || std::string(argv[3])=="--v051" || std::string(argv[3])=="--v050" || std::string(argv[3])=="--shared-pan" || std::string(argv[3])=="--v049" || std::string(argv[3])=="--v048" || std::string(argv[3])=="--v046")))
-            throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy|--v046|--v048|--v049|--v050|--v051|--v052(0.5.2, no leaky dampers)|--previous(0.5.3, bit-exact)|--shared-pan(0.5.1 coupling, 0.5.0 bridge positions)]");
+        if (argc != 3 && !(argc==4 && (std::string(argv[3])=="--legacy" || std::string(argv[3])=="--previous" || std::string(argv[3])=="--v053" || std::string(argv[3])=="--v052" || std::string(argv[3])=="--v051" || std::string(argv[3])=="--v050" || std::string(argv[3])=="--shared-pan" || std::string(argv[3])=="--v049" || std::string(argv[3])=="--v048" || std::string(argv[3])=="--v046")))
+            throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy|--v046|--v048|--v049|--v050|--v051|--v052(0.5.2, no leaky dampers)|--previous(0.5.4: imperfection 0, bit-exact)|--v053(0.5.3, bit-exact)|--shared-pan(0.5.1 coupling, 0.5.0 bridge positions)]");
         constexpr int fs=48000;
         int start=40*fs, end=64*fs, finish=66*fs;
         std::ifstream input(argv[1]);
@@ -61,7 +67,7 @@ int main(int argc, char** argv) {
         // current: 0.5.4 default (same model as 0.5.3), --previous (0.5.3 exactly: also the 0.5.3 single
         // held-note flag), --v052 (0.5.2: no leaky dampers), --v051 (no tension either) or
         // --shared-pan; v050: --v050 (0.5.0, private bridges).
-        const bool current = mode.empty() || mode=="--previous" || mode=="--v052" || mode=="--v051" || mode=="--shared-pan", v050 = mode=="--v050";
+        const bool current = mode.empty() || mode=="--previous" || mode=="--v053" || mode=="--v052" || mode=="--v051" || mode=="--shared-pan", v050 = mode=="--v050";
         piano.setSoftFelt(current || v050 || mode=="--v049" || mode=="--v048");
         // 0.4.9 physics is kept by --v049 and later; 0.5.0 adds polyphony, una corda, undamped treble.
         piano.setBridgeMassLoading(current || v050 || mode=="--v049");
@@ -70,13 +76,15 @@ int main(int argc, char** argv) {
         piano.setUndampedTreble(current || v050);
         // 0.5.1 shared board and key-dependent bridge points (each off in --previous).
         piano.setSharedBoard(current);
-        piano.setGrandBridgeGeometry(mode.empty() || mode=="--previous" || mode=="--v052" || mode=="--v051");
+        piano.setGrandBridgeGeometry(mode.empty() || mode=="--previous" || mode=="--v053" || mode=="--v052" || mode=="--v051");
         // 0.5.2 tension modulation of the struck strings (off in every earlier version).
-        piano.setTensionModulation(mode.empty() || mode=="--previous" || mode=="--v052");
+        piano.setTensionModulation(mode.empty() || mode=="--previous" || mode=="--v053" || mode=="--v052");
         // 0.5.3 leaky dampers (off in every earlier version).
-        piano.setLeakyDampers(mode.empty() || mode=="--previous");
+        piano.setLeakyDampers(mode.empty() || mode=="--previous" || mode=="--v053");
         // 0.5.4: per-key held-note count (overlapping same-key notes); every older mode keeps the single flag.
-        piano.setHeldNoteCount(mode.empty());
+        piano.setHeldNoteCount(mode.empty() || mode=="--previous");
+        // 0.5.5 imperfections: default 1; every older mode (and --previous = 0.5.4) is 0 unless --imperfection is given.
+        piano.setImperfection(imperfectionSet ? imperfection : (mode.empty() ? 1.0 : 0.0));
         // Offline: no voice stealing by default; earlier versions keep their 12-voice limit.
         piano.setVoiceLimit(current || v050 ? piano_mvp_v4::Piano::maxPolyphony : piano_mvp_v4::Piano::maxVoices);
         if (qualityName=="live") piano.setQuality(piano_mvp_v4::Piano::Quality::Live);
@@ -134,6 +142,6 @@ int main(int argc, char** argv) {
                   << "; RMS " << std::sqrt(energy/(2*(finish-start)))
                   << "; numerical faults " << piano.numericalFaults()
                   << (full ? "; voice steals " : "; excerpt voice steals ") << piano.voiceSteals()-stealsAtStart
-                  << "; threads " << threads << "; quality " << qualityName << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
+                  << "; imperfection " << piano.imperfection() << "; threads " << threads << "; quality " << qualityName << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
     } catch (const std::exception& e) { std::cerr<<e.what()<<'\n';return 1; }
 }

@@ -19,13 +19,14 @@ int main(int argc0, char** argv0) {
         std::vector<char*> positional{argv0[0]};
         double damperRate = piano_mvp_v4::Piano::defaultDamperRate, damperExp = 0;
         int leakyLimit = piano_mvp_v4::Piano::maxPolyphony;
-        bool leakyRelease = false, noBridgeMass = false;
+        bool leakyRelease = false, noBridgeMass = false, imperfectionSet = false; double imperfection = 1.0;
         for (int i = 1; i < argc0; ++i) {
             const std::string a = argv0[i];
             if (a == "--damper-rate" && i + 1 < argc0) damperRate = std::stod(argv0[++i]);
             else if (a == "--damper-exp" && i + 1 < argc0) damperExp = std::stod(argv0[++i]);
             else if (a == "--leaky-limit" && i + 1 < argc0) leakyLimit = std::stoi(argv0[++i]);
             else if (a == "--leaky-release") leakyRelease = true;
+            else if (a == "--imperfection" && i + 1 < argc0) { imperfection = std::stod(argv0[++i]); imperfectionSet = true; }
             else if (a == "--no-bridge-mass") noBridgeMass = true;   // diagnostic only
             else positional.push_back(argv0[i]);
         }
@@ -65,6 +66,8 @@ int main(int argc0, char** argv0) {
         piano.setUnaCorda(now); piano.setUndampedTreble(now);
         piano.setBridgeMassLoading(current && !noBridgeMass);
         piano.setSaturatingStringLoss(current);
+        // 0.5.5: the default coupled path has the imperfections (--imperfection X, 0 = 0.5.4); older paths none.
+        piano.setImperfection(imperfectionSet ? imperfection : (pathName == "coupled" || pathName == "fixed" ? 1.0 : 0.0));
         if (!piano.prepare(fs)) throw std::runtime_error("could not prepare piano");
         std::ofstream out(path, std::ios::binary);
         if (!out) throw std::runtime_error("could not open output");

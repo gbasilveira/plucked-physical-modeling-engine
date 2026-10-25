@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // 0.5.4 deadline harness: drives the CLAP plug-in's process() at a fixed block size and times every
 // block against its deadline (block / fs). Scenarios are worst cases of the real-time plug-in.
-//   piano-rt-stress PLUGIN.clap [--scenario S] [--block N] [--quality live|balanced|full] [--threads T]
+//   piano-rt-stress PLUGIN.clap [--scenario S] [--block N] [--quality live|balanced|full] [--threads T] [--voices 0..4 (Auto,16,32,48,64)]
 //                   [--seconds D] [--events FILE] [--rt] [--json] [--expect-equal]
 // Scenarios: cluster (sustain pedal, 12 keys ff), cluster-nopedal, chords (fast repeated chords,
 // pedal), repeat (same chord re-struck every 60 ms), chopin (needs --events; the 40 s .. 64 s excerpt),
-// idle (no notes). --expect-equal renders the scenario twice, with the given settings and with
+// bigchords (0.5.5: overlapping pedalled 10-note chords), idle (no notes). --expect-equal renders the scenario twice, with the given settings and with
 // 0 helper threads, and requires identical output (hash). Without --rt the harness runs as a normal
 // process; with --rt it requests SCHED_FIFO for the audio thread (as a real-time host would).
 #include <clap/clap.h>
@@ -50,6 +50,19 @@ static std::vector<Ev> scenario(const std::string& name, const std::string& even
                 if (name == "repeat" && r % 2 && k < 60) continue;
                 e.push_back({1 + r * period + (std::uint32_t(k) % 5) * 40, {0x90, std::uint8_t(k + (r % 3) * 2), 112}});
             }
+    } else if (name == "bigchords" || name == "bigchords-notension") {
+        // 0.5.5: long, overlapping, pedalled 10-note chords over the whole range: a new chord every 1.5 s, each
+        // held 5 s (pedal down throughout), so 3-4 chords (30-40 struck strings) are ringing at any time.
+        e.push_back({0, {0xb0, 64, 127}});
+        static const int chord[] = {28, 35, 40, 47, 52, 59, 64, 69, 76, 83};
+        for (std::uint32_t r = 0; r < 64; ++r) for (int i = 0; i < 10; ++i) {
+            // "-notension" lifts the keys below 48 by 14 semitones (no key under F#2, where Live tension modulation ends at E2).
+            int k = chord[i] + int((r * 5 + std::uint32_t(i)) % 4) * 2 - (i > 6 ? 2 : 0);
+            if (name == "bigchords-notension" && k < 48) k += 14;
+            const std::uint32_t on = 1 + r * (fs * 3 / 2) + std::uint32_t(i) * 60;
+            e.push_back({on, {0x90, std::uint8_t(k), std::uint8_t(96 + (i * 7 + r * 3) % 24)}});
+            e.push_back({on + fs * 5, {0x80, std::uint8_t(k), 0}});
+        }
     } else if (name == "chopin") {
         std::ifstream in(eventsFile);
         require(bool(in), "cannot read --events");
@@ -71,7 +84,7 @@ struct Events {
     std::vector<const clap_event_header_t*> all;
 };
 static Result run(const char* path, const std::string& name, const std::string& eventsFile, std::uint32_t block,
-                  int quality, int threads, double seconds, bool rt) {
+                  int quality, int threads, double seconds, bool rt, int voices = 0, double imperfection = 1.0) {
     constexpr std::uint32_t fs = 48000;
     Host h;
     h.lib = dlopen(path, RTLD_NOW | RTLD_LOCAL);
@@ -103,12 +116,12 @@ static Result run(const char* path, const std::string& name, const std::string& 
         [](const clap_input_events_t* l, std::uint32_t i) -> const clap_event_header_t* { return (*static_cast<Ctx*>(l->ctx)->list)[i]; }};
     clap_process_t proc{}; proc.frames_count = block; proc.audio_outputs = &audio; proc.audio_outputs_count = 1; proc.in_events = &in;
     std::vector<clap_event_midi_t> midi(4096);
-    clap_event_param_value_t pq{}, pt{}, pa{};
+    clap_event_param_value_t pq{}, pt{}, pa{}, pv{}, pi{};
     const auto param = [](clap_event_param_value_t& p, clap_id id, double v) {
         p.header = {sizeof(p), 0, CLAP_CORE_EVENT_SPACE_ID, CLAP_EVENT_PARAM_VALUE, 0};
         p.param_id = id; p.value = v; p.note_id = -1; p.port_index = -1; p.channel = -1; p.key = -1;
     };
-    param(pq, 0, quality); param(pt, 1, threads); param(pa, 2, g_adaptive ? 1 : 0);
+    param(pq, 0, quality); param(pt, 1, threads); param(pa, 2, g_adaptive ? 1 : 0); param(pi, 3, imperfection); param(pv, 4, voices);
     std::size_t cursor = 0;
     // Events before `start` are applied in the first block (pedal) at their time.
     std::vector<double> ratios;
@@ -121,7 +134,7 @@ static Result run(const char* path, const std::string& name, const std::string& 
     for (std::uint32_t base = 0; base < total; base += block) {
         list.clear();
         std::size_t used = 0;
-        if (base == 0) { list.push_back(&pq.header); list.push_back(&pt.header); list.push_back(&pa.header); }
+        if (base == 0) { list.push_back(&pq.header); list.push_back(&pt.header); list.push_back(&pa.header); list.push_back(&pi.header); list.push_back(&pv.header); }
         const std::uint32_t abs0 = start + base;
         while (cursor < script.size() && script[cursor].frame < abs0 + block && used < midi.size()) {
             const std::uint32_t f = script[cursor].frame < abs0 ? 0 : script[cursor].frame - abs0;
@@ -160,7 +173,7 @@ int main(int argc, char** argv) {
     try {
         require(argc >= 2, "plug-in path required");
         std::string name = "cluster", events, qname = "live";
-        std::uint32_t block = 128; int threads = 1; double seconds = 5; bool rt = false, json = false, equal = false; double minRtf = 0;
+        std::uint32_t block = 128; int threads = 1; double seconds = 5; bool rt = false, json = false, equal = false; double minRtf = 0; int voices = 0; double imperfection = 1.0;
         for (int i = 2; i < argc; ++i) {
             const std::string a = argv[i];
             if (a == "--scenario") name = argv[++i];
@@ -173,20 +186,22 @@ int main(int argc, char** argv) {
             else if (a == "--rt") rt = true;
             else if (a == "--json") json = true;
             else if (a == "--expect-equal") equal = true;
+            else if (a == "--imperfection") imperfection = std::stod(argv[++i]);
+            else if (a == "--voices") voices = std::stoi(argv[++i]);   // index 0 Auto, 1..4 = 16/32/48/64
             else if (a == "--min-rtf") minRtf = std::stod(argv[++i]);
         }
         const int quality = qname == "live" ? 0 : qname == "balanced" ? 1 : 2;
-        const Result r = run(argv[1], name, events, block, quality, threads, seconds, rt);
+        const Result r = run(argv[1], name, events, block, quality, threads, seconds, rt, voices, imperfection);
         if (json)
             std::cout << "{\"scenario\":\"" << name << "\",\"block\":" << block << ",\"quality\":\"" << qname << "\",\"threads\":" << threads
                       << ",\"realtime_factor\":" << r.rtf << ",\"misses\":" << r.misses << ",\"blocks\":" << r.blocks
                       << ",\"p99_ratio\":" << r.p99 << ",\"p999_ratio\":" << r.p999 << ",\"max_ratio\":" << r.maxRatio << ",\"worst_block\":" << r.worstBlock << ",\"peak\":" << r.peak << "}\n";
         else
-            std::cout << name << " block " << block << " " << qname << " threads " << threads << ": rtf " << r.rtf << ", misses " << r.misses << "/" << r.blocks
+            std::cout << name << " block " << block << " " << qname << " threads " << threads << " voices-index " << voices << ": rtf " << r.rtf << ", misses " << r.misses << "/" << r.blocks
                       << ", p99 " << r.p99 << ", p99.9 " << r.p999 << ", max " << r.maxRatio << " at block " << r.worstBlock << " (ratio of block time to deadline), peak " << r.peak << "\n";
         require(r.rtf >= minRtf, "real-time factor below --min-rtf");
         if (equal) {
-            const Result s = run(argv[1], name, events, block, quality, 0, seconds, rt);
+            const Result s = run(argv[1], name, events, block, quality, 0, seconds, rt, voices, imperfection);
             require(s.hash == r.hash, "output with helper threads differs from single-threaded output");
             std::cout << "PASS: output identical with " << threads << " and 0 helper threads (hash " << std::hex << r.hash << ")\n";
         }

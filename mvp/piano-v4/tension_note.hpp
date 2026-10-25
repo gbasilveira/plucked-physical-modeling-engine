@@ -19,6 +19,8 @@
 #include "pme/bridge/bridge_point.hpp"
 #include "pme/exciters/hammer.hpp"
 #include "pme/nonlinear/sav.hpp"
+#include "pme/string.hpp"
+#include "contact.hpp"
 
 namespace piano_mvp_v4 {
 // V = sum_s c_s S_s^2 / 4, S_s = sum_n k2_n q_n^2 over string s's vertical modes (SPEC-GEO).
@@ -59,6 +61,18 @@ public:
     // After the owner scaled the string state (damper), lower |psi| to sqrt(2(V + eps0)) if above
     // (only removes energy; SPEC-NL Drift control 2 applied immediately).
     void clampPsi() noexcept;
+    // ---- 0.5.5 imperfections ----
+    // Per-string contact strength factor (multiplies the strike weight w_s, > 0) and contact lag (s, >= 0:
+    // string s is touched about `lag` later than the first one; the gap is lag x hammer speed, so
+    // the timing difference does not grow at soft touch). 1 and 0 = 0.5.4. Takes effect at the next launch(). The potential stays convex and passive for any positive factor.
+    void setContactImperfection(const std::array<double, 3>& strength, const std::array<double, 3>& lag) noexcept {
+        strength_ = strength; lag_ = lag;
+    }
+    // Retune string s of this note: every vertical and horizontal mode frequency of the compiled string
+    // `m` is multiplied by ratio[i] (squares enter the oscillator: omegaHat^2 -> omegaHat^2 ratio^2,
+    // damping unchanged). ratio[i] == 1 for all i restores the compiled string bit for bit. Keeps the
+    // state; no allocation. `m` must be the string passed to configure().
+    void retuneString(std::size_t s, const pme::StringModes& m, std::span<const double> ratio) noexcept;
     // ---- 0.5.4 ----
     // Runtime gate for the tension potential (a note configured with tension behaves as 0.5.1 when
     // off; applied by the owner at note-on, not mid-note).
@@ -126,10 +140,10 @@ private:
     void closeContact(double endSample) noexcept;
     void release() noexcept;
     void trackContact(double maxDelta) noexcept;
-    using P = pme::exciters::HammerPotential<double>;
+    using P = ContactPotential;
     pme::nl::SavSegment<double> seg_;
     P potential_;
-    pme::exciters::HammerFelt<double> felt_;
+    ContactFelt felt_;
     VerticalTensionPotential tension_;
     std::array<pme::nl::Dashpot<double>, pme::nl::kMaxDashpots> dash_{};
     pme::bridge::BridgePoint<double>* bridge_{nullptr};
@@ -139,6 +153,7 @@ private:
     pme::UnaCordaParams una_{};
     pme::exciters::SoftPedal pedal_{pme::exciters::SoftPedal::UnaCorda};
     std::size_t hammerIdx_{0};
+    std::array<double, 3> strength_{1.0, 1.0, 1.0}, lag_{};
     double sE_{1.0}, dt_{0.0}, shift_{0.0}, floor_{1e-14};
     bool tensionOn_{true}, fast_{false}, hZero_{true}, dotValid_{false};
     std::array<double, 3> dotCache_{};

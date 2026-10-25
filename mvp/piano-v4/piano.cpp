@@ -21,6 +21,9 @@ bool Piano::prepare(double fs) {
     std::vector<double> phi;
     if (shared_) buildParticipation(grandGeometry_, phi);
     releaseStep_ = std::exp(-35.0 / fs);
+    fadeSamples_ = std::max(1, static_cast<int>(0.008 * fs));         // 8 ms steal fade to -80 dB
+    fadeStep_ = std::exp(std::log(1e-4) / fadeSamples_);
+    envDecay_ = std::exp(-1.0 / (0.1 * fs));
     for (int i = 0; i < 88; ++i) {
         auto& v = voices_[i];
         v.undamped = undampedTreble_ && i + 21 >= firstUndampedKey;
@@ -32,7 +35,7 @@ bool Piano::prepare(double fs) {
             auto string = preset;
             // Small symmetric unison spread: an explicit tuning assumption, not
             // measured data. Compile each string, including its own bridge terms.
-            const double cents = count == 1 ? 0 : (j - (count - 1) * 0.5) * 0.8;
+            const double cents = count == 1 ? 0 : (j - (count - 1) * 0.5) * 0.8;   // = plans_[i].baseCents[j]
             string.string.f1Target *= std::exp2(cents / 1200.0);
             if (piano_mvp_v2::compilePresetString(string, fs, v.modes[j]) != pme::Status::Ok)
                 return false;
@@ -57,6 +60,8 @@ bool Piano::prepare(double fs) {
                     v.leak[j][n] = SympatheticString::leakFactor(v.modes[j].omega[n] / (2 * std::numbers::pi), fs, damperRate_, damperExponent_, damperRefHz);
             }
         }
+        plans_[i] = makeImperfectionPlan(i + 21, count, v.modes[0].omega.size());
+        v.tuneApplied = 0.0;
         d.hammer = preset.hammer;
         // Treat the tabulated felt stiffness as the whole contact patch and
         // distribute it across strings. Keep one full-mass shared hammer.
@@ -100,6 +105,11 @@ bool Piano::prepare(double fs) {
     } else if (!soundboard_.prepare(fs)) return false;
     bridgeMassFilter_.prepare(fs);
     sleepSamples_ = static_cast<std::uint64_t>(sleepSeconds_ * fs);
+    {
+        std::size_t most = 0;
+        for (const auto& v : voices_) for (const auto& m : v.modes) most = std::max(most, m.omega.size());
+        ratioScratch_.assign(most, 1.0);
+    }
     radThread_.stop(); pool_.stop();
     ring_.keys.assign(std::size_t{ringSize} * 88, 0); ring_.count.assign(ringSize, 0);
     ring_.g.assign(std::size_t{ringSize} * 88, 0.0);
@@ -122,7 +132,7 @@ void Piano::reset() noexcept {
     for (auto& v : voices_) {
         v.note.reset(); v.note.clearDiagnostics(); v.bridge.reset(); v.light.reset(); v.lightW = v.dwPrev = 0;
         v.active = v.held = v.struck = v.sympathetic = false; v.age = v.quiet = 0; v.release = 1; v.force = 0;
-        v.slot = -1; v.peakForce = 0; v.sinceTruncation = 0;
+        v.slot = -1; v.peakForce = 0; v.sinceTruncation = 0; v.fade = 0; v.env = 0; v.sinceOn = 0;
     }
     heldCount_.fill(0); slotLoad_.fill(0.0); slotsDirty_ = true;
     sampleClock_ = 0;
@@ -130,10 +140,23 @@ void Piano::reset() noexcept {
     pedal_ = false; unaCordaDown_ = false; clock_ = 0; numericalFaults_ = 0; voiceSteals_ = 0; peakBridgeMotion_ = 0;
 }
 int Piano::activeVoices() const noexcept {
-    int n = 0; for (const auto& v : voices_) n += v.active && v.struck; return n;
+    int n = 0; for (const auto& v : voices_) n += v.active && v.struck && v.fade == 0; return n;
 }
 int Piano::sympatheticVoices() const noexcept {
     int n = 0; for (const auto& v : voices_) n += v.active && !v.struck; return n;
+}
+// Quietest struck voice that is not already fading and not in its first 100 ms or in hammer flight; if all are
+// protected, the oldest struck voice (the 0.5.4 rule). Ties: older first.
+Piano::Voice* Piano::pickSteal() noexcept {
+    Voice* best = nullptr; Voice* oldest = nullptr;
+    const auto guard = static_cast<std::uint64_t>(0.1 * fs_);
+    for (auto& x : voices_) {
+        if (!x.active || !x.struck || x.fade) continue;
+        if (!oldest || x.age < oldest->age) oldest = &x;
+        if (x.sinceOn < guard || x.note.inFlight()) continue;
+        if (!best || x.env < best->env || (x.env == best->env && x.age < best->age)) best = &x;
+    }
+    return best ? best : oldest;
 }
 void Piano::noteOn(int key, double velocity) noexcept {
     if (!ready_ || key < 21 || key > 108 || !std::isfinite(velocity)) return;
@@ -143,13 +166,21 @@ void Piano::noteOn(int key, double velocity) noexcept {
     // Steal the oldest struck voices until a slot is free (a lower limit set at run time by
     // setQuality may leave more voices than the limit sounding; they are released one per note-on).
     if (!v.struck && activeVoices() >= voiceLimit_) {
-        Voice* oldest = nullptr;
-        for (auto& x : voices_) if (x.active && x.struck && (!oldest || x.age < oldest->age)) oldest = &x;
-        if (oldest) {
+        if (!shared_) {
+            Voice* oldest = nullptr;
+            for (auto& x : voices_) if (x.active && x.struck && (!oldest || x.age < oldest->age)) oldest = &x;
+            if (oldest) {
+                ++voiceSteals_;
+                oldest->active = oldest->held = oldest->struck = oldest->sympathetic = false;
+                oldest->note.reset(); oldest->bridge.reset(); oldest->force = 0;
+                heldCount_[static_cast<std::size_t>(oldest - voices_.data())] = 0;
+            }
+        } else if (Voice* x = pickSteal()) {
+            // 0.5.5: the quietest struck voice (decaying peak of its bridge force) fades out over 8 ms instead of
+            // being cut; it stops counting against the limit at once and is retired when the fade ends.
             ++voiceSteals_;
-            oldest->active = oldest->held = oldest->struck = oldest->sympathetic = false;
-            oldest->note.reset(); oldest->bridge.reset(); oldest->force = 0;
-            heldCount_[static_cast<std::size_t>(oldest - voices_.data())] = 0;
+            x->fade = fadeSamples_;
+            heldCount_[static_cast<std::size_t>(x - voices_.data())] = 0; x->held = false;
         }
     }
     const bool wasSympathetic = shared_ && v.active && !v.struck;
@@ -167,6 +198,7 @@ void Piano::noteOn(int key, double velocity) noexcept {
         }
         primeBridge(v, key - 21);
     }
+    applyImperfection(v, key);
     if (// SPEC-HAM Una corda: shift s = 1 while the soft pedal is down at launch (a hammer in
     // flight is never moved: setShift happens only inside launch()).
     v.note.launch(std::clamp(velocity, 0.001, 1.0), unaCordaDown_ ? 1.0 : 0.0) != pme::Status::Ok) return;
@@ -174,6 +206,110 @@ void Piano::noteOn(int key, double velocity) noexcept {
     v.peakForce = 0; v.sinceTruncation = 0;
     if (heldCount_[key - 21] < 255) ++heldCount_[key - 21];
     v.active = v.held = v.struck = true; v.sympathetic = false; v.release = 1; v.age = ++clock_; v.quiet = 0;
+    v.fade = 0; v.env = 0; v.sinceOn = 0;
+}
+// ---- 0.5.5 imperfections. All numbers below are assumptions (README), not measurements. ----
+namespace {
+// splitmix64: a fixed hash, so the plan of a key never depends on threads, block size or call order.
+std::uint64_t mix(std::uint64_t x) noexcept {
+    x += 0x9E3779B97F4A7C15ULL;
+    x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
+    return x ^ (x >> 31);
+}
+struct Draw {
+    std::uint64_t s;
+    explicit Draw(int key, std::uint64_t salt) noexcept : s(mix(0x5EEDULL * 1000003ULL + static_cast<std::uint64_t>(key) * 7919ULL + salt)) {}
+    double u() noexcept { s = mix(s); return static_cast<double>(s >> 11) * (1.0 / 9007199254740992.0); }   // [0,1)
+};
+}
+Piano::ImperfectionPlan Piano::makeImperfectionPlan(int key, int count, std::size_t modes) noexcept {
+    ImperfectionPlan p;
+    for (int j = 0; j < count; ++j) p.baseCents[j] = count == 1 ? 0.0 : (j - (count - 1) * 0.5) * 0.8;
+    if (count < 2) return p;
+    Draw d(key, 1);
+    // (1) Unison mistuning. Total spread (max - min, cents) of the unison strings of a key:
+    // S = base(key) (0.6 + 0.8 u), base = 1.1 (key 33), 1.6 (60), 0.8 (84), 0.4 (108) cents, linear
+    // between, S clamped to [0.3, 2.0]. Offsets inside the spread are random; the mean is zero.
+    const double kx = std::clamp(static_cast<double>(key), 33.0, 108.0);
+    const double base = kx <= 60 ? 1.1 + 0.5 * (kx - 33) / 27 : (kx <= 84 ? 1.6 - 0.8 * (kx - 60) / 24 : 0.8 - 0.4 * (kx - 84) / 24);
+    const double spread = std::clamp(base * (0.6 + 0.8 * d.u()), 0.3, 2.0);
+    std::array<double, 3> r{};
+    for (int j = 0; j < count; ++j) r[j] = d.u();
+    if (count == 2) r = {0.0, 1.0, 0.0};
+    {
+        double lo = r[0], hi = r[0], mean = 0;
+        for (int j = 0; j < count; ++j) { lo = std::min(lo, r[j]); hi = std::max(hi, r[j]); }
+        if (hi - lo < 0.15) { r = {0.0, 0.5, 1.0}; lo = 0; hi = 1; }   // avoid three almost equal draws
+        if (count == 2 && d.u() < 0.5) std::swap(r[0], r[1]);
+        for (int j = 0; j < count; ++j) mean += r[j];
+        mean /= count;
+        for (int j = 0; j < count; ++j) p.cents[j] = (r[j] - mean) * spread / (hi - lo);
+    }
+    // (2) Uneven hammer contact: strength deviation of each string, amplitude A = 0.05..0.15 at the
+    // string with the largest deviation, zero mean; timing lag 0..T with T = 30..90 us (the nearest string 0).
+    {
+        Draw e(key, 2);
+        const double amp = 0.05 + 0.10 * e.u();
+        std::array<double, 3> s{}, t{};
+        double mean = 0, big = 0, lo = 1e9, hi = -1e9;
+        for (int j = 0; j < count; ++j) { s[j] = e.u(); mean += s[j]; t[j] = e.u(); lo = std::min(lo, t[j]); hi = std::max(hi, t[j]); }
+        mean /= count;
+        for (int j = 0; j < count; ++j) big = std::max(big, std::abs(s[j] - mean));
+        if (big < 0.05) { s = {0.0, 1.0, 0.5}; mean = count == 2 ? 0.5 : 0.5; big = 0.5; }
+        for (int j = 0; j < count; ++j) p.strengthDev[j] = amp * (s[j] - mean) / big;
+        const double T = 30e-6 + 60e-6 * e.u();
+        if (hi - lo < 0.15) { t = {0.0, 1.0, 0.4}; lo = 0; hi = 1; }
+        for (int j = 0; j < count; ++j) p.lagSeconds[j] = T * (t[j] - lo) / (hi - lo);
+    }
+    // (3) False strings (partial splitting): a minority of keys (35 %), 2..4 partials among 2..14, on one
+    // string of the key, shifted by 0.3..2 Hz (either sign), so that partial beats against the others.
+    {
+        Draw f(key, 3);
+        if (f.u() < 0.35 && modes > 3) {
+            const int want = 2 + static_cast<int>(f.u() * 3.0);
+            const int str = std::min(count - 1, static_cast<int>(f.u() * count));
+            const std::size_t top = std::min<std::size_t>(14, modes);   // partial numbers 2..top
+            for (int tries = 0; tries < 40 && p.falseCount < want; ++tries) {
+                const int mode = 1 + static_cast<int>(f.u() * static_cast<double>(top - 1));   // 1-based partial = mode+1
+                bool dup = false;
+                for (int k = 0; k < p.falseCount; ++k) dup = dup || p.falseMode[k] == mode;
+                const double hz = (0.3 + 1.7 * f.u()) * (f.u() < 0.5 ? -1.0 : 1.0);
+                if (dup) continue;
+                p.falseMode[p.falseCount] = mode; p.falseString[p.falseCount] = str; p.falseHz[p.falseCount] = hz;
+                ++p.falseCount;
+            }
+        }
+    }
+    return p;
+}
+void Piano::applyImperfection(Voice& v, int key) noexcept {
+    const double a = imperfection_.load(std::memory_order_relaxed);
+    const auto& p = plans_[key - 21];
+    const std::size_t count = v.note.stringCount();
+    if (a != v.tuneApplied) {
+        // Retune: string j is the compiled one with every frequency multiplied by 2^(a (cents_j - base_j)/1200),
+        // and the false partials by (1 + a dHz / f_n). a = 0 gives ratio exactly 1: the compiled string.
+        for (std::size_t j = 0; j < count; ++j) {
+            const auto& m = v.modes[j];
+            const std::size_t n = std::min(m.omega.size(), ratioScratch_.size());
+            const double r = a == 0.0 ? 1.0 : std::exp2(a * (p.cents[j] - p.baseCents[j]) / 1200.0);
+            for (std::size_t i = 0; i < n; ++i) ratioScratch_[i] = r;
+            if (a != 0.0)
+                for (int k = 0; k < p.falseCount; ++k)
+                    if (p.falseString[k] == static_cast<int>(j) && static_cast<std::size_t>(p.falseMode[k]) < n)
+                        ratioScratch_[p.falseMode[k]] *= 1.0 + a * p.falseHz[k] / (m.omega[p.falseMode[k]] / (2 * std::numbers::pi));
+            v.note.retuneString(j, m, std::span<const double>(ratioScratch_.data(), n));
+        }
+        v.tuneApplied = a;
+    }
+    std::array<double, 3> strength{1.0, 1.0, 1.0}, lag{};
+    if (a != 0.0)
+        for (std::size_t j = 0; j < count; ++j) {
+            strength[j] = std::clamp(1.0 + a * p.strengthDev[j], 0.5, 1.5);
+            lag[j] = a * p.lagSeconds[j];
+        }
+    v.note.setContactImperfection(strength, lag);
 }
 void Piano::noteOff(int key) noexcept {
     if (key < 21 || key > 108) return;
@@ -299,15 +435,7 @@ const Piano::Preset& Piano::preset(Quality q) noexcept {
 void Piano::setQuality(Quality q) noexcept { applyPreset(q, preset(q)); }
 // Shed levels (Live caps; Balanced takes the smaller of its preset and the level): struck voices,
 // sympathetic strings, leaky strings, highest key with tension modulation (20 = none).
-void Piano::applyShed() noexcept {
-    const Preset& p = preset(quality_);
-    static const int voices[4] = {1 << 20, 12, 10, 8}, symp[4] = {1 << 20, 6, 3, 1}, leaky[4] = {1 << 20, 3, 2, 1}, tension[4] = {1 << 20, 33, 20, 20};
-    const int s = (quality_ == Quality::Full) ? 0 : shed_;
-    voiceLimit_ = std::min(p.voices, voices[s]); sympLimit_ = std::min(p.sympathetic, symp[s]);
-    leakyLimit_ = std::min(p.leaky, leaky[s]); tensionLimit_ = std::min(p.tensionMaxKey, tension[s]);
-    // Sounding notes above the new tension limit stop modulating (the same as V_KC falling below the floor).
-    if (s > 0) for (int i = 0; i < 88; ++i) if (voices_[i].active && voices_[i].struck && i + 21 > tensionLimit_) voices_[i].note.setTensionEnabled(false);
-}
+void Piano::applyShed() noexcept { applyLimits(); }
 // Called from blockEnd with the block's wall time.
 void Piano::governBlock() noexcept {
     if (!adaptive_ || quality_ == Quality::Full || !blockFrames_) return;
@@ -324,13 +452,35 @@ void Piano::governBlock() noexcept {
 }
 void Piano::applyPreset(Quality q, const Preset& p) noexcept {
     quality_ = q; qualitySet_ = true;
-    voiceLimit_ = p.voices; sympLimit_ = p.sympathetic; leakyLimit_ = p.leaky; tensionLimit_ = p.tensionMaxKey; shed_ = 0; costEma_ = 0;
+    basePreset_ = p; shed_ = 0; costEma_ = 0; applyLimits();
     truncation_ = p.truncation; fast_ = p.fast; sleepForce_ = p.sleepForce; sleepSeconds_ = p.sleepSeconds; tensionFloor_ = p.tensionFloor; idleSkip_ = p.idleSkip; if (!idleSkip_) idle_ = false;
     sleepSamples_ = static_cast<std::uint64_t>(p.sleepSeconds * fs_);
     // Sounding notes keep their tension model (changed at the next note-on); truncation and fast sums
     // apply to them from now on. Modes already truncated stay off until the key is struck again.
     board_.setFast(fast_);
     for (auto& v : voices_) { v.note.setFastKernels(fast_); v.light.setFast(fast_); v.note.setTruncation(truncation_); v.note.setTensionFloor(tensionFloor_); }
+}
+// Limits = quality preset, then the Voices setting (0.5.5), then the adaptive shed level (0.5.4.1): the shed
+// levels cap whatever Voices is set to. Voices N (Live/Balanced) sets the struck cap to N and scales the
+// sympathetic and leaky caps by sqrt(N / preset voices).
+void Piano::applyLimits() noexcept {
+    if (!qualitySet_) return;
+    const auto& p = basePreset_;
+    int voices = p.voices, symp = p.sympathetic, leaky = p.leaky;
+    if (voicesSetting_ > 0 && quality_ != Quality::Full) {
+        const double scale = std::sqrt(static_cast<double>(voicesSetting_) / p.voices);
+        voices = voicesSetting_;
+        symp = std::min(maxPolyphony, static_cast<int>(std::ceil(p.sympathetic * scale - 1e-9)));
+        leaky = std::min(maxPolyphony, static_cast<int>(std::ceil(p.leaky * scale - 1e-9)));
+    }
+    // Shed levels (Live caps; Balanced takes the smaller of its preset and the level): struck voices,
+    // sympathetic strings, leaky strings, highest key with tension modulation (20 = none).
+    static const int cv[4] = {1 << 20, 12, 10, 8}, cs[4] = {1 << 20, 6, 3, 1}, ck[4] = {1 << 20, 3, 2, 1}, ct[4] = {1 << 20, 33, 20, 20};
+    const int s = (quality_ == Quality::Full) ? 0 : shed_;
+    voiceLimit_ = std::min(voices, cv[s]); sympLimit_ = std::min(symp, cs[s]);
+    leakyLimit_ = std::min(leaky, ck[s]); tensionLimit_ = std::min(p.tensionMaxKey, ct[s]);
+    // Sounding notes above the new tension limit stop modulating (the same as V_KC falling below the floor).
+    if (s > 0) for (int i = 0; i < 88; ++i) if (voices_[i].active && voices_[i].struck && i + 21 > tensionLimit_) voices_[i].note.setTensionEnabled(false);
 }
 void Piano::warmUp() noexcept {
     if (!ready_) return;
@@ -426,10 +576,18 @@ void Piano::voiceStep(int port) noexcept {
             }
             v.note.clampPsi();
         }
+        if (v.fade > 0) {   // 0.5.5 steal fade: the same scaling as a damper, -80 dB over fadeSamples_
+            for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
+                const auto off = v.note.modeOffset(j);
+                kern::scaleQU(s.q() + off, s.u() + off, fadeStep_, v.note.activeModes(j));
+            }
+            v.note.clampPsi();
+        }
         const double w = v.bridge.wV();
         v.peakMotion = std::abs(w);
         force = v.note.bridgeForceNow(w);
         v.peakForce = std::max(v.peakForce, std::abs(force));
+        v.env = std::max(std::abs(force), v.env * envDecay_); ++v.sinceOn;
         if (truncation_ > 0 && ++v.sinceTruncation >= 32) { v.sinceTruncation = 0; v.note.truncate(v.peakForce); }
     } else {
         v.light.advance((dw - v.dwPrev) * fs_ * fs_);
@@ -455,8 +613,8 @@ void Piano::voiceStep(int port) noexcept {
     const double sleepForce = (!v.struck && idleSkip_) ? force + v.light.staticStiffness() * v.lightW : force;
     if (std::abs(sleepForce) < sleepForce_ && !(v.struck && v.note.inFlight()) && std::abs(dw) * fs_ < 0.5 * wakeVelocity) ++v.quiet;
     else v.quiet = 0;
-    if (v.release < 1e-6 || v.quiet > sleepSamples_) {
-        v.active = v.struck = v.sympathetic = false; v.note.reset(); v.bridge.reset(); v.light.reset(); v.force = 0;
+    if (v.release < 1e-6 || v.quiet > sleepSamples_ || (v.fade > 0 && --v.fade == 0)) {
+        v.active = v.struck = v.sympathetic = false; v.note.reset(); v.bridge.reset(); v.light.reset(); v.force = 0; v.fade = 0;
     }
 }
 void Piano::stringsStep() noexcept {

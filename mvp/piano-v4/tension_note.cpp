@@ -121,7 +121,7 @@ Status TensionStruckNote::configure(const StruckNoteDesc& desc, double fs, bridg
     }
     P potential;
     if (const Status e = potential.configure(std::move(slices), totalModes, 0.0, desc.approachSign); e != Status::Ok) return e;
-    HammerFelt<double> felt;
+    ContactFelt felt;
     if (const Status e = felt.configure(desc.hammer, potential, nz, fs); e != Status::Ok) return e;
     StrikeMap map;
     if (const Status e = strikeMap(desc.hammer, desc.unaCorda, desc.pedal, ns, 0.0, map); e != Status::Ok) return e;
@@ -168,6 +168,7 @@ double TensionStruckNote::headVelocity() const noexcept { return seg_.u()[hammer
 Status TensionStruckNote::setShift(double shift) noexcept {
     StrikeMap map;
     if (const Status e = strikeMap(hammer_, una_, pedal_, strings_.size(), shift, map); e != Status::Ok) return e;
+    for (std::size_t s = 0; s < strings_.size(); ++s) map.weight[s] *= strength_[s];   // 0.5.5: 1.0 is exact
     potential_.setStrikeMap(map);
     shift_ = std::clamp(shift, 0.0, 1.0);
     return Status::Ok;
@@ -189,6 +190,9 @@ Status TensionStruckNote::launch(double nu, double shift) noexcept {
             if (potential_.map().weight[s] > 0.0) y = std::max(y, potential_.stringPosition(z, s));
         q[hammerIdx_] = y - du;
         u[hammerIdx_] = du;
+        // 0.5.5: gaps (m) = timing offset (s) x hammer speed, set only for a new flight (a repetition
+        // keeps the geometry it is in). Zero offsets: gap 0 for all strings, as 0.5.4.
+        { std::array<double, 3> gp{}; for (std::size_t s = 0; s < strings_.size(); ++s) gp[s] = lag_[s] * vH; potential_.setGaps(gp); }
         felt_.reset();
         inFlight_ = true;
         potential_.setActive(true);
@@ -502,5 +506,25 @@ void TensionStruckNote::step() noexcept {
     // SPEC-EXEC step 7: the horizontal polarisations (linear), driven by the bridge term only.
     if (bridge_ != nullptr && (!hZero_ || accH != 0.0)) stepHorizontal(accH);
     ++sample_;
+}
+}
+
+namespace piano_mvp_v4 {
+void TensionStruckNote::retuneString(std::size_t s, const pme::StringModes& m, std::span<const double> ratio) noexcept {
+    // SPEC-OSC difference form with omegaHat^2 scaled by ratio^2 (same expressions as configure()).
+    const double dt = dt_;
+    String& st = strings_[s];
+    for (std::size_t i = 0; i < st.n && i < ratio.size(); ++i) {
+        const double r2 = ratio[i] * ratio[i];
+        const double oh2 = m.oscV[i].omegaHat2 * r2;
+        const double sd = m.oscV[i].sigmaHat * dt, denom = 1.0 + sd;
+        osc::OscCoeffsF64 c;
+        c.sigmaHatDt = sd; c.omegaHat2Dt2 = oh2 * dt * dt;
+        c.beta = (1.0 - sd) / denom; c.kappa = oh2 * dt * dt / denom;
+        c.gamma = dt * dt / denom; c.omegaHat2 = oh2; c.sigmaHat = m.oscV[i].sigmaHat;
+        static_cast<void>(seg_.setCoordinate(st.off + i, c, m.rhoA));
+        const double sdH = m.oscH[i].sigmaHat * dt, denomH = 1.0 + sdH;
+        st.kappa[i] = m.oscH[i].omegaHat2 * r2 * dt * dt / denomH;
+    }
 }
 }
