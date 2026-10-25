@@ -1,0 +1,48 @@
+{
+  "model": "simply-supported orthotropic plate with homogenised ribs; approximate narrowband Rayleigh radiation",
+  "measured": false,
+  "length_x_m": 1.4,
+  "length_y_m": 1.6,
+  "thickness_m": 0.008,
+  "density_kg_m3": 390.0,
+  "young_x_pa": 11600000000.0,
+  "young_y_pa": 900000000.0,
+  "shear_xy_pa": 750000000.0,
+  "poisson_xy": 0.37,
+  "loss_factor": 0.02,
+  "bridge_positions_m": [
+    [
+      0.42,
+      0.91
+    ],
+    [
+      0.97,
+      0.58
+    ]
+  ],
+  "microphone_positions_m": [
+    [
+      0.2,
+      0.8,
+      1.5
+    ],
+    [
+      1.2,
+      0.8,
+      1.5
+    ]
+  ],
+  "modes": 512,
+  "minimum_frequency_hz": 20.66746134740002,
+  "maximum_frequency_hz": 7222.217404458592,
+  "radiation_delay_s": 0.004373177842565598,
+  "quadrature": [
+    96,
+    112
+  ],
+  "rib_width_m": 0.025,
+  "rib_height_m": 0.025,
+  "rib_pitch_m": 0.14,
+  "effective_areal_density_kg_m2": 4.861071428571429,
+  "effective_dy_nm": 4456.916083541671
+}

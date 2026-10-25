@@ -1,0 +1,45 @@
+{
+  "key": 60,
+  "velocity": 0.75,
+  "release_s": 4,
+  "sample_rate": 48000,
+  "match_window_s": [
+    0.05,
+    3
+  ],
+  "target_rms_dbfs": -24,
+  "warning": "RMS matching approximates equal level, not equal perceived loudness; no realism score.",
+  "original": {
+    "raw_sha256": "361350aa5fcd4a8b71f062e97ff7dd616b04f9dca9066e9318e9577b026675ce",
+    "raw_peak": 0.3321533203125,
+    "raw_window_rms": 0.10238420286597791,
+    "match_gain_db": -4.2046590669018435,
+    "matched_peak": 0.20469425075173908,
+    "attack_centroid_hz": 375.8317631707206,
+    "attack_energy_above_2khz": 0.019080170331779653
+  },
+  "linear": {
+    "raw_sha256": "6cd9ae5beec7548a9506cd941017c669dd451d3e379ce0945ded99b9ba58cfe9",
+    "raw_peak": 0.345245361328125,
+    "raw_window_rms": 0.10309356298000569,
+    "match_gain_db": -4.264630987622389,
+    "matched_peak": 0.2112984458786687,
+    "attack_centroid_hz": 376.93311942483024,
+    "attack_energy_above_2khz": 0.019274730847861497
+  },
+  "soundboard": {
+    "raw_sha256": "b284d65397fff5b2f6d31b97504cb70b0028237304ed12dd27d645a65c513aa2",
+    "raw_peak": 0.040924072265625,
+    "raw_window_rms": 0.011402678511765784,
+    "match_gain_db": 14.859862400915258,
+    "matched_peak": 0.2264498112034877,
+    "attack_centroid_hz": 360.77814385478075,
+    "attack_energy_above_2khz": 0.01647592504831051
+  },
+  "original_vs_linear_relative_rms_difference": 0.004220047041101856,
+  "abc_order": [
+    "original: 0\u20135 s",
+    "linear baseline: 5.5\u201310.5 s",
+    "soundboard only: 11\u201316 s"
+  ]
+}
