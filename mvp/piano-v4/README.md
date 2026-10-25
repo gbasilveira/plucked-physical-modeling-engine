@@ -1,5 +1,42 @@
 # MVP 4: bridge feedback
 
+## Update 0.5.0: full pedal set (polyphony, una corda, undamped treble)
+
+The listener found 0.4.9 "small". Three cheap changes with no new physics; each has its
+own setter (before `prepare`) and is on by default. `--previous` on `piano-midi-render`
+and `piano-render` reproduces **0.4.9 bit-for-bit** (verified: the re-rendered
+`chopin-prelude-0.4.9-raw.wav` and listening WAV are byte-identical to the committed
+files); `--v048` is the old 0.4.8 mode; `--v046` and `--legacy` are unchanged.
+
+1. **Polyphony.** `setVoiceLimit(1..88)`; class and real-time plug-ins (CLAP, LV2) stay at
+   12 voices; offline renderers use 88 (one voice per key, no stealing). Pinned Chopin
+   excerpt: **13 voice steals at 12, 0 at 88**; RMS 0.013695 vs 0.013695 (peak identical
+   0.145065). Offline speed at 88: 66 s simulated (40 s pre-roll + 26 s) in 33.0 s, i.e.
+   **2.0x realtime single-thread** (0.79x the 26 s excerpt length; 12 voices: 32.4 s).
+2. **Una corda (CC67 >= 64).** `setUnaCorda`, `softPedal(bool)`; wired in `dispatchMidi`
+   (CLAP, LV2, MIDI renderer; the event validator now also accepts CC67). Uses the engine's
+   grand una-corda map (SPEC-HAM Una corda) through `StruckNote::launch(nu, shift=1)`:
+   stiffness `K(1-s(1-kappa_uc))`, exponent `p + s*dp`, and the string at index 0 leaves the
+   hammer with weight `1-smoothstep(s)`. The shift is read at launch only, so a hammer in
+   flight is never moved (tested). The preset has no una-corda data, so the **engine
+   defaults are assumed**: s0 0.3, s1 0.9, kappa_uc 0.6, dp 0, leaving string 0 (not
+   measured). Effect: 3- and 2-string keys strike 2 and 1 strings with 0.6x felt stiffness;
+   1-string keys (bass, key <= 32) keep their one string and only get the softer felt
+   (the engine has no leaving string for a single string). Chopin fixture: no CC67 events
+   (only CC64, 7, 10, 91), so the pinned excerpt is unchanged by this item.
+3. **Undamped treble.** Keys >= 90 (F#6) ignore note-off damping, with or without sustain;
+   they ring until natural decay or voice sleep. Boundary is an **assumption**
+   (`firstUndampedKey`, no measurement): grands commonly stop the dampers around F#6/G6,
+   about the top 1.5 octaves. The pinned excerpt uses keys 35-84, so it is unchanged here.
+   The released radiating board still rings after a damped release, so tests compare the
+   0.1-0.2 s window and whether the string voice survives.
+
+Tests (`piano-check`): voice-limit range/steals/default, una corda on keys 24/40/60
+(measurable, softer for multi-string, pedal after strike harmless, CC67 release, disabled
+pedal), undamped boundary and damped-key invariance. Isolated single notes below key 90
+without the pedal are unchanged, so the reference calibration was not rerun
+(`reference-calibration-0.4.9.json` still applies).
+
 ## Update 0.4.9: calmer highs (bridge mass and saturating string loss)
 
 Listener feedback on 0.4.8: "still rather bright and small, like a harpsichord and a

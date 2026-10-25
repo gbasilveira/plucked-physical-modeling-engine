@@ -19,8 +19,8 @@ static void word(std::ostream& f, std::uint32_t x, int bytes) {
 struct Event { int frame; std::array<std::uint8_t,3> data; };
 int main(int argc, char** argv) {
     try {
-        if (argc != 3 && !(argc==4 && (std::string(argv[3])=="--legacy" || std::string(argv[3])=="--previous" || std::string(argv[3])=="--v046")))
-            throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy|--v046|--previous(0.4.8)]");
+        if (argc != 3 && !(argc==4 && (std::string(argv[3])=="--legacy" || std::string(argv[3])=="--previous" || std::string(argv[3])=="--v048" || std::string(argv[3])=="--v046")))
+            throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy|--v046|--v048|--previous(0.4.9)]");
         constexpr int fs=48000, start=40*fs, end=64*fs, finish=66*fs;
         std::ifstream input(argv[1]);
         if (!input) throw std::runtime_error("cannot read events");
@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
         while (input >> frame) {
             if (!(input >> status >> a >> b)) throw std::runtime_error("truncated event");
             if (frame<previous || frame<0 || a<0 || a>127 || b<0 || b>127 ||
-                (status!=128 && status!=144 && !(status==176 && a==64)) ||
+                (status!=128 && status!=144 && !(status==176 && (a==64 || a==67))) ||
                 (status!=176 && (a<21 || a>108)))
                 throw std::runtime_error("invalid event schedule");
             previous=frame;
@@ -40,9 +40,14 @@ int main(int argc, char** argv) {
         piano_mvp_v4::Piano piano;
         piano.setResidualBridgeLoss(argc!=4 || std::string(argv[3])!="--legacy");
         const std::string mode = argc==4 ? argv[3] : "";
-        piano.setSoftFelt(mode.empty() || mode=="--previous");
-        piano.setBridgeMassLoading(mode.empty());
-        piano.setSaturatingStringLoss(mode.empty());
+        piano.setSoftFelt(mode.empty() || mode=="--previous" || mode=="--v048");
+        // 0.4.9 physics is kept by --previous; 0.5.0 adds polyphony, una corda, undamped treble.
+        piano.setBridgeMassLoading(mode.empty() || mode=="--previous");
+        piano.setSaturatingStringLoss(mode.empty() || mode=="--previous");
+        piano.setUnaCorda(mode.empty());
+        piano.setUndampedTreble(mode.empty());
+        // Offline: no voice stealing by default; earlier versions keep their 12-voice limit.
+        piano.setVoiceLimit(mode.empty() ? piano_mvp_v4::Piano::maxPolyphony : piano_mvp_v4::Piano::maxVoices);
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
         std::ofstream out(argv[2],std::ios::binary);
         if (!out) throw std::runtime_error("cannot write WAV");
@@ -77,12 +82,12 @@ int main(int argc, char** argv) {
                 word(out,static_cast<std::uint16_t>(static_cast<std::int16_t>(std::lround(x*32767))),2);
             }
         }
+        const double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
         if (!out || piano.numericalFaults() || peak<1e-5) throw std::runtime_error("failed/silent render");
         std::cout << "26 s stereo 48 kHz; source 40–64 s + 2 s release; peak " << peak
                   << "; RMS " << std::sqrt(energy/(2*(finish-start)))
                   << "; numerical faults " << piano.numericalFaults()
                   << "; excerpt voice steals " << piano.voiceSteals()-stealsAtStart
-                  << "; render time " << std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count()
-                  << " s\n";
+                  << "; render time " << elapsed << " s; realtime factor " << 26.0/elapsed << "\n";
     } catch (const std::exception& e) { std::cerr<<e.what()<<'\n';return 1; }
 }

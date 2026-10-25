@@ -64,7 +64,7 @@ def main():
             row=dict(note=note,key=key,layer=layer,selection_midi_velocity=velocity,
                      reference_sha256=hashlib.sha256(data).hexdigest(),reference_onset_seconds=onset,
                      reference=features(ref),models={})
-            versions=[('0.4.8','previous'),('0.4.9','coupled')]
+            versions=[('0.4.8','v048'),('0.4.9','coupled')]
             comparison=[('reference',ref)]
             for version,mode in versions:
                 rendered=directory/f'calibration-{note}-v{velocity}-{version}.wav'

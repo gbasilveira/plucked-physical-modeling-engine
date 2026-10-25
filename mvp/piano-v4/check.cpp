@@ -3,6 +3,7 @@
 #include "preset.hpp"
 #include "string_loss.hpp"
 #include "bridge_mass.hpp"
+#include "midi.hpp"
 #include "pme/simd/denormals.hpp"
 #include <cmath>
 #include <iostream>
@@ -157,6 +158,68 @@ int main() {
             }
             require(!after.setBridgeMassLoading(false) && !after.setSaturatingStringLoss(false), "0.4.9 flags changed after preparation");
         }
-        std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset\n";
+        {   // 0.5.0-T1 polyphony: runtime voice limit, 88 never steals.
+            piano_mvp_v4::Piano many;
+            require(!many.setVoiceLimit(0) && !many.setVoiceLimit(89), "voice limit range not enforced");
+            require(many.setVoiceLimit(88) && many.prepare(48000), "88-voice prepare failed");
+            for (int key = 21; key <= 108; ++key) many.noteOn(key, 0.3);
+            require(many.activeVoices() == 88 && many.voiceSteals() == 0, "88-voice limit stole voices");
+            require(energy(many, 2400) > 0, "88-voice chord silent");
+            require(!many.setVoiceLimit(12), "voice limit changed after preparation");
+            piano_mvp_v4::Piano few;
+            require(few.setVoiceLimit(3) && few.prepare(48000), "3-voice prepare failed");
+            for (int key = 60; key < 66; ++key) few.noteOn(key, 0.5);
+            require(few.activeVoices() == 3 && few.voiceSteals() == 3, "3-voice limit did not steal");
+            piano_mvp_v4::Piano dflt; require(dflt.prepare(48000), "default prepare failed");
+            for (int key = 40; key < 60; ++key) dflt.noteOn(key, 0.5);
+            require(dflt.activeVoices() == piano_mvp_v4::Piano::maxVoices, "default limit is not 12");
+        }
+        {   // 0.5.0-T2 una corda (CC67): fewer strings struck and softer felt, set at launch only.
+            const auto run = [](int key, bool pedal, bool late) {
+                piano_mvp_v4::Piano q; require(q.prepare(48000), "una prepare failed");
+                std::uint8_t on[3]{0xb0, 67, 127}, off[3]{0xb0, 67, 0};
+                if (pedal && !late) piano_mvp_v4::dispatchMidi(q, on, 3);
+                q.noteOn(key, 0.7);
+                double e = 0;
+                if (pedal && late) { e += energy(q, 20); piano_mvp_v4::dispatchMidi(q, on, 3); }
+                e += energy(q, 12000 - (pedal && late ? 20 : 0));
+                require(q.softPedalDown() == pedal, "soft pedal state wrong");
+                piano_mvp_v4::dispatchMidi(q, off, 3);
+                require(!q.softPedalDown(), "CC67 release ignored");
+                return e;
+            };
+            for (int key : {24, 40, 60}) {   // 1-, 2- and 3-string keys
+                const double plain = run(key, false, false), una = run(key, true, false);
+                require(una > 1e-12 && std::isfinite(una), "una corda silenced the key");
+                require(std::abs(una / plain - 1) > 0.02, "una corda has no measurable effect");
+                if (key >= 40) require(una < plain, "una corda is not softer for multi-string keys");
+            }
+            // A pedal pressed after the strike must not touch a hammer already in flight.
+            require(std::abs(run(60, true, true) / run(60, false, false) - 1) < 1e-12, "una corda moved a hammer in flight");
+            piano_mvp_v4::Piano off; require(off.setUnaCorda(false) && off.prepare(48000), "una-off prepare failed");
+            off.softPedal(true); require(!off.softPedalDown(), "disabled una corda engaged");
+        }
+        {   // 0.5.0-T3 undamped treble: keys >= F#6 (90) ring after note-off, with or without sustain.
+            // The board keeps radiating after a damped release, so compare the first 0.1-0.2 s after
+            // note-off (string energy still dominant) and whether the string voice survives 1 s.
+            const auto tail = [](int key, bool undamped, int& active) {
+                piano_mvp_v4::Piano q; require(q.setUndampedTreble(undamped) && q.prepare(48000), "treble prepare failed");
+                q.noteOn(key, 0.7); energy(q, 4800); q.noteOff(key); energy(q, 4800);
+                const double e = energy(q, 4800);
+                energy(q, 38400); active = q.activeVoices();
+                return e;
+            };
+            int a1, a2, a3, a4;
+            require(piano_mvp_v4::Piano::firstUndampedKey == 90, "undamped boundary moved");
+            const double und = tail(96, true, a1), dmp = tail(96, false, a2);
+            require(und > 1.5 * dmp, "undamped key still damped on note-off");
+            require(a1 == 1 && a2 == 0, "undamped key did not outlive the damper release");
+            require(tail(89, true, a3) == tail(89, false, a4) && a3 == a4, "damped key behaviour changed");
+            piano_mvp_v4::Piano q; require(q.prepare(48000), "prepare failed");
+            q.sustain(true); q.sustain(false);
+            q.noteOn(100, 0.7); q.noteOff(100); energy(q, 4800);
+            require(q.activeVoices() == 1, "undamped key retired at note-off");
+        }
+        std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset, 0.5.0 polyphony/una corda/undamped treble\n";
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

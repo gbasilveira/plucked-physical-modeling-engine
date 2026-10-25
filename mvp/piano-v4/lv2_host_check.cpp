@@ -59,6 +59,7 @@ static void apply(piano_mvp_v4::Piano& p,const Message& m) {
     if ((d[0]&0xf0) == 0x80) p.noteOff(d[1]);
     if ((d[0]&0xf0) == 0xb0) {
         if (d[1] == 64) p.sustain(d[2] >= 64);
+        if (d[1] == 67) p.softPedal(d[2] >= 64);
         if (d[1] == 120) p.reset();
         if (d[1] == 123) for (int key = 21; key <= 108; ++key) p.noteOff(key);
         if (d[1] == 121) p.sustain(false);

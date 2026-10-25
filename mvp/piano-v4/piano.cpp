@@ -14,6 +14,7 @@ bool Piano::prepare(double fs) {
     releaseStep_ = std::exp(-35.0 / fs);
     for (int i = 0; i < 88; ++i) {
         auto& v = voices_[i];
+        v.undamped = undampedTreble_ && i + 21 >= firstUndampedKey;
         v.pan = 0.2 + 0.6 * i / 87.0;
         const auto preset = piano_mvp_v2::parametersForKey(i + 21);
         pme::exciters::StruckNoteDesc d;
@@ -57,7 +58,7 @@ void Piano::reset() noexcept {
         v.active = v.held = false; v.age = v.quiet = 0; v.release = 1;
     }
     soundboard_.reset(); bridgeMassFilter_.reset();
-    pedal_ = false; clock_ = 0; numericalFaults_ = 0; voiceSteals_ = 0; peakBridgeMotion_ = 0;
+    pedal_ = false; unaCordaDown_ = false; clock_ = 0; numericalFaults_ = 0; voiceSteals_ = 0; peakBridgeMotion_ = 0;
 }
 int Piano::activeVoices() const noexcept {
     int n = 0; for (const auto& v : voices_) n += v.active; return n;
@@ -66,7 +67,7 @@ void Piano::noteOn(int key, double velocity) noexcept {
     if (!ready_ || key < 21 || key > 108 || !std::isfinite(velocity)) return;
     if (velocity <= 0) { noteOff(key); return; }
     auto& v = voices_[key - 21];
-    if (!v.active && activeVoices() >= maxVoices) {
+    if (!v.active && activeVoices() >= voiceLimit_) {
         Voice* oldest = nullptr;
         for (auto& x : voices_) if (x.active && (!oldest || x.age < oldest->age)) oldest = &x;
         if (oldest) {
@@ -75,7 +76,9 @@ void Piano::noteOn(int key, double velocity) noexcept {
         }
     }
     if (!v.active) { v.note.reset(); v.bridge.reset(); }
-    if (v.note.launch(std::clamp(velocity, 0.001, 1.0), 0) != pme::Status::Ok) return;
+    if (// SPEC-HAM Una corda: shift s = 1 while the soft pedal is down at launch (a hammer in
+    // flight is never moved: setShift happens only inside launch()).
+    v.note.launch(std::clamp(velocity, 0.001, 1.0), unaCordaDown_ ? 1.0 : 0.0) != pme::Status::Ok) return;
     v.active = v.held = true; v.release = 1; v.age = ++clock_; v.quiet = 0;
 }
 void Piano::noteOff(int key) noexcept {
@@ -89,7 +92,7 @@ void Piano::sample(float& left, float& right) noexcept {
         if (!v.active) continue;
         v.note.step();
         auto& s = v.note.segment();
-        if (!v.held && !pedal_) {
+        if (!v.held && !pedal_ && !v.undamped) {
             v.release *= releaseStep_;
             // MVP diagonal damper: remove energy from string coordinates only.
             for (std::size_t j = 0; j < v.note.stringCount(); ++j) {

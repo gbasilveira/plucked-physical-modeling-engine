@@ -12,6 +12,7 @@ inline void dispatchMidi(Piano& piano, const std::uint8_t* data, std::size_t siz
         case 0x80: piano.noteOff(data[1]); break;
         case 0xb0:
             if (data[1] == 64) piano.sustain(data[2] >= 64);
+            if (data[1] == 67) piano.softPedal(data[2] >= 64);
             if (data[1] == 120) piano.reset();
             if (data[1] == 123) for (int key = 21; key <= 108; ++key) piano.noteOff(key);
             if (data[1] == 121) piano.sustain(false);

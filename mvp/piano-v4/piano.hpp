@@ -11,7 +11,11 @@ namespace piano_mvp_v4 {
 // Experimental fixed preset. All allocations happen in prepare(), never during playback.
 class Piano {
 public:
-    static constexpr int maxVoices = 12;
+    static constexpr int maxVoices = 12;        // real-time default (CPU)
+    static constexpr int maxPolyphony = 88;     // one voice per key: no stealing
+    // 0.5.0 assumption: dampers cover keys below F#6 (MIDI 90); F#6 and above are undamped,
+    // as on most grands (stated range varies, roughly the top 1.5 octaves). Not measured.
+    static constexpr int firstUndampedKey = 90;
     bool prepare(double sampleRate);
     // Set before prepare(), while playback is stopped.
     bool setBridgeFeedback(bool enabled) noexcept {
@@ -40,6 +44,21 @@ public:
         if (ready_) return false;
         saturatingLoss_ = enabled; return true;
     }
+    // 0.5.0, before prepare(). Voice limit 1..88 (default 12); 88 never steals.
+    bool setVoiceLimit(int n) noexcept {
+        if (ready_ || n < 1 || n > maxPolyphony) return false;
+        voiceLimit_ = n; return true;
+    }
+    // Una corda (CC67 >= 64): applied to notes struck while down; default on (see README).
+    bool setUnaCorda(bool enabled) noexcept {
+        if (ready_) return false;
+        unaCordaEnabled_ = enabled; return true;
+    }
+    // Keys >= firstUndampedKey ignore note-off damping (they decay naturally).
+    bool setUndampedTreble(bool enabled) noexcept {
+        if (ready_) return false;
+        undampedTreble_ = enabled; return true;
+    }
     static int stringsForKey(int key) noexcept {
         return key <= 32 ? 1 : (key <= 51 ? 2 : 3);
     }
@@ -53,6 +72,8 @@ public:
     void noteOn(int key, double velocity) noexcept;
     void noteOff(int key) noexcept;
     void sustain(bool down) noexcept;
+    void softPedal(bool down) noexcept { unaCordaDown_ = unaCordaEnabled_ && down; }
+    bool softPedalDown() const noexcept { return unaCordaDown_; }
     void sample(float& left, float& right) noexcept;
     int activeVoices() const noexcept;
     std::uint64_t numericalFaults() const noexcept { return numericalFaults_; }
@@ -68,7 +89,7 @@ private:
         std::array<pme::SegmentBridgeTerms, 3> terms;
         pme::exciters::StruckNote<double> note;
         pme::bridge::BridgePoint<double> bridge;
-        bool active{}, held{};
+        bool active{}, held{}, undamped{};
         std::uint64_t age{}, quiet{};
         double release{1.0}, pan{};
     };
@@ -80,6 +101,8 @@ private:
     bool softFelt_{true};
     bool bridgeMass_{true};
     bool saturatingLoss_{true};
+    bool unaCordaEnabled_{true}, undampedTreble_{true}, unaCordaDown_{};
+    int voiceLimit_{maxVoices};
     BridgeMassTransmission bridgeMassFilter_;
     double fs_{48000.0}, releaseStep_{}, peakBridgeMotion_{};
     std::uint64_t clock_{};

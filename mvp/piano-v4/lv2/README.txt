@@ -1,12 +1,12 @@
-Piano MVP 4 - Calmer highs (LV2 0.4.9, Linux)
+Piano MVP 4 - Full pedal (LV2 0.5.0, Linux)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Calmer highs" under instruments/synthesizers.
+Look for "Piano MVP 4 - Full pedal" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
-MIDI notes 21-108, velocity, CC64 sustain, CC120 panic, CC123 note release.
+MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
 One fixed preset; no custom GUI. Start at a 512- or 1024-sample buffer.
 
 This is the same experimental piano model as the CLAP version; format conversion
@@ -23,6 +23,9 @@ bridge-top mass that low-passes the force entering the board (about 2 kHz corner
 assumed 55 g) and string viscosity that stops growing as k^2 above 2.5 kHz.
 No output EQ. Measured against the Salamander reference; low-frequency body
 response (knock, low modes, sympathetic ringing) is unchanged and still lacking.
+
+Version 0.5.0 adds CC67 una corda (applies to notes struck while down), and keys from
+F#6 (MIDI 90) upward have no dampers (ring on after note-off). Voice limit stays 12.
 
 Source, listening comparisons and licence:
 https://github.com/gbasilveira/plucked-physical-modeling-engine/tree/mvp/piano

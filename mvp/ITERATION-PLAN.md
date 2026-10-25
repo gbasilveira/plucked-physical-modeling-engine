@@ -6,6 +6,13 @@ Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano
 
 ## Current listening diagnosis (2026-10-25)
 
+0.5.0 (listener: 0.4.9 sounds "small") makes three no-new-physics changes: runtime voice
+limit (offline 88, plug-ins 12; Chopin steals 13 -> 0), una corda on CC67 through the
+engine's grand soft-pedal map (engine-default parameters assumed; the Chopin MIDI has no
+CC67), and undamped keys from F#6 (assumed boundary). `--previous` reproduces 0.4.9
+bit-for-bit. Next (0.5.1): one shared soundboard coupling all strings for sympathetic
+resonance, with key-dependent bridge positions on a grand-shaped board.
+
 0.4.9 targets the listener's "too bright, small, lacks wood" report (0.4.8) with a
 measured octave-band comparison to the Salamander recordings. The >4 kHz attack
 excess is not a board-damping problem (damping is irrelevant once board modes

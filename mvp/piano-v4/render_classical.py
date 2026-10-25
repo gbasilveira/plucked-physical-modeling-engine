@@ -16,7 +16,7 @@ import sys
 import wave
 
 HERE = Path(__file__).resolve().parent
-VERSION = '0.4.9'
+VERSION = '0.5.0'
 
 def read(path):
     with wave.open(str(path)) as f:
@@ -52,7 +52,7 @@ def main():
     fixture=HERE/'listening/chopin-op28-no4.events'
     audit=json.loads((HERE/'listening/chopin-op28-no4.audit.json').read_text())
     clips=[];rows=[]
-    for version,flags in [('0.4.8',['--previous']),(VERSION,[])]:
+    for version,flags in [('0.4.9',['--previous']),(VERSION,[])]:
         path=directory/f'chopin-prelude-{version}-raw.wav'
         command=[str(directory/'piano-midi-render'),str(fixture),str(path),*flags]
         result=subprocess.run(command,check=True,capture_output=True,text=True)
