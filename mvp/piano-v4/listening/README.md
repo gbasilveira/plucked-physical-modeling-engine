@@ -40,3 +40,13 @@ Keep this performance, timing, output gain and excerpt fixed across future
 iterations. Update the version/output name when changing the instrument. Preserve
 the previous WAV and the new per-render audit. `chopin-prelude-latest.wav` is the
 current portable listening copy; versioned WAVs allow comparison on the same device.
+
+## Full-piece render (0.5.3)
+
+`render_full_piece.py` renders the complete source performance (first event to last note-off plus a
+4 s release tail; last 50 ms faded; the same fixed gain as the excerpt, no start fade). The MIDI file,
+author credit, licence (CC BY-SA 3.0 Germany), source (Bernd Krueger, piano-midi.de, via Wikimedia
+Commons) and SHA-256 above are unchanged. Changes to the work: synthesised with the experimental PME
+instrument. The three same-key overlaps (a note-on for a still-sounding key) are re-strikes; the note-off
+that would cut the second note is dropped (see the audit and the README). All note, velocity, tempo and
+CC64 data are otherwise retained; mixer controls CC7/CC10/CC91 are ignored as in the excerpt.

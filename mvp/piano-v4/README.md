@@ -188,6 +188,33 @@ chopin|cluster|cluster-nopedal events maxkey [off|N]`. No threading or SIMD yet.
 `--damper-rate`, `--damper-exp`, `--leaky-limit`, `--leaky-release`, `--no-bridge-mass`.
 `piano-unpedalled-demo out.wav` makes the listening demo.
 
+### Full-piece render
+
+`render_full_piece.py` renders the complete pinned Chopin Op. 28 No. 4 (same MIDI, same SHA-256,
+same tempo map, velocities and CC64 as the 26 s excerpt) with the unchanged 0.5.3 model, 88-voice
+limit and the same fixed +12.04 dB listening gain: from frame 0 to the last event, plus a 4 s natural
+release tail, with a fade only over the final 50 ms. `piano-midi-render ... --full` selects this range
+(the default 40-64 s excerpt behaviour is unchanged); the script first re-runs `prepare_classical.py
+--check`, so the source, events and audit are verified before rendering.
+
+```bash
+/tmp/piano-midi-venv/bin/python mvp/piano-v4/render_full_piece.py out/piano-mvp-v4
+```
+
+Outputs: `chopin-prelude-full-0.5.3.wav` (listening), `-raw.wav`, `-audit.json`, the converted
+`chopin-prelude-full-0.5.3.events`, and `chopin-prelude-full-latest.wav`. If the fixed gain ever
+clipped, the script would write a separate `-safe.wav` at +6.02 dB and leave the gain unchanged.
+
+**Overlapping same-key notes.** The source has three note-ons for a key that is still sounding
+(all on key 52, E3, at 70.127 s, 73.975 s and 81.784 s; the first note's off follows each by 7-8 ms, so the three overlaps are short legato joins). A second note-on re-strikes the key's strings, exactly as on a
+piano and as `Piano::noteOn` does. `Piano::noteOff` only clears a flag, so the first note-off would
+release the second note too. The converter therefore keeps a per-key count of sounding notes and drops
+every note-off except the one that ends the last overlapping note; note-ons, velocities, timing and
+pedal are untouched, so 604 note-ons and 601 note-offs are rendered. The dropped note-offs are recorded in
+the audit. Result: 105.77 s, raw peak 0.158 / RMS 0.0107, listening peak 0.632 (no clipping at +12.04 dB,
+no `-safe` copy needed), 0 voice steals (88 voices), 0 numerical faults, render 204 s (0.52x realtime;
+the offline 88-voice model is slower than realtime).
+
 ## Update 0.5.2: tension modulation of the struck strings
 
 Physical "soft distortion": large transverse motion stretches a string, raising its tension, hence

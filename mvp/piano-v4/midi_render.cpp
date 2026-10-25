@@ -19,9 +19,17 @@ static void word(std::ostream& f, std::uint32_t x, int bytes) {
 struct Event { int frame; std::array<std::uint8_t,3> data; };
 int main(int argc, char** argv) {
     try {
+        // --full (any position after the output): render the whole schedule from frame 0 to the
+        // last event plus a 4 s release tail. Default behaviour (40-64 s excerpt) is unchanged.
+        bool full=false;
+        for (int i=1;i<argc;) {
+            if (std::string(argv[i])=="--full") { full=true; for (int j=i;j<argc-1;++j) argv[j]=argv[j+1]; --argc; }
+            else ++i;
+        }
         if (argc != 3 && !(argc==4 && (std::string(argv[3])=="--legacy" || std::string(argv[3])=="--previous" || std::string(argv[3])=="--v051" || std::string(argv[3])=="--v050" || std::string(argv[3])=="--shared-pan" || std::string(argv[3])=="--v049" || std::string(argv[3])=="--v048" || std::string(argv[3])=="--v046")))
             throw std::runtime_error("usage: piano-midi-render validated.events output.wav [--legacy|--v046|--v048|--v049|--v050|--v051|--previous(0.5.2, no leaky dampers)|--shared-pan(0.5.1 coupling, 0.5.0 bridge positions)]");
-        constexpr int fs=48000, start=40*fs, end=64*fs, finish=66*fs;
+        constexpr int fs=48000;
+        int start=40*fs, end=64*fs, finish=66*fs;
         std::ifstream input(argv[1]);
         if (!input) throw std::runtime_error("cannot read events");
         std::vector<Event> events;
@@ -37,6 +45,7 @@ int main(int argc, char** argv) {
                                     static_cast<std::uint8_t>(a),static_cast<std::uint8_t>(b)}});
         }
         if (!input.eof() || events.empty()) throw std::runtime_error("malformed/empty schedule");
+        if (full) { start=0; end=events.back().frame+1; finish=end+4*fs; }
         piano_mvp_v4::Piano piano;
         piano.setResidualBridgeLoss(argc!=4 || std::string(argv[3])!="--legacy");
         const std::string mode = argc==4 ? argv[3] : "";
@@ -94,10 +103,10 @@ int main(int argc, char** argv) {
         }
         const double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-begin).count();
         if (!out || piano.numericalFaults() || peak<1e-5) throw std::runtime_error("failed/silent render");
-        std::cout << "26 s stereo 48 kHz; source 40–64 s + 2 s release; peak " << peak
+        std::cout << (finish-start)/double(fs) << " s stereo 48 kHz" << (full ? "; complete source + 4 s release" : "; source 40–64 s + 2 s release") << "; peak " << peak
                   << "; RMS " << std::sqrt(energy/(2*(finish-start)))
                   << "; numerical faults " << piano.numericalFaults()
-                  << "; excerpt voice steals " << piano.voiceSteals()-stealsAtStart
-                  << "; render time " << elapsed << " s; realtime factor " << 26.0/elapsed << "\n";
+                  << (full ? "; voice steals " : "; excerpt voice steals ") << piano.voiceSteals()-stealsAtStart
+                  << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
     } catch (const std::exception& e) { std::cerr<<e.what()<<'\n';return 1; }
 }

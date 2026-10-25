@@ -1,0 +1,85 @@
+{
+  "piece": "Chopin: Prelude in E minor, Op. 28 No. 4 (complete)",
+  "version": "0.5.3",
+  "source_sha256": "8b8984ae232642ff1979b84af642d5d5db60f7f7f20b3745f2d4b4f17cdaf908",
+  "source_url": "https://commons.wikimedia.org/wiki/File:Chopin_-_Prelude_in_E_Minor.mid",
+  "license": "CC-BY-SA-3.0-DE",
+  "midi_author": "Bernd Krueger",
+  "full_event_schedule_source_sha256": "d22f176c7cefd58b51846d7a732b98433be3cfb1c464d35813af91fa5684f8d8",
+  "converted_event_schedule_sha256": "7eefb2f8595aee845a0d1639314e1be55a6311cc7a8b7ee8b922717b6296d706",
+  "note_ons": 604,
+  "note_offs_in_source": 604,
+  "note_offs_emitted": 601,
+  "tempo_changes": 335,
+  "velocity_range": [
+    16,
+    92
+  ],
+  "key_range": [
+    28,
+    84
+  ],
+  "sustain_events": 133,
+  "pedal_down_events": 66,
+  "pedal_up_events": 67,
+  "first_event_frame": 0,
+  "last_event_frame": 4885085,
+  "overlapping_same_key_ons": [
+    {
+      "frame": 3366083,
+      "seconds": 70.127,
+      "key": 52
+    },
+    {
+      "frame": 3550823,
+      "seconds": 73.975,
+      "key": 52
+    },
+    {
+      "frame": 3925620,
+      "seconds": 81.784,
+      "key": 52
+    }
+  ],
+  "overlap_handling": "per-key count of sounding notes; second note-on re-strikes the key (engine behaviour); note-off dropped unless it ends the last overlapping note",
+  "dropped_note_offs": [
+    {
+      "frame": 3366436,
+      "seconds": 70.134,
+      "key": 52
+    },
+    {
+      "frame": 3551183,
+      "seconds": 73.983,
+      "key": 52
+    },
+    {
+      "frame": 3925997,
+      "seconds": 81.792,
+      "key": 52
+    }
+  ],
+  "duration_seconds": 105.772625,
+  "frames": 5077086,
+  "sample_rate": 48000,
+  "release_tail_seconds": 4,
+  "final_fade": "last 50 ms (raw and listening copies)",
+  "voice_limit": 88,
+  "voice_steals": 0,
+  "numerical_faults": 0,
+  "render_time_seconds": 203.833,
+  "realtime_factor": 0.518919,
+  "raw_peak": 0.1580810546875,
+  "raw_rms": 0.010656546061352721,
+  "listening_gain_db": 12.041199826559248,
+  "listening_peak": 0.63232421875,
+  "listening_rms": 0.042626184245410884,
+  "listening_gain_clips": false,
+  "safe_copy": null,
+  "raw_file": "chopin-prelude-full-0.5.3-raw.wav",
+  "raw_wav_sha256": "206bb0c277d74d11f22fddcb0e8cb8831d201c60974faa96fa2c471cbb31174c",
+  "raw_pcm_sha256": "d31d6555f7f62e11b5c5c0d2481951facb1d906cd76f5df8cef42a7091b4c2bb",
+  "listening_file": "chopin-prelude-full-0.5.3.wav",
+  "listening_file_sha256": "baa649697d9db38c3d87e70df7000c50cc72b1469e6543c70d06520f4966c14a",
+  "render_report": "105.773 s stereo 48 kHz; complete source + 4 s release; peak 0.158095; RMS 0.0106569; numerical faults 0; voice steals 0; render time 203.833 s; realtime factor 0.518919"
+}
