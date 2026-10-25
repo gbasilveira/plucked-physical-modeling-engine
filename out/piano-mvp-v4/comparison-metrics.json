@@ -1,0 +1,107 @@
+{
+  "velocity": 0.75,
+  "release_s": 4,
+  "match_window_s": [
+    0.05,
+    0.25
+  ],
+  "target_rms_dbfs": -24,
+  "ab_order": "fixed 0\u20135 s; mobile bridge 5.5\u201310.5 s",
+  "warning": "Match initial level only; later decay changes are retained. Band energies are not a realism score.",
+  "notes": {
+    "A2": {
+      "midi_key": 45,
+      "fixed": {
+        "raw_sha256": "27b588cb18577a6274ab2441e09795cf8cdc7001cf1c028e6eb52511fcf682f7",
+        "raw_peak": 0.045440673828125,
+        "initial_rms": 0.014418054413395113,
+        "match_gain_db": 12.821866795845953,
+        "matched_peak": 0.19885572677092564,
+        "late_to_early_rms_db": -1.8601618805367581,
+        "partial_neighbourhood_decay_db": [
+          -1.6879577289652317,
+          -1.736919106855344,
+          -1.8166842920399298
+        ],
+        "render_log": "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/A2-fixed-raw.wav: 14 seconds, stereo 48 kHz, peak 0.0454356, rendered in 2.21196 s; peak bridge motion 0 m\n"
+      },
+      "coupled": {
+        "raw_sha256": "2dfacc581f765932721325d89a362f96b77591f684670b2f664522e555919016",
+        "raw_peak": 0.04461669921875,
+        "initial_rms": 0.014042910467271932,
+        "match_gain_db": 13.050857461102066,
+        "matched_peak": 0.20046580888016485,
+        "late_to_early_rms_db": -2.713613559794502,
+        "partial_neighbourhood_decay_db": [
+          -1.8904387358904693,
+          -5.47873242527173,
+          -22.88760298171312
+        ],
+        "render_log": "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/A2-coupled-raw.wav: 14 seconds, stereo 48 kHz, peak 0.0446109, rendered in 2.33022 s; peak bridge motion 2.53406e-05 m\n"
+      }
+    },
+    "C4": {
+      "midi_key": 60,
+      "fixed": {
+        "raw_sha256": "b284d65397fff5b2f6d31b97504cb70b0028237304ed12dd27d645a65c513aa2",
+        "raw_peak": 0.040924072265625,
+        "initial_rms": 0.015121037663049283,
+        "match_gain_db": 12.408368097498732,
+        "matched_peak": 0.17076436510129817,
+        "late_to_early_rms_db": -3.0753700011745404,
+        "partial_neighbourhood_decay_db": [
+          -2.8433448628534634,
+          -3.1650570979679324,
+          -3.701222233860636
+        ],
+        "render_log": "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/C4-fixed-raw.wav: 14 seconds, stereo 48 kHz, peak 0.0409201, rendered in 2.17142 s; peak bridge motion 0 m\n"
+      },
+      "coupled": {
+        "raw_sha256": "7a5f5a612dea2a05f32b36d4a5e1420c4d56c3262307a56c7490636a69642278",
+        "raw_peak": 0.040557861328125,
+        "initial_rms": 0.013734261282046521,
+        "match_gain_db": 13.243893895976722,
+        "matched_peak": 0.18632440402776806,
+        "late_to_early_rms_db": -9.922077707239366,
+        "partial_neighbourhood_decay_db": [
+          -9.759490947183412,
+          -21.68956819400407,
+          -5.676955327868383
+        ],
+        "render_log": "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/C4-coupled-raw.wav: 14 seconds, stereo 48 kHz, peak 0.0405517, rendered in 2.26424 s; peak bridge motion 2.56893e-05 m\n"
+      }
+    },
+    "C6": {
+      "midi_key": 84,
+      "fixed": {
+        "raw_sha256": "674db91f975919763f8f866a191900916dce4b813bb3d5ce6cd5c673453c4717",
+        "raw_peak": 0.033203125,
+        "initial_rms": 0.008548438781812625,
+        "match_gain_db": 17.362263881705292,
+        "matched_peak": 0.24507113068430603,
+        "late_to_early_rms_db": -9.283705688601922,
+        "partial_neighbourhood_decay_db": [
+          -6.735825413925241,
+          -13.2664336679189,
+          -24.139455701867867
+        ],
+        "render_log": "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/C6-fixed-raw.wav: 14 seconds, stereo 48 kHz, peak 0.0332058, rendered in 2.08108 s; peak bridge motion 0 m\n"
+      },
+      "coupled": {
+        "raw_sha256": "8866213395a91135b042214240029ef855c36d47a391dbb334e606fc3ce6a9e3",
+        "raw_peak": 0.032562255859375,
+        "initial_rms": 0.007906515272990893,
+        "match_gain_db": 18.040297716065098,
+        "matched_peak": 0.2598539783702196,
+        "late_to_early_rms_db": -26.038787307860428,
+        "partial_neighbourhood_decay_db": [
+          -43.01931189738159,
+          -15.115216227508988,
+          -24.350516399877932
+        ],
+        "render_log": "/home/gbas/trabalho/gbasilveira/plucked-physical-modeling-engine/piano-mvp/out/piano-mvp-v4/C6-coupled-raw.wav: 14 seconds, stereo 48 kHz, peak 0.0325527, rendered in 2.22149 s; peak bridge motion 1.60014e-05 m\n"
+      }
+    }
+  },
+  "fixed_C4_byte_identical_to_MVP3": true
+}

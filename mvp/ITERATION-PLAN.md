@@ -8,7 +8,7 @@ Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano
 | --- | --- | --- | --- |
 | 1 | Published string/hammer inputs | Source provenance, compiled tensions and loss projection, 88-key tests | Implemented in MVP 2; listener still reports electric-guitar character |
 | 2 | Remove output saturation and direct force mix; add explicit force-to-pressure soundboard path | Same middle-C excitation through old, linear-baseline and body-only paths; matched-level WAVs and metrics; linearity/impulse/stability tests | Implemented in MVP 3; listening feedback pending |
-| 3 | Bridge mobility and feedback | Compare fixed-end/body-filter experiment with an energy-checked coupled bridge; measure partial decay changes | Planned; do not just add reverb or global decay |
+| 3 | Bridge mobility and feedback | Compare fixed-end/body-filter experiment with an energy-checked coupled bridge; measure partial decay changes | Implemented in MVP 4 as local per-key feedback; listening pending |
 | 4 | Appropriate unison string groups | Coupled two-/three-string notes versus single string; beat frequencies and decay envelopes; coherent hammer/string mass treatment | Planned |
 | 5 | Hammer/attack calibration | Soft/medium/hard strikes; contact duration, force peak and initial partial distribution versus a cited reference | Planned |
 | 6 | Sympathetic strings and pedal behaviour | Pedal up/down, released keys, repeated notes, chords; CPU/voice accounting | Planned |
@@ -44,8 +44,24 @@ weak candidate for the main tonal problem in this particular test. The body-only
 path reduces the first-100-ms energy share above 2 kHz from 1.91% to 1.65% and
 changes the stereo response. These describe the signal, not perceived realism.
 The reproduced original WAV is byte-identical to the published MVP 2 middle-C WAV.
-The next outstanding issues remain the nominal board response and absent bridge
-feedback; a full piano identity cannot be inferred from this first experiment.
+At that stage the nominal board response and absent bridge feedback remained major
+issues; a full piano identity could not be inferred from that first experiment.
+
+MVP 4 now uses the core A4/A5 moving-support coupling. For performance, the local
+mechanical model retains 128 board modes (up to 1.87 kHz); radiation still uses all
+512. Private mechanical models do not yet send other notes' motion back into each
+string. Tests of the underlying linear coupling conserve undamped energy to about
+1.2e-14 relative in the tested bass/middle/treble/sample-rate configurations; damped
+cases lose energy. This does not validate the full hammer-contact approximation.
+
+The next A/B uses the same note in the fixed versus moving-bridge configurations,
+matching only the initial 0.05–0.25 s so that the later decay difference remains.
+Middle-C late/early RMS changes from -3.08 dB to -9.92 dB, and C6 from -9.28 dB
+to -26.04 dB (0.25–0.75 s versus 2–2.5 s). Ask whether the quicker decay feels
+natural or too dead, which register improves, and whether the attack is still
+plucked/electric. If decay is wrong, calibrate the bridge/board before stacking
+unison effects on top. If decay improves but the identity remains thin, step 4 is
+the next controlled comparison.
 
 Publish each completed experiment with a short change note, a single-note A/B,
 the same melody/chord demo, reproducible commands and explicit approximations.
