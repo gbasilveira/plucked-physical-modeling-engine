@@ -13,6 +13,7 @@ bool Piano::prepare(double fs) {
     if (!std::isfinite(fs) || fs < 22050 || fs > 192000) return false;
     fs_ = fs;
     shared_ = sharedBoard_ && feedback_;
+    leakyActive_ = leaky_ && shared_;
     std::vector<double> phi;
     if (shared_) buildParticipation(grandGeometry_, phi);
     releaseStep_ = std::exp(-35.0 / fs);
@@ -43,6 +44,15 @@ bool Piano::prepare(double fs) {
             d.strings.push_back(&v.modes[j]);
         }
         if (shared_ && !v.light.configure(v.modes.data(), count, sympatheticCutHz)) return false;
+        if (leakyActive_) {
+            // 0.5.3: one damper law for the unstruck light model and (leakyRelease_) the struck modes.
+            v.light.configureLeak(v.modes.data(), damperRate_, damperExponent_, damperRefHz);
+            for (int j = 0; j < count; ++j) {
+                v.leak[j].assign(v.modes[j].omega.size(), 1.0);
+                for (std::size_t n = 0; n < v.modes[j].omega.size(); ++n)
+                    v.leak[j][n] = SympatheticString::leakFactor(v.modes[j].omega[n] / (2 * std::numbers::pi), fs, damperRate_, damperExponent_, damperRefHz);
+            }
+        }
         d.hammer = preset.hammer;
         // Treat the tabulated felt stiffness as the whole contact patch and
         // distribute it across strings. Keep one full-mass shared hammer.
@@ -192,42 +202,53 @@ void Piano::sample(float& left, float& right) noexcept {
 // has no modes or conductance of its own); unstruck voices form the same acceleration directly;
 // (4) the strings advance (hammer, SAV, bridge reaction).
 void Piano::wakeSympathetic() noexcept {
-    int free = sympLimit_ - sympatheticVoices();
-    if (free <= 0) return;
-    std::array<double, 88> speed;
-    int candidates = 0;
+    // Candidate pools: strings with lifted dampers, and (0.5.3) damped ones whose felt leaks. Each
+    // pool has its own cap; lifted strings are woken first. Leaky off: one pool, the 0.5.2 rule.
+    int liftedAwake = 0, dampedAwake = 0;
+    for (const auto& v : voices_)
+        if (v.active && !v.struck) { if (leakyActive_ && isDamped(v)) ++dampedAwake; else ++liftedAwake; }
+    int freeLift = sympLimit_ - liftedAwake, freeLeak = leakyActive_ ? leakyLimit_ - dampedAwake : 0;
+    if (freeLift <= 0 && freeLeak <= 0) return;
+    std::array<double, 88> speedLift{}, speedLeak{};
+    int candLift = 0, candLeak = 0;
     for (int i = 0; i < 88; ++i) {
         const auto& v = voices_[i];
-        const bool lifted = v.held || pedal_ || v.undamped;
-        speed[i] = (!v.active && lifted) ? std::abs(board_.portVelocity(i)) : 0.0;
-        candidates += speed[i] > wakeVelocity;
+        if (v.active) continue;
+        const double speed = std::abs(board_.portVelocity(i));
+        if (v.held || pedal_ || v.undamped) { speedLift[i] = speed; candLift += speed > wakeVelocity; }
+        else if (leakyActive_) { speedLeak[i] = speed; candLeak += speed > wakeVelocity; }
     }
-    if (!candidates) return;
-    // Score candidates by harmonic coincidence with the loudest sounding struck strings; used
-    // only when the limit is smaller than the number of candidates. Ties: lower key.
+    if (!candLift && !candLeak) return;
+    // Score candidates by harmonic coincidence with the loudest sounding struck strings (a proxy of
+    // expected excitation); used only when a pool's limit is smaller than its candidates. Ties:
+    // lower key.
     std::array<double, 88> score{};
-    const bool rank = candidates > free;
-    if (rank)
+    const bool rankLift = candLift > freeLift, rankLeak = candLeak > freeLeak;
+    if (rankLift || rankLeak)
         for (int s = 0; s < 88; ++s) {
             const auto& v = voices_[s];
             if (!v.active || !v.struck) continue;
             const double weight = std::abs(v.force);
             for (int c = 0; c < 88; ++c) score[c] += weight * coincidence_[c * 88 + s];
         }
-    while (free-- > 0) {
-        int best = -1; double bestScore = -1;
-        for (int i = 0; i < 88; ++i) {
-            if (!(speed[i] > wakeVelocity)) continue;
-            const double sc = rank ? score[i] : 0.0;
-            if (sc > bestScore) { best = i; bestScore = sc; }
+    const auto wake = [&](std::array<double, 88>& speed, int free, bool rank) {
+        while (free-- > 0) {
+            int best = -1; double bestScore = -1;
+            for (int i = 0; i < 88; ++i) {
+                if (!(speed[i] > wakeVelocity)) continue;
+                const double sc = rank ? score[i] : 0.0;
+                if (sc > bestScore) { best = i; bestScore = sc; }
+            }
+            if (best < 0) break;
+            speed[best] = 0;
+            auto& v = voices_[best];
+            v.light.reset(); board_.resetPort(best); v.lightW = 0; v.dwPrev = board_.portIncrement(best);
+            v.active = v.sympathetic = true; v.struck = false;   // strings start from rest here
+            v.release = 1; v.age = 0; v.quiet = 0; v.force = 0;
         }
-        if (best < 0) break;
-        speed[best] = 0;
-        auto& v = voices_[best];
-        v.light.reset(); board_.resetPort(best); v.lightW = 0; v.dwPrev = board_.portIncrement(best);
-        v.active = v.sympathetic = true; v.struck = false;   // strings start from rest here
-        v.release = 1; v.age = 0; v.quiet = 0; v.force = 0;
-    }
+    };
+    wake(speedLift, freeLift, rankLift);
+    wake(speedLeak, freeLeak, rankLeak);
 }
 void Piano::sampleShared(float& left, float& right) noexcept {
     if (sympathetic_ && (sampleClock_++ & 31u) == 0) wakeSympathetic();
@@ -248,7 +269,16 @@ void Piano::sampleShared(float& left, float& right) noexcept {
             v.bridge.setExternalVelocity(dw * fs_);
             v.note.step();
             auto& s = v.note.segment();
-            if (damped) {
+            if (damped && leakyActive_ && leakyRelease_) {
+                // 0.5.3 SPEC-OSC difference form with the felt's added damping, per mode.
+                for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
+                    const auto off = v.note.modeOffset(j);
+                    for (std::size_t n = 0; n < v.note.modeCount(j); ++n) {
+                        s.q()[off+n] *= v.leak[j][n]; s.u()[off+n] *= v.leak[j][n];
+                    }
+                }
+                v.note.clampPsi();
+            } else if (damped) {
                 v.release *= releaseStep_;
                 for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
                     const auto off = v.note.modeOffset(j);
@@ -266,7 +296,10 @@ void Piano::sampleShared(float& left, float& right) noexcept {
         } else {
             v.light.advance((dw - v.dwPrev) * fs_ * fs_);
             v.dwPrev = dw; v.lightW += dw;
-            if (damped) { v.release *= releaseStep_; v.light.damp(releaseStep_); }
+            if (damped) {
+                if (leakyActive_) v.light.dampLeak();
+                else { v.release *= releaseStep_; v.light.damp(releaseStep_); }
+            }
             peakBridgeMotion_ = std::max(peakBridgeMotion_,std::abs(v.lightW));
             force = v.light.force(v.lightW);
         }

@@ -274,7 +274,7 @@ int main() {
             // wakes and gains energy from the board; a damped one does not.
             const auto run = [](bool pedal, bool lift, bool sympathetic, int limit, int& awake, double& peak) {
                 piano_mvp_v4::Piano q;
-                require(q.setSympatheticStrings(sympathetic) && q.setSympatheticLimit(limit) && q.prepare(48000), "sympathetic prepare failed");
+                require(q.setLeakyDampers(false) && q.setSympatheticStrings(sympathetic) && q.setSympatheticLimit(limit) && q.prepare(48000), "sympathetic prepare failed");
                 if (pedal) q.sustain(true);
                 if (lift) q.liftDamper(60);
                 q.noteOn(48, 0.9);   // C3 struck: its octave, C4, shares partials
@@ -296,13 +296,13 @@ int main() {
             run(true, false, true, 0, awake, peak);
             require(!awake && peak == 0, "sympathetic limit 0 woke a string");
             // Releasing the pedal damps woken strings: they retire within a second.
-            piano_mvp_v4::Piano q; require(q.prepare(48000), "prepare failed");
+            piano_mvp_v4::Piano q; require(q.setLeakyDampers(false) && q.prepare(48000), "prepare failed");
             q.sustain(true); q.noteOn(48, 0.9); energy(q, 24000);
             require(q.sympatheticVoices() > 0, "pedal did not wake sympathetic strings");
             q.noteOff(48); q.sustain(false); energy(q, 48000);
             require(!q.voiceActive(60), "released pedal left a sympathetic string undamped");
             // Pedal pressed while the board is already ringing: strings start from rest then.
-            piano_mvp_v4::Piano late; require(late.prepare(48000), "prepare failed");
+            piano_mvp_v4::Piano late; require(late.setLeakyDampers(false) && late.prepare(48000), "prepare failed");
             late.noteOn(48, 0.9); energy(late, 12000);
             require(!late.voiceActive(60), "damped string woke before the pedal");
             late.sustain(true); energy(late, 24000);
@@ -316,6 +316,58 @@ int main() {
                 require(a == c && b == d, "shared board is not deterministic");
             }
         }
-        std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset, 0.5.0 polyphony/una corda/undamped treble, 0.5.1 shared board (geometry, one-voice equivalence, sympathetic transfer, determinism)\n";
+        {   // 0.5.3 leaky dampers (T1 energy ordering, T3 determinism, T4 caps, T5 law, T6 release).
+            // T1: C3 struck; C4 (a damped octave string) gains far less than with its damper lifted
+            // but more than nothing; with leaky dampers off an idle damped string never moves.
+            const auto peakOf = [](bool leaky, bool lift, int limit) {
+                piano_mvp_v4::Piano q;
+                require(q.setLeakyDampers(leaky) && q.setLeakyLimit(limit) && q.prepare(48000), "leaky prepare failed");
+                if (lift) q.liftDamper(60);
+                q.noteOn(48, 0.9);
+                double e = 0;   // energy of the string's board force over 1-3 s (the 0-1 s transient is shared)
+                for (int i = 0; i < 144000; ++i) { float l, r; q.sample(l, r); if (i >= 48000) e += q.portForce(60) * q.portForce(60); }
+                require(q.numericalFaults() == 0, "leaky fault");
+                return e;
+            };
+            const double lifted = peakOf(true, true, 88), damped = peakOf(true, false, 88), off = peakOf(false, false, 88);
+            require(off == 0, "damped string moved with leaky dampers off");
+            require(damped > 1e-9, "damped string gained no energy with leaky dampers on");
+            require(damped < 0.25 * lifted, "damped string is not far quieter than a lifted one");
+            require(peakOf(true, false, 0) == 0, "leaky limit 0 woke a string");
+            // T3: determinism without pedal.
+            piano_mvp_v4::Piano d1, d2; require(d1.prepare(48000) && d2.prepare(48000), "prepare failed");
+            for (auto* x : {&d1, &d2}) { x->noteOn(40, 0.8); x->noteOn(64, 0.5); x->noteOn(52, 0.7); }
+            for (int i = 0; i < 24000; ++i) {
+                float a, b, c, d; d1.sample(a, b); d2.sample(c, d);
+                require(a == c && b == d, "leaky dampers are not deterministic");
+            }
+            require(d1.sympatheticVoices() == d2.sympatheticVoices() && d1.sympatheticVoices() > 0, "no damped string woke in a chord");
+            // T4 caps: the damped pool never exceeds its limit; the lifted pool has its own.
+            piano_mvp_v4::Piano cap; require(cap.setSympatheticLimit(0) && cap.setLeakyLimit(3) && cap.prepare(48000), "cap prepare failed");   // lifted pool off: treble keys are undamped
+            for (int k : {36, 48, 52, 55, 60}) cap.noteOn(k, 0.9);
+            int most = 0;
+            for (int i = 0; i < 24000; ++i) { float l, r; cap.sample(l, r); most = std::max(most, cap.sympatheticVoices()); }
+            require(most > 0 && most <= 3, "leaky limit not respected");
+            require(!cap.setLeakyLimit(1) && !cap.setLeakyDampers(false) && !cap.setDamperLaw(5, 0) && !cap.setLeakyRelease(false), "leaky setters changed after preparation");
+            piano_mvp_v4::Piano bad;
+            require(!bad.setLeakyLimit(-1) && !bad.setLeakyLimit(89) && !bad.setDamperLaw(0, 0) && !bad.setDamperLaw(5, 3), "leaky setter range not enforced");
+            // T5 law: sigma_d = rate (f/200)^-p; factor exp(-sigma/fs) in (0, 1).
+            using piano_mvp_v4::SympatheticString;
+            require(std::abs(SympatheticString::leakFactor(500, 48000, 12, 0, 200) - std::exp(-12.0 / 48000)) < 1e-15, "flat law wrong");
+            require(std::abs(SympatheticString::leakFactor(400, 48000, 12, 1, 200) - std::exp(-6.0 / 48000)) < 1e-15, "power law wrong");
+            require(SympatheticString::leakFactor(100, 48000, 12, 1, 200) < SympatheticString::leakFactor(1000, 48000, 12, 1, 200), "law not monotone");
+            // T6 release: the default release step (35/s) is unchanged; the shared leaky law is a
+            // separate switch (setLeakyRelease); both decay after note-off.
+            const auto tail = [](bool leakyRelease) {
+                piano_mvp_v4::Piano q; require(q.setLeakyRelease(leakyRelease) && q.prepare(48000), "release prepare failed");
+                q.noteOn(60, 0.7); energy(q, 24000); q.noteOff(60);
+                const double e1 = energy(q, 12000), e2 = energy(q, 36000);
+                require(q.numericalFaults() == 0, "release fault");
+                return std::pair{e1, e2};
+            };
+            const auto fast = tail(false), slow = tail(true);
+            require(fast.first > 0 && slow.first > 0 && fast.second < fast.first && slow.second < slow.first, "leaky release does not decay");
+        }
+        std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset, 0.5.0 polyphony/una corda/undamped treble, 0.5.1 shared board (geometry, one-voice equivalence, sympathetic transfer, determinism), 0.5.3 leaky dampers (energy ordering, caps, law, release)\n";
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

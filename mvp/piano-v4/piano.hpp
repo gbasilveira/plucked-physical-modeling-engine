@@ -2,6 +2,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <vector>
 #include "pme/exciters/hammer.hpp"
 #include "pme/bridge/terms.hpp"
 #include "soundboard.hpp"
@@ -97,6 +98,35 @@ public:
         if (ready_ || n < 20 || n > 108) return false;
         tensionMaxKey_ = n; return true;
     }
+    // 0.5.3, all before prepare(). Leaky dampers: strings under a felt damper are not removed from the
+    // system; damped, unstruck strings are simulated like sympathetic ones but with the damper's
+    // added modal damping (default on; off reproduces 0.5.2 bit-for-bit). Needs the shared board.
+    bool setLeakyDampers(bool enabled) noexcept {
+        if (ready_) return false;
+        leaky_ = enabled; return true;
+    }
+    // Damper law: added amplitude decay rate sigma_d(f) = rate (f/damperRefHz)^(-exponent), 1/s.
+    // rate > 0, exponent in [-2, 2]. Only used when leaky dampers are on.
+    bool setDamperLaw(double rate, double exponent) noexcept {
+        if (ready_ || !(rate > 0) || !(rate < 1e4) || !(exponent >= -2 && exponent <= 2)) return false;
+        damperRate_ = rate; damperExponent_ = exponent; return true;
+    }
+    // Largest number of simultaneously simulated damped (leaking) unstruck strings, 0..88 (default 88).
+    bool setLeakyLimit(int n) noexcept {
+        if (ready_ || n < 0 || n > maxPolyphony) return false;
+        leakyLimit_ = n; return true;
+    }
+    // Use the same damper law when a struck key is released (note-off without pedal), replacing the
+    // uniform exp(-35/fs) step. Default OFF: the fitted law (2/s) is 17x weaker than the release
+    // step, so notes would ring on for seconds after note-off (README 0.5.3).
+    bool setLeakyRelease(bool enabled) noexcept {
+        if (ready_) return false;
+        leakyRelease_ = enabled; return true;
+    }
+    static constexpr double damperRefHz = 200.0;
+    static constexpr double defaultDamperRate = 2.0;
+    // Plug-in cap on damped (leaking) strings (CPU, README 0.5.3).
+    static constexpr int pluginLeakyLimit = 4;
     // Plug-in cap on sympathetic strings (CPU, README 0.5.1).
     static constexpr int pluginSympatheticLimit = 8;
     // Plug-in tension modulation boundary (CPU, README 0.5.2): keys 21..47 only. With all keys the
@@ -150,6 +180,7 @@ private:
         bool active{}, held{}, undamped{}, struck{}, sympathetic{};
         double force{};     // F^n of this voice's strings on the shared board (0.5.1)
         SympatheticString light;        // unstruck-string model (sympathetic voices)
+        std::array<std::vector<double>, 3> leak;   // 0.5.3 per-mode damper step factors, struck vertical modes
         double lightW{}, dwPrev{};      // its bridge displacement since waking; last board increment
         std::uint64_t age{}, quiet{};
         double release{1.0}, pan{};
@@ -162,6 +193,7 @@ private:
     std::uint64_t sampleClock_{};
     void sampleShared(float& left, float& right) noexcept;
     void wakeSympathetic() noexcept;
+    bool isDamped(const Voice& v) const noexcept { return !v.held && !pedal_ && !v.undamped; }
     void primeBridge(Voice& v, int port) noexcept;
     std::vector<float> coincidence_;   // [candidate*88 + sounding] harmonic coincidence score
     bool feedback_{true};
@@ -171,6 +203,9 @@ private:
     bool bridgeMass_{true};
     bool saturatingLoss_{true};
     bool tension_{true};
+    bool leaky_{true}, leakyRelease_{false}, leakyActive_{};
+    double damperRate_{defaultDamperRate}, damperExponent_{0.0};
+    int leakyLimit_{maxPolyphony};
     int tensionMaxKey_{108};
     bool unaCordaEnabled_{true}, undampedTreble_{true}, unaCordaDown_{};
     int voiceLimit_{maxVoices};

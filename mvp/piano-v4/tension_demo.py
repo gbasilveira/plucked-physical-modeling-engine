@@ -29,7 +29,7 @@ def render(key, mode, tmp):
 clips = []
 with tempfile.TemporaryDirectory() as tmp:
     for key in (33, 45):
-        a, b = render(key, 'previous', tmp), render(key, 'coupled', tmp)
+        a, b = render(key, 'v051', tmp), render(key, 'previous', tmp)
         rms = lambda x: np.sqrt(np.mean(x[int(.1 * FS):int(.4 * FS)] ** 2))
         target = 0.1
         for x in (a, b):

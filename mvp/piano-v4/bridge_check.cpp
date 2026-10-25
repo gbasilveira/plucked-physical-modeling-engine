@@ -2,6 +2,7 @@
 #include "bridge_model.hpp"
 #include "grand_board.hpp"
 #include "preset.hpp"
+#include "sympathetic_string.hpp"
 #include "pme/bridge/bridge_point.hpp"
 #include "pme/bridge/modal_segment.hpp"
 #include "pme/simd/denormals.hpp"
@@ -61,7 +62,7 @@ static void check(int key, double fs, bool lossless) {
 // from q^n and w^n; modes advance; strings see delta_tt w^n). Energy = coupled board modes +
 // every string segment. Only the key-60 string is excited; octave and fifth neighbours must
 // receive energy through the board.
-static void sharedCheck(bool lossless, bool grand) {
+static void sharedCheck(bool lossless, bool grand, bool leak = false) {
     const double fs = 48000;
     const int keys[] = {36, 48, 55, 60, 64, 67, 72, 84};
     constexpr int n = 8;
@@ -80,6 +81,16 @@ static void sharedCheck(bool lossless, bool grand) {
     }
     for (std::size_t m = 0; m < segments[3].modeCount(); ++m)
         segments[3].qV()[m] = 1e-5/std::pow(static_cast<double>(m+1),2);
+    // 0.5.3-T2 leaky damper on the seven unexcited strings: every step their q and u are scaled by
+    // exp(-sigma_d(f_n)/fs) <= 1 (the felt's added damping, same law as the plug-in's).
+    std::vector<std::vector<double>> factors(n);
+    if (leak)
+        for (int s = 0; s < n; ++s) if (s != 3) {
+            pme::StringModes modes;
+            require(piano_mvp_v2::compilePresetString(piano_mvp_v2::parametersForKey(keys[s]),fs,modes) == pme::Status::Ok, "string compile failed");
+            for (std::size_t m = 0; m < segments[s].modeCount(); ++m)
+                factors[s].push_back(piano_mvp_v4::SympatheticString::leakFactor(modes.omega[m]/(2*std::numbers::pi), fs, 2.0, 0.0, 200.0));
+        }
     double w[n]{}, dwPrev[n]{}, dw[n]{};
     double sympathetic = 0;
     const auto step = [&] {
@@ -90,6 +101,8 @@ static void sharedCheck(bool lossless, bool grand) {
             dw[s] = board.portIncrement(port); w[s] = board.portDisplacement(port);
             segments[s].advance((dw[s]-dwPrev[s]) * fs * fs, 0);
             dwPrev[s] = dw[s];
+            if (leak && s != 3)
+                for (std::size_t m = 0; m < factors[s].size(); ++m) { segments[s].qV()[m] *= factors[s][m]; segments[s].uV()[m] *= factors[s][m]; }
         }
     };
     const auto energy = [&](double* own = nullptr) {
@@ -115,10 +128,11 @@ static void sharedCheck(bool lossless, bool grand) {
         }
     }
     const double final = energy()/initial;
-    if (lossless) require(deviation < 1e-6, "lossless shared-board energy drift");
+    if (lossless && !leak) require(deviation < 1e-6, "lossless shared-board energy drift");
     else require(maximum/initial < 1+1e-6 && final < 1, "damped shared board injects net energy");
     require(sympathetic > 1e-9, "no energy reached the other strings through the board");
-    std::cout << "shared board, 8 strings, lossless=" << lossless << " grand=" << grand << ": max deviation "
+    if (leak) require(maximum/initial < 1+1e-9 && final < 1, "leaky dampers injected net energy");
+    std::cout << "shared board, 8 strings, lossless=" << lossless << " grand=" << grand << " leaky dampers=" << leak << ": max deviation "
               << deviation << ", final/initial " << final << ", peak energy in the 7 unexcited strings "
               << sympathetic << " of initial\n";
 }
@@ -159,5 +173,7 @@ int main() {
         for (int key : {21,60,84}) for (bool lossless : {false,true}) check(key,48000,lossless);
         for (double fs : {44100.,96000.}) for (bool lossless : {false,true}) check(60,fs,lossless);
         for (bool lossless : {true,false}) for (bool grand : {false,true}) sharedCheck(lossless, grand);
+        // 0.5.3-T2: passivity of the leaky damper (lossless board: any rise would be the damper's).
+        for (bool lossless : {true,false}) sharedCheck(lossless, true, true);
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

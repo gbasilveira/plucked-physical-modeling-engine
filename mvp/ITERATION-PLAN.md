@@ -4,7 +4,23 @@ Goal: improve the acoustic-piano character, with one change at a time and audibl
 reproducible comparisons. A passing numerical test is not a listening endorsement.
 Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano`.
 
-## Current listening diagnosis (2026-10-25, 0.5.2)
+## Current listening diagnosis (2026-10-25, 0.5.3)
+
+Listener on 0.5.2: almost perfect; unpedalled notes muffled, box feels small; pedalled almost
+perfect. 0.5.3 adds **leaky dampers**: damped, unstruck strings are simulated like sympathetic
+strings with an added modal damper loss (`setLeakyDampers`, default on; flat law, fitted
+2.0 /s to Salamander late 62-500 Hz shares: rms 5.9 dB over nine notes vs 29 dB for 0.5.2; the
+value is an effective fit, far weaker than a physical felt damper, and the response has a cliff
+between 2 and 10 /s). `--previous` is 0.5.2 bit-for-bit, old `--previous` is `--v051`. Released-note
+law is a separate switch (`setLeakyRelease`, default off). Side effects to judge by ear: released
+bass/middle notes stop 14-20 dB less abruptly in the first 0.25 s; the attack high-band error rose
+from 3.83 to 4.94 dB. Plug-ins cap damped strings at 4 (unpedalled cluster 0.86x, Chopin 1.58x
+real time). `unpedalled-demo-0.5.3.wav` plays 0.5.2, 0.5.3 and 0.5.3 without the bridge-top
+mass (diagnostic; the share metric says the mass is not over-darkening). "Box feels small":
+L/R coherence of the model is 0.85-0.9 vs 0.4-0.6 for the reference, so stereo width is the next
+target (`piano-v4/README.md`, "Update 0.5.3").
+
+## Previous diagnosis (2026-10-25, 0.5.2)
 
 0.5.2 adds Kirchhoff-Carrier tension modulation to the **struck** strings (`TensionStruckNote`,
 an MVP-local adaptation of the engine's `StruckNote`: the SAV segment carries the tension
@@ -106,7 +122,7 @@ experiments. These are hypotheses, not a claim that one change guarantees realis
 | 3 | Bridge mobility and feedback | Compare fixed-end/body-filter experiment with an energy-checked coupled bridge; measure partial decay changes | Implemented in MVP 4; listener reports more piano-like but still a weak synthetic harpsichord |
 | 4 | Appropriate unison string groups | Coupled two-/three-string notes versus single string; beat frequencies and decay envelopes; coherent hammer/string mass treatment | Prototype implemented in 0.4.4; shared hammer/bridge, split total felt stiffness, declared tuning spread; listening and reference calibration pending |
 | 5 | Hammer/attack calibration | Soft/medium/hard strikes; contact duration, force peak and initial partial distribution versus a cited reference | Planned |
-| 6 | Sympathetic strings and pedal behaviour | Pedal up/down, released keys, repeated notes, chords; CPU/voice accounting | Implemented in 0.5.1 (shared board, unstruck strings with lifted dampers, key-dependent bridge points); listening pending. 0.5.2 adds tension modulation of struck strings (step 7 below) |
+| 6 | Sympathetic strings and pedal behaviour | Pedal up/down, released keys, repeated notes, chords; CPU/voice accounting | Implemented in 0.5.1 (shared board, unstruck strings with lifted dampers, key-dependent bridge points); listening pending. 0.5.2 adds tension modulation of struck strings (step 7 below); 0.5.3 adds leaky dampers for unpedalled notes |
 | 7 | String tension modulation (pitch glide, phantom partials) | Energy test with hammer and tension; glide and sideband measurements A/B; plug-in CPU | Implemented in 0.5.2 (struck strings, vertical polarisation); effect small; listening pending |
 
 For step 2, the AudioLabs Yamaha C3 measurement page was inspected. It documents

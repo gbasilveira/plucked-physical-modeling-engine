@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <array>
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <vector>
@@ -61,6 +62,20 @@ public:
                                             f_.data(), total_);
     }
     void damp(double factor) noexcept { for (std::size_t i = 0; i < total_; ++i) { q_[i] *= factor; u_[i] *= factor; } }
+    // 0.5.3 leaky damper: per-mode step factors exp(-sigma_d(f_n)/fs) <= 1 (SPEC-OSC losses plus the
+    // felt's added modal damping); multiplying q and u by a factor <= 1 never adds energy.
+    void configureLeak(const pme::StringModes* modes, double rate, double exponent, double refHz) {
+        leak_.assign(total_, 1.0);
+        for (std::size_t j = 0; j < strings_; ++j)
+            for (std::size_t i = 0; i < count_[j]; ++i)
+                leak_[offset_[j] + i] = leakFactor(modes[j].omega[i] / (2 * 3.14159265358979323846), modes[j].fs, rate, exponent, refHz);
+    }
+    // sigma_d(f) = rate * (f/refHz)^(-exponent), amplitude decay rate in 1/s added by the damper.
+    static double leakFactor(double hz, double fs, double rate, double exponent, double refHz) noexcept {
+        const double sigma = exponent == 0 ? rate : rate * std::pow(std::max(hz, 1.0) / refHz, -exponent);
+        return std::exp(-sigma / fs);
+    }
+    void dampLeak() noexcept { for (std::size_t i = 0; i < total_; ++i) { q_[i] *= leak_[i]; u_[i] *= leak_[i]; } }
     std::size_t strings() const noexcept { return strings_; }
     std::size_t modeCount(std::size_t j) const noexcept { return count_[j]; }
     const double* q(std::size_t j) const noexcept { return q_.data() + offset_[j]; }
@@ -69,6 +84,6 @@ private:
     std::size_t strings_{}, total_{};
     std::array<std::size_t, maxStrings> offset_{}, count_{};
     std::array<double, maxStrings> tOverL_{};
-    std::vector<double> beta_, kappa_, gamma_, a_, g_, q_, u_, f_;
+    std::vector<double> beta_, kappa_, gamma_, a_, g_, q_, u_, f_, leak_;
 };
 }

@@ -2,7 +2,7 @@
 // Diagnostic for sympathetic resonance (0.5.1). 14 s, stereo 48 kHz, 16-bit, fixed gain +12.04 dB.
 //  0-6.5 s: C3+E3+G3 have their dampers lifted but are not struck; staccato C4 at 1 s, C5 at 3 s.
 //  7-14 s : sustain pedal down, one loud A1 (key 33) held 0.5 s.
-// Modes: (default) 0.5.2, --previous (0.5.1, no tension), --shared-pan, --v050 (0.5.0: unstruck strings are never simulated).
+// Modes: (default) 0.5.3, --previous (0.5.2, no leaky dampers), --v051 (0.5.1, no tension), --shared-pan, --v050 (0.5.0: unstruck strings are never simulated).
 #include "piano.hpp"
 #include "pme/simd/denormals.hpp"
 #include <algorithm>
@@ -18,14 +18,15 @@ static void word(std::ostream& f, std::uint32_t n, int bytes) {
 }
 int main(int argc, char** argv) {
     try {
-        if (argc < 2 || argc > 3) throw std::runtime_error("usage: piano-sympathetic-demo out.wav [--shared-pan|--previous|--v050]");
+        if (argc < 2 || argc > 3) throw std::runtime_error("usage: piano-sympathetic-demo out.wav [--shared-pan|--previous(0.5.2)|--v051|--v050]");
         const std::string mode = argc == 3 ? argv[2] : "";
-        if (!mode.empty() && mode != "--shared-pan" && mode != "--previous" && mode != "--v050") throw std::runtime_error("unknown mode");
+        if (!mode.empty() && mode != "--shared-pan" && mode != "--previous" && mode != "--v051" && mode != "--v050") throw std::runtime_error("unknown mode");
         constexpr int fs = 48000, frames = 14 * fs;
         piano_mvp_v4::Piano piano;
         piano.setSharedBoard(mode != "--v050");
-        piano.setGrandBridgeGeometry(mode.empty() || mode == "--previous");
-        piano.setTensionModulation(mode.empty());
+        piano.setGrandBridgeGeometry(mode.empty() || mode == "--previous" || mode == "--v051");
+        piano.setTensionModulation(mode.empty() || mode == "--previous");
+        piano.setLeakyDampers(mode.empty());
         piano.setVoiceLimit(piano_mvp_v4::Piano::maxPolyphony);
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
         std::ofstream out(argv[1], std::ios::binary);

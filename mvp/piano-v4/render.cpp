@@ -7,28 +7,50 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 static void word(std::ostream& f, std::uint32_t n, int bytes) {
     for (int i = 0; i < bytes; ++i) f.put(static_cast<char>((n >> (8 * i)) & 255));
 }
-int main(int argc, char** argv) {
+int main(int argc0, char** argv0) {
     try {
+        // Developer options (0.5.3), any position: --damper-rate R, --damper-exp P, --leaky-limit N,
+        // --leaky-release, --no-bridge-mass. Remaining arguments are the positional ones below.
+        std::vector<char*> positional{argv0[0]};
+        double damperRate = piano_mvp_v4::Piano::defaultDamperRate, damperExp = 0;
+        int leakyLimit = piano_mvp_v4::Piano::maxPolyphony;
+        bool leakyRelease = false, noBridgeMass = false;
+        for (int i = 1; i < argc0; ++i) {
+            const std::string a = argv0[i];
+            if (a == "--damper-rate" && i + 1 < argc0) damperRate = std::stod(argv0[++i]);
+            else if (a == "--damper-exp" && i + 1 < argc0) damperExp = std::stod(argv0[++i]);
+            else if (a == "--leaky-limit" && i + 1 < argc0) leakyLimit = std::stoi(argv0[++i]);
+            else if (a == "--leaky-release") leakyRelease = true;
+            else if (a == "--no-bridge-mass") noBridgeMass = true;   // diagnostic only
+            else positional.push_back(argv0[i]);
+        }
+        const int argc = static_cast<int>(positional.size());
+        char** argv = positional.data();
         const std::string path = argc > 1 ? argv[1] : "piano-v4-demo.wav";
         const int key = argc > 2 ? std::stoi(argv[2]) : -1;
         const std::string pathName = argc > 3 ? argv[3] : "coupled";
         const double velocity = argc > 4 ? std::stod(argv[4]) : 0.75;
         const bool wide24 = argc == 6 && std::string(argv[5]) == "--24bit";
         if ((argc > 5 && !wide24) || argc > 6 || (argc > 2 && key != -1 && (key < 21 || key > 108)) ||
-            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "previous" && pathName != "v050" && pathName != "v049" && pathName != "sharedpan" && pathName != "v048" && pathName != "v046") ||
+            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "previous" && pathName != "v051" && pathName != "v050" && pathName != "v049" && pathName != "sharedpan" && pathName != "v048" && pathName != "v046") ||
             !std::isfinite(velocity) || velocity <= 0 || velocity > 1)
-            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous(0.5.1)|v050|sharedpan|v049|v048|v046] [velocity 0..1] [--24bit]");
+            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous(0.5.2)|v051|v050|sharedpan|v049|v048|v046] [velocity 0..1] [--24bit]");
         constexpr int fs = 48000, seconds = 14, frames = fs * seconds;
         piano_mvp_v4::Piano piano;
         piano.setBridgeFeedback(pathName != "fixed");
         piano.setUnisonStrings(pathName != "single");
-        // "coupled"/"fixed" are 0.5.2; "previous" is 0.5.1 (no tension modulation); "v050" is 0.5.0.
-        const bool now0501 = pathName == "coupled" || pathName == "fixed" || pathName == "sharedpan" || pathName == "previous";
-        piano.setTensionModulation(pathName == "coupled" || pathName == "fixed");
+        // "coupled"/"fixed" are 0.5.3; "previous" is 0.5.2 (no leaky dampers); "v051" is 0.5.1 (also no
+        // tension modulation); "v050" is 0.5.0.
+        const bool now0501 = pathName == "coupled" || pathName == "fixed" || pathName == "sharedpan" || pathName == "previous" || pathName == "v051";
+        piano.setTensionModulation(pathName == "coupled" || pathName == "fixed" || pathName == "previous");
+        piano.setLeakyDampers(pathName == "coupled" || pathName == "fixed");
+        if (!piano.setDamperLaw(damperRate, damperExp) || !piano.setLeakyLimit(leakyLimit)) throw std::runtime_error("bad damper options");
+        piano.setLeakyRelease(leakyRelease);
         piano.setSoftFelt(now0501 || pathName == "v050" || pathName == "v049" || pathName == "v048");
         // 0.4.9 bridge/string physics stays on; "v050" is 0.5.0 (private bridges), "v049" is 0.4.9,
         // "v048" is 0.4.8, "v046" is 0.4.6, "sharedpan" is 0.5.1 coupling with 0.5.0 bridge positions.
@@ -40,7 +62,7 @@ int main(int argc, char** argv) {
         const bool now = now0501 || pathName == "v050";
         piano.setVoiceLimit(now ? piano_mvp_v4::Piano::maxPolyphony : piano_mvp_v4::Piano::maxVoices);
         piano.setUnaCorda(now); piano.setUndampedTreble(now);
-        piano.setBridgeMassLoading(current);
+        piano.setBridgeMassLoading(current && !noBridgeMass);
         piano.setSaturatingStringLoss(current);
         if (!piano.prepare(fs)) throw std::runtime_error("could not prepare piano");
         std::ofstream out(path, std::ios::binary);

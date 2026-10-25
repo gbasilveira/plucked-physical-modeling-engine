@@ -1,9 +1,9 @@
-Piano MVP 4 - String tension (LV2 0.5.2, Linux)
+Piano MVP 4 - Leaky dampers (LV2 0.5.3, Linux)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - String tension" under instruments/synthesizers.
+Look for "Piano MVP 4 - Leaky dampers" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
@@ -41,6 +41,12 @@ and extra, slightly inharmonic partials (strongest in the bass at fortissimo). I
 it is enabled only for keys A0 to B2 (MIDI 21-47) to stay near real time; the offline renders
 use all keys. Sympathetic (unstruck) strings stay linear. Effects are small by design
 (about 0.5-1.5 cents of pitch at velocity 92). See mvp/piano-v4/README.md ("Update 0.5.2").
+
+Version 0.5.3 stops treating a damped string as absent: felt-damped, unstruck strings are simulated
+with a finite damper loss (added decay 2 per second, an effective value fitted to Salamander
+low-band late energy, not a measured felt), so playing without the sustain pedal still excites
+the other strings a little through the shared board. In this plug-in at most 4 such strings are
+simulated at once (CPU). Note-off release is unchanged. See mvp/piano-v4/README.md ("Update 0.5.3").
 
 Source, listening comparisons and licence:
 https://github.com/gbasilveira/plucked-physical-modeling-engine/tree/mvp/piano

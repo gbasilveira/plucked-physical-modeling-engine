@@ -1,5 +1,193 @@
 # MVP 4: bridge feedback
 
+## Update 0.5.3: leaky dampers
+
+Listener feedback on 0.5.2: "almost perfect; unsustained strings feel rather muffled; the box
+feels small; with the pedal down almost perfect". Without the pedal a struck note excited only its
+own strings, because damped strings were never simulated; with the pedal all strings ring through
+the shared board. A felt damper lowers a string's Q, it does not remove the string from the system.
+`setLeakyDampers(bool)` (before `prepare`, default on) simulates damped, unstruck strings as
+sympathetic strings with an added damper loss. Off is 0.5.2 bit-for-bit: `piano-midi-render ...
+--previous` is now **0.5.2** and reproduces the committed `chopin-prelude-0.5.2-raw.wav` byte for
+byte (verified with `cmp`, also the 0.5.2 listening WAV); `--v051` is the former `--previous`
+(0.5.1); `--v050`, `--shared-pan`, `--v049`, `--v048`, `--v046`, `--legacy` unchanged.
+`piano-render` takes `previous` (0.5.2), `v051`, `v050`; `piano-sympathetic-demo` takes `--previous`
+(0.5.2), `--v051`, `--v050`.
+
+### How to listen
+
+`unpedalled-demo-0.5.3.wav` (no CC64 anywhere, identical gain, 9 s each, 1.5 s gaps): staccato notes
+in three registers, a legato line, a six-note chord; played (1) 0.5.2, (2) 0.5.3, (3) 0.5.3 with the
+0.4.9 bridge-top mass switched off (diagnostic only; defaults unchanged). Listen for: does (2) sound
+less muffled / bigger than (1)? Does (3) sound better than (2) (then the 55 g mass is the cause)?
+Does a released note now ring on too long (see "Side effect")? Also `chopin-prelude-0.5.3.wav`
+(`-latest`), `C4-reference-0.5.2-0.5.3.wav` (reference, 0.5.2, 0.5.3 at equal initial RMS).
+
+### Design
+
+1. **Damper law.** `sigma_d(f) = rate (f / 200 Hz)^(-exponent)`, an added amplitude decay rate (1/s)
+   per vertical mode; each step multiplies the mode's `q` and `u` (SPEC-OSC difference form) by
+   `exp(-sigma_d/fs) <= 1`, so it only removes energy. `setDamperLaw(rate, exponent)`; fitted
+   defaults **rate = 2.0 /s, exponent = 0** (one parameter). No literature value for a felt damper's
+   modal loss on a piano string was found that could be used directly, so this is an effective,
+   fitted parameter (see Fit), not a measured felt.
+2. **Machinery.** Reuses the 0.5.1 wake/sleep sympathetic strings (`SympatheticString`, vertical
+   modes below 2 kHz, start from rest). A damped idle string wakes when its board bridge-point
+   speed exceeds 1e-4 m/s (as lifted ones) and sleeps after 1 s of negligible force. Two pools with
+   separate caps: lifted strings first (`setSympatheticLimit`), then damped strings
+   (`setLeakyLimit`); within a pool, ranking by harmonic coincidence with the loudest struck strings
+   when candidates exceed the cap. A woken damped string uses the leaky factors instead of the old
+   `exp(-35/fs)` step and is not retired by the release counter. Deterministic, no allocation in the
+   audio path (factors are tables built in `prepare`).
+3. **Released notes: kept separate.** `setLeakyRelease(bool)` (default **off**) applies the same law
+   to a struck key after note-off instead of `exp(-35/fs)`. The fitted 2/s is 17x weaker than the
+   35/s release step; used for release it changes the audible decay little (the board and the
+   woken neighbours dominate the tail, measured below), but the physical meaning differs (35/s is a
+   fast felt stop, 2/s is an effective leakage that absorbs model coupling error), so it stays a
+   switch. `piano-render --leaky-release` renders it.
+
+### Fit
+
+Late window (0.5-1.5 s) octave shares, model minus Salamander, dB, bands 62.5-125, 125-250,
+250-500 Hz, nine notes (A2/C4/C6 at v40/60/92); mean and rms over the 27 values. Flat law:
+
+| rate (1/s) | mean | rms |
+| --- | --- | --- |
+| 0.5 | +3.1 | 6.8 |
+| 1 | +2.1 | 6.2 |
+| 1.5 | +1.0 | 5.9 |
+| **2** | **-0.2** | **5.9** |
+| 3 | -2.5 | 6.8 |
+| 5 | -6.9 | 10.6 |
+| 10 | -16.6 | 24.3 |
+| 35 | -21.5 | 32.0 |
+| 0.5.2 (no damped strings) | -18.3 | 29.1 |
+
+A second parameter was tried (sigma rising or falling with frequency): exponent -0.5 at 2/s gives
+rms 5.0 (mean +2.5), -1 at 2.5/s gives 5.8, +1 at 1.5/s gives 10.4. The gain (5.9 to 5.0) is within
+what nine points can resolve, so the law stays flat. Residuals at rate 2 (62-125 / 125-250 /
+250-500, v60): A2 +0.4 / -0.5 / +1.8; C4 -5.7 / +10.8 / +5.1; C6 -8.5 / -7.5 / -0.4. The 62-125 Hz
+band of C4 stays 6-13 dB low and its 125-250 band 7-14 dB high: **which** bass strings ring is not
+fixed by one number. **Caveat:** the fitted 2/s is far below a physical felt damper (T60 of a few
+tenths of a second means 20-35/s). With strong damping the strings are quiet and the 62-500 Hz
+deficit remains (35/s: C4 62-125 -41 dB); with weak damping they approach the all-dampers-lifted
+case. The fit therefore says "the model's board-string coupling is stronger than the real one
+unless the damper is almost absent", i.e. 2/s absorbs model error as well as damper physics.
+The response is a cliff between 2 and 10 /s, not a smooth slope.
+
+Absolute late power for C4 v60 (dB re full scale, bands from 62.5 Hz): reference -74.7, -81.7,
+-46.5, -43.5; 0.5.2 -109, -126, -55, -75; 0.5.3 -97.5, -88.0, -58.5, -75.8. So the low bands
+come up by 12 and 38 dB; the 250-500 band of C4 is 4 dB lower (loaded by the extra strings).
+
+### Band tables, v60 (model minus reference, dB, band lower edges 62.5 ... 8000 Hz; 0.5.2 / 0.5.3)
+
+```
+A2 attack  -7.5/-4.2 +3.7/+2.7 +0.6/+0.8 -3.5/-0.6 -9.8/-6.1 +2.6/+5.3 +23.8/+26.4 -14.3/-11.7
+A2 late    -6.8/+0.4 +9.9/-0.5 +0.3/+1.8 -17.8/-10.3 -13.0/-6.8 -5.1/+0.3 +12.2/+16.9 -25.1/-20.0
+C4 attack  -3.1/-1.1 +12.0/+14.9 +1.0/+2.6 -1.1/-6.5 -1.4/-0.4 +4.2/+6.5 +12.4/+14.5 -0.6/+1.6
+C4 late    -21.3/-5.7 -31.3/+10.8 +5.2/+5.1 -17.4/-15.1 -11.0/-7.7 -7.1/-3.4 -3.5/+0.3 -13.5/-9.9
+C6 attack  -4.0/-15.3 -5.7/-1.4 -11.7/-5.7 -10.6/+0.6 +0.2/+0.2 -2.2/-2.5 +9.5/+9.1 -9.6/-10.1
+C6 late    -16.7/-8.5 -41.6/-7.5 -63.1/-0.4 -52.7/+8.3 +0.4/+0.3 -13.0/-18.3 +1.3/-4.1 -14.0/-19.3
+```
+
+All nine notes and v40/v92 are in `reference-calibration-0.5.3.json`. Mean attack high-band error
+(energy share above 2 kHz): 0.4.9 5.68 dB, 0.5.1 3.80, 0.5.2 3.83, **0.5.3 4.94**: the extra strings
+add load to the board during the attack and the high share moves (A2 v60 4.13 to 5.85, C4 v60
+3.72 to 5.92). This is a cost of the change (it is not the aim); the attack window includes the
+woken strings of the same note's neighbours.
+
+### Muffled attribution: the bridge-top mass
+
+Variant (3) of the demo, and `calibration-*-v60-0.5.3-nobridgemass.wav` (`piano-render ...
+--no-bridge-mass`), v60 shares, model minus reference, dB (bands 62.5 ... 8000 Hz), 0.5.3 with
+mass / without:
+
+```
+A2 attack  -4.2/-4.3 +2.7/+2.6 +0.8/+0.9 -0.6/-0.3 -6.1/-4.6 +5.3/+9.4 +26.4/+34.0 -11.7/+1.0
+A2 late    +0.4/+0.4 -0.5/-0.5 +1.8/+1.9 -10.3/-9.8 -6.8/-5.1 +0.3/+4.1 +16.9/+24.7 -20.0/-7.9
+C4 attack  -1.1/-1.3 +14.9/+14.7 +2.6/+2.4 -6.5/-6.4 -0.4/+1.4 +6.5/+11.2 +14.5/+22.4 +1.6/+13.8
+C4 late    -5.7/-5.8 +10.8/+10.7 +5.1/+5.1 -15.1/-14.9 -7.7/-6.1 -3.4/+0.6 +0.3/+8.4 -9.9/+2.4
+C6 attack  -15.3/-16.5 -1.4/-2.6 -5.7/-6.7 +0.6/+0.2 +0.2/+0.0 -2.5/+1.6 +9.1/+17.0 -10.1/+2.1
+C6 late    -8.5/-9.6 -8.5... 
+```
+
+Removing the mass raises the 2-4 kHz shares by about +8 dB in every note and the 4-8 kHz shares by
++12 to +13 dB (1-2 kHz by +4), so the model is +17 to +34 dB above the reference in the 2-4 kHz share
+(with the mass: +9 to +26), while leaving the sub-500 Hz shares unchanged. In this share metric the
+55 g mass is **not** over-darkening: the model's 2-4 kHz share is already above the reference. Shares
+are relative, though; whether the ear wants more 4-8 kHz air is for the listener to judge on
+variant (3).
+
+### Side effect: released notes ring on
+
+Energy after note-off, dB per 0.25 s block relative to the first block, 0.5.2 vs 0.5.3 (default
+35/s release; woken neighbours leak): C4 `0 -19 -22 -25 -28` (0.5.2) vs `0 -5 -9 -13 -20`
+(0.5.3); A2 `0 -19 -23 -26` vs `0 -9 -11 -16`; A1 `0 -24 -30 -34` vs `0 -4 -11 -14`; C5 (72)
+`0 -8 -11 -14` vs `0 -8 -16 -21`; C6 `0 -12 -16 -19` vs `0 -14 -23 -27`. In the bass and middle
+a released note now stops about 14-20 dB less abruptly in the first 0.25 s (neighbours woken
+by the note keep ringing through the board at 2/s), while the treble stops faster than before
+(its undamped neighbours were already ringing). `--leaky-release` changes this tail by at most
+a few dB (C4: `0 -4 -8 -14 -23`). If "stopping" sounds smeared compared to a real piano, the
+rate is too low for notes that have been released; a time-dependent law (strong damping that
+relaxes) is the next thing to try.
+
+### "Box feels small" (investigation only, `box_analysis.py`, `box-analysis-0.5.3.json`)
+
+Absolute band power (dB re full scale) and stereo statistics, Salamander vs model, 10-250 ms attack
+window, v60:
+
+| | 62-125 Hz | 125-250 | 250-500 | coherence L/R, 125-2000 Hz |
+| --- | --- | --- | --- | --- |
+| C4 reference | -55.0 | -54.9 | -26.3 | 0.42-0.55 |
+| C4 0.5.2 / 0.5.3 | -77.6 / -77.7 | -62.4 / -61.6 | -44.7 / -45.3 | 0.80-0.88 / 0.57-0.71 |
+| A2 v92 reference | -26.2 | -27.6 | -30.8 | 0.50-0.65 |
+| A2 v92 0.5.2 / 0.5.3 | -50.2 / -49.6 | -40.2 / -43.8 | -46.9 / -49.3 | 0.86-0.87 / 0.65-0.78 |
+
+Findings: (a) relative to the strongest band the model's 62-125 Hz attack content is 29 dB (ref) vs
+32 dB (model) down: about 3 dB of "knock" missing, not the big deficit; the overall model level
+is 15-20 dB below the close-miked reference, which is a level, not a shape, difference. (b) **Width:**
+the reference left/right coherence is 0.4-0.6 over 125 Hz-2 kHz; the model is 0.85-0.9 (nearly
+mono-like), side/mid ratios are lower. 0.5.3 reduces it to 0.5-0.7 in 125-1000 Hz because the woken
+strings sit at other bridge points, but above 2 kHz it stays 0.84-0.91. A single pan per key and a
+mono-ish shared radiation are the likely source: a board that is "small" in the stereo sense. The next
+iteration may target decorrelation in the radiation stage (different radiating-mode weights per
+channel / more distinct left and right pickup points). No change made now.
+
+### Tests (`ctest`: 7/7)
+
+- `piano-behaviour`: existing tests (0.5.1 expectations run with `setLeakyDampers(false)`), plus
+  0.5.3: damped string's board-force energy 1-3 s is below 0.25 of a lifted one but above zero, and
+  exactly zero with leaky off; leaky limit 0 wakes nothing; determinism without pedal; damped pool
+  never above its cap (lifted pool off); setters rejected after `prepare` and range-checked; law
+  values (flat and power); both release laws decay.
+- `bridge-energy`: new passivity test: the 7 unexcited strings of the 8-string shared board are
+  damped each step with the leaky factors; energy never exceeds the initial (lossless and lossy
+  board), final below initial.
+- Unchanged and passing: tension energy, hammer contact, CLAP and LV2 playback (LV2 `run()`
+  allocation check included, plug-in caps set).
+`piano-behaviour` now takes about 2.5 minutes (timeout raised to 400 s): the 88-key chord tests
+wake many strings.
+
+### CPU (single thread, -O3, no SIMD; plug-in settings: 12 voices, sympathetic cap 8, tension keys <= 47)
+
+| Case | 0.5.2 (leaky off) | 0.5.3 leaky cap 4 | cap 8 | uncapped |
+| --- | --- | --- | --- | --- |
+| Pedalled 12-key cluster 48-59 | 0.97x | 0.96x | | |
+| Unpedalled 12-key cluster | 0.92x | 0.86x | | 0.57x |
+| Plug-in Chopin 52-58 s | 1.73x | 1.58x | 1.47x | 0.73x |
+| Offline Chopin excerpt (66 s simulated, 88 voices) | 115-125 s | 125 s | | |
+
+Plug-in default `pluginLeakyLimit = 4`: pedalled worst case unchanged (the damped pool is idle
+under the pedal), unpedalled cluster 6% slower, Chopin 9% slower. Tool: `piano-tension-bench
+chopin|cluster|cluster-nopedal events maxkey [off|N]`. No threading or SIMD yet.
+
+### Setters and tools
+
+`setLeakyDampers`, `setDamperLaw(rate, exponent)`, `setLeakyLimit`, `setLeakyRelease`; constants
+`damperRefHz`, `defaultDamperRate`, `pluginLeakyLimit`. `piano-render` developer options
+`--damper-rate`, `--damper-exp`, `--leaky-limit`, `--leaky-release`, `--no-bridge-mass`.
+`piano-unpedalled-demo out.wav` makes the listening demo.
+
 ## Update 0.5.2: tension modulation of the struck strings
 
 Physical "soft distortion": large transverse motion stretches a string, raising its tension, hence
