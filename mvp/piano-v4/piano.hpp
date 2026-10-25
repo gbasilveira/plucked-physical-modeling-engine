@@ -5,6 +5,7 @@
 #include "pme/exciters/hammer.hpp"
 #include "pme/bridge/terms.hpp"
 #include "soundboard.hpp"
+#include "bridge_mass.hpp"
 
 namespace piano_mvp_v4 {
 // Experimental fixed preset. All allocations happen in prepare(), never during playback.
@@ -28,6 +29,16 @@ public:
     bool setSoftFelt(bool enabled) noexcept {
         if (ready_) return false;
         softFelt_ = enabled; return true;
+    }
+    // 0.4.9: both default on (see README). Bridge-top mass: low-pass force transmission.
+    bool setBridgeMassLoading(bool enabled) noexcept {
+        if (ready_) return false;
+        bridgeMass_ = enabled; return true;
+    }
+    // String viscosity saturates above kStringLossCornerHz.
+    bool setSaturatingStringLoss(bool enabled) noexcept {
+        if (ready_) return false;
+        saturatingLoss_ = enabled; return true;
     }
     static int stringsForKey(int key) noexcept {
         return key <= 32 ? 1 : (key <= 51 ? 2 : 3);
@@ -67,6 +78,9 @@ private:
     bool unisons_{true};
     bool residualLoss_{true};
     bool softFelt_{true};
+    bool bridgeMass_{true};
+    bool saturatingLoss_{true};
+    BridgeMassTransmission bridgeMassFilter_;
     double fs_{48000.0}, releaseStep_{}, peakBridgeMotion_{};
     std::uint64_t clock_{};
     std::uint64_t numericalFaults_{};

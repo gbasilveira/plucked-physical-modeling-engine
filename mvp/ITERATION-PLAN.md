@@ -6,6 +6,18 @@ Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano
 
 ## Current listening diagnosis (2026-10-25)
 
+0.4.9 targets the listener's "too bright, small, lacks wood" report (0.4.8) with a
+measured octave-band comparison to the Salamander recordings. The >4 kHz attack
+excess is not a board-damping problem (damping is irrelevant once board modes
+overlap) and not only the hammer: bridge force plus a +6 dB/octave
+acceleration-weighted, unloaded board raised 4-8 kHz by about 12 dB, while the report's
+k^2 string viscosity made 4-8 kHz partials decay 11-13 dB/s faster than the reference.
+Two linked changes (bridge-top mass transmission, saturating string viscosity; both
+assumptions with cited form) cut the mean >2 kHz attack share error from 9.4 to 5.7 dB;
+4 kHz attack is still +10 to +20 dB above the reference. See `piano-v4/README.md`.
+Next (0.5.0): low-frequency body deficit (knock, low modes, sympathetic ringing), then
+treble (C6 2-4 kHz) and voice stealing.
+
 0.4.8 tests reference-guided softer felt: the listener finds 0.4.6 closer but too
 metallic and lacking wood. Nine pinned lossless Salamander Grand Piano recordings
 (Yamaha C5, Alexander Holm) now provide onset, spectrum and decay comparisons.

@@ -2,6 +2,7 @@
 #include "piano.hpp"
 #include "preset.hpp"
 #include "bridge_model.hpp"
+#include "string_loss.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -25,6 +26,9 @@ bool Piano::prepare(double fs) {
             string.string.f1Target *= std::exp2(cents / 1200.0);
             if (piano_mvp_v2::compilePresetString(string, fs, v.modes[j]) != pme::Status::Ok)
                 return false;
+            if (saturatingLoss_ && applySaturatingStringLoss(v.modes[j], preset.source.transverse_viscosity_s,
+                    kStringLossCornerHz) != pme::Status::Ok)
+                return false;
             if (feedback_ && residualLoss_ && applyResidualBridgeLoss(v.modes[j],v.pan)!=pme::Status::Ok)
                 return false;
             if (pme::compileBridgeTerms(v.modes[j], pme::BridgeEnd::AtL, v.terms[j]) != pme::Status::Ok)
@@ -44,6 +48,7 @@ bool Piano::prepare(double fs) {
         if (v.note.configure(d,fs,feedback_ ? &v.bridge : nullptr) != pme::Status::Ok) return false;
     }
     if (!soundboard_.prepare(fs)) return false;
+    bridgeMassFilter_.prepare(fs);
     ready_ = true; reset(); return true;
 }
 void Piano::reset() noexcept {
@@ -51,7 +56,7 @@ void Piano::reset() noexcept {
         v.note.reset(); v.note.clearDiagnostics(); v.bridge.reset();
         v.active = v.held = false; v.age = v.quiet = 0; v.release = 1;
     }
-    soundboard_.reset();
+    soundboard_.reset(); bridgeMassFilter_.reset();
     pedal_ = false; clock_ = 0; numericalFaults_ = 0; voiceSteals_ = 0; peakBridgeMotion_ = 0;
 }
 int Piano::activeVoices() const noexcept {
@@ -108,6 +113,8 @@ void Piano::sample(float& left, float& right) noexcept {
             v.active = false; v.note.reset(); v.bridge.reset();
         }
     }
+    // 0.4.9: the board sees the force through the bridge-top mass (series-mass low pass).
+    if (bridgeMass_) bridgeMassFilter_.process(l, r);
     double pressureL, pressureR;
     soundboard_.sample(l, r, pressureL, pressureR);
     // Fixed linear gain; pressure is never mixed with raw string force.

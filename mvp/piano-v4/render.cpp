@@ -17,23 +17,28 @@ int main(int argc, char** argv) {
         const int key = argc > 2 ? std::stoi(argv[2]) : -1;
         const std::string pathName = argc > 3 ? argv[3] : "coupled";
         const double velocity = argc > 4 ? std::stod(argv[4]) : 0.75;
-        if (argc > 5 || (argc > 2 && key != -1 && (key < 21 || key > 108)) ||
-            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "previous") ||
+        const bool wide24 = argc == 6 && std::string(argv[5]) == "--24bit";
+        if ((argc > 5 && !wide24) || argc > 6 || (argc > 2 && key != -1 && (key < 21 || key > 108)) ||
+            (pathName != "fixed" && pathName != "coupled" && pathName != "single" && pathName != "unisons" && pathName != "previous" && pathName != "v046") ||
             !std::isfinite(velocity) || velocity <= 0 || velocity > 1)
-            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous] [velocity 0..1]");
+            throw std::runtime_error("usage: piano-render [output.wav] [MIDI-key or -1 for demo] [fixed|coupled|single|unisons|previous(0.4.8)|v046] [velocity 0..1] [--24bit]");
         constexpr int fs = 48000, seconds = 14, frames = fs * seconds;
         piano_mvp_v4::Piano piano;
         piano.setBridgeFeedback(pathName != "fixed");
         piano.setUnisonStrings(pathName != "single");
-        piano.setResidualBridgeLoss(pathName == "coupled" || pathName == "previous");
-        piano.setSoftFelt(pathName == "coupled" || pathName == "fixed");
+        piano.setResidualBridgeLoss(pathName == "coupled" || pathName == "previous" || pathName == "v046");
+        piano.setSoftFelt(pathName == "coupled" || pathName == "fixed" || pathName == "previous");
+        // 0.4.9 bridge/string physics is the default; "previous" is 0.4.8, "v046" is 0.4.6.
+        const bool current = pathName == "coupled" || pathName == "fixed";
+        piano.setBridgeMassLoading(current);
+        piano.setSaturatingStringLoss(current);
         if (!piano.prepare(fs)) throw std::runtime_error("could not prepare piano");
         std::ofstream out(path, std::ios::binary);
         if (!out) throw std::runtime_error("could not open output");
-        out.write("RIFF", 4); word(out, 36 + frames * 4, 4); out.write("WAVEfmt ", 8);
+        out.write("RIFF", 4); word(out, 36 + frames * (wide24 ? 6 : 4), 4); out.write("WAVEfmt ", 8);
         word(out, 16, 4); word(out, 1, 2); word(out, 2, 2); word(out, fs, 4);
-        word(out, fs * 4, 4); word(out, 4, 2); word(out, 16, 2);
-        out.write("data", 4); word(out, frames * 4, 4);
+        word(out, fs * (wide24 ? 6 : 4), 4); word(out, wide24 ? 6 : 4, 2); word(out, wide24 ? 24 : 16, 2);
+        out.write("data", 4); word(out, frames * (wide24 ? 6 : 4), 4);
         const auto start = std::chrono::steady_clock::now();
         pme::simd::ScopedFlushDenormals denormals;
         double peak = 0;
@@ -56,7 +61,8 @@ int main(int argc, char** argv) {
                 if (!std::isfinite(x) || std::abs(x) > 1)
                     throw std::runtime_error("non-finite or over-full-scale audio; refusing a clipped WAV");
                 peak = std::max(peak, std::abs(static_cast<double>(x)));
-                word(out, static_cast<std::uint16_t>(static_cast<std::int16_t>(std::lround(x * 32767))), 2);
+                if (wide24) word(out, static_cast<std::uint32_t>(static_cast<std::int32_t>(std::lround(x * 8388607.0))) & 0xffffff, 3);
+                else word(out, static_cast<std::uint16_t>(static_cast<std::int16_t>(std::lround(x * 32767))), 2);
             }
         }
         if (!out) throw std::runtime_error("failed writing WAV");

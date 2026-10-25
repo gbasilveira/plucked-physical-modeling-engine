@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 #include "piano.hpp"
 #include "preset.hpp"
+#include "string_loss.hpp"
+#include "bridge_mass.hpp"
 #include "pme/simd/denormals.hpp"
 #include <cmath>
 #include <iostream>
@@ -8,6 +10,18 @@
 #include <numbers>
 
 static void require(bool ok, const char* message) { if (!ok) throw std::runtime_error(message); }
+// Fourth-difference energy over total energy: a monotone high-frequency weighting (~omega^4).
+static double brightness(piano_mvp_v4::Piano& p, int frames) {
+    double x[5]{}, high = 0, total = 0;
+    for (int i = 0; i < frames; ++i) {
+        float l, r; p.sample(l, r);
+        for (int k = 4; k > 0; --k) x[k] = x[k-1];
+        x[0] = 0.5 * (l + r);
+        const double d4 = x[0] - 4*x[1] + 6*x[2] - 4*x[3] + x[4];
+        high += d4 * d4; total += x[0] * x[0];
+    }
+    return total > 0 ? high / total : 0;
+}
 static double energy(piano_mvp_v4::Piano& p, int frames) {
     double e = 0;
     for (int i = 0; i < frames; ++i) {
@@ -106,6 +120,43 @@ int main() {
         single.noteOn(60,0.9);
         const double singleEnergy = energy(single,12000);
         require(std::abs(singleEnergy/loud-1) > 0.01, "unisons have no audible-path effect");
+        {   // 0.4.9: measured excess of 2-8 kHz attack energy and over-fast partial decay above 2 kHz.
+            const auto bass = piano_mvp_v2::parametersForKey(45);
+            pme::StringModes m;
+            require(piano_mvp_v2::compilePresetString(bass, 48000, m) == pme::Status::Ok, "bass compile failed");
+            const double eta = bass.source.transverse_viscosity_s, corner = piano_mvp_v4::kStringLossCornerHz;
+            for (std::size_t n = 0; n < m.omega.size(); ++n) {
+                const double plain = eta * m.tension / m.rhoA * m.k[n] * m.k[n];
+                const double sat = piano_mvp_v4::saturatedStringViscosity(eta, m.tension, m.rhoA, m.k[n], m.omega[n], corner);
+                const double hz = m.omega[n] / (2 * std::numbers::pi);
+                if (hz <= corner) require(std::abs(sat - plain) <= 1e-12 * plain, "viscosity changed below the corner");
+                else require(std::abs(sat / m.omega[n] / (eta * 2 * std::numbers::pi * corner) - 1) < 1e-9,
+                             "viscosity above the corner is not a constant loss factor");
+            }
+            pme::StringModes sm = m;
+            require(piano_mvp_v4::applySaturatingStringLoss(sm, eta, corner) == pme::Status::Ok, "saturating loss failed");
+            for (std::size_t n = 1; n < sm.sigma.size(); ++n)
+                {
+                require(sm.sigma[n] >= sm.sigma[n-1], "saturated loss not monotone");
+                if (m.omega[n] > 1.5 * 2 * std::numbers::pi * corner)
+                    require(sm.sigma[n] <= m.sigma[n], "saturated loss exceeds the report law");
+            }
+            require(sm.sigma.back() < 0.7 * m.sigma.back(), "high partials were not less damped");
+            require(piano_mvp_v4::kBridgeMassCornerHz > 1900 && piano_mvp_v4::kBridgeMassCornerHz < 2050,
+                    "bridge-mass corner moved");
+            piano_mvp_v4::BridgeMassTransmission lp; lp.prepare(48000);
+            double l = 1, r = 1; for (int i = 0; i < 48000; ++i) { l = r = 1; lp.process(l, r); }
+            require(std::abs(l - 1) < 1e-9, "bridge-mass path has DC gain other than one");
+            piano_mvp_v4::Piano before, after;
+            require(before.setBridgeMassLoading(false) && before.setSaturatingStringLoss(false) && before.prepare(48000), "0.4.8 control failed");
+            require(after.prepare(48000), "0.4.9 prepare failed");
+            for (int key : {45, 60}) {
+                before.reset(); before.noteOn(key, 0.47); after.reset(); after.noteOn(key, 0.47);
+                const double b = brightness(before, 12000), a = brightness(after, 12000);
+                require(a < 0.75 * b, "0.4.9 attack is not darker above 2 kHz than 0.4.8");
+            }
+            require(!after.setBridgeMassLoading(false) && !after.setSaturatingStringLoss(false), "0.4.9 flags changed after preparation");
+        }
         std::cout << "PASS: source anchors, tension, loss projection, extrapolation; 88 keys at 3 sample rates, unisons, velocity, sustain, release, voice limit, reset\n";
     } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

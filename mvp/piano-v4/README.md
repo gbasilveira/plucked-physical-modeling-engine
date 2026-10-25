@@ -1,5 +1,110 @@
 # MVP 4: bridge feedback
 
+## Update 0.4.9: calmer highs (bridge mass and saturating string loss)
+
+Listener feedback on 0.4.8: "still rather bright and small, like a harpsichord and a
+plastic upright; lacks wood and dimension". Octave-band shares against the Salamander
+C5 recordings (see [reference](reference/README.md)) showed 4-8 kHz energy 10-30 dB
+too high in the first 250 ms. This iteration changes only the high-frequency path;
+the **low-frequency body deficit (knock, low modes) is deliberately untouched** (0.5.0).
+
+### Diagnosis (measured, not assumed)
+
+Bridge force (string+hammer, before the board) and radiated pressure were rendered
+separately for A2, C4 and C6 and compared with the reference shares:
+
+- **Board damping (sigma in `kSoundboardModes`) is not the cause.** The 512 modes have a
+  constant loss factor 0.02 and overlap strongly above ~1 kHz (bandwidth 0.02 f vs mean
+  spacing ~14 Hz), so the mean response there is set by modal density, not by damping.
+- **Hammer spectrum is smooth** (A2 force envelope: -56 dB at 4 kHz, -82 dB at 8 kHz re
+  peak), but felt stiffness and Hunt-Crossley mu (0.5 s/m, a declared MVP assumption)
+  both move the attack 4 kHz band strongly (K x0.3: -14 dB; mu 0.5 to 0.2: -5 dB).
+  Not changed here: that was the 0.4.8 voicing lever and softening further worsens the
+  decay mismatch below.
+- **The board adds +7 dB (2-4 kHz) and +12 dB (4-8 kHz) to the A2 attack share**: white
+  noise through the radiation path rises about 8 dB from 500 Hz to 4 kHz. Radiation is
+  proportional to modal acceleration (+6 dB/octave for a flat point mobility), and the
+  board is driven directly by the bridge force with no bridge-top inertia.
+- **String HF decays too fast.** Attack-to-late (0.5-1.5 s) change of the 4-8 kHz band:
+  A2 -12.5 dB model vs +0.5 reference; C4 -14.7 vs -3.7. The report's `eta*T/(rho*A)*k^2`
+  viscosity (`preset.cpp`) gives about 1.6 1/s at 4 kHz and 6.6 1/s at 8 kHz for C4.
+  A static low-pass alone fixes the attack but leaves the late window 15 dB too dark.
+- **The 8-16 kHz band in 16-bit WAVs is quantisation noise**, not model output
+  (unquantised A2 8 kHz attack is -5 dB, quantised +17 dB). Calibration renders are now
+  24-bit (`piano-render ... --24bit`); listening WAVs are unchanged (16-bit).
+
+### Change (two linked mechanisms, each with its own switch)
+
+1. **`setBridgeMassLoading`**: a series bridge-top mass m on a board point of real
+   mobility Y passes `F/(1 + i omega m Y)` to the board (one-pole low pass, corner
+   `1/(2 pi m Y)`). Y = 1.47e-3 m/(N s) is the infinite orthotropic plate value
+   `1/(8 sqrt(sqrt(Dx Dy) mu))` of the MVP 3 board; **m = 55 g effective is an
+   assumption** (corner 1.97 kHz; 1.4-2.0 kHz tested). It is applied to the summed
+   bridge force entering the soundboard, not to the output. The string still sees the
+   128-mode bridge motion unchanged (the string-side reaction is not mass-loaded).
+   Rationale: bridge inertia is a recognised influence on piano bridge admittance
+   (see Conklin, "Design and tone in the mechanoacoustic piano", JASA 1996; cited for
+   context, the numeric mass is not taken from it or from any measurement).
+2. **`setSaturatingStringLoss`**: the report's viscous term follows k^2 up to
+   `kStringLossCornerHz` = 2.5 kHz, then keeps a constant loss factor (sigma proportional
+   to omega, matched at the corner). Rationale: the k^2 law of the report/JASA 2013 is fitted
+   to low partials; measured string loss factors grow far more slowly at high frequency.
+   The corner is an assumption (1.0-3.5 kHz tested); Ru, bridge and residual losses unchanged.
+
+Without (2), (1) makes the late window 4-8 kHz 7-16 dB too dark; without (1), (2) leaves
+the attack unchanged. Mono-mix 4-8 kHz band, model minus reference, dB (attack / late):
+
+| note | 0.4.8 | string loss only | bridge mass only | both (0.4.9) |
+| --- | --- | --- | --- | --- |
+| A2 | +18.2 / +1.3 | +18.9 / +7.3 | +10.3 / -6.6 | +10.9 / -1.0 |
+| C4 | +11.6 / -7.4 | +12.6 / +1.7 | +2.9 / -15.8 | +3.9 / -7.0 |
+| C6 | +13.8 / +3.1 | +15.2 / +17.8 | +5.9 / -4.7 | +7.3 / +9.2 |
+
+### Result (24-bit renders, stereo power, shares re total, model minus reference in dB)
+
+Mean attack >2 kHz energy-share error (nine points) falls from **9.44 to 5.68 dB**
+(`reference-calibration-0.4.9.json` holds all windows and bands). 4 kHz band, 10-250 ms:
+
+| note, layer velocity | 0.4.8 | 0.4.9 |
+| --- | --- | --- |
+| A2 40 / 60 / 92 | +19.8 / +27.4 / +33.0 | +12.9 / +20.5 / +26.0 |
+| C4 40 / 60 / 92 | +24.6 / +17.3 / +11.1 | +17.9 / +10.5 / +4.1 |
+| C6 40 / 60 / 92 | +27.7 / +23.1 / +19.5 | +22.5 / +17.5 / +15.0 |
+
+Full octave table, velocity 60 (band lower edges 62...8000 Hz):
+
+```
+A2 attack 0.4.8  +0.4 +0.8 -4.0 -0.4 -5.4  +8.3 +27.4  -7.5    0.4.9 +0.5 +0.8 -4.1 -0.7 -7.0  +4.5 +20.5 -17.5
+A2 late   0.4.8  -0.1 +4.7 -6.3 -10.4 -8.6 +2.2 +11.8 -34.6    0.4.9 -0.1 +4.7 -6.5 -10.9 -10.6 -1.5 +8.9 -30.0
+C4 attack 0.4.8  -5.3 +10.2 +2.1 -4.0 +1.0 +9.2 +17.3  +3.6    0.4.9 -5.1 +10.4 +2.2 -4.2 -0.5  +4.6 +10.5  -5.1
+C4 late   0.4.8 -25.4 -31.9 +4.8 -8.4 -7.3 +0.6  +0.0 -30.0    0.4.9 -25.3 -31.8 +4.9 -8.8 -8.7 -3.1  -1.3 -19.1
+C6 attack 0.4.8 -10.0  -0.3 -11.5 -7.6 -1.0 +8.4 +23.1  -3.4    0.4.9 -8.3  +1.4 -10.0 -6.6 -0.3  +5.3 +17.5  -8.6
+C6 late   0.4.8 -16.0 -37.5 -58.6 -48.6 -0.4 +13.5 +9.7 -19.8    0.4.9 -14.6 -36.2 -57.3 -47.2 -0.1 +11.5 +13.2 -11.5
+```
+
+The +-6 dB target at 4 kHz is **not met** in the attack (only C4 at velocity 92, +4.1, is within
++-6; the others are +10 to +26 dB), and it cannot be judged at 8 kHz: the reference there is within ~10 dB of
+its own noise floor and the model's 8-16 kHz content comes only from partials above the
+last board mode (7.2 kHz). The 1-2 kHz attack stays within -7.5 dB (A2 -7.0 at velocity 60,
+-7.5 at 92; C4/C6 within -1.7); that band lost 1-2 dB. Late 4 kHz is within +-6 dB for
+C4 (all velocities) and A2 at velocity 40, but A2 at 60/92 is +8.9/+15.9 and C6 +9 to +17 dB. Shares are relative: the
+C4 and C6 low bands (62-250 Hz and 250-500 Hz) remain 25-60 dB low, so every other band
+looks high. Reference late-window HF is also contaminated by the recording's noise
+floor above ~4 kHz for C6. These are signal measurements, not a listening endorsement.
+
+Compare `out/piano-mvp-v4/chopin-prelude-0.4.8.wav` with `chopin-prelude-0.4.9.wav`
+(identical source, tempo, velocities, pedal, excerpt and +12.04 dB gain; 13 voice
+steals at the unchanged 12-key limit). `chopin-prelude-latest.wav` is 0.4.9. RMS is
+0.0137 vs 0.0142 (-0.3 dB). `C4-reference-0.4.8-0.4.9.wav` replaces the old
+diagnostic clip. `piano-midi-render ... --previous` reproduces 0.4.8 bit-for-bit
+(checked against the committed 0.4.8 WAV), `--v046` reproduces 0.4.6, `--legacy`
+0.4.4; `piano-render ... previous|v046`, `piano-hammer-audit --previous|--v046` match.
+The test `piano-behaviour` now checks the saturated viscosity law (identical below the
+corner, constant loss factor above it, passive, monotone), the bridge-mass DC gain and
+corner, and that the 0.4.9 attack has at least 25% less fourth-difference
+(high-frequency) energy than 0.4.8 for A2 and C4. LV2 URI unchanged; name is now
+**Piano MVP 4 - Calmer highs**.
+
 ## Update 0.4.8: reference-guided felt voicing
 
 The listener finds 0.4.6 closer, but still too metallic and lacking wooden body

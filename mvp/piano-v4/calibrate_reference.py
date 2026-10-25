@@ -17,6 +17,15 @@ import numpy as np
 HERE=Path(__file__).resolve().parent
 FS=48000
 WINDOWS=[(.01,.1),(.05,.25),(.5,1),(2,2.5)]
+BAND_WINDOWS={'attack_10_250ms':(.01,.25),'late_500_1500ms':(.5,1.5)}
+BAND_EDGES=[62.5*2**k for k in range(8)]
+
+def octave_shares(x,lo,hi):
+    a=x[round(lo*FS):round(hi*FS)];a=a-a.mean(axis=0)
+    power=np.sum(np.abs(np.fft.rfft(a*np.hanning(len(a))[:,None],axis=0))**2,axis=1)
+    hz=np.fft.rfftfreq(len(a),1/FS)
+    b=np.array([power[(hz>=e)&(hz<(e*2 if e<8000 else 1e9))].sum() for e in BAND_EDGES])
+    return b/b.sum()
 
 def audio(path):
     x=np.frombuffer(subprocess.check_output(['ffmpeg','-v','error','-i',str(path),
@@ -55,17 +64,20 @@ def main():
             row=dict(note=note,key=key,layer=layer,selection_midi_velocity=velocity,
                      reference_sha256=hashlib.sha256(data).hexdigest(),reference_onset_seconds=onset,
                      reference=features(ref),models={})
-            versions=[('0.4.6','previous'),('0.4.8','coupled')]
+            versions=[('0.4.8','previous'),('0.4.9','coupled')]
             comparison=[('reference',ref)]
             for version,mode in versions:
                 rendered=directory/f'calibration-{note}-v{velocity}-{version}.wav'
-                subprocess.run([str(directory/'piano-render'),str(rendered),str(key),mode,str(velocity/127)],
+                # 24-bit WAV: 16-bit rounding noise sits at the 8-16 kHz level of the reference.
+                subprocess.run([str(directory/'piano-render'),str(rendered),str(key),mode,str(velocity/127),'--24bit'],
                                check=True,stdout=subprocess.DEVNULL)
                 a,onset=audio(rendered)
                 f=features(a)
                 attack_errors=[abs(10*math.log10((f[i]['energy_above_2khz']+1e-8)/
                     (row['reference'][i]['energy_above_2khz']+1e-8))) for i in [0,1]]
-                row['models'][version]=dict(onset_seconds=onset,features=f,
+                bands={name:{str(int(e)):float(10*np.log10((m+1e-15)/(r+1e-15))) for e,m,r in zip(BAND_EDGES,octave_shares(a,*w),octave_shares(ref,*w))}
+                       for name,w in BAND_WINDOWS.items()}
+                row['models'][version]=dict(onset_seconds=onset,features=f,octave_band_db_vs_reference=bands,
                     mean_attack_high_band_error_db=float(np.mean(attack_errors)))
                 comparison.append((version,a))
             if note=='C4':
@@ -87,13 +99,14 @@ def main():
         limitations=['Close-miked Yamaha C5 differs from the nominal far-field model.',
                      'MIDI layer selection is not a measured hammer velocity.',
                      'Nine notes/layers are a small target set, not an independent validation set.',
+                     'Calibration renders are 24-bit; octave shares are band energy over total energy, so low-band deficits raise all other bands.',
                      'A softer attack does not identify soundboard geometry or uniquely determine physical parameters.'],
         records=records,diagnostic_clip_order=clip_rows)
-    result['mean_attack_high_band_error_db']={v:float(np.mean([r['models'][v]['mean_attack_high_band_error_db'] for r in records])) for v in ['0.4.6','0.4.8']}
-    (directory/'reference-calibration-0.4.8.json').write_text(json.dumps(result,indent=2)+'\n')
+    result['mean_attack_high_band_error_db']={v:float(np.mean([r['models'][v]['mean_attack_high_band_error_db'] for r in records])) for v in ['0.4.8','0.4.9']}
+    (directory/'reference-calibration-0.4.9.json').write_text(json.dumps(result,indent=2)+'\n')
     out=np.concatenate(clips)
     assert np.abs(out).max()<1 and len(out)/FS<30
-    with wave.open(str(directory/'C4-reference-previous-soft-felt.wav'),'wb') as f:
+    with wave.open(str(directory/'C4-reference-0.4.8-0.4.9.wav'),'wb') as f:
         f.setparams((2,2,FS,0,'NONE','not compressed'));f.writeframes(np.rint(out*32767).astype('<i2').tobytes())
     print('Mean errors:',result['mean_attack_high_band_error_db'],flush=True)
 

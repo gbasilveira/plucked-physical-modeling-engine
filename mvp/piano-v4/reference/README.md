@@ -35,7 +35,7 @@ energy share above 2 kHz, levels and alignment positions. The high-band error is
 the absolute dB ratio of the model/reference energy shares, averaged across the
 two attack windows. This is one diagnostic, not an overall perceptual quality score.
 
-`C4-reference-previous-soft-felt.wav` contains three groups (velocities 40, 60, 92).
+`C4-reference-0.4.8-0.4.9.wav` (0.4.8 version: `C4-reference-previous-soft-felt.wav`; calibration renders from 0.4.9 are 24-bit and `reference-calibration-0.4.9.json` adds octave-band tables) contains three groups (velocities 40, 60, 92).
 Each group plays **reference → previous model → candidate**, with 2.5-second notes
 and 0.25-second gaps. Groups start at 0, 8.25 and 16.5 seconds; total 24.75 seconds.
 Changes to reference audio in this diagnostic: onset crop, excerpt, initial-RMS

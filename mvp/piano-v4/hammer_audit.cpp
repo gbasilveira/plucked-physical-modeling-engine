@@ -8,9 +8,12 @@ int main(int argc,char** argv) {
     try {
         pme::simd::ScopedFlushDenormals denormals;
         piano_mvp_v4::Piano piano;
-        if (argc>2 || (argc==2 && std::string(argv[1])!="--previous"))
-            throw std::runtime_error("usage: piano-hammer-audit [--previous]");
-        piano.setSoftFelt(argc==1);
+        if (argc>2 || (argc==2 && std::string(argv[1])!="--previous" && std::string(argv[1])!="--v046"))
+            throw std::runtime_error("usage: piano-hammer-audit [--previous|--v046]");
+        const std::string mode=argc==2?argv[1]:"";
+        piano.setSoftFelt(mode!="--v046");
+        piano.setBridgeMassLoading(mode.empty());
+        piano.setSaturatingStringLoss(mode.empty());
         if (!piano.prepare(48000)) throw std::runtime_error("prepare failed");
         std::cout << "key,velocity,contacts,last_contact_ms,total_contact_ms,peak_force_n\n";
         for (int key : {33,45,60,72,84,96}) {
