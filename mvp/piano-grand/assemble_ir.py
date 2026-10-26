@@ -123,12 +123,13 @@ def main(work, modes_npz, lid, outprefix, mic_list=None):
         Gs = GF0*wl[:, None] + GRn*(1 - wl)[:, None]
         e = np.fft.irfft(Gs, N_E, axis=0)[:nT0]                           # (nT0, Nall) discrete IR at 48 kHz
         E[mi] = (phi_keys @ e.T).astype(np.float32)
-        diag[m] = dict(peak=float(np.abs(E[mi]).max()))
+        diag[m] = dict(peak=float(np.abs(E[mi]).max()), shadowed_fraction_of_surface=None)
         for lo in (1000, 1260, 1587):                                       # FDTD against Rayleigh where both are used (third octaves)
             hi = lo*2**(1/3); s_ = (f48 >= lo) & (f48 < hi)
             pf = np.sum(np.abs(GF0[s_, :Nf])**2); pr = np.sum(np.abs(GRn[s_, :Nf])**2)
-            diag[m][f'fdtd_over_rayleigh_dB_{lo}'] = float(10*np.log10(pf/max(pr, 1e-300)))
-        print(f'  {lid} {m}: {time.time()-t_start:.0f}s ', {k: round(v, 2) for k, v in diag[m].items()}, flush=True)
+            # pr == 0 when every Rayleigh path is shadowed (no line of sight): the ratio is undefined, not large
+            diag[m][f'fdtd_over_rayleigh_dB_{lo}'] = float(10*np.log10(pf/pr)) if pr > 1e-12*pf else None
+        print(f'  {lid} {m}: {time.time()-t_start:.0f}s ', {k: (None if v is None else float('%.3g' % v)) for k, v in diag[m].items()}, flush=True)
     np.savez(outprefix + f'_{lid}.npz', E=E, mics=np.array(mics), f_loaded=f_loaded, sigma_loaded=sig_loaded, ok_loaded=ok_loaded)
     om = omega_v.copy(); sg = sigma_v.copy()
     om[:Nf] = 2*np.pi*f_loaded; sg[:Nf] = sig_loaded

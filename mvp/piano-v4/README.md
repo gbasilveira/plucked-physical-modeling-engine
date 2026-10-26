@@ -1,5 +1,14 @@
 # MVP 4: bridge feedback
 
+## Update 0.7a: "Grand", an offline reference of the grand's body and near field (not in the plug-ins)
+
+Full sounded like a vertical piano. 0.7a builds, offline only, a Reissner-Mindlin FEM grand soundboard (explicit ribs and bridges, per-key string points), a 3-D FDTD of the
+air with the board as a two-way coupled moving boundary (both faces, rim, cavity, lid open / half / closed, floor, absorbing layer; room excluded), a Rayleigh/lid-image model above
+1.4 to 2 kHz, close-AB / player / audience microphones, a render path (`piano-grand-render`) that couples the unchanged 0.6 Full strings and hammer to the new board, and a validation
+against Salamander. Result, honestly: the board and air loading are in place (first mode 49.9 Hz in vacuo, 44.8 Hz loaded), reciprocity and passivity are tested, but with physics alone
+**the high frequencies are far too low (no board above 3.6 kHz) and the stereo coherence is not improved**. Details, limits, numbers and what 0.7b needs: `mvp/piano-grand/README.md`;
+plan: `mvp/ITERATION-PLAN.md`. The 0.6 plug-ins are unchanged (`piano-previous-bitexact`).
+
 ## Update 0.6: baked radiation, and a string-fit experiment (display name "Piano MVP 4 - Baked radiation")
 
 Why: Full is the sound reference but cannot run live (88 keys pedalled: 8.3x real time on average, 10.8x at the attack on the i3-8100), and

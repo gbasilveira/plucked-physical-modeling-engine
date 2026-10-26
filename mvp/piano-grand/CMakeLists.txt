@@ -25,3 +25,6 @@ if(EXISTS "${PIANO_GRAND_TABLE}")
   add_test(NAME grand-board-passivity COMMAND grand-passivity-check ${PIANO_GRAND_TABLE})
   set_tests_properties(grand-board-passivity PROPERTIES TIMEOUT 120)
 endif()
+add_test(NAME grand-fdtd-energy COMMAND ${PIANO_GRAND_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_fdtd_energy.py
+  $<TARGET_FILE:grand-fdtd> ${CMAKE_CURRENT_BINARY_DIR}/energy)
+set_tests_properties(grand-fdtd-energy PROPERTIES TIMEOUT 300 SKIP_RETURN_CODE 77)

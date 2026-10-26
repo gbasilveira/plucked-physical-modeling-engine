@@ -62,6 +62,59 @@ def validate(work, repo_out, modes):
     Path(repo_out, 'grand-validation-0.7a.json').write_text(json.dumps(dict(gain=gain, rows=rows), indent=1))
     return rows, gain
 
+def pad(x, n):
+    return np.concatenate([x, np.zeros((max(0, n - len(x)), x.shape[1]))])[:n]
+
+def gain_of(repo_out):
+    return json.loads((Path(repo_out)/'grand-validation-0.7a.json').read_text())['gain']
+
+def seg(x, dur=5.0, fade=0.3):
+    y = x[:int(dur*M.FS)].copy(); n = int(fade*M.FS); y[-n:] *= np.linspace(1, 0, n)[:, None]; return y
+
+def ab(work, repo_out, modes):
+    g = gain_of(repo_out); E = load_E(work, 'open'); gap = np.zeros((int(0.6*M.FS), 2)); out = []
+    items = [('C2', [(0, 4.0, 36, 70)]), ('C4', [(0, 4.0, 60, 70)]), ('C6', [(0, 4.0, 84, 70)]),
+             ('chord', [(0, 4.0, 48, 70), (0.02, 4.0, 52, 66), (0.04, 4.0, 55, 68), (0.06, 4.0, 60, 72), (0.08, 4.0, 64, 70)])]
+    for name, notes in items:
+        a = render_06(work, 'ab_' + name, notes)[:int(5*M.FS)]
+        pre = ensure_render(work, modes, 'open', 'ab_' + name, notes)
+        b = mics_signal(pre, E, PRESET_MICS['close'], g)
+        out += [seg(a), gap, seg(b), gap, gap]
+    x = np.concatenate(out); assert np.abs(x).max() < 1, np.abs(x).max()
+    R.write_wav24(Path(repo_out)/'grand-ab-0.7a.wav', x); R.write_wav_f32(Path(repo_out)/'grand-ab-0.7a-raw.wav', x)
+    print('ab peak', np.abs(x).max())
+
+def mics(work, repo_out, modes):
+    g = gain_of(repo_out); notes = [(0, 4.0, 48, 70), (0.02, 4.0, 52, 66), (0.04, 4.0, 55, 68), (0.06, 4.0, 60, 72), (0.08, 4.0, 64, 70)]
+    out = []; gap = np.zeros((int(0.6*M.FS), 2)); labels = []
+    for lid in ('open', 'half', 'closed'):
+        if not (Path(work)/f'ir_{lid}.npz').exists(): continue
+        E = load_E(work, lid); pre = ensure_render(work, modes, lid, 'mics_chord', notes)
+        for pr, mm in PRESET_MICS.items():
+            out += [seg(mics_signal(pre, E, mm, g), 5.0), gap]; labels.append(f'{lid}/{pr}')
+    x = np.concatenate(out)
+    pk = np.abs(x).max(); print('mics peak', pk, labels)
+    R.write_wav24(Path(repo_out)/'grand-mics-0.7a.wav', x/max(1, pk*1.05)); R.write_wav_f32(Path(repo_out)/'grand-mics-0.7a-raw.wav', x)
+    Path(repo_out, 'grand-mics-0.7a-order.txt').write_text('\n'.join(labels) + '\n(each 5 s + 0.6 s gap; 24-bit copy scaled by 1/%.2f if the raw peak exceeds 1)\n' % max(1, pk*1.05))
+
+def chopin(work, repo_out, modes):
+    g = gain_of(repo_out); E = load_E(work, 'open')
+    ev = [l.split() for l in open(REPO/'mvp/piano-v4/listening/chopin-op28-no4.events')]
+    end = 64*M.FS
+    keep = [l for l in ev if int(l[0]) < end] + [[str(end), '176', '64', '0']]
+    evf = Path(work)/'chopin.events'; evf.write_text(''.join(' '.join(l) + '\n' for l in keep))
+    table = Path(work)/'table_open.bin'
+    if not table.exists(): R.write_table(table, *R.board_table(work, modes, 'open'))
+    pre = Path(work)/'r_open_chopin'
+    if not Path(str(pre) + '.info.txt').exists():
+        print(R.run_render(REPO/'out/piano-mvp-v4/piano-grand/piano-grand-render', evf, table, pre, 2.0), flush=True)
+    for name, mm in (('closeab', PRESET_MICS['close']), ('audience', PRESET_MICS['audience'])):
+        y = mics_signal(pre, E, mm, g)[40*M.FS:66*M.FS]
+        y[:480] *= np.linspace(0, 1, 480)[:, None]; y[-2400:] *= np.linspace(1, 0, 2400)[:, None]
+        pk = np.abs(y).max(); print(name, 'peak', pk)
+        R.write_wav_f32(Path(repo_out)/f'chopin-op28-no4-0.7a-{name}-raw.wav', y)
+        R.write_wav24(Path(repo_out)/f'chopin-op28-no4-0.7a-{name}.wav', y/max(1, pk*1.05))
+
 if __name__ == '__main__':
     work, repo_out, modes, step = sys.argv[1:5]
-    if step == 'validate': validate(work, repo_out, modes)
+    {'validate': validate, 'ab': ab, 'mics': mics, 'chopin': chopin}[step](work, repo_out, modes)

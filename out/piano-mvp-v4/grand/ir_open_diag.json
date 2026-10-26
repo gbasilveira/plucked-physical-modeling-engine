@@ -1,0 +1,58 @@
+{
+ "lid": "open",
+ "Nf": 191,
+ "loaded_modes": 3,
+ "loaded_over_vacuum_frequency": [
+  0.8972720542442705,
+  0.9519031892365242,
+  0.9554571679533791
+ ],
+ "loaded_over_vacuum_sigma": [
+  1.2374025159106141,
+  1.1288122422507127,
+  0.9422408160644088
+ ],
+ "loaded_mode_index": [
+  0,
+  1,
+  3
+ ],
+ "per_mic": {
+  "closeL": {
+   "peak": 0.027251657098531723,
+   "fdtd_over_rayleigh_dB_1000": 3.5884142936735985,
+   "fdtd_over_rayleigh_dB_1260": 4.50456906101397,
+   "fdtd_over_rayleigh_dB_1587": 5.089131322617218
+  },
+  "closeR": {
+   "peak": 0.028703907504677773,
+   "fdtd_over_rayleigh_dB_1000": 2.216517371316493,
+   "fdtd_over_rayleigh_dB_1260": 3.7395491292680445,
+   "fdtd_over_rayleigh_dB_1587": 4.420617868747314
+  },
+  "playerL": {
+   "peak": 0.0044469935819506645,
+   "fdtd_over_rayleigh_dB_1000": 18.92103447908606,
+   "fdtd_over_rayleigh_dB_1260": 21.137420501745083,
+   "fdtd_over_rayleigh_dB_1587": 18.29600211500913
+  },
+  "playerR": {
+   "peak": 0.005162450484931469,
+   "fdtd_over_rayleigh_dB_1000": 13.988490529133257,
+   "fdtd_over_rayleigh_dB_1260": 11.440750364773635,
+   "fdtd_over_rayleigh_dB_1587": 9.74141496133324
+  },
+  "audL": {
+   "peak": 0.003688924480229616,
+   "fdtd_over_rayleigh_dB_1000": 14.109802766240165,
+   "fdtd_over_rayleigh_dB_1260": 12.379510484909918,
+   "fdtd_over_rayleigh_dB_1587": 11.439908979159297
+  },
+  "audR": {
+   "peak": 0.003600466763600707,
+   "fdtd_over_rayleigh_dB_1000": 13.418219602618041,
+   "fdtd_over_rayleigh_dB_1260": 13.092486075726333,
+   "fdtd_over_rayleigh_dB_1587": 12.367044049204791
+  }
+ }
+}
