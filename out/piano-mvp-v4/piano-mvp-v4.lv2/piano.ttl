@@ -10,10 +10,10 @@
 
 <https://gbasilveira.github.io/plucked-physical-modeling-engine/mvp/piano-v4>
     a lv2:Plugin, lv2:InstrumentPlugin ;
-    doap:name "Piano MVP 4 - Imperfections" ;
+    doap:name "Piano MVP 4 - Baked radiation" ;
     doap:license <https://opensource.org/license/mit> ;
-    lv2:minorVersion 5 ;
-    lv2:microVersion 6 ;
+    lv2:minorVersion 6 ;
+    lv2:microVersion 0 ;
     lv2:requiredFeature urid:map ;
     rdfs:comment "Experimental physical piano with velocity, sustain and a fixed preset; quality Live / Balanced / Full." ;
     lv2:port [
@@ -68,4 +68,13 @@
                        [ rdfs:label "32" ; rdf:value 2 ] ,
                        [ rdfs:label "48" ; rdf:value 3 ] ,
                        [ rdfs:label "64" ; rdf:value 4 ]
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 9 ; lv2:symbol "radiation" ; lv2:name "Radiation" ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        rdfs:comment "Soundboard radiation stage. Auto = baked bank for Live and Balanced, the 512-mode modal bank for Full; Modal and Baked force one. Baked drops the 246 board modes that radiate nothing and drives the rest in float: about -133 dB rms against Modal on the Chopin excerpt, 1.6 to 2.5 times cheaper. Switching clears the radiation tail of the bank being left." ;
+        lv2:portProperty lv2:integer, lv2:enumeration, lv2:connectionOptional ;
+        lv2:scalePoint [ rdfs:label "Auto" ; rdf:value 0 ] ,
+                       [ rdfs:label "Modal (512 modes, reference)" ; rdf:value 1 ] ,
+                       [ rdfs:label "Baked (reduced bank)" ; rdf:value 2 ]
     ] .

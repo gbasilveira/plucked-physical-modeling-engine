@@ -1,9 +1,9 @@
-Piano MVP 4 - Imperfections (LV2 0.5.5, Linux)
+Piano MVP 4 - Baked radiation (LV2 0.6, Linux; version 6.0 = minorVersion 6, microVersion 0)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Imperfections" under instruments/synthesizers.
+Look for "Piano MVP 4 - Baked radiation" under instruments/synthesizers.
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
@@ -30,6 +30,11 @@ deschedules is detected and its work moves to the audio thread. Control ports:
     overlapping pedalled chords complete (less thinning) at a higher CPU cost; the sympathetic and leaky caps scale
     with the square root of the ratio. When more keys ring than allowed, the quietest struck voice fades out over 8 ms
     (it used to be the oldest, cut). See the README for what the i3-8100 measurements allow.
+  Radiation (port 9, Auto / Modal / Baked, default Auto): the soundboard radiation stage. Auto uses the baked bank in Live and
+    Balanced and the full 512-mode Modal bank in Full (bit-exact with 0.5.5); Modal and Baked force one bank in every quality. Baked
+    drops the 246 board modes that radiate nothing and accumulates the drive in float: about -133 dB rms against Modal, 2.5x cheaper
+    for the stage. Switching clears the radiation tail of the bank being left (a click only if notes ring). Port 9 is new; hosts that
+    do not connect it get Auto.
   Free-wheeling (optional, lv2:freeWheeling designation): a host that bounces offline raises it and
     the plug-in uses Full.
 When nothing sounds the plug-in stops simulating and costs well under 1 percent of a core.
@@ -85,3 +90,6 @@ Version 0.5.5 adds the Imperfection control (above): the 0.5.4 piano had identic
 perfectly even hammer; real strings are never exactly in tune with each other, which gives the slow beating and the
 double decay (a prompt sound, then a longer aftersound) of a real piano. All deviations are assumptions, not
 measurements. See mvp/piano-v4/README.md ("Update 0.5.5").
+
+Version 0.6 bakes the soundboard radiation stage (Radiation control above) and runs a string-fit experiment that is not in the plug-in
+(mvp/piano-v4/README.md, "Update 0.6", and mvp/ITERATION-PLAN.md). The sound of Full is unchanged; Live and Balanced radiate with the baked bank.
