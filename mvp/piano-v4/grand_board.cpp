@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "grand_board.hpp"
 #include "bridge_mass.hpp"
+#include "board_override.hpp"
 #include "soundboard_table.hpp"
 #include "pme/bridge/model.hpp"
 #include <algorithm>
@@ -27,6 +28,7 @@ double boardModeShape(std::size_t i, double x, double y) noexcept {
                     std::sin(kBoardModeIndex[i][1] * std::numbers::pi * y / kBoardLy);
 }
 void buildParticipation(bool grandGeometry, std::vector<double>& phi) {
+    if (g_boardOverride) { phi = g_boardOverride->phi; return; }   // 0.7a offline hook
     phi.assign(kBoardPortCount * kBoardModeCount, 0.0);
     for (std::size_t port = 0; port < kBoardPortCount; ++port) {
         double* row = phi.data() + port * kBoardModeCount;
@@ -51,14 +53,16 @@ bool GrandBoard::configure(double fs, std::vector<double> phi, std::size_t coupl
     beta_.assign(coupled, 0); kappa_ = gamma_ = omegaHat2_ = r_ = u_ = force_ = beta_;
     for (std::size_t i = 0; i < coupled; ++i) {
         const auto& row = piano_mvp_v3::kSoundboardModes[i];
+        const double rowOmega = g_boardOverride ? g_boardOverride->omega[i] : row[0], rowSigma = g_boardOverride ? g_boardOverride->sigma[i] : row[1];
         pme::osc::OscCoeffsF64 c;
-        if (pme::bridge::compileBridgeMode(row[0], lossless ? 0.0 : row[1], fs, c) != pme::Status::Ok) return false;
+        if (pme::bridge::compileBridgeMode(rowOmega, lossless ? 0.0 : rowSigma, fs, c) != pme::Status::Ok) return false;
         beta_[i] = c.beta; kappa_[i] = c.kappa; gamma_[i] = c.gamma; omegaHat2_[i] = c.omegaHat2;
     }
     termL_.assign(n, 0.0); termR_.assign(n, 0.0);
     omega_.assign(n, 0); sigma_ = c00_ = c01_ = c10_ = c11_ = q_ = v_ = drive_ = reL_ = imL_ = reR_ = imR_ = omega_;
     for (std::size_t i = 0; i < n; ++i) {
-        const auto& r = piano_mvp_v3::kSoundboardModes[i];
+        auto r = piano_mvp_v3::kSoundboardModes[i];
+        if (g_boardOverride) { r[0] = g_boardOverride->omega[i]; r[1] = g_boardOverride->sigma[i]; r[4] = r[5] = r[6] = r[7] = 0; }   // 0.7a hook
         omega_[i] = r[0]; sigma_[i] = r[1];
         if (r[0] >= 0.95 * std::numbers::pi * fs) continue;   // as piano_mvp_v3::Soundboard
         const double wd = std::sqrt(r[0] * r[0] - r[1] * r[1]);

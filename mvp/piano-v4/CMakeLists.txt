@@ -156,3 +156,6 @@ if(PME_MVP_BUILD_LV2 AND UNIX AND NOT APPLE)
       "${PIANO_LV2_BUNDLE}/manifest.ttl" "${PIANO_LV2_BUNDLE}/piano.ttl")
   endif()
 endif()
+
+# Piano 0.7a (offline grand board, near field, coupled render)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../piano-grand piano-grand)

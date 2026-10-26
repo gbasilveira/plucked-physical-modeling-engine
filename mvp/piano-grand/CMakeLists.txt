@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MIT
+# Piano 0.7a "Grand": offline FEM board + near-field FDTD + coupled render. Included from mvp/piano-v4/CMakeLists.txt.
+find_package(OpenMP)
+add_executable(grand-fdtd grand_fdtd.cpp)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(grand-fdtd PRIVATE OpenMP::OpenMP_CXX)
+endif()
+option(PIANO_GRAND_NATIVE "Build the offline FDTD with -march=native" OFF)
+if(PIANO_GRAND_NATIVE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(grand-fdtd PRIVATE -march=native)
+endif()
+# Offline Python tools (numpy + scipy; BSD licensed, never part of the plug-in build). Tests skip (77) without scipy.
+set(PIANO_GRAND_PYTHON "python3" CACHE STRING "Python with numpy and scipy for the 0.7a offline tests")
+add_test(NAME grand-board-fem COMMAND ${PIANO_GRAND_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_board_fem.py)
+set_tests_properties(grand-board-fem PROPERTIES TIMEOUT 300 SKIP_RETURN_CODE 77)
+add_test(NAME grand-fdtd-reciprocity COMMAND ${PIANO_GRAND_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_fdtd_reciprocity.py
+  $<TARGET_FILE:grand-fdtd> ${CMAKE_CURRENT_BINARY_DIR}/reciprocity)
+set_tests_properties(grand-fdtd-reciprocity PROPERTIES TIMEOUT 300 SKIP_RETURN_CODE 77)
+add_executable(piano-grand-render grand_render.cpp)
+target_link_libraries(piano-grand-render PRIVATE piano_core)
+add_executable(grand-passivity-check grand_passivity_check.cpp)
+target_link_libraries(grand-passivity-check PRIVATE piano_core)
+set(PIANO_GRAND_TABLE "${CMAKE_CURRENT_SOURCE_DIR}/tests/board_table_h0075.bin" CACHE FILEPATH "Production FEM board table (made by make_table.py)")
+if(EXISTS "${PIANO_GRAND_TABLE}")
+  add_test(NAME grand-board-passivity COMMAND grand-passivity-check ${PIANO_GRAND_TABLE})
+  set_tests_properties(grand-board-passivity PROPERTIES TIMEOUT 120)
+endif()

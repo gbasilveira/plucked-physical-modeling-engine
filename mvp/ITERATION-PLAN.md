@@ -4,6 +4,33 @@ Goal: improve the acoustic-piano character, with one change at a time and audibl
 reproducible comparisons. A passing numerical test is not a listening endorsement.
 Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano`.
 
+## 0.7a "Grand", 0.7b, 0.7c (2026-10-26): an accurate offline reference of the grand's body and near field, then measure, then fit and bake
+
+**Why.** 0.6 Full sounds like an upright: its board is a simply supported rectangle with homogenised ribs, assumed bridge curves, one-sided baffled
+radiation to mics 1.5 m above it, no rim, cavity, lid, floor or air loading (stereo L/R coherence 0.85-0.9 against 0.4-0.65 in the Salamander
+Yamaha C5 close AB). Hammer ("rings like a guitar") and damper ("muffling") are 0.8 and are not touched. **Baking comes only after the reference
+is validated.** The room is excluded: it will be a downstream reverb from the effects engine; the simulation ends at an absorbing layer just beyond the mics.
+
+**0.7a (done, offline only; `mvp/piano-grand/README.md`).** (1) FEM grand soundboard: Reissner-Mindlin orthotropic spruce, variable thickness,
+12 explicit ribs and the two bridges as Timoshenko beams, per-key string points on the bridge curves, mesh-convergence study. (2) Near field: 3-D
+staggered FDTD of the air with the board as a two-way coupled modal moving boundary (both faces, air loading, rim, cavity, lid open / half / closed,
+floor, absorbing sponge), one run per microphone by reciprocity; baffled Rayleigh integral with lid reflection above the crossover. (3) Mic presets: close
+AB (12 cm above the strings), player, audience. (4) `piano-grand-render`: the unchanged 0.6 Full strings and hammer through the new board (hook
+`board_override.hpp`; with no override the 0.6 code is bit-identical, `piano-previous-bitexact`). (5) Validation against Salamander. Results and limits: the README.
+
+**0.7b (planned): measure the impulse responses.** Replace the modal reduction by direct measurement of what the strings and the microphones need from the
+validated model: (a) the 88 x 88 bridge admittance matrix of the air-loaded board (one forward FDTD run per bridge point, or per bridge segment with
+spatially coded excitation), instead of the diagonal air-loading estimate of 0.7a; (b) impulse responses bridge point to microphone for all presets and
+lid states, including the bottom-face path and diffraction around the rim that 0.7a leaves to a shadow rule above 1.4 kHz; (c) the missing parts that 0.7a
+lists as limits: the cast-iron plate (a rigid perforated plane above the board), the string-side soundboard prestress (crown, downbearing), a vibrating
+rim and lid (transmission through a closed lid). Refine the grid (dx 1.25 cm, trusted to about 2.8 kHz) only for the presets that need it; GPU is not available.
+Acceptance: the measured admittance reproduces the modal one within 1 dB where both are valid, and reciprocity holds to 1e-3.
+
+**0.7c (planned): fit and bake.** Fit the measured responses to what can run live: a reduced modal bank for the board seen by the strings (energy-based
+selection as 0.6 step 1, now on the FEM modes), and IIR/short-FIR per port and mic for the radiation, with the lid state a parameter (interpolated between
+the three measured states) and the mic preset a parameter. Acceptance: the error against the 0.7a offline render better than -60 dB rms re signal, cost
+below the 0.6 baked radiation (3 us per sample at 85 ports), then listen. The room stays downstream.
+
 ## 0.6 plan: bake what is static, compute live only what interacts (2026-10-26)
 
 **Why.** Full is the sound reference and cannot run live: all 88 keys pedalled cost 8.3x real time on average and 10.8x at the attack on the i3-8100

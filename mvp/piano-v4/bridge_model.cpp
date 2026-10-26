@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "bridge_model.hpp"
 #include "soundboard_table.hpp"
+#include "board_override.hpp"
 #include <cmath>
 
 namespace piano_mvp_v4 {
@@ -34,8 +35,9 @@ double residualBridgeConductance(double omega, const double* phiTail) noexcept {
     for (std::size_t i = kLocalBridgeModes; i < piano_mvp_v3::kSoundboardModes.size(); ++i) {
         const auto& row = piano_mvp_v3::kSoundboardModes[i];
         const double phi = phiTail[i-kLocalBridgeModes];
-        const double detuning = row[0]*row[0] - omega*omega;
-        const double loss = 2*row[1]*omega;
+        const double rowOmega = g_boardOverride ? g_boardOverride->omega[i] : row[0], rowSigma = g_boardOverride ? g_boardOverride->sigma[i] : row[1];   // 0.7a hook
+        const double detuning = rowOmega*rowOmega - omega*omega;
+        const double loss = 2*rowSigma*omega;
         conductance += phi*phi*loss*omega/(detuning*detuning + loss*loss);
     }
     return conductance;
