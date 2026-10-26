@@ -1,0 +1,2 @@
+WINDOW worst1s_mean 2.0453 at 62.95 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+full rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 1.33 p99 2.01 p99.9 2.40 max 3.42 misses 35772/39665 peak 0.163 over1 0 stalls 2 shed 0 (events 0) steals 0

@@ -103,6 +103,85 @@ than the Live voice, with the gain concentrated in the bass, where Live also nee
 A/B: `baked-ab-0.6.wav` (47 s): C2, C4, C6 at mf (5 s each: Full, 0.6 s gap, fitted with the baked radiation, 1.4 s gap), then the chord both ways;
 `baked-ab-0.6-isolated.wav` (70 s) adds, between the two, Full with the sympathetic and leaky strings off (the fair reference for the fit itself).
 
+### 0.6 piece renders and performance (whole pieces, 2026-10-26; plug-in code unchanged)
+
+Two complete pieces, both CC BY-SA 3.0 Germany MIDI by Bernd Krueger (piano-midi.de via Wikimedia Commons): the Prelude Op. 28 No. 4 (106 s with
+tail, 604 attacks) and the **Etude Op. 10 No. 12 "Revolutionary"** (142.8 s with tail, 2088 attacks, keys C1-G#6, up to 7 held, velocities 28-116,
+345 CC64 messages already in the file, so no pedalling is added). The Etude is pinned like the Prelude: `listening/chopin-op10-no12.mid` (SHA-256
+`a376584d...914f`), `.events`, `.audit.json`, `listening/ETUDE-README.md` (source URL, licence, changes) and `prepare_etude.py [--fetch DIR | --check]`.
+Overlapping same-key notes (3 in the Etude) use the per-key count of `render_full_piece.convert`.
+
+```bash
+python3 mvp/piano-v4/prepare_etude.py --check            # mido==1.3.3 (listening/requirements.txt)
+python3 mvp/piano-v4/render_pieces_06.py out/piano-mvp-v4     # 3 modes x 2 pieces, ~11 min on the i3-8100
+python3 mvp/piano-v4/perf_pieces_06.py out/piano-mvp-v4       # 28 bench runs per piece set, ~40 min
+```
+
+`piano-midi-render` gained `--float` (32-bit float WAV, no clip check) and reports the maximum number of struck voices; `piano-block-bench` gained
+`--whole`, `--series FILE`, the worst sliding 1 s window and time spent shed. Files per piece and mode `M` in `full|live|balanced`:
+`<piece>-0.6-M-raw.wav` (float, unnormalised), `<piece>-0.6-M.wav` (24-bit listening copy; one gain per piece, Full's peak at -1 dBFS,
+the same for every mode so levels compare), `<piece>-0.6-audit.json`, `<piece>-0.6.events`. Live and Balanced are the plug-in defaults (Radiation Auto =
+Baked, preset Voices, Imperfection 1) with adaptive shedding **off** (deterministic). Full is the offline reference (Modal radiation, 88 voices).
+
+| piece | mode | peak (raw) | voice steals | max struck voices | render time | x real time |
+|---|---|---|---|---|---|---|
+| Prelude | Full | 0.163 | 0 | 18 | 137.4 s | 0.77 |
+| Prelude | Live | 0.176 | 4 | 16 | 22.0 s | 4.80 |
+| Prelude | Balanced | 0.178 | 0 | 18 | 30.3 s | 3.49 |
+| Etude | Full | 0.286 | 0 | 38 | 296.7 s | 0.48 |
+| Etude | Live | 0.310 | 275 | 18 | 62.0 s | 2.30 |
+| Etude | Balanced | 0.320 | 69 | 25 | 111.2 s | 1.28 |
+
+No numerical faults and no clipped samples. **Live minus Full, octave-band energy (dB, mono sum, whole piece):**
+
+| band (Hz) | 22-44 | 44-88 | 88-177 | 177-355 | 355-710 | 710-1.4k | 1.4k-2.8k | 2.8k-5.7k | 5.7k-11k | 11k-23k |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Prelude Live | +6.8 | -1.1 | +1.0 | -0.9 | +0.1 | -0.3 | -0.8 | +0.1 | +0.0 | +0.1 |
+| Etude Live | +5.3 | +0.6 | +0.8 | -0.6 | -0.1 | +0.4 | -0.3 | -0.1 | -0.0 | -0.2 |
+
+Balanced is within 0.3 dB of Live in every band except 177-355 Hz in the Etude (Balanced +0.2, Live -0.6 against Full). Overall RMS is +0.4 to +0.5 dB above Full for both
+Live and Balanced; the 1 s RMS envelope differs by 0.6-0.9 dB on average (max 12.6 dB Etude Live and 7.7 dB Prelude, single seconds; not traced to a cause, steals are the first suspect). The 22-44 Hz band carries only 0.2-0.3 % of Full's energy, so its +5 to +7 dB is audible as slightly more
+sub-bass thump, not as a level change. The cause was not isolated (candidates: Live's 1e-6 truncation and sleep thresholds versus Full's exact
+bass strings; steals in the Etude), so it is reported, not explained.
+
+**Performance** (`performance-report-0.6.{json,txt}`, i3-8100, 48 kHz, 1 helper thread, deadline ratio = block time / block duration; "late" is
+ratio > 1; adaptive shedding on means the plug-in's governor). Prelude (Live/Balanced) and Etude:
+
+| piece | quality | adaptive | block | x real time | mean | p99 | p99.9 | max | late/total | max shed, time shed | steals |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Prelude | Live | off | 64/128/256 | 5.00 | 0.20 | 0.50/0.48/0.47 | 0.74/0.70/0.63 | 1.67/1.58/1.45 | 18/79330, 7/39665, 3/19833 | 0 | 4 |
+| Prelude | Live | on | 64/128/256 | 5.88/5.56/5.26 | 0.17/0.18/0.19 | 0.35/0.45/0.46 | 0.69/0.67/0.60 | 1.43/1.31/1.46 | 9/79330, 4/39665, 1/19833 | 3 (43.2 s) / 3 (16.8 s) / 1 (12.1 s) | 16/6/4 |
+| Prelude | Balanced | off | 64/128/256 | 3.45/3.57/3.45 | 0.29/0.28/0.29 | 0.67/0.65/0.65 | 0.97/0.95/0.94 | 2.00/2.52/1.76 | 55/79330, 26/39665, 7/19833 | 0 | 0 |
+| Prelude | Balanced | on | 64/128/256 | 4.55/4.55/4.00 | 0.22/0.22/0.25 | 0.39/0.41/0.60 | 0.79/0.77/0.77 | 1.57/1.43/1.25 | 19/79330, 14/39665, 2/19833 | 3 (49.3 s) / 3 (49.4 s) / 2 (14.6 s) | 19/19/2 |
+| Prelude | Full | off | 128/1024 | 0.75/0.75 | 1.33/1.34 | 2.01/2.38 | 2.40/2.79 | 3.42/2.84 | 35772/39665, 4458/4959 | 0 | 0 |
+| Etude | Live | off | 64/128/256 | 2.22/2.27/2.27 | 0.45/0.44/0.44 | 1.06/1.05/1.04 | 1.38/1.36/1.36 | 1.79/1.68/2.11 | 2211/107075, 1049/53538, 511/26769 | 0 | 275 |
+| Etude | Live | on | 64/128/256 | 5.00/5.00/4.17 | 0.20/0.20/0.24 | 0.43/0.45/0.53 | 0.62/0.66/0.70 | 1.22/1.86/1.21 | 8/107075, 15/53538, 2/26769 | 3 (140.5 s) / 3 (140.4 s) / 2 (128.6 s) | 581/676/453 |
+| Etude | Balanced | off | 64/128/256 | 1.27 | 0.79 | 1.82/1.83/1.80 | 1.96/2.03/1.94 | 3.32/2.22/2.03 | 30898/107075, 15577/53538, 7752/26769 | 0 | 69 |
+| Etude | Balanced | on | 64/128/256 | 4.35/4.17/3.57 | 0.23/0.24/0.28 | 0.47/0.46/0.58 | 0.66/0.65/0.69 | 5.45/1.17/1.12 | 9/107075, 6/53538, 2/26769 | 3 (140.8 s) / 3 (140.8 s) / 2 (140.8 s) | 676/590/461 |
+| Etude | Full | off | 128/1024 | 0.47/0.48 | 2.14/2.10 | 3.92/3.86 | 4.26/4.25 | 4.69/4.51 | 52002/53538, 6498/6693 | 0 | 0 |
+
+Reading: the Prelude is comfortable in Live (mean 0.20, worst sliding second 0.47). The Etude is **not** real-time with shedding off even in
+Live: mean 0.44, p99 1.05, worst sliding second 1.12-1.17 and 2.1 % late blocks at 64 frames (Live's 16-voice cap already steals 275 times).
+With the governor on it holds (0.20 mean, p99.9 0.62-0.70, 2-15 late blocks of 27k-107k) but sits at shed level 3 for essentially the whole piece and
+steals 450-680 notes, so the Live preset is shed-limited on this piece; Balanced has the same story. Differences between block sizes are small except
+the late-block count, which falls with larger blocks (a late block is the same cost spike spread over a longer deadline). One run
+(Etude Balanced adaptive 64) has a single 5.45 block, a one-off on a 107k-block run.
+
+**Full** over the whole piece: Prelude mean 1.33 deadline (0.75x real time), worst sliding second 2.05 at 63 s; Etude mean 2.14 (0.47x), worst second
+4.16 at 91 s. Block 1024 changes nothing (1.34 / 2.10). **Expensive passages** (3 s windows of the Full run): Prelude 61-64 s (mean 1.97, the
+climax: 35 strikes B1-C6 at velocity ~58, 7 pedal changes), 67-70 s (1.83) and 91-94 s (1.78: soft, 13 strikes E1-E4, 5 below C3, pedal changes; a low strike rate with a high
+cost, so sounding tails rather than new strikes drive it, an inference from the strike counts only); Etude 89-92 s (3.57; 72 strikes in 3 s, G1-C6, 11 below C3, 11 pedal changes),
+23-26 s (3.33), 112-120 s (3.2-3.3: 33-38 strikes but 12-13 below C3 and 8-14 pedal changes) and 59-66 s (3.1). Every expensive window has strikes below C3 and
+frequent pedal changes; the cost split by mechanism was not profiled here (earlier profiles point at the pedalled low strings with tension modulation,
+sympathetic and leaky strings; up to 38 simultaneous struck voices in the Etude).
+
+**Full on more hardware.** Perfect scaling of the voice cost over N cores gives N = mean ratio for the whole piece and N = worst-second ratio for
+glitch-free playback: **Prelude 1.3 cores (mean) / 2.1 (worst second) / 2.4 (p99 block 2.0, max 3.4)**; **Etude 2.1 / 4.2 / 4.7 (p99 3.9)**. Equivalently
+Full needs this machine to be 1.3-2.1x faster for the Prelude's mean and worst second, and 2.1-4.2x faster for the Etude; with 20-30 % headroom
+for a safe deadline: about 3 cores / 5-6 cores. This is a lower bound: the model today uses one helper thread (radiation only) and the voice work is
+serial per block, so a real multi-voice partition would scale below ideal (shared board coupling). Four cores of an i3-8100 would be borderline for
+the Etude's worst seconds even with perfect scaling.
+
 ### Reproduce
 
 ```bash

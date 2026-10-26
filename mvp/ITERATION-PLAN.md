@@ -74,6 +74,16 @@ driving the board coupling so the sympathetic and leaky strings stay live, start
 the gain is; the treble Live voice is already only 0.3-0.5 us. If the missing aftersound is audible, that is the expected cost of the force-only voice and the
 sympathetic coupling must be proven before anything else.
 
+### 0.6 piece renders and performance (2026-10-26, no plug-in change)
+
+Whole-piece renders (Full, Live, Balanced) of the Prelude Op. 28 No. 4 and the newly pinned Etude Op. 10 No. 12 (CC BY-SA 3.0 DE, 2088 attacks, C1-G#6,
+345 sustain messages) with `render_pieces_06.py`, and whole-piece deadline measurement with `perf_pieces_06.py` (`piano-block-bench --whole`).
+Findings: Live and Balanced match Full within about 1 dB per octave band (except 22-44 Hz, +5 to +7 dB, 0.2-0.3 % of the energy); Live is 5.0x real time on the
+Prelude but only 2.2x on the Etude with shedding off, where the mean is 0.44 but p99 is 1.05 and 2 % of 64-frame blocks are late, so the Etude needs the
+governor (shed level 3 for the whole piece, 450-680 steals). Full runs at 0.75x (Prelude) and 0.47x (Etude) real time; the worst second needs 2.1 / 4.2 cores
+at perfect scaling. Details, tables and expensive passages: `piano-v4/README.md`, "0.6 piece renders and performance".
+Expensive windows are dense, pedalled and reach below C3; profile them before choosing what step 3 bakes.
+
 ## Imperfections and Voices (2026-10-25, 0.5.5)
 
 Listener: "the string sounds too perfect... are the three strings all in tune? spread them a bit, like a unison"; and long overlapping pedalled

@@ -1,0 +1,320 @@
+{
+  "piece": "Chopin: Etude in C minor, Op. 10 No. 12 \"Revolutionary\" (complete)",
+  "version": "0.6",
+  "source": {
+    "piece": "Chopin: Etude in C minor, Op. 10 No. 12 (\"Revolutionary\")",
+    "midi_author": "Bernd Krueger (piano-midi.de)",
+    "source_sha256": "a376584d5b8c7fb3983c46e4ddef3e5866c2c7ec11a3dd7b59fdecea9ba3914f",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/0/02/Chopin_-_Revolutionary_Etude.mid",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Chopin_-_Revolutionary_Etude.mid",
+    "license": "CC-BY-SA-3.0-DE",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/de/deed.en",
+    "mido_version": "1.3.3",
+    "midi_format": 1,
+    "ticks_per_beat": 480,
+    "tracks": 8,
+    "total_note_ons": 2088,
+    "tempo_changes": 982,
+    "sustain_events": 345,
+    "pedal_down_events": 141,
+    "pedal_up_events": 204,
+    "sustain_present": true,
+    "pedalling_added": false,
+    "max_simultaneously_held_keys": 7,
+    "unmatched_note_offs": 0,
+    "overlapping_same_key_ons": 3,
+    "note_velocity_range": [
+      28,
+      116
+    ],
+    "key_range": [
+      24,
+      92
+    ],
+    "duration_seconds": 138.812,
+    "midi_edits": "none; notes, velocities, tempo map and CC64 preserved; timestamps rounded to 48 kHz",
+    "ignored_mixer_controls": [
+      [
+        0,
+        7,
+        100
+      ],
+      [
+        0,
+        10,
+        64
+      ],
+      [
+        0,
+        91,
+        127
+      ],
+      [
+        0,
+        91,
+        127
+      ],
+      [
+        0,
+        7,
+        100
+      ],
+      [
+        0,
+        10,
+        64
+      ],
+      [
+        0,
+        91,
+        127
+      ],
+      [
+        3154838,
+        91,
+        124
+      ]
+    ],
+    "ignored_control_explanation": "CC7 volume, CC10 pan and CC91 external reverb are not synthesizer controls; source retained unchanged",
+    "event_schedule_sha256": "067ec2db13ae82cd0a521e4d085dbfe203a6f0068db2d486583262cc638952f9"
+  },
+  "converted_event_schedule_sha256": "fbaef06072ce4127503366a29f81c3c55854aeaefc341a373837a3f3cb93a9d8",
+  "note_ons": 2088,
+  "sustain_events": 345,
+  "overlapping_same_key_ons": [
+    {
+      "frame": 609936,
+      "seconds": 12.707,
+      "key": 48
+    },
+    {
+      "frame": 5724714,
+      "seconds": 119.265,
+      "key": 68
+    },
+    {
+      "frame": 6523751,
+      "seconds": 135.911,
+      "key": 48
+    }
+  ],
+  "dropped_note_offs": [
+    {
+      "frame": 610015,
+      "seconds": 12.709,
+      "key": 48
+    },
+    {
+      "frame": 5745660,
+      "seconds": 119.701,
+      "key": 68
+    },
+    {
+      "frame": 6523940,
+      "seconds": 135.915,
+      "key": 48
+    }
+  ],
+  "overlap_handling": "per-key count of sounding notes; second note-on re-strikes the key; note-off dropped unless it ends the last overlapping note",
+  "release_tail_seconds": 4,
+  "final_fade": "last 50 ms",
+  "sample_rate": 48000,
+  "listening_gain_db": 9.88627517486987,
+  "normalisation": "one gain per piece: Full raw peak -> -1 dBFS; the same gain for Live/Balanced",
+  "adaptive_shedding": "off (deterministic)",
+  "imperfection": 1.0,
+  "radiation_auto": "Baked for Live/Balanced, Modal for Full",
+  "voice_limit_note": "Full: 88 (one per key, no stealing offline); Live: preset 16; Balanced: preset 24 (plug-in defaults, Voices Auto)",
+  "modes": {
+    "full": {
+      "raw_file": "chopin-etude-op10-12-0.6-full-raw.wav",
+      "render_report": "142.766 s stereo 48 kHz; complete source + 4 s release; peak 0.285553; RMS 0.0275077; numerical faults 0; voice steals 0; max active voices 38; imperfection 1; threads 1; quality full; radiation auto (modal bank); render time 296.651 s; realtime factor 0.48126",
+      "wall_seconds": 296.6749835014343,
+      "render_time_seconds": 296.651,
+      "realtime_factor": 0.48126,
+      "voice_steals": 0,
+      "numerical_faults": 0,
+      "max_active_voices": 38,
+      "radiation": [
+        "auto",
+        "modal bank"
+      ],
+      "raw_sha256": "e163ef7b4eafc99269ba738f11b9a656eb33ce838b829c4b4cf4a61910669814",
+      "raw_peak": 0.2855526804924011,
+      "raw_rms": 0.027507713539482767,
+      "raw_peak_dbfs": -10.88627517486987,
+      "listening_file": "chopin-etude-op10-12-0.6-full.wav",
+      "listening_sha256": "59ccbaf285c5b7e651b7c5018cfe7872e61cff0337bb128304a8d1b55e1ee8c2",
+      "listening_peak": 0.8912509381337456,
+      "duration_seconds": 142.76620833333334,
+      "frames": 6852778,
+      "clipped_samples_in_raw": 0
+    },
+    "live": {
+      "raw_file": "chopin-etude-op10-12-0.6-live-raw.wav",
+      "render_report": "142.766 s stereo 48 kHz; complete source + 4 s release; peak 0.309531; RMS 0.0288002; numerical faults 0; voice steals 275; max active voices 18; imperfection 1; threads 1; quality live; radiation auto (baked bank); render time 61.9946 s; realtime factor 2.30288",
+      "wall_seconds": 62.018763065338135,
+      "render_time_seconds": 61.9946,
+      "realtime_factor": 2.30288,
+      "voice_steals": 275,
+      "numerical_faults": 0,
+      "max_active_voices": 18,
+      "radiation": [
+        "auto",
+        "baked bank"
+      ],
+      "raw_sha256": "43bb1bb3136fc2d730506845b5e31b986dfc266d03cd2f17f4a8f750a1eba791",
+      "raw_peak": 0.30953067541122437,
+      "raw_rms": 0.02880021861435875,
+      "raw_peak_dbfs": -10.185926092704722,
+      "listening_file": "chopin-etude-op10-12-0.6-live.wav",
+      "listening_sha256": "3fd008118568d8292a1d7d11150fae64e9602682c8cda9e781796fdc06d8493f",
+      "listening_peak": 0.9660897049389344,
+      "duration_seconds": 142.76620833333334,
+      "frames": 6852778,
+      "clipped_samples_in_raw": 0
+    },
+    "balanced": {
+      "raw_file": "chopin-etude-op10-12-0.6-balanced-raw.wav",
+      "render_report": "142.766 s stereo 48 kHz; complete source + 4 s release; peak 0.32031; RMS 0.0289249; numerical faults 0; voice steals 69; max active voices 25; imperfection 1; threads 1; quality balanced; radiation auto (baked bank); render time 111.153 s; realtime factor 1.28441",
+      "wall_seconds": 111.17751932144165,
+      "render_time_seconds": 111.153,
+      "realtime_factor": 1.28441,
+      "voice_steals": 69,
+      "numerical_faults": 0,
+      "max_active_voices": 25,
+      "radiation": [
+        "auto",
+        "baked bank"
+      ],
+      "raw_sha256": "f229843e526f2ec45b66a71ed48955aa35eda38dbc3bd1df7084273a61d8225a",
+      "raw_peak": 0.3203103840351105,
+      "raw_rms": 0.028924940191600322,
+      "raw_peak_dbfs": -9.888579637210741,
+      "listening_file": "chopin-etude-op10-12-0.6-balanced.wav",
+      "listening_sha256": "247238c94a05149216dbe992446e767ba52eb145a0faba78ce44e98f7a11f65c",
+      "listening_peak": 0.9997347241601866,
+      "duration_seconds": 142.76620833333334,
+      "frames": 6852778,
+      "clipped_samples_in_raw": 0
+    }
+  },
+  "octave_bands_hz": [
+    [
+      22,
+      44
+    ],
+    [
+      44,
+      88
+    ],
+    [
+      88,
+      177
+    ],
+    [
+      177,
+      355
+    ],
+    [
+      355,
+      710
+    ],
+    [
+      710,
+      1420
+    ],
+    [
+      1420,
+      2840
+    ],
+    [
+      2840,
+      5680
+    ],
+    [
+      5680,
+      11360
+    ],
+    [
+      11360,
+      22720
+    ]
+  ],
+  "octave_band_energy": {
+    "full": [
+      50241711.461574525,
+      632596995.9712957,
+      4493104553.855269,
+      5433711968.946261,
+      4603270571.6398115,
+      1456421255.5276103,
+      137996783.49859136,
+      50761656.598610714,
+      1824888.3311241784,
+      482.5640949634207
+    ],
+    "live": [
+      169872275.4912508,
+      731377788.6372797,
+      5426842367.40008,
+      4699278334.115784,
+      4551605384.04496,
+      1592830395.102599,
+      128319865.2710077,
+      49976767.614413984,
+      1816279.1840814687,
+      459.0526154782784
+    ],
+    "balanced": [
+      155407289.84124961,
+      750044085.4548159,
+      5106596870.088141,
+      5636430491.5853615,
+      4514912220.843756,
+      1567679521.5936825,
+      129423916.69736423,
+      50098960.21198441,
+      1875655.130386436,
+      460.69501360104357
+    ]
+  },
+  "octave_band_db_vs_full": {
+    "live": [
+      5.29,
+      0.63,
+      0.82,
+      -0.63,
+      -0.05,
+      0.39,
+      -0.32,
+      -0.07,
+      -0.02,
+      -0.22
+    ],
+    "balanced": [
+      4.9,
+      0.74,
+      0.56,
+      0.16,
+      -0.08,
+      0.32,
+      -0.28,
+      -0.06,
+      0.12,
+      -0.2
+    ]
+  },
+  "level_envelope_vs_full": {
+    "live": {
+      "rms_db_diff": 0.4,
+      "envelope_1s_mean_abs_db": 0.68,
+      "envelope_1s_max_abs_db": 12.57
+    },
+    "balanced": {
+      "rms_db_diff": 0.44,
+      "envelope_1s_mean_abs_db": 0.63,
+      "envelope_1s_max_abs_db": 5.67
+    }
+  }
+}

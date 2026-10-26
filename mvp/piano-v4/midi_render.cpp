@@ -7,6 +7,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -42,8 +43,9 @@ int main(int argc, char** argv) {
                 argc-=2;
             } else ++i;
         }
-        bool full=false;
+        bool full=false, floatWav=false;
         for (int i=1;i<argc;) {
+            if (std::string(argv[i])=="--float") { floatWav=true; for (int j=i;j<argc-1;++j) argv[j]=argv[j+1]; --argc; continue; }   // 0.6: 32-bit float WAV, no clip check
             if (std::string(argv[i])=="--full") { full=true; for (int j=i;j<argc-1;++j) argv[j]=argv[j+1]; --argc; }
             else ++i;
         }
@@ -102,14 +104,15 @@ int main(int argc, char** argv) {
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
         std::ofstream out(argv[2],std::ios::binary);
         if (!out) throw std::runtime_error("cannot write WAV");
-        out.write("RIFF",4);word(out,36+(finish-start)*4,4);out.write("WAVEfmt ",8);
-        word(out,16,4);word(out,1,2);word(out,2,2);word(out,fs,4);
-        word(out,fs*4,4);word(out,4,2);word(out,16,2);
-        out.write("data",4);word(out,(finish-start)*4,4);
+        out.write("RIFF",4);const int bytesPerSample=floatWav?4:2;
+        word(out,36+(finish-start)*2*bytesPerSample,4);out.write("WAVEfmt ",8);
+        word(out,16,4);word(out,floatWav?3:1,2);word(out,2,2);word(out,fs,4);
+        word(out,fs*2*bytesPerSample,4);word(out,2*bytesPerSample,2);word(out,8*bytesPerSample,2);
+        out.write("data",4);word(out,(finish-start)*2*bytesPerSample,4);
         pme::simd::ScopedFlushDenormals denormals;
         std::size_t cursor=0;
         double peak=0, energy=0;
-        std::uint64_t stealsAtStart=0;
+        std::uint64_t stealsAtStart=0; int maxActive=0;
         const auto begin=std::chrono::steady_clock::now();
         // The block interface is bit-identical to sample() for every thread count; with a helper thread the
         // board radiation runs beside the strings (README 0.5.4).
@@ -118,9 +121,10 @@ int main(int argc, char** argv) {
             // Only the end boundary fades, after 1.95 seconds of natural release.
             const double fade=std::min(1.0,(finish-1-i)/(0.05*fs));
             for (double x : {l*fade,r*fade}) {
-                if (!std::isfinite(x) || std::abs(x)>1)
+                if (!std::isfinite(x) || (!floatWav && std::abs(x)>1))
                     throw std::runtime_error("invalid/clipping audio");
                 peak=std::max(peak,std::abs(x));energy+=x*x;
+                if (floatWav) { const float f=static_cast<float>(x); std::uint32_t u; std::memcpy(&u,&f,4); word(out,u,4); continue; }
                 word(out,static_cast<std::uint16_t>(static_cast<std::int16_t>(std::lround(x*32767))),2);
             }
         };
@@ -141,6 +145,7 @@ int main(int argc, char** argv) {
                 }
                 piano.blockStep();
             }
+            maxActive=std::max(maxActive,piano.activeVoices());
             piano.blockEnd(bl.data(),br.data());
             for (int k=0;k<n;++k) emit(i0+k,bl[k],br[k]);
         }
@@ -150,6 +155,6 @@ int main(int argc, char** argv) {
                   << "; RMS " << std::sqrt(energy/(2*(finish-start)))
                   << "; numerical faults " << piano.numericalFaults()
                   << (full ? "; voice steals " : "; excerpt voice steals ") << piano.voiceSteals()-stealsAtStart
-                  << "; imperfection " << piano.imperfection() << "; threads " << threads << "; quality " << qualityName << "; radiation " << radiationName << (piano.bakedRadiationActive() ? " (baked bank)" : " (modal bank)") << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
+                  << "; max active voices "<<maxActive<<"; imperfection " << piano.imperfection() << "; threads " << threads << "; quality " << qualityName << "; radiation " << radiationName << (piano.bakedRadiationActive() ? " (baked bank)" : " (modal bank)") << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
     } catch (const std::exception& e) { std::cerr<<e.what()<<'\n';return 1; }
 }
