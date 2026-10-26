@@ -299,6 +299,23 @@ public:
     int activeVoices() const noexcept;             // struck (hammer-driven) voices
     int sympatheticVoices() const noexcept;        // simulated but never struck since waking
     const GrandBoard& board() const noexcept { return board_; }
+    // 0.7b offline probe (grand_render, direct string radiation): calls f(key, string, activeModes, omega, qV, uV, qH, uH) for every
+    // struck voice. q is the modal displacement and u = q^n - q^{n-1} (SPEC-OSC difference form), so the velocity is u / dt at n - 1/2.
+    // Read-only; nothing in the audio path calls it, so the 0.6 arithmetic is unchanged.
+    template <class F> void visitStrings(F&& f) const {
+        for (int k = 0; k < 88; ++k) {
+            const Voice& v = voices_[k];
+            if (!v.active || !v.struck) continue;
+            for (std::size_t j = 0; j < v.note.stringCount(); ++j) {
+                const auto off = v.note.modeOffset(j);
+                f(k, static_cast<int>(j), v.note.activeModes(j), v.modes[j].omega.data(), v.note.segment().q() + off, v.note.segment().u() + off,
+                  v.note.horizontalQ(j), v.note.horizontalU(j));
+            }
+        }
+    }
+    // Compiled data of the strings of a key (after prepare): count, speaking length, number of modes, omega.
+    int keyStringCount(int key) const noexcept { return stringsForKey(key); }
+    const pme::StringModes& compiledString(int key, int j) const noexcept { return voices_[key - 21].modes[j]; }
     bool sharedBoardActive() const noexcept { return shared_; }
     bool voiceActive(int key) const noexcept { return key >= 21 && key <= 108 && voices_[key-21].active; }
     // Last bridge force (N) this key's strings put on the board (shared board only).

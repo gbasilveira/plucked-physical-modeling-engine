@@ -12,6 +12,10 @@
 //                 of all board modes (reciprocity: v_i/Q = -p_m/F_i).
 //        fwd    = Gaussian force on one board mode; records pressure at given cells (reciprocity check).
 //        wave   = no board modes, source + receivers (grid dispersion / sponge tests).
+//        kin    = (0.7b) the board is driven kinematically: board mode j moves with a prescribed Gaussian velocity pulse in its own
+//                 time slot (modes --kin-first .. --kin-first+--kin-count-1, one every --kin-slot steps); the generalised force of the air on
+//                 every mode is recorded each step. This gives the modal radiation-impedance matrix Z_ij(t) (force on mode i per unit velocity
+//                 of mode j) without any structural dynamics in the record, so a slot of a few tens of ms is enough.
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -57,14 +61,14 @@ std::vector<int> parseCell(const std::string& s) { std::vector<int> r; std::stri
 
 int main(int argc, char** argv) {
     try {
-        bool energy = false; std::string dir, mode = "recip", out = "out", srcS, recS, fwdModeS; int steps = 24000, nUse = -1; double tau = 7e-5; bool noBoard = false;
+        bool energy = false; std::string dir, mode = "recip", out = "out", srcS, recS, fwdModeS; int steps = 24000, nUse = -1; double tau = 7e-5; bool noBoard = false; int kinFirst = 0, kinCount = 0, kinSlot = 1500;
         for (int i = 1; i < argc; ++i) {
             std::string a = argv[i];
             auto nxt = [&]() { if (i + 1 >= argc) throw std::runtime_error("missing value for " + a); return std::string(argv[++i]); };
             if (a == "--scene") dir = nxt(); else if (a == "--mode") mode = nxt(); else if (a == "--out") out = nxt();
             else if (a == "--src") srcS = nxt(); else if (a == "--rec") recS = nxt(); else if (a == "--steps") steps = std::stoi(nxt());
             else if (a == "--modes") nUse = std::stoi(nxt()); else if (a == "--mode-index") fwdModeS = nxt();
-            else if (a == "--tau") tau = std::stod(nxt()); else if (a == "--no-board") noBoard = true; else if (a == "--energy") energy = true;
+            else if (a == "--tau") tau = std::stod(nxt()); else if (a == "--kin-first") kinFirst = std::stoi(nxt()); else if (a == "--kin-count") kinCount = std::stoi(nxt()); else if (a == "--kin-slot") kinSlot = std::stoi(nxt()); else if (a == "--no-board") noBoard = true; else if (a == "--energy") energy = true;
             else throw std::runtime_error("unknown option " + a);
         }
         auto kv = readKV(dir + "/scene.txt");
@@ -126,6 +130,7 @@ int main(int argc, char** argv) {
         { std::stringstream ss(recS); std::string t; while (std::getline(ss, t, ';')) if (!t.empty()) rec.push_back(parseCell(t)); }
         const int fwdMode = fwdModeS.empty() ? -1 : std::stoi(fwdModeS);
         std::vector<float> vrec; if (mode == "recip") vrec.reserve(size_t(steps) * N);
+        std::vector<float> frec; std::vector<float> usrc; if (mode == "kin") { frec.reserve(size_t(steps) * N); usrc.assign(steps, 0.f); }
         std::vector<float> prec, erec; std::vector<float> qsrc(steps, 0.f); std::vector<float> pprev; std::vector<double> qprev(N, 0.0); if (energy) pprev.assign(tot, 0.f);
         const double t0 = 4 * tau;
         auto t_start = std::chrono::steady_clock::now();
@@ -143,6 +148,23 @@ int main(int argc, char** argv) {
                         for (int m = 0; m < m1 - m0; ++m) f[m] += double(ph[m]) * d; }
                     for (int m = m0; m < m1; ++m) Fm[m] = f[m - m0] * dA;
                 }
+                if (mode == "kin") {
+                    // prescribed board motion: mode j = kinFirst + n / kinSlot carries a velocity pulse g(t - t0) centred in its slot
+                    const int slot = n / kinSlot; const int jm = kinFirst + slot;
+                    for (int m = 0; m < N; ++m) qd[m] = 0.0;
+                    if (slot < kinCount && jm < N) {
+                        const double ts = (n + 0.5 - slot * kinSlot) * dt; const double gv = std::exp(-0.5 * ((ts - t0) / tau) * ((ts - t0) / tau));
+                        qd[jm] = gv; usrc[n] = float(gv);
+                    }
+                    for (int m = 0; m < N; ++m) frec.push_back(float(Fm[m]));
+                    #pragma omp parallel for schedule(static)
+                    for (int c = 0; c < S.ncols; ++c) {
+                        double v = 0; const float* ph = S.phi.data() + size_t(c) * S.nmodes;
+                        const int slot2 = n / kinSlot; const int jj = kinFirst + slot2;
+                        if (slot2 < kinCount && jj < N) v = double(ph[jj]) * qd[jj];
+                        vz[bface[c]] = float(v);
+                    }
+                } else {
                 if (mode == "fwd" && fwdMode >= 0 && fwdMode < N) { const double gf = std::exp(-0.5 * ((n * dt - t0) / tau) * ((n * dt - t0) / tau)); Fm[fwdMode] += gf; qsrc[n] = float(gf); }   // 1 N peak Gaussian force on one mode, at the integer time
                 #pragma omp parallel for schedule(static)
                 for (int m = 0; m < N; ++m) {
@@ -155,6 +177,7 @@ int main(int argc, char** argv) {
                     double v = 0; const float* ph = S.phi.data() + size_t(c) * S.nmodes;
                     for (int m = 0; m < N; ++m) v += double(ph[m]) * qd[m];
                     vz[bface[c]] = float(v);
+                }
                 }
             }
             // ---- velocities from p^n
@@ -215,6 +238,8 @@ int main(int argc, char** argv) {
         }
         std::ofstream(out + ".qsrc.f32", std::ios::binary).write(reinterpret_cast<char*>(qsrc.data()), qsrc.size() * 4);
         if (!vrec.empty()) std::ofstream(out + ".vmodes.f32", std::ios::binary).write(reinterpret_cast<char*>(vrec.data()), vrec.size() * 4);
+        if (!frec.empty()) { std::ofstream(out + ".fkin.f32", std::ios::binary).write(reinterpret_cast<char*>(frec.data()), frec.size() * 4);
+                             std::ofstream(out + ".usrc.f32", std::ios::binary).write(reinterpret_cast<char*>(usrc.data()), usrc.size() * 4); }
         if (!prec.empty()) std::ofstream(out + ".prec.f32", std::ios::binary).write(reinterpret_cast<char*>(prec.data()), prec.size() * 4);
         if (!erec.empty()) std::ofstream(out + ".energy.f32", std::ios::binary).write(reinterpret_cast<char*>(erec.data()), erec.size() * 4);
         std::ofstream(out + ".meta.txt") << "steps=" << steps << "\nnmodes=" << N << "\nnrec=" << rec.size() << "\ndt=" << dt << "\nmode=" << mode << "\n";

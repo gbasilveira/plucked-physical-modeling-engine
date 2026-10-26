@@ -5,12 +5,18 @@
 // The radiation to the microphones is the convolution of g_k with the port-space impulse responses of assemble_ir.py,
 // done by render_grand.py. The 0.6 radiation of the old board is zeroed under the override and its output is not used.
 //
-// usage: piano-grand-render events board_table.bin out_prefix [--full] [--seconds-tail S]
+// 0.7b: --dump-strings FILE writes the compiled string data of every key (count, speaking length, outer diameter, mode count, omega) for
+// string_radiation.py; --strrad TABLE writes out_prefix.s.f32 (frames x nmics float32): the pressure at the microphones radiated directly by
+// the vibrating strings, from the modal states of the struck strings and the complex gain table of string_radiation.py (G per unit modal
+// velocity at omega_n: p = Re[G (u/dt + j omega (q - u/2))], the analytic signal of a decaying partial, both polarisations).
+//
+// usage: piano-grand-render events board_table.bin out_prefix [--full] [--seconds-tail S] [--strrad strrad.bin]
 //   board_table.bin: 512 omega, 512 sigma, 88*512 phi (little-endian doubles)
 //   out_prefix.g.f32: frames x 88 float32 (force records); out_prefix.info.txt
 #include "piano.hpp"
 #include "midi.hpp"
 #include "board_override.hpp"
+#include "preset.hpp"
 #include "pme/simd/denormals.hpp"
 #include <algorithm>
 #include <array>
@@ -24,10 +30,12 @@
 int main(int argc, char** argv) {
     try {
         if (argc < 4) throw std::runtime_error("usage: piano-grand-render events board_table.bin out_prefix [--full] [--tail seconds]");
-        bool full = false; double tail = 4.0;
+        bool full = false; double tail = 4.0; std::string dumpPath, strradPath;
         for (int i = 4; i < argc; ++i) {
             const std::string a = argv[i];
-            if (a == "--full") full = true; else if (a == "--tail" && i + 1 < argc) tail = std::stod(argv[++i]); else throw std::runtime_error("unknown option " + a);
+            if (a == "--full") full = true; else if (a == "--tail" && i + 1 < argc) tail = std::stod(argv[++i]);
+            else if (a == "--dump-strings" && i + 1 < argc) dumpPath = argv[++i]; else if (a == "--strrad" && i + 1 < argc) strradPath = argv[++i];
+            else throw std::runtime_error("unknown option " + a);
         }
         constexpr int fs = 48000;
         struct Event { int frame; std::array<std::uint8_t, 3> data; };
@@ -61,6 +69,41 @@ int main(int argc, char** argv) {
         piano.setRadiation(piano_mvp_v4::Piano::Radiation::Modal);
         if (!piano.setWorkerThreads(0)) throw std::runtime_error("threads");
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
+        if (!dumpPath.empty()) {
+            std::ofstream d(dumpPath, std::ios::binary);
+            for (int key = 21; key <= 108; ++key) {
+                const auto preset = piano_mvp_v2::parametersForKey(key);
+                const std::int32_t cnt = piano.keyStringCount(key);
+                d.write(reinterpret_cast<const char*>(&cnt), 4);
+                for (int j = 0; j < cnt; ++j) {
+                    const auto& m = piano.compiledString(key, j);
+                    const double hdr[4] = {m.L, preset.string.dOuter, m.rhoA, m.tension};
+                    const std::int32_t nm = static_cast<std::int32_t>(m.omega.size());
+                    d.write(reinterpret_cast<const char*>(hdr), 32); d.write(reinterpret_cast<const char*>(&nm), 4);
+                    d.write(reinterpret_cast<const char*>(m.omega.data()), 8 * nm);
+                }
+            }
+            return 0;
+        }
+        // direct string radiation table: per key [string][polarisation][mode][mic][re, im] float32
+        struct KeyTab { std::int32_t count{}; std::vector<std::int32_t> nm; std::vector<float> g; std::vector<std::size_t> off; };
+        std::vector<KeyTab> tabs; int nmic = 0;
+        if (!strradPath.empty()) {
+            std::ifstream in(strradPath, std::ios::binary); if (!in) throw std::runtime_error("cannot read strrad table");
+            char magic[4]; std::int32_t nmi; in.read(magic, 4); in.read(reinterpret_cast<char*>(&nmi), 4); nmic = nmi;
+            if (std::string(magic, 4) != "SRAD") throw std::runtime_error("bad strrad magic");
+            tabs.resize(88);
+            for (int k = 0; k < 88; ++k) {
+                auto& t = tabs[k]; in.read(reinterpret_cast<char*>(&t.count), 4); t.nm.resize(t.count); t.off.resize(t.count);
+                std::size_t total = 0;
+                for (int j = 0; j < t.count; ++j) { in.read(reinterpret_cast<char*>(&t.nm[j]), 4); t.off[j] = total; total += std::size_t(2) * t.nm[j] * nmic * 2; }
+                t.g.resize(total); in.read(reinterpret_cast<char*>(t.g.data()), total * 4);
+                if (!in) throw std::runtime_error("short strrad table");
+            }
+        }
+        std::ofstream sout; std::vector<double> sacc(std::max(nmic, 1), 0.0); std::vector<float> sframe(std::max(nmic, 1), 0.f);
+        if (nmic) sout.open(std::string(argv[3]) + ".s.f32", std::ios::binary);
+        const double invDt = fs;
         const int end = events.back().frame + 1;
         const int finish = full ? end + int(tail * fs) : events.back().frame + int(tail * fs);
         std::ofstream out(std::string(argv[3]) + ".g.f32", std::ios::binary); if (!out) throw std::runtime_error("cannot write");
@@ -76,6 +119,22 @@ int main(int argc, char** argv) {
                 const double g = piano.radiationDrive(k); rec[piano.radiationPort(k)] = float(g); peakG = std::max(peakG, std::fabs(g));
             }
             out.write(reinterpret_cast<const char*>(rec.data()), 88 * 4);
+            if (nmic) {
+                std::fill(sacc.begin(), sacc.end(), 0.0);
+                piano.visitStrings([&](int k, int j, std::size_t nAct, const double* om, const double* qV, const double* uV, const double* qH, const double* uH) {
+                    const auto& t = tabs[k]; if (j >= t.count) return;
+                    const std::size_t n = std::min<std::size_t>(nAct, t.nm[j]);
+                    const float* gV = t.g.data() + t.off[j]; const float* gH = gV + std::size_t(t.nm[j]) * nmic * 2;
+                    for (std::size_t i = 0; i < n; ++i) {
+                        const double vV = uV[i] * invDt, dV = om[i] * (qV[i] - 0.5 * uV[i]);
+                        const double vH = uH[i] * invDt, dH = om[i] * (qH[i] - 0.5 * uH[i]);
+                        const float* a = gV + i * nmic * 2; const float* b = gH + i * nmic * 2;
+                        for (int m = 0; m < nmic; ++m) sacc[m] += a[2 * m] * vV - a[2 * m + 1] * dV + b[2 * m] * vH - b[2 * m + 1] * dH;
+                    }
+                });
+                for (int m = 0; m < nmic; ++m) sframe[m] = float(sacc[m]);
+                sout.write(reinterpret_cast<const char*>(sframe.data()), nmic * 4);
+            }
         }
         std::ofstream(std::string(argv[3]) + ".info.txt") << "frames=" << finish << "\nfs=" << fs << "\npeak_g=" << peakG << "\nfaults=" << piano.numericalFaults() << "\n";
         if (piano.numericalFaults()) throw std::runtime_error("numerical faults");

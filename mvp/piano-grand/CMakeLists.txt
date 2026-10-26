@@ -28,3 +28,12 @@ endif()
 add_test(NAME grand-fdtd-energy COMMAND ${PIANO_GRAND_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_fdtd_energy.py
   $<TARGET_FILE:grand-fdtd> ${CMAKE_CURRENT_BINARY_DIR}/energy)
 set_tests_properties(grand-fdtd-energy PROPERTIES TIMEOUT 300 SKIP_RETURN_CODE 77)
+
+# ---- 0.7b offline tests (Python; skipped without numpy/scipy)
+foreach(t IN ITEMS diffraction string_radiation hf_board)
+  add_test(NAME grand-${t} COMMAND ${PIANO_GRAND_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_${t}.py)
+  set_tests_properties(grand-${t} PROPERTIES TIMEOUT 900 SKIP_RETURN_CODE 77)
+endforeach()
+add_test(NAME grand-admittance COMMAND ${PIANO_GRAND_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_admittance.py
+  $<TARGET_FILE:grand-fdtd> ${CMAKE_CURRENT_BINARY_DIR}/admittance)
+set_tests_properties(grand-admittance PROPERTIES TIMEOUT 600 SKIP_RETURN_CODE 77)

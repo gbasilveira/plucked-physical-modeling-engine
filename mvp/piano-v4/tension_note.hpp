@@ -110,6 +110,9 @@ public:
     std::size_t stringCount() const noexcept { return strings_.size(); }
     std::size_t modeOffset(std::size_t s) const noexcept { return strings_[s].off; }
     std::size_t modeCount(std::size_t s) const noexcept { return strings_[s].n; }
+    // 0.7b offline probe: horizontal-polarisation modal state of string s (q, and u = q^n - q^{n-1} in the SPEC-OSC difference form).
+    const double* horizontalQ(std::size_t s) const noexcept { return strings_[s].qH.data(); }
+    const double* horizontalU(std::size_t s) const noexcept { return strings_[s].uH.data(); }
     double headPosition() const noexcept;
     double headVelocity() const noexcept;
     const pme::exciters::HammerDiagnostics& diagnostics() const noexcept { return diag_; }
