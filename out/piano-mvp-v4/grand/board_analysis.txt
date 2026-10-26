@@ -1,0 +1,15 @@
+infinite-plate mobility (bare orthotropic plate, 8.2 mm): 5.71 mm/s/N  (Z = 175 N s/m)
+mobility at the bridge, band-averaged Re(Y) (mm/s/N) [the real part is what a string sees as loss]; mean over keys listed
+key      50-100    100-200    200-400    400-800    800-1600  1600-3200 
+A0    21      0.17      2.28      2.29      1.61      1.57      1.73
+C2    36      1.81      0.66      1.09      0.45      0.54      0.33
+C3    48      2.35      0.44      1.11      0.77      0.49      0.30
+C4    60      1.73      0.60      0.42      0.54      0.41      0.46
+C5    72      1.30      0.99      0.29      0.49      0.45      0.50
+C6    84      1.39      0.80      0.43      0.53      0.46      0.38
+C7    96      0.97      1.45      0.32      0.63      0.43      0.53
+C8   108      0.23      1.37      2.08      1.25      1.72      1.25
+all 88 keys, mean Re(Y) / infinite-plate Y per band: 50-100: 0.24 100-200: 0.17 200-400: 0.13 400-800: 0.11 800-1600: 0.10 1600-3200: 0.09
+modes: 395 up to 3599 Hz; first ten (Hz): 49.9, 84.4, 133.2, 142.9, 187.3, 197.8, 238.2, 253.4, 267.5, 311.3
+mode counts: N(<500 Hz) = 19, N(<1000 Hz) = 50, N(<2000 Hz) = 138, N(<3000 Hz) = 286
+modal density 1-3 kHz: 0.118 modes/Hz; Weyl estimate for a thin plate of this area and mean thickness: 
