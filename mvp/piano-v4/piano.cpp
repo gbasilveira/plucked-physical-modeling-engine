@@ -101,7 +101,7 @@ bool Piano::prepare(double fs) {
                 for (std::size_t m = 0; m < std::min<std::size_t>(8, os.size()); ++m)
                     if (std::abs(1200 * std::log2(os[m] / oc[n])) < 20) coincidence_[c * 88 + s] += 1.0f / float((n + 1) * (m + 1));
         }
-        if (!board_.configure(fs,std::move(phi),kLocalBridgeModes,false,bridgeMass_)) return false;
+        if (!board_.configure(fs,std::move(phi),kLocalBridgeModes,false,bridgeMass_,bakedTolerance_)) return false;
     } else if (!soundboard_.prepare(fs)) return false;
     bridgeMassFilter_.prepare(fs);
     sleepSamples_ = static_cast<std::uint64_t>(sleepSeconds_ * fs);
@@ -653,6 +653,15 @@ void Piano::resetAfterNonFinite() noexcept {
 void Piano::radiateInline(float& left, float& right) noexcept {
     // The drive of the radiating modes from every port in port order (the order of the 0.5.3 radiate
     // calls), the modal update, and the pressure sum in mode order.
+    if (board_.baked()) {   // 0.6: one batched pass over the float drive
+        std::array<std::uint8_t, 88> port, light; std::array<double, 88> g; int n = 0;
+        for (int k = 0; k < nPorts_; ++k) {
+            const auto& v = voices_[ports_[k]];
+            if (!v.radiated) continue;
+            port[n] = static_cast<std::uint8_t>(ports_[k]); light[n] = v.radModes == kLightRadiatingModes; g[n++] = v.g;
+        }
+        board_.accumulateDrives(port.data(), g.data(), light.data(), n);
+    } else
     for (int k = 0; k < nPorts_; ++k) {
         const auto& v = voices_[ports_[k]];
         if (v.radiated) board_.accumulateDrive(ports_[k], v.g, 0, v.radModes);
@@ -677,6 +686,7 @@ void Piano::checkIdle() noexcept {
     if (idleSkip_ && !idle_ && idleCount_ >= idleHoldSamples && board_.quiet(idleThreshold)) idle_ = true;
 }
 void Piano::sampleShared(float& left, float& right) noexcept {
+    syncRadiation();
     if (idle_) { left = right = 0; return; }
     stringsStep();
     radiateInline(left, right);
@@ -694,6 +704,11 @@ void Piano::radiateRecord(std::uint64_t n) noexcept {
     const unsigned count = ring_.count[slot];
     const std::uint8_t* keys = ring_.keys.data() + slot * 88;
     const double* g = ring_.g.data() + slot * 88;
+    if (board_.baked()) {
+        std::array<std::uint8_t, 88> port, light;
+        for (unsigned k = 0; k < count; ++k) { port[k] = keys[k] & 0x7fu; light[k] = (keys[k] & 0x80u) != 0; }
+        board_.accumulateDrives(port.data(), g, light.data(), static_cast<int>(count));
+    } else
     for (unsigned k = 0; k < count; ++k) {
         const unsigned port = keys[k] & 0x7fu;
         board_.accumulateDrive(port, g[k], 0, (keys[k] & 0x80u) ? kLightRadiatingModes : kBoardModeCount);
@@ -743,6 +758,7 @@ void Piano::publishSkipped(std::uint64_t n) noexcept {
     if (shared) radLock_.store(0, std::memory_order_release);
 }
 void Piano::blockBegin(std::uint32_t frames) noexcept {
+    if (shared_) syncRadiation();   // 0.6: everything is drained here
     blockFrames_ = frames > maxBlockFrames ? maxBlockFrames : frames;
     blockStart_ = produced_.load(std::memory_order_relaxed);
     // Everything is drained here (blockEnd waits; the inline path consumes as it produces), so the

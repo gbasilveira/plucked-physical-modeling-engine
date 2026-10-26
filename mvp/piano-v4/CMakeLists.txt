@@ -14,7 +14,7 @@ add_library(piano_core STATIC
   ${CORE}/engine/src/nonlinear/sav.cpp
   ${CORE}/engine/src/nonlinear/tension.cpp
   ${CORE}/engine/src/exciters/hammer.cpp
-  piano.cpp kernels.cpp tension_note.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
+  ../piano-baked/fitted_string.cpp piano.cpp kernels.cpp tension_note.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v2/preset.cpp
   ${CORE}/engine/src/simd/denormals.cpp)
 target_include_directories(piano_core PUBLIC ${CORE}/engine/include ${CMAKE_CURRENT_SOURCE_DIR})
@@ -22,6 +22,7 @@ find_package(Threads REQUIRED)
 target_link_libraries(piano_core PUBLIC Threads::Threads)
 target_include_directories(piano_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v2)
 target_include_directories(piano_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3)
+target_include_directories(piano_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../piano-baked)
 foreach(module osc string bridge nonlinear exciters simd)
   target_include_directories(piano_core PUBLIC ${CORE}/engine/src/${module}/include)
 endforeach()
@@ -37,7 +38,20 @@ add_executable(piano-unpedalled-demo unpedalled_demo.cpp)
 target_link_libraries(piano-unpedalled-demo PRIVATE piano_core)
 add_executable(piano-hammer-audit hammer_audit.cpp)
 target_link_libraries(piano-hammer-audit PRIVATE piano_core)
+add_executable(piano-baked-select ../piano-baked/select.cpp)
+target_link_libraries(piano-baked-select PRIVATE piano_core)
+add_executable(piano-baked-study ../piano-baked/study.cpp)
+target_link_libraries(piano-baked-study PRIVATE piano_core)
+add_executable(piano-baked-capture ../piano-baked/capture.cpp)
+target_link_libraries(piano-baked-capture PRIVATE piano_core)
+add_executable(piano-baked-fit ../piano-baked/fit_tools.cpp)
+target_link_libraries(piano-baked-fit PRIVATE piano_core)
+add_executable(piano-baked-check ../piano-baked/baked_check.cpp)
+target_link_libraries(piano-baked-check PRIVATE piano_core)
+target_compile_definitions(piano-baked-check PRIVATE PIANO_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 enable_testing()
+add_test(NAME piano-baked-radiation COMMAND piano-baked-check)
+set_tests_properties(piano-baked-radiation PROPERTIES TIMEOUT 900)
 add_test(NAME piano-hammer-contact COMMAND piano-hammer-audit)
 set_tests_properties(piano-hammer-contact PROPERTIES TIMEOUT 30)
 add_executable(piano-check check.cpp)

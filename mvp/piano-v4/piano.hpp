@@ -268,6 +268,25 @@ public:
     };
     const ImperfectionPlan& imperfectionPlan(int key) const noexcept { return plans_[key - 21]; }
     static ImperfectionPlan makeImperfectionPlan(int key, int strings, std::size_t modes) noexcept;
+    // ---- 0.6 baked radiation (README "Update 0.6") ----
+    // Radiation stage: Modal = the 512-mode bank (bit-exact reference), Baked = the reduced bank (zero-weight and
+    // negligible-energy modes removed, error about -85 dB rms, ~3x cheaper), Auto = Baked for Live and Balanced,
+    // Modal for Full. Real-time safe at any time on the audio thread; it takes effect at the next block (or
+    // sample) and clears the state of the bank taking over (a sounding radiation tail of the other bank is lost).
+    enum class Radiation : int { Auto = 0, Modal = 1, Baked = 2 };
+    void setRadiation(Radiation r) noexcept { radiationSetting_.store(static_cast<int>(r), std::memory_order_relaxed); }
+    Radiation radiation() const noexcept { return static_cast<Radiation>(radiationSetting_.load(std::memory_order_relaxed)); }
+    bool bakedRadiationActive() const noexcept { return board_.baked(); }
+    // Before prepare(): dropped-energy tolerance of the baked bank (default kBakedDefaultTolerance).
+    bool setBakedTolerance(double t) noexcept {
+        if (ready_ || !(t >= 0 && t < 1)) return false;
+        bakedTolerance_ = t; return true;
+    }
+    // Tools: the radiation records of the sample just stepped (sample() / blockStep(): ports with a drive).
+    int radiationPortCount() const noexcept { return nPorts_; }
+    int radiationPort(int k) const noexcept { return ports_[k]; }
+    double radiationDrive(int k) const noexcept { const auto& v = voices_[ports_[k]]; return v.radiated ? v.g : 0.0; }
+    bool radiationLight(int k) const noexcept { return voices_[ports_[k]].radModes == kLightRadiatingModes; }
     void reset() noexcept;
     void noteOn(int key, double velocity) noexcept;
     void noteOff(int key) noexcept;
@@ -315,6 +334,13 @@ private:
         int fade{};                     // >0: being stolen, samples left of the fade-out
     };
     void applyImperfection(Voice& v, int key) noexcept;
+    std::atomic<int> radiationSetting_{0};
+    double bakedTolerance_{kBakedDefaultTolerance};
+    void syncRadiation() noexcept {
+        const int r = radiationSetting_.load(std::memory_order_relaxed);
+        const bool want = r == static_cast<int>(Radiation::Baked) || (r == static_cast<int>(Radiation::Auto) && quality_ != Quality::Full);
+        if (want != board_.baked()) board_.setBaked(want);
+    }
     std::array<ImperfectionPlan, 88> plans_{};
     std::atomic<double> imperfection_{0.0};
     std::vector<double> ratioScratch_;

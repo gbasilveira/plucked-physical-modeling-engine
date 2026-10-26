@@ -1,0 +1,33 @@
+--- 88 keys pedalled Full block 128 rad modal threads 1
+full rad modal voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 8.47 p99 8.99 p99.9 19.37 max 19.37 misses 750/750 peak 0.706 over1 0 stalls 1 shed 0 (events 0) steals 0
+--- 88 keys pedalled Full block 128 rad baked threads 1
+full rad baked voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 8.21 p99 8.84 p99.9 20.08 max 20.08 misses 750/750 peak 0.706 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- 88 keys pedalled Full block 128 rad baked threads 0
+full rad baked voices 0 imp 1.0 block 128 fs 48000 threads 0: mean 8.41 p99 8.98 p99.9 19.63 max 19.63 misses 750/750 peak 0.706 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- 88 keys pedalled Full block 128 rad modal threads 0
+full rad modal voices 0 imp 1.0 block 128 fs 48000 threads 0: mean 8.89 p99 9.41 p99.9 19.98 max 19.98 misses 750/750 peak 0.706 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 64 rad modal threads 1
+live rad modal voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.21 p99 0.36 p99.9 0.66 max 0.74 misses 0/4500 peak 0.120 over1 0 stalls 1 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 64 rad baked threads 1
+live rad baked voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.19 p99 0.35 p99.9 0.65 max 0.73 misses 0/4500 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 64 rad baked threads 0
+live rad baked voices 0 imp 1.0 block 64 fs 48000 threads 0: mean 0.28 p99 0.45 p99.9 0.76 max 0.83 misses 0/4500 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 64 rad modal threads 0
+live rad modal voices 0 imp 1.0 block 64 fs 48000 threads 0: mean 0.40 p99 0.64 p99.9 0.91 max 1.03 misses 1/4500 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 128 rad modal threads 1
+live rad modal voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.20 p99 0.36 p99.9 0.62 max 0.69 misses 0/2250 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 128 rad baked threads 1
+live rad baked voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.19 p99 0.37 p99.9 0.63 max 0.70 misses 0/2250 peak 0.120 over1 0 stalls 1 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 128 rad baked threads 0
+live rad baked voices 0 imp 1.0 block 128 fs 48000 threads 0: mean 0.28 p99 0.47 p99.9 0.74 max 0.80 misses 0/2250 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 128 rad modal threads 0
+live rad modal voices 0 imp 1.0 block 128 fs 48000 threads 0: mean 0.40 p99 0.58 p99.9 0.85 max 0.91 misses 0/2250 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 256 rad modal threads 1
+live rad modal voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.20 p99 0.37 p99.9 0.49 max 0.54 misses 0/1125 peak 0.120 over1 0 stalls 1 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 256 rad baked threads 1
+live rad baked voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.19 p99 0.37 p99.9 0.49 max 0.53 misses 0/1125 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 256 rad baked threads 0
+live rad baked voices 0 imp 1.0 block 256 fs 48000 threads 0: mean 0.29 p99 0.49 p99.9 0.62 max 0.65 misses 0/1125 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+--- Chopin 52-58 Live block 256 rad modal threads 0
+live rad modal voices 0 imp 1.0 block 256 fs 48000 threads 0: mean 0.40 p99 0.59 p99.9 0.73 max 0.75 misses 0/1125 peak 0.120 over1 0 stalls 0 shed 0 (events 0) steals 0
+ALLDONE

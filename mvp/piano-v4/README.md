@@ -1,5 +1,144 @@
 # MVP 4: bridge feedback
 
+## Update 0.6: baked radiation, and a string-fit experiment (display name "Piano MVP 4 - Baked radiation")
+
+Why: Full is the sound reference but cannot run live (88 keys pedalled: 8.3x real time on average, 10.8x at the attack on the i3-8100), and
+Live thins dense bass chords by shedding voices. The agreed direction is to bake what is static and compute live only what interacts
+(plan, table and acceptance criteria: `mvp/ITERATION-PLAN.md`, "0.6"). This iteration implements step 1 (the radiation stage) and runs the
+step 2 experiment (fitted strings for C2, C4, C6) without putting it in the plug-in. Full with Radiation Modal (the Full default) is bit
+for bit 0.5.5 (`piano-previous-bitexact` unchanged).
+
+### Step 1: the baked radiation (in the plug-ins)
+
+The 512-mode radiation stage is linear and time invariant in the 88 port drives, but it is already an efficient IIR form: the drive is a
+rank-512 sum of the ports, not an impulse response per port. What the "bake" does, measured and chosen:
+
+1. **IR length (Modal -> impulse response).** The slowest radiating mode (20.7 Hz, sigma 1.30 /s) falls below -100 dB after 8.9 s = 425,000
+   taps; 266 modes radiate at all, 66 are still above -100 dB after 0.1 s, 26 after 0.25 s, 12 after 0.5 s, 6 after 1 s, 3 after 2 s, 1 after 8 s.
+   An IR per port (and one more for an unstruck string, which drives only the 176 lowest modes) would be 104+ IRs of 425,000 taps x 2 channels
+   (about 600 MB as time-domain floats, twice that as FFT partitions).
+2. **Uniform-partitioned FFT convolution** (`mvp/piano-baked/part_conv.hpp`: radix-2 FFT, direct-form head of P taps for zero latency,
+   frequency-delay line, one inverse FFT for L and R, no allocation in `step()`; unit test B6 against a direct convolution:
+   -132 dB at P 64, -134 dB at P 128). On 6-8 s of the Chopin excerpt (Full recording, 85 ports driven per sample on average, the dense worst case) with IRs
+   truncated to T: T = 0.25 s: error -24/-25 dB (L/R) re signal, 37 us per sample, 33 MB; T = 0.5 s: -31/-32 dB, 69 us, 65 MB; T = 1 s: -35/-36 dB,
+   120 us, 130 MB (the low modes ring on). The modal bank costs 7.0-8.9 us for the same drive. **Convolution is 5-17x slower and not
+   exact below 8.9 s: rejected.** (`baked-radiation-study-0.6.txt`, `piano-baked-study`.)
+3. **Fitted IIR = reduced modal bank (chosen).** (a) 246 of the 512 board modes have a radiation weight of 1e-18 or less (numerically zero
+   residues in the table, so they radiate nothing to either channel): dropping them is exact. (b) Energy-based selection: `piano-baked-select` measures the radiated
+   energy of every mode over a training corpus in Full (a chromatic pedalled sweep of all 88 keys at three velocities, and Chopin
+   5-30 s and 30-40 s; `merge_importance.py` writes `baked_importance.hpp`); modes are dropped from the weakest while the dropped energy stays
+   below `tolerance`. It does not help: all 266 radiating modes carry more than 1e-6 of the energy (tolerance 1e-6 drops 5 modes and costs
+   -58 dB; the default 3e-9 drops none beyond the 246). (c) The drive is accumulated in float with phi stored chunk-major (`kern::bankDrive`,
+   four chunk chains to hide the add latency, ports added in list order, no FMA contraction, so a vector build equals the scalar one), the
+   mode update stays in double (a float recursion would shift the 130 Hz modes by 0.35 cent), the 288 slots (266 modes padded to groups of
+   32; unstruck strings drive the first 96) are summed with eight fixed accumulators.
+   Result on the Chopin excerpt, Full, baked against modal: **rms error -133.9 dB re signal** (max abs difference 2.3e-8; octave bands 63 Hz
+   ... 4 kHz: -130, -141, -144, -143, -130, -123, -108 dB); single notes C2/C4/C6 at three velocities: -132.5 ... -136.6 dB (test B1;
+   target was -80 dB). Cost of the stage alone, single thread, 85 ports per sample: modal 7.0-8.9 us (drive 4.4-4.9, modes 1.2, sum 1.3), baked
+   3.0 us (drive 2.3, modes 0.5, sum 0.09), 2.3-2.9x. The drive pass is bound by L2 reads of the 94 KB phi table once per sample; a block
+   GEMM (several samples per phi load) would be the next step.
+4. **Setting.** `Radiation: Auto | Modal | Baked` (CLAP parameter id 5, LV2 port 9, appended after port 8; stepped, default Auto, saved in byte 10
+   of the state; 7-byte and 9-byte states load with Auto). Auto = Baked in Live and Balanced, Modal in Full ("Full keeps the modal bank for
+   bit-exactness"); Modal and Baked force one bank in every quality. Real-time safe; the choice is taken at the next block (or sample) and clears
+   the bank taking over (the other bank's radiation tail is lost; the 4.4 ms delay line is kept). `piano-midi-render`, `piano-block-bench`:
+   `--radiation auto|modal|baked`. Library: `Piano::setRadiation`, `setBakedTolerance` (before prepare).
+
+CPU (i3-8100, `piano-block-bench`, mean deadline ratio; p99.9 in parentheses; helper = Worker threads 1). Chopin 52-58 s, Live:
+
+| block | modal + helper (0.5.5) | baked + helper | baked, no helper | modal, no helper |
+| --- | --- | --- | --- | --- |
+| 64 | 0.21 (0.66) | 0.19 (0.65) | 0.28 (0.76) | 0.40 (0.91) |
+| 128 | 0.20 (0.62) | 0.19 (0.63) | 0.28 (0.74) | 0.40 (0.85) |
+| 256 | 0.20 (0.49) | 0.19 (0.49) | 0.29 (0.62) | 0.40 (0.73) |
+
+12-key pedalled cluster, Live, 4 s: modal + helper 0.53 / baked + helper 0.53 / baked, no helper 0.65-0.68 / modal, no helper 0.76-0.78 (64, 128
+and 256 frames). 88 keys pedalled, Full, 128 frames: modal + helper 8.47, baked + helper 8.21, baked no helper 8.41, modal no helper 8.89 (the
+strings dominate: radiation is 3-5 % there).
+**Can the helper thread go?** Baked removes about half of the penalty of running without the helper (+0.25 -> +0.12 of a deadline on the
+cluster, +0.20 -> +0.09 on Chopin) and the no-helper Chopin p99.9 stays below 0.8; but the helper is still faster, so it stays the default;
+`Worker threads 0` is now a workable setting on 2-core machines. Radiation was never the bottleneck: the strings are (step 2).
+
+### Step 2: fitted strings for C2 (36), C4 (60), C6 (84) (experiment; not in the plug-in)
+
+Pipeline (all reproducible): `piano-baked-capture KEY VEL PREFIX` renders the note in Full (no pedal, 8 s, imperfection 1) and writes the bridge
+force of its port and the stereo output (also with sympathetic and leaky strings off: `.iso`); `fit_string.py` (numpy only; `bakelib.py`) finds
+the partials (peak picking with a tracked f0 and inharmonicity B), extracts each partial's complex envelope (FFT band-pass, shifted to
+baseband, decimated), fits it with 1-6 damped complex exponentials per partial (matrix-pencil method, smallest order whose residual is < 1 %),
+prunes components below 1e-8 of the energy (-80 dB) and writes a `.fit` file (the force table of the first 0.12 s, crossfaded over 20 ms into the
+modal sum; components: frequency, decay rate, complex amplitude at 0.1 s). `FittedString` (`mvp/piano-baked/fitted_string.*`) runs the
+components as float complex rotors (`s <- z s`, force = sum Re s, eight fixed accumulators) and feeds the bridge-mass low pass and the baked
+radiation exactly as `Piano` does for a struck port (check: Full force alone through this chain reproduces Full without sympathetic and leaky
+strings at -137 ... -145 dB). Layers: MIDI velocity 38 / 76 / 114 (0.3 / 0.6 / 0.9). `baked-fit-report-0.6.json|txt`, fits in `baked-fits-0.6/`.
+
+| key / vel | partials (scored) | rotors | freq error cents rms / max | decay error dB/s rms / max | force waveform error | octave-band envelope error, fit only, mean / max dB | missing sympathetic + leaky, mean / max | total vs Full, mean / max |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 36 / 38 | 51 (14) | 140 | 0.00 / 0.01 | 0.02 / 0.04 | -47.7 dB | 0.06 / 0.13 | 1.62 / 2.82 | 3.62 / 14.01 |
+| 36 / 76 | 73 (20) | 306 | 0.01 / 0.06 | 0.12 / 0.50 | -40.5 dB | 0.13 / 0.28 | 1.64 / 2.60 | 1.57 / 2.57 |
+| 36 / 114 | 103 (24) | 460 | 0.31 / 1.53 | 0.29 / 0.92 | -27.7 dB | 0.48 / 0.84 | 1.51 / 2.77 | 1.52 / 2.74 |
+| 60 / 38 | 30 (7) | 99 | 0.03 / 0.06 | 0.17 / 0.39 | -38.1 dB | 0.53 / 1.59 | 4.67 / 12.60 | 4.76 / 13.12 |
+| 60 / 76 | 36 (10) | 189 | 1.18 / 3.74 | 0.60 / 1.39 | -37.1 dB | 0.46 / 1.66 | 4.72 / 13.21 | 4.78 / 13.74 |
+| 60 / 114 | 37 (10) | 215 | 0.93 / 2.95 | 0.59 / 1.23 | -37.1 dB | 0.46 / 1.33 | 4.91 / 13.50 | 5.05 / 14.01 |
+| 84 / 38 | 10 (1) | 29 | 0.01 / 0.01 | 0.00 / 0.00 | -37.1 dB | 0.60 / 2.65 | 7.05 / 15.04 | 7.37 / 15.32 |
+| 84 / 76 | 10 (1) | 46 | 0.05 / 0.05 | 4.13 / 4.13 | -40.5 dB | 0.30 / 1.23 | 7.52 / 16.03 | 7.66 / 16.34 |
+| 84 / 114 | 10 (1) | 55 | 0.00 / 0.00 | 1.03 / 1.03 | -42.2 dB | 0.26 / 0.80 | 7.36 / 16.32 | 7.56 / 16.63 |
+
+"Scored" partials are those within 50 dB of the strongest in the 1.5-6 s window; frequencies are compared by an independent peak pick of Full and
+of the resynthesis, decay is the slope of each partial's band envelope over 0.3-6 s; octave-band envelope = rms difference (dB) of 50 ms band
+levels over 0.1-8 s, bands 63 Hz ... 8 kHz (centres), frames within 60 dB of the loudest. "Fit only" compares the fitted string with the Full force
+through the same radiation; "missing sympathetic + leaky" compares that Full force-only output with the complete Full output; "total" fitted
+against complete Full. At -80 instead of -60 dB the fit-only means are 0.5-4.2 dB (quiet bands, mostly pruned components).
+
+**Finding: the sympathetic and leaky strings are a large part of the sound of a single note**, up to 7.5 dB mean envelope difference for C6 (16 dB in
+the worst band): a force-only voice cannot reproduce them; they must stay live and be excited by the fitted force through the coupled board (step 3).
+The fit itself is accurate (0.1-0.6 dB mean band envelope error; C2 forte worst in the waveform, -27.7 dB, because of the tension glide, which a sum of
+fixed exponentials only approximates with 460 rotors). Chord (C2+C4+C6, mf): total 1.1 dB mean band envelope error (the low notes dominate).
+
+Cost per voice (i3-8100 at 3.6 GHz, `piano-baked-fit cost|fitcost`, ns per sample and cycles = ns x 3.6): fitted voice, rotor bank only:
+C2 (306 rotors) 54 ns (195 cycles), C4 (189) 32 ns (115), C6 (46) 12 ns (43); a fitted voice including its low pass and its drive of the radiation
+about 110 ns (400 cycles) (the 3-voice pipeline costs 859 ns, one voice 557-645 ns; the shared radiation modes + sum are about 500 ns). The Live
+voice, marginal (5 notes minus 4 notes): C2 3.8 us (13,700 cycles), C4 0.49 us (1,750), C6 0.32 us (1,150); one Live note alone 6.9 / 3.5 / 2.9 us
+(including the board coupling and the strings it wakes). Full marginal 6.1 / 2.4 / 1.7 us. So the fitted voice is 3x (C6) to 35x (C2) cheaper
+than the Live voice, with the gain concentrated in the bass, where Live also needs tension modulation.
+
+A/B: `baked-ab-0.6.wav` (47 s): C2, C4, C6 at mf (5 s each: Full, 0.6 s gap, fitted with the baked radiation, 1.4 s gap), then the chord both ways;
+`baked-ab-0.6-isolated.wav` (70 s) adds, between the two, Full with the sympathetic and leaky strings off (the fair reference for the fit itself).
+
+### Reproduce
+
+```bash
+B=out/piano-mvp-v4; E=mvp/piano-v4/listening/chopin-op28-no4.events
+# step 1: mode energies in Full (modal), merged into mvp/piano-baked/baked_importance.hpp; study of the three radiation forms
+$B/piano-baked-select sweep sweep.txt; $B/piano-baked-select events:$E:5:30 a.txt; $B/piano-baked-select events:$E:30:40 b.txt
+python3 mvp/piano-baked/merge_importance.py mvp/piano-baked/baked_importance.hpp sweep.txt a.txt b.txt
+$B/piano-baked-study --seconds 6 --ir-seconds 0.25,0.5,1.0 --profile
+$B/piano-block-bench --events $E --from 52 --seconds 6 --quality live --block 128 --threads 0 --radiation baked
+# step 2 (cd mvp/piano-baked for the python files)
+$B/piano-baked-capture 60 76 cap/k60_v76          # also cap/k60_v76.iso.*
+python3 fit_string.py cap/k60_v76 60 cap/k60_v76.fit --order 6 --report cap/k60_v76.json
+$B/piano-baked-fit synth cap/k60_v76.fit cap/k60_v76.fit.wav 8; $B/piano-baked-fit force cap/k60_v76.force.f64 60 cap/k60_v76.floor.wav
+python3 report_fit.py cap report.json; $B/piano-baked-fit cost 60 76; $B/piano-baked-fit fitcost cap/k60_v76.fit
+$B/piano-baked-fit ab baked-ab-0.6.wav cap/k36_v76.fit cap/k60_v76.fit cap/k84_v76.fit      # ab3: with Full without sympathetic strings
+```
+
+### Tests (in ctest as `piano-baked-radiation`, plus the existing ones)
+
+B1 error bound (Chopin 6 s in Full and nine single notes: all below -132 dB; asserts -80 dB, octave bands -60 dB); B2 baked output identical for
+`sample()`, blocks 64/100/256 and 0..3 helper threads (Live 2 s, Full 0.5 s); B3 no heap allocation (global `operator new` hook) in 140 blocks
+including radiation and quality switches; B4 Modal/Baked/Auto switched while seven notes sound (finite, no faults), Auto = Baked in Live and
+Modal in Full; B5 bank structure (266 modes, 288 slots, tolerance 1e-6 keeps 261); B6 partitioned convolution against a direct one.
+`piano-clap-playback` covers the new parameter (info, text, parse, 10-byte state round trip, 9-byte and 7-byte states load with Auto, a Live
+render with Baked within -80 dB of Modal, Auto = Baked in Live). `piano-rt-*`, `piano-voices`, `piano-previous-bitexact` unchanged and passing.
+
+### Honest limits
+
+The baked bank is not "baked IRs": the measured result is that a reduced modal IIR beats convolution by a wide margin, and that only the 246
+silent modes can be dropped. Radiation is 3-5 % of Full and about a third of Live cost, so Step 1 alone does not make Full run live. The drive
+pass is L2-bound at 85 ports. Switching the setting cuts the old bank's tail. Step 2 fits one layer per file (no interpolation between velocity
+layers, no re-strike on a sounding string, no pedal and no hammer-felt table beyond the 0.12 s force copy); the fitted voice has no board
+feedback and wakes no sympathetic strings; the 8 s capture is fitted up to 7 s (the tail beyond is extrapolated); C2 forte shows the tension glide.
+Fits exist only for the three keys and three layers. Float rotors drift slowly over
+long holds (not measured beyond 8 s). Cost numbers are single runs on a shared desktop (min of three).
+
 ## Update 0.5.5: imperfections and a Voices setting (display name "Piano MVP 4 - Imperfections")
 
 Listener feedback on 0.5.4: "the string sounds too perfect, almost unrealistic... a piano has three strings per note, are they all

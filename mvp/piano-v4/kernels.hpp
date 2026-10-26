@@ -10,6 +10,7 @@
 // time (target_clones "avx2" / "default"); other targets use the default code.
 #pragma once
 #include <cstddef>
+#include <cstdint>
 
 #if defined(__x86_64__) && defined(__linux__) && defined(__has_attribute)
 #  if __has_attribute(target_clones)
@@ -72,6 +73,19 @@ struct RadiationArrays {
     double *q, *v, *drive, *termL, *termR;
 };
 void radiationModes(const RadiationArrays& a, std::size_t lo, std::size_t hi) noexcept;
+
+// 0.6 baked radiation bank. Drive accumulation in float, in port order, no contraction (so a vector build gives the same
+// bits as the scalar one): for every 8-mode chunk c, drive[c*8+l] += phiT[(c*88 + port)*8 + l] * g for each port k in
+// list order; ports flagged `light` skip the chunks >= lightChunks. phiT is chunk-major so a chunk streams across ports.
+void bankDrive(float* drive, const float* phiT, const std::uint8_t* port, const float* g, const std::uint8_t* light,
+               int count, std::size_t chunks, std::size_t lightChunks) noexcept;
+// The zero-order-hold radiating-mode update of radiationModes() with a float drive (cleared); state and terms in double.
+struct RadiationArraysF {
+    const double *omega, *sigma, *c00, *c01, *c10, *c11, *reL, *imL, *reR, *imR;
+    double *q, *v, *termL, *termR;
+    float* drive;
+};
+void radiationModesF(const RadiationArraysF& a, std::size_t n) noexcept;
 
 // Exact sequential dot products of up to three independent chains (interleaved for ILP; each
 // chain's own sum is formed in index order, as the scalar reference).

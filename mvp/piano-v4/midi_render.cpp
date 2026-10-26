@@ -21,11 +21,17 @@ int main(int argc, char** argv) {
     try {
         // --full (any position after the output): render the whole schedule from frame 0 to the
         // last event plus a 4 s release tail. Default behaviour (40-64 s excerpt) is unchanged.
-        int threads=1; std::string qualityName="full"; double imperfection=1.0; bool imperfectionSet=false;
+        int threads=1; std::string qualityName="full"; std::string radiationName="auto"; double imperfection=1.0; bool imperfectionSet=false;
         for (int i=1;i<argc;) {
             const std::string a=argv[i];
             if (a=="--imperfection" && i+1<argc) {   // 0.5.5: 0 = exactly 0.5.4, 1 = default, up to 2
                 imperfection=std::stod(argv[i+1]); imperfectionSet=true;
+                for (int j=i;j<argc-2;++j) argv[j]=argv[j+2];
+                argc-=2;
+                continue;
+            }
+            if (a=="--radiation" && i+1<argc) {   // 0.6: auto (Full: modal, Live/Balanced: baked) | modal | baked
+                radiationName=argv[i+1];
                 for (int j=i;j<argc-2;++j) argv[j]=argv[j+2];
                 argc-=2;
                 continue;
@@ -90,6 +96,8 @@ int main(int argc, char** argv) {
         if (qualityName=="live") piano.setQuality(piano_mvp_v4::Piano::Quality::Live);
         else if (qualityName=="balanced") piano.setQuality(piano_mvp_v4::Piano::Quality::Balanced);
         else if (qualityName!="full") throw std::runtime_error("--quality live|balanced|full");
+        if (radiationName!="auto" && radiationName!="modal" && radiationName!="baked") throw std::runtime_error("--radiation auto|modal|baked");
+        piano.setRadiation(radiationName=="modal" ? piano_mvp_v4::Piano::Radiation::Modal : radiationName=="baked" ? piano_mvp_v4::Piano::Radiation::Baked : piano_mvp_v4::Piano::Radiation::Auto);
         if (!piano.setWorkerThreads(threads)) throw std::runtime_error("--threads 0..7");
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
         std::ofstream out(argv[2],std::ios::binary);
@@ -142,6 +150,6 @@ int main(int argc, char** argv) {
                   << "; RMS " << std::sqrt(energy/(2*(finish-start)))
                   << "; numerical faults " << piano.numericalFaults()
                   << (full ? "; voice steals " : "; excerpt voice steals ") << piano.voiceSteals()-stealsAtStart
-                  << "; imperfection " << piano.imperfection() << "; threads " << threads << "; quality " << qualityName << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
+                  << "; imperfection " << piano.imperfection() << "; threads " << threads << "; quality " << qualityName << "; radiation " << radiationName << (piano.bakedRadiationActive() ? " (baked bank)" : " (modal bank)") << "; render time " << elapsed << " s; realtime factor " << (finish-start)/double(fs)/elapsed << "\n";
     } catch (const std::exception& e) { std::cerr<<e.what()<<'\n';return 1; }
 }

@@ -4,7 +4,7 @@
 // distribution, the output peak and the number of samples above 1.0.
 //   piano-block-bench --events FILE [--from S] [--to S] | --keys 36,43,48 [--pedal] [--seconds S]
 //       [--block N] [--fs HZ] [--quality live|balanced|full] [--threads N] [--velocity V] [--adaptive]
-//       [--imperfection X (default 1)] [--voices N (0 Auto)] [--bigchords [notension]]
+//       [--radiation auto|modal|baked (0.6, default auto)] [--imperfection X (default 1)] [--voices N (0 Auto)] [--bigchords [notension]]
 //       | --chords BASEKEY [--gap S] [--pedal] [--velocity V]
 //       [--o-NAME VALUE ...]   (preset overrides: voices sym leaky tension trunc floor sleepforce sleeps)
 #include "piano.hpp"
@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     using namespace piano_mvp_v4;
     std::string eventsFile, quality = "live", keyList; int chordBase = 0; double chordGap = 0.15;
     double from = 0, to = -1, fs = 48000, velocity = 0.8, seconds = 4;
-    int block = 64, threads = 1; bool pedal = false, adaptive = false, bigchords = false, notension = false; double imperfection = 1.0; int voices = 0;
+    int block = 64, threads = 1; bool pedal = false, adaptive = false, bigchords = false, notension = false; double imperfection = 1.0; int voices = 0; std::string radiation = "auto";
     std::vector<std::pair<std::string, double>> overrides;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
         else if (a == "--quality") quality = next(); else if (a == "--threads") threads = std::stoi(next());
         else if (a == "--velocity") velocity = std::stod(next()); else if (a == "--adaptive") adaptive = true;
         else if (a == "--imperfection") imperfection = std::stod(next()); else if (a == "--voices") voices = std::stoi(next());
+        else if (a == "--radiation") radiation = next();
         else if (a == "--bigchords") bigchords = true; else if (a == "--bigchords-notension") bigchords = notension = true;
         else if (a.rfind("--o-", 0) == 0) overrides.push_back({a.substr(4), std::stod(next())});
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return 2; }
@@ -47,6 +48,7 @@ int main(int argc, char** argv) {
     piano.setQuality(q);
     piano.setActiveWorkers(threads);
     piano.setImperfection(imperfection); piano.setVoices(voices);
+    piano.setRadiation(radiation == "modal" ? Piano::Radiation::Modal : radiation == "baked" ? Piano::Radiation::Baked : Piano::Radiation::Auto);
     if (adaptive) piano.setAdaptive(true);
     if (!overrides.empty()) {
         auto o = Piano::preset(q);
@@ -115,7 +117,7 @@ int main(int argc, char** argv) {
     double mean = 0; for (double x : ratio) mean += x; mean /= double(ratio.size());
     std::size_t miss = 0; for (double x : ratio) miss += x > 1.0;
     const auto pct = [&](double p) { return u[std::min(u.size() - 1, std::size_t(double(u.size()) * p))]; };
-    std::printf("%s voices %d imp %.1f block %d fs %.0f threads %d%s: mean %.2f p99 %.2f p99.9 %.2f max %.2f misses %zu/%zu peak %.3f over1 %llu stalls %llu shed %d (events %llu) steals %llu\n",
-                quality.c_str(), voices, imperfection, block, fs, threads, adaptive ? " adaptive" : "", mean, pct(0.99), pct(0.999), u.back(), miss, ratio.size(), peak,
+    std::printf("%s rad %s voices %d imp %.1f block %d fs %.0f threads %d%s: mean %.2f p99 %.2f p99.9 %.2f max %.2f misses %zu/%zu peak %.3f over1 %llu stalls %llu shed %d (events %llu) steals %llu\n",
+                quality.c_str(), radiation.c_str(), voices, imperfection, block, fs, threads, adaptive ? " adaptive" : "", mean, pct(0.99), pct(0.999), u.back(), miss, ratio.size(), peak,
                 (unsigned long long)over, (unsigned long long)piano.radiationStalls(), piano.shedLevel(), (unsigned long long)piano.shedEvents(), (unsigned long long)piano.voiceSteals());
 }

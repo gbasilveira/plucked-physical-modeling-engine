@@ -1,0 +1,17 @@
+B1 Chopin 6 s excerpt (Full): baked vs modal rms error -133.933 dB re signal, max abs diff 2.32831e-08; octave bands (dB): 63:-130.39 126:-141.149 252:-143.949 504:-143.446 1008:-130.207 2016:-122.512 4032:-108.254
+B1 note 36 v0.3: -133.425 dB
+B1 note 36 v0.6: -133.444 dB
+B1 note 36 v0.9: -133.379 dB
+B1 note 60 v0.3: -132.541 dB
+B1 note 60 v0.6: -133.176 dB
+B1 note 60 v0.9: -132.922 dB
+B1 note 84 v0.3: -136.507 dB
+B1 note 84 v0.6: -136.642 dB
+B1 note 84 v0.9: -136.264 dB
+B2 PASS: baked output identical for sample(), blocks 64/100/256 and 0..3 helper threads (Live 2 s, Full 0.5 s)
+B3 PASS: 0 heap allocations in 140 blocks with radiation and quality switches (operator new hook)
+B4 PASS: Modal/Baked/Auto switched while 7 notes sound, finite, no faults, peak 0.229971
+B5 PASS: 266 modes kept of 512 (246 zero-weight modes dropped), 288 slots with padding, 96 slots driven by unstruck strings; tolerance 1e-6 keeps 261
+B6 P 64: convolution vs direct rel rms -131.888 dB
+B6 P 128: convolution vs direct rel rms -133.707 dB
+CHECKDONE

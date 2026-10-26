@@ -2,8 +2,10 @@
 #pragma once
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 #include "grand_board_table.hpp"
+#include "baked_importance.hpp"
 #include "pme/osc/mode_bank.hpp"
 #include "kernels.hpp"
 
@@ -11,6 +13,7 @@ namespace piano_mvp_v4 {
 inline constexpr std::size_t kBoardModeCount = 512;   // radiating modes (MVP 3 table)
 inline constexpr std::size_t kBoardPortCount = 88;    // one bridge point per key
 inline constexpr std::size_t kLightRadiatingModes = 176;  // modes below 2.6 kHz
+inline constexpr double kBakedDefaultTolerance = 3e-9;      // dropped energy / total (0.6): about -85 dB rms
 // 0.5.1 geometry assumptions (plate frame of generate_soundboard.py, metres, x bass->treble,
 // y keyboard->tail). Nominal and unmeasured; see README 0.5.1 "Sources and assumptions".
 inline constexpr int kFirstBassBridgeKey = 21, kLastBassBridgeKey = 44, kLastKey = 108;
@@ -34,7 +37,7 @@ class GrandBoard {
 public:
     // Non-audio. Allocates. `lossless` zeroes the coupled-mode damping (energy tests).
     bool configure(double fs, std::vector<double> phi, std::size_t coupledModes, bool lossless,
-                   bool massLoading);
+                   bool massLoading, double bakedTolerance = kBakedDefaultTolerance);
     void reset() noexcept;
     // Radiation state only (drive, modes, delay line): safe while the strings keep stepping.
     void resetRadiation() noexcept;
@@ -58,6 +61,35 @@ public:
     void accumulateDrive(std::size_t port, double g, std::size_t lo, std::size_t hi) noexcept {
         kern::axpy(drive_.data() + lo, participation(port) + lo, g, hi - lo);
     }
+    // All ports of one sample in list order (`light` = unstruck string: only the modes below kLightRadiatingModes).
+    // Modal bank: the same per-port axpy sequence as accumulateDrive (bit-exact). Baked bank: float drive, one
+    // chunked pass (see kern::bankDrive).
+    void accumulateDrives(const std::uint8_t* port, const double* g, const std::uint8_t* light, int count) noexcept {
+        if (!baked_) {
+            for (int k = 0; k < count; ++k) accumulateDrive(port[k], g[k], 0, light[k] ? kLightRadiatingModes : kBoardModeCount);
+            return;
+        }
+        std::array<float, kBoardPortCount> gf;
+        for (int k = 0; k < count; ++k) gf[k] = static_cast<float>(g[k]);
+        kern::bankDrive(bank_.drive.data(), bank_.phiT.data(), port, gf.data(), light, count, bank_.chunks, bank_.lightChunks);
+    }
+    // ---- 0.6 baked radiation (README "Update 0.6") ----
+    // The radiation stage is linear and time invariant in the port drives, so a reduced set of the 512 modes
+    // reproduces it: the modes with zero radiation weight are dropped (exact), then the weakest by measured
+    // output energy (kBakedImportance, from piano-baked-select) while the dropped energy stays below
+    // `tolerance` of the total (relative energy, 1e-9 = -90 dB rms). Same arithmetic per mode as the modal
+    // bank, so the error is only the dropped modes. Switching: the state of the bank being switched to is
+    // cleared (a sounding tail of the other bank is lost); the delay line is kept.
+    void setBaked(bool on) noexcept;
+    bool baked() const noexcept { return baked_; }
+    std::size_t bakedModes() const noexcept { return bank_.kept; }          // radiating modes kept
+    std::size_t bakedPaddedModes() const noexcept { return bank_.count; }   // incl. zero padding to whole 8-mode chunks
+    std::size_t bakedLightModes() const noexcept { return bank_.light; }
+    // Kept original mode indices (ascending).
+    const std::vector<std::uint16_t>& bakedIndex() const noexcept { return bank_.index; }
+    // Per-mode pressure terms of the last radiationModes() (modal bank; tools).
+    const double* termsL() const noexcept { return termL_.data(); }
+    const double* termsR() const noexcept { return termR_.data(); }
     // Upper bound of the output amplitude and of the coupled-mode speed: true when both are below `eps`.
     bool quiet(double eps) const noexcept;
     double outputBound() const noexcept;      // the bound quiet() tests (output amplitude bound)
@@ -87,6 +119,15 @@ private:
     // Radiating modes (zero-order-hold, MVP 3 formulation).
     std::vector<double> termL_, termR_;
     std::vector<double> omega_, sigma_, c00_, c01_, c10_, c11_, q_, v_, drive_, reL_, imL_, reR_, imR_;
+    // 0.6 reduced radiation bank (same recursion, kept modes only; phi rows compacted per port).
+    struct Bank {
+        std::size_t count{}, kept{}, light{}, chunks{}, lightChunks{};   // count = chunks * 8 (padded)
+        std::vector<std::uint16_t> index;                                 // original mode of each kept slot (0xffff: padding)
+        std::vector<double> omega, sigma, c00, c01, c10, c11, reL, imL, reR, imR, q, v, termL, termR;
+        std::vector<float> drive, phiT;                                   // phiT[(chunk * 88 + port) * 8 + lane]
+    } bank_;
+    bool baked_{};
+    void buildBank(double tolerance);
     struct alignas(64) PaddedDouble { double v{}; };   // per-port state on its own cache line (threads write ports)
     std::array<PaddedDouble, kBoardPortCount> lowpass_{};
     std::array<std::array<double, 1024>, 2> delayLine_{};

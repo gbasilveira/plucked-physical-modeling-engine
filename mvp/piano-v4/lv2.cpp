@@ -23,6 +23,7 @@ struct Instance {
     const float* freeWheel{};    // port 5 (optional, designation lv2:freeWheeling): offline bounce -> Full
     const float* imperfection{}; // port 7: 0..2, default 1; a key takes it at its next note-on
     const float* voices{};       // port 8: 0 Auto, 1..4 = 16/32/48/64 struck voices
+    const float* radiation{};    // port 9 (0.6): 0 Auto, 1 Modal, 2 Baked
     int appliedQuality{-1}, appliedThreads{-1}, appliedAdaptive{-1};
     LV2_URID midiType{}, sequenceType{}, frameTime{}, beatTime{};
     bool active{};
@@ -36,6 +37,7 @@ struct Instance {
         const int t = std::clamp(threads ? static_cast<int>(*threads + 0.5f) : 1, 0, kMaxThreads);
         if (t != appliedThreads) { piano.setActiveWorkers(t); appliedThreads = t; }
         { static constexpr int kChoices[] = {0, 16, 32, 48, 64}; piano.setVoices(kChoices[std::clamp(voices ? static_cast<int>(*voices + 0.5f) : 0, 0, 4)]); }
+        piano.setRadiation(static_cast<piano_mvp_v4::Piano::Radiation>(std::clamp(radiation ? static_cast<int>(*radiation + 0.5f) : 0, 0, 2)));
         piano.setImperfection(imperfection ? static_cast<double>(*imperfection) : piano_mvp_v4::Piano::defaultImperfection);
         const int a = ((!adaptive || *adaptive > 0.5f) && q != 2) ? 1 : 0;
         if (a != appliedAdaptive) { piano.setAdaptive(a != 0); appliedAdaptive = a; }
@@ -73,6 +75,7 @@ void connect(LV2_Handle handle,std::uint32_t port,void* data) {
     if (port == 6) s.adaptive = static_cast<const float*>(data);
     if (port == 7) s.imperfection = static_cast<const float*>(data);
     if (port == 8) s.voices = static_cast<const float*>(data);
+    if (port == 9) s.radiation = static_cast<const float*>(data);
 }
 void activate(LV2_Handle handle) {
     auto& s = *static_cast<Instance*>(handle);

@@ -1,0 +1,24 @@
+recording 288000 frames of Full ...
+drive records 24072842 (mean 83.6 ports per sample), distinct port/light sets 100
+   [profile modal] drive 4350 ns, modes 1197 ns, finish 1311 ns per sample (timer overhead ~25 ns each)
+modal replay vs Piano output (sanity, should be 0): rel rms 0 peak 0
+signal rms 0.00882
+modal 512-mode bank: 7045 ns/sample (0.338 of a 48 kHz sample)
+   [profile baked] drive 2270 ns, modes 482 ns, finish 86 ns per sample (timer overhead ~25 ns each)
+baked tol 0e+00: 266 modes, error L rel rms -133.60 dB (peak 2.33e-08) R -134.46 dB, 3004 ns/sample (x2.35)
+   [profile baked] drive 2271 ns, modes 482 ns, finish 86 ns per sample (timer overhead ~25 ns each)
+baked tol 1e-10: 266 modes, error L rel rms -133.60 dB (peak 2.33e-08) R -134.46 dB, 3005 ns/sample (x2.34)
+   [profile baked] drive 2270 ns, modes 482 ns, finish 86 ns per sample (timer overhead ~25 ns each)
+baked tol 1e-09: 266 modes, error L rel rms -133.60 dB (peak 2.33e-08) R -134.46 dB, 3004 ns/sample (x2.35)
+   [profile baked] drive 2269 ns, modes 482 ns, finish 86 ns per sample (timer overhead ~25 ns each)
+baked tol 3e-09: 266 modes, error L rel rms -133.60 dB (peak 2.33e-08) R -134.46 dB, 3003 ns/sample (x2.35)
+   [profile baked] drive 2271 ns, modes 482 ns, finish 86 ns per sample (timer overhead ~25 ns each)
+baked tol 1e-08: 266 modes, error L rel rms -133.60 dB (peak 2.33e-08) R -134.46 dB, 3005 ns/sample (x2.34)
+   [profile baked] drive 2274 ns, modes 482 ns, finish 86 ns per sample (timer overhead ~25 ns each)
+baked tol 1e-07: 266 modes, error L rel rms -133.60 dB (peak 2.33e-08) R -134.46 dB, 3008 ns/sample (x2.34)
+   [profile baked] drive 2276 ns, modes 485 ns, finish 86 ns per sample (timer overhead ~25 ns each)
+baked tol 1e-06: 261 modes, error L rel rms -60.98 dB (peak 1.10e-04) R -64.21 dB, 3016 ns/sample (x2.34)
+conv IR 0.25 s (12211 taps, 100 inputs, P 64, 191 partitions, 33 MB): error L -23.66 dB R -25.48 dB (peak 3.38e-03), 37201 ns/sample (x0.19 of modal, timer overhead included), IR build 0.3 s
+conv IR 0.50 s (24211 taps, 100 inputs, P 64, 379 partitions, 65 MB): error L -30.80 dB R -31.72 dB (peak 1.61e-03), 69128 ns/sample (x0.10 of modal, timer overhead included), IR build 0.6 s
+conv IR 1.00 s (48211 taps, 100 inputs, P 64, 754 partitions, 130 MB): error L -35.45 dB R -36.48 dB (peak 8.87e-04), 120293 ns/sample (x0.06 of modal, timer overhead included), IR build 1.3 s
+FINISHED

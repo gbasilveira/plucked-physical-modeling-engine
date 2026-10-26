@@ -116,6 +116,47 @@ PIANO_CLONES void radiationModes(const RadiationArrays& a, std::size_t lo, std::
                   a.imL + lo, a.reR + lo, a.imR + lo, a.q + lo, a.v + lo, a.drive + lo, a.termL + lo,
                   a.termR + lo, hi - lo);
 }
+PIANO_CLONES void bankDrive(float* __restrict drive, const float* __restrict phiT, const std::uint8_t* port, const float* g,
+                            const std::uint8_t* light, int count, std::size_t chunks, std::size_t lightChunks) noexcept {
+    // Four chunks (32 modes) at a time: four independent accumulator chains hide the add latency; each lane still
+    // adds the ports in list order, so the result does not depend on the grouping or the vector width.
+    for (std::size_t c = 0; c < chunks; c += 4) {
+        float acc[4][8];
+        for (int u = 0; u < 4; ++u) for (int l = 0; l < 8; ++l) acc[u][l] = drive[(c + u) * 8 + l];
+        const float* base = phiT + c * 88 * 8;
+        const bool lightSkip = c >= lightChunks;
+        for (int k = 0; k < count; ++k) {
+            if (lightSkip && light[k]) continue;
+            const float* p = base + static_cast<std::size_t>(port[k]) * 8;
+            const float gk = g[k];
+            for (int u = 0; u < 4; ++u)
+                for (int l = 0; l < 8; ++l) acc[u][l] += p[u * 88 * 8 + l] * gk;
+        }
+        for (int u = 0; u < 4; ++u) for (int l = 0; l < 8; ++l) drive[(c + u) * 8 + l] = acc[u][l];
+    }
+}
+static inline __attribute__((always_inline)) void radiationLoopF(
+    const double* __restrict omega, const double* __restrict sigma, const double* __restrict c00,
+    const double* __restrict c01, const double* __restrict c10, const double* __restrict c11,
+    const double* __restrict reL, const double* __restrict imL, const double* __restrict reR,
+    const double* __restrict imR, double* __restrict q, double* __restrict vv, float* __restrict drive,
+    double* __restrict termL, double* __restrict termR, std::size_t n) noexcept {
+    for (std::size_t i = 0; i < n; ++i) {
+        const double forcing = static_cast<double>(drive[i]);
+        const double equilibrium = forcing / (omega[i] * omega[i]);
+        const double shifted = q[i] - equilibrium;
+        const double qn = c00[i] * shifted + c01[i] * vv[i] + equilibrium;
+        const double v = c10[i] * shifted + c11[i] * vv[i];
+        q[i] = qn; vv[i] = v;
+        const double acceleration = forcing - 2 * sigma[i] * v - omega[i] * omega[i] * qn;
+        termL[i] = reL[i] * acceleration - imL[i] * omega[i] * v;
+        termR[i] = reR[i] * acceleration - imR[i] * omega[i] * v;
+        drive[i] = 0.f;
+    }
+}
+PIANO_CLONES void radiationModesF(const RadiationArraysF& a, std::size_t n) noexcept {
+    radiationLoopF(a.omega, a.sigma, a.c00, a.c01, a.c10, a.c11, a.reL, a.imL, a.reR, a.imR, a.q, a.v, a.drive, a.termL, a.termR, n);
+}
 namespace {
 template <int R>
 inline __attribute__((always_inline)) void passA(const double* const* W, const double* __restrict q,

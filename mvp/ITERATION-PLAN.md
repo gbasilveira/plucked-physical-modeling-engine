@@ -4,6 +4,76 @@ Goal: improve the acoustic-piano character, with one change at a time and audibl
 reproducible comparisons. A passing numerical test is not a listening endorsement.
 Keep MVP 1 and MVP 2 and their artifacts as baselines. Work on branch `mvp/piano`.
 
+## 0.6 plan: bake what is static, compute live only what interacts (2026-10-26)
+
+**Why.** Full is the sound reference and cannot run live: all 88 keys pedalled cost 8.3x real time on average and 10.8x at the attack on the i3-8100
+(4 cores, 3.6 GHz, AVX2; `piano-block-bench --keys 21..108 --pedal --quality full`). Live at 64-256 frame blocks sheds to 8 voices with no tension on dense
+pedalled bass, and the listener hears the thinning. The idea, from the listener: compute the instrument in advance and build a function that
+represents it, like baked shadow masks in games, finding the best approximation. **Full stays the reference model** and every baked part is judged
+against it.
+
+**Goals.** (1) Reproduce Full to a stated error with a fraction of the live work. (2) Keep the interaction that makes a piano (pedal, dampers,
+sympathetic strings, voice stealing) live. (3) Every step is measured against Full, with the error and the cost reported, before it enters the plug-in;
+the listener's ear decides the steps that change the sound.
+
+| part | behaviour | treatment | step |
+| --- | --- | --- | --- |
+| board radiation to the mics (512 modes) | linear, fixed | baked: measure impulse responses (partitioned FFT convolution) against a fitted IIR (reduced modal bank); choose | 1 (done) |
+| board feedback on the strings (128 coupled modes) | linear, interactive | model-order reduction to the modes that matter (balanced truncation or energy-based selection), exact small filter, measure the error | 4 |
+| string partials, decay, two-stage decay, beating | nearly linear | cheap per-key string fitted to Full renders by optimisation (reduced modal set; waveguide with dispersion and loss filters as an alternative) | 2 (experiment), 3 (integration) |
+| hammer felt | nonlinear, mostly key x velocity | tabulated force pulse per key x velocity layer; re-strike on a vibrating string approximate | 3 |
+| tension glide | nonlinear, amplitude dependent | per-key pitch-glide curve against amplitude | 3 |
+| pedal, dampers, sympathetic strings, voice interaction | performance dependent | stay live; cheap once the strings are cheap | live |
+
+**Steps and acceptance criteria.**
+
+1. *Baked radiation* (this iteration). Acceptance: rms error against Modal at most -80 dB re signal on the Chopin excerpt in Full and on single
+   notes; IR length stated from the -100 dB point; cost against the helper-thread radiation at 64/128/256 frames; a setting `Radiation: Modal | Baked`
+   (CLAP parameter, LV2 port after port 8, nothing renumbered), Baked the default for Live and Balanced, Full bit-exact with Modal; determinism
+   (`sample()` = blocks = any thread count), no allocation in `process`, state round trip with old states loading the default.
+2. *String-fit experiment* for C2 (36), C4 (60), C6 (84) at three velocity layers, no pedal, 8 s. Acceptance: a baker tool (numpy only); fit error per
+   key (partial frequency in cents, decay in dB/s, octave-band envelope in dB over 0.1-8 s); cost per voice in cycles per sample against the current Live
+   voice; an A/B file (Full, then the fitted string through the baked radiation, 5 s each, then a three-note chord both ways). Not integrated: step 3 is
+   gated on the listener.
+3. *Integrate the fitted strings* (gated on listening to the A/B): a bank of fits per key and velocity layer with interpolation, the force table of the
+   hammer pulse, the glide curve, the fitted force driving the coupled board so that sympathetic and leaky strings stay live, re-strike and damping.
+4. *Reduce the board feedback* (balanced truncation of the 128 coupled modes), if the strings are cheap enough for it to matter.
+
+**What stays live:** the sustain and una corda pedals, the dampers (including the leaky ones), the sympathetic and leaky strings and their waking, the voice
+limit and stealing, the imperfection plan, the adaptive load shedding.
+
+**Mics, lid and floor (0.5.6).** The measurement says an impulse response per port per mic is the expensive way (convolution cost 5-17x the modal
+bank, hundreds of MB per mic). The cheap way is the reduced modal bank: a mic position or a lid state is another set of per-mode output residues
+(`reL, imL, reR, imR` per mode, a few KB), so an extra mic costs 2 multiply-adds per kept mode per sample (about 0.1 us), not a convolution per port, and the
+drive of the modes is shared. Baking per mic is therefore a table of residues generated offline (`generate_soundboard.py` with the mic position or lid
+state), not a set of IRs. Not implemented now.
+
+### 0.6 results (2026-10-26)
+
+**Step 1, radiation.** Impulse response length at -100 dB: 8.9 s (425,000 taps; the slowest radiating mode is 20.7 Hz with sigma 1.3 /s). An IR per port
+(104+ IRs for struck and unstruck drives, two channels) is about 600 MB. FFT convolution with IRs truncated to 0.25 / 0.5 / 1 s on the dense Chopin drive
+(85 ports per sample): error -24 / -31 / -35 dB, cost 37 / 69 / 120 us per sample against 7.0-8.9 us for the modal bank: **rejected**. The chosen
+bake is a reduced modal bank: the 246 modes whose radiation residues are numerically zero are removed (exact), the 266 others all carry more than
+1e-6 of the energy (energy-based selection removes nothing useful), the drive is accumulated in float with a chunk-major table and the mode update stays
+in double. Error against Modal on the Chopin excerpt (Full): **-133.9 dB** rms (octave bands -108 ... -144 dB); single notes C2/C4/C6 at three
+velocities -132.5 ... -136.6 dB. The stage costs 3.0 us against 7.0-8.9 us (2.3-2.9x). On the pedalled 12-key cluster in Live the no-helper penalty fell from
++0.25 to +0.12 of a deadline; on the Chopin excerpt from +0.20 to +0.09; in the 88-key Full case radiation is 3-5 % of the cost (8.47 -> 8.21
+with the helper). The helper thread stays the default (it is still faster); `Worker threads 0` is workable now (Chopin no-helper p99.9 0.62-0.76 at 64-256
+frames). Auto = Baked for Live and Balanced and Modal for Full (bit-exact with 0.5.5). Details and tables: `piano-v4/README.md`, "Update 0.6".
+
+**Step 2, string fit.** The fitted string (force table of the first 0.12 s, then 29-460 damped complex rotors per layer) matches the Full bridge force in
+frequency to 0.00-1.2 cents rms (3.7 cents worst partial), in decay to 0.00-0.6 dB/s rms (4.1 for the single scored partial of C6 mf), and in octave-band
+envelope to 0.06-0.6 dB mean (0.13-2.7 max); the waveform error is -27.7 ... -47.7 dB (C2 forte worst: tension glide). Cost per voice: rotors 12-54 ns
+(43-195 cycles), a whole fitted voice with its drive about 110 ns (400 cycles), against 0.32-3.8 us (1,150-13,700 cycles) marginal for the Live voice and
+1.7-6.1 us for Full: 3x (C6) to 35x (C2). **The unexpected result:** the fitted string alone differs from complete Full by 1.5-7.5 dB (mean octave-band
+envelope; 13-16 dB in the worst band for C4 and C6), because the sympathetic and leaky strings the note excites are a large part of a single note
+in this model. A/B: `baked-ab-0.6.wav`, `baked-ab-0.6-isolated.wav` (adds Full without sympathetic and leaky strings).
+
+**Recommendation for step 3.** Listen to the A/B first. If the isolated version of the fitted string is acceptable, integrate step 3 with the fitted force
+driving the board coupling so the sympathetic and leaky strings stay live, starting with the bass (tension keys: 35x cheaper, C2 forte needs a glide curve) where
+the gain is; the treble Live voice is already only 0.3-0.5 us. If the missing aftersound is audible, that is the expected cost of the force-only voice and the
+sympathetic coupling must be proven before anything else.
+
 ## Imperfections and Voices (2026-10-25, 0.5.5)
 
 Listener: "the string sounds too perfect... are the three strings all in tune? spread them a bit, like a unison"; and long overlapping pedalled

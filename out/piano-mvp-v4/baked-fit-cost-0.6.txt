@@ -1,0 +1,16 @@
+== key 36
+Live: one note 6909 ns/sample (24872 cycles at 3.6 GHz); marginal voice (5 notes - 4 notes) 3819 ns (13749 cycles)
+Full: one note 25895 ns/sample (93221 cycles); marginal voice 6146 ns (22125 cycles)
+(Live cost includes the board coupling, sympathetic/leaky strings the note wakes and the baked radiation; marginal = with and without the key among four background notes)
+fitted 1 string(s), 306 rotors: rotor bank 54.2 ns/sample (195 cycles at 3.6 GHz); whole pipeline with baked radiation 645 ns/sample (2323 cycles)
+== key 60
+Live: one note 3517 ns/sample (12662 cycles at 3.6 GHz); marginal voice (5 notes - 4 notes) 487 ns (1754 cycles)
+Full: one note 23322 ns/sample (83958 cycles); marginal voice 2373 ns (8541 cycles)
+(Live cost includes the board coupling, sympathetic/leaky strings the note wakes and the baked radiation; marginal = with and without the key among four background notes)
+fitted 1 string(s), 189 rotors: rotor bank 32.1 ns/sample (115 cycles at 3.6 GHz); whole pipeline with baked radiation 616 ns/sample (2219 cycles)
+== key 84
+Live: one note 2883 ns/sample (10380 cycles at 3.6 GHz); marginal voice (5 notes - 4 notes) 319 ns (1149 cycles)
+Full: one note 23037 ns/sample (82934 cycles); marginal voice 1652 ns (5949 cycles)
+(Live cost includes the board coupling, sympathetic/leaky strings the note wakes and the baked radiation; marginal = with and without the key among four background notes)
+fitted 1 string(s), 46 rotors: rotor bank 11.9 ns/sample (43 cycles at 3.6 GHz); whole pipeline with baked radiation 557 ns/sample (2005 cycles)
+done

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstring>
 #include <string>
+#include <vector>
 
 static void require(bool ok, const char* why) { if (!ok) throw std::runtime_error(why); }
 int main(int argc, char** argv) {
@@ -78,7 +79,7 @@ int main(int argc, char** argv) {
         const auto* params = static_cast<const clap_plugin_params_t*>(plugin->get_extension(plugin, CLAP_EXT_PARAMS));
         const auto* render = static_cast<const clap_plugin_render_t*>(plugin->get_extension(plugin, CLAP_EXT_RENDER));
         const auto* state = static_cast<const clap_plugin_state_t*>(plugin->get_extension(plugin, CLAP_EXT_STATE));
-        require(params && render && state && params->count(plugin) == 5, "quality/threads/adaptive/imperfection/voices parameters missing");
+        require(params && render && state && params->count(plugin) == 6, "quality/threads/adaptive/imperfection/voices/radiation parameters missing");
         clap_param_info_t pinfo{};
         require(params->get_info(plugin, 3, &pinfo) && std::string(pinfo.name) == "Imperfection" && pinfo.max_value == 2 && pinfo.default_value == 1 &&
                 !(pinfo.flags & CLAP_PARAM_IS_STEPPED), "imperfection parameter info wrong");
@@ -89,6 +90,11 @@ int main(int argc, char** argv) {
         require(params->value_to_text(plugin, pinfo.id, 2, text, sizeof text) && std::string(text) == "Full", "quality text wrong");
         double parsed = -1;
         require(params->text_to_value(plugin, pinfo.id, "balanced", &parsed) && parsed == 1, "quality parse wrong");
+        require(params->get_info(plugin, 5, &pinfo) && std::string(pinfo.name) == "Radiation" && pinfo.max_value == 2 && pinfo.default_value == 0 &&
+                (pinfo.flags & CLAP_PARAM_IS_STEPPED), "radiation parameter info wrong");
+        require(params->value_to_text(plugin, 5, 2, text, sizeof text) && std::string(text) == "Baked", "radiation text wrong");
+        double rparsed = -1;
+        require(params->text_to_value(plugin, 5, "modal", &rparsed) && rparsed == 1, "radiation parse wrong");
         // The same note renders differently in Live (real time) and Full (offline render mode): the full model
         // has tension modulation on every key; Live keeps it to the lowest keys.
         const auto chord = [&](bool offline) {
@@ -116,10 +122,39 @@ int main(int argc, char** argv) {
             std::memcpy(b, src->d + src->pos, k); src->pos += k; return static_cast<std::int64_t>(k); };
         const auto load = [&](const unsigned char* d, std::size_t n) { Src src{d, n, 0}; clap_istream_t in{&src, read}; return state->load(plugin, &in); };
         const auto value = [&](clap_id id) { double v = -1; params->get_value(plugin, id, &v); return v; };
-        require(saved[7] == 101 && saved[8] == 1, "state bytes: imperfection 1.00 -> 101, voices Auto -> 1");
-        unsigned char custom[9]; std::memcpy(custom, saved, 9); custom[7] = 51; custom[8] = 4;   // 0.50, 48 voices
-        require(load(custom, 9) && value(3) == 0.5 && value(4) == 3, "9-byte state did not restore imperfection and voices");
-        require(load(saved, 7) && value(3) == 1.0 && value(4) == 0, "7-byte (0.5.4.1) state did not load with the defaults");
+        require(saved[7] == 101 && saved[8] == 1 && saved[9] == 1, "state bytes: imperfection 1.00 -> 101, voices Auto -> 1, radiation Auto -> 1");
+        unsigned char custom[10]; std::memcpy(custom, saved, 10); custom[7] = 51; custom[8] = 4; custom[9] = 3;   // 0.50, 48 voices, Baked
+        require(load(custom, 10) && value(3) == 0.5 && value(4) == 3 && value(5) == 2, "10-byte state did not restore imperfection, voices and radiation");
+        custom[9] = 2;   // Modal
+        require(load(custom, 10) && value(5) == 1, "radiation Modal did not round trip");
+        require(load(custom, 9) && value(3) == 0.5 && value(4) == 3 && value(5) == 0, "9-byte (0.5.5) state did not load with Radiation Auto");
+        require(load(saved, 7) && value(3) == 1.0 && value(4) == 0 && value(5) == 0, "7-byte (0.5.4.1) state did not load with the defaults");
+        // 0.6: Radiation Modal / Baked / Auto are all accepted while playing; the Live render with Baked is close to the Modal one.
+        {
+            const auto render = [&](double radiation) {
+                plugin->reset(plugin);
+                clap_event_param_value_t pe{}; pe.header = {sizeof(pe), 0, CLAP_CORE_EVENT_SPACE_ID, CLAP_EVENT_PARAM_VALUE, 0};
+                pe.param_id = 5; pe.value = radiation;
+                clap_input_events_t pev{&pe,
+                    [](const clap_input_events_t*) -> std::uint32_t { return 1; },
+                    [](const clap_input_events_t* l, std::uint32_t i) -> const clap_event_header_t* {
+                        return i == 0 ? &static_cast<const clap_event_param_value_t*>(l->ctx)->header : nullptr; }};
+                params->flush(plugin, &pev, nullptr);   // taken at the next block (a switch inside a block is not made)
+                clap_input_events_t& ev2 = events;
+                audio.data64 = nullptr; audio.data32 = channels; block.in_events = &ev2;
+                event.header.time = 0; event.data[1] = 52; event.data[2] = 100;
+                require(plugin->process(plugin, &block) != CLAP_PROCESS_ERROR, "process failed");
+                block.in_events = nullptr;
+                std::vector<float> o;
+                for (int b = 0; b < 16; ++b) { plugin->process(plugin, &block); o.insert(o.end(), left.begin(), left.end()); }
+                return o;
+            };
+            const auto auto_ = render(0), modal = render(1), baked = render(2), auto2 = render(0);
+            double e = 0, s2 = 0, e2 = 0;
+            for (std::size_t i = 0; i < modal.size(); ++i) { e += (double(modal[i]) - baked[i]) * (double(modal[i]) - baked[i]); s2 += double(modal[i]) * modal[i]; e2 += (double(auto_[i]) - baked[i]) * (double(auto_[i]) - baked[i]); }
+            require(s2 > 0 && std::sqrt(e / s2) < 1e-4, "Live: baked radiation differs from modal by more than -80 dB");
+            require(e2 == 0 && auto_ == auto2, "Auto in Live must be the baked bank, repeatably");
+        }
         plugin->stop_processing(plugin); plugin->deactivate(plugin); plugin->destroy(plugin);
         entry->deinit(); dlclose(library);
         std::cout << "PASS: plug-in load, ports, MIDI offset, stereo float/double, reset; 10 s at voice limit in "

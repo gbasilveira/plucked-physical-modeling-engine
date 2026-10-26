@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <utility>
 
 namespace piano_mvp_v4 {
 void bridgePoint(int key, double& x, double& y) noexcept {
@@ -40,7 +41,7 @@ void buildParticipation(bool grandGeometry, std::vector<double>& phi) {
     }
 }
 bool GrandBoard::configure(double fs, std::vector<double> phi, std::size_t coupled, bool lossless,
-                           bool massLoading) {
+                           bool massLoading, double bakedTolerance) {
     ready_ = false;
     if (!std::isfinite(fs) || fs < 22050 || fs > 192000 || phi.size() != kBoardPortCount * kBoardModeCount ||
         coupled > kBoardModeCount) return false;
@@ -68,12 +69,59 @@ bool GrandBoard::configure(double fs, std::vector<double> phi, std::size_t coupl
         reL_[i] = r[4]; imL_[i] = r[5]; reR_[i] = r[6]; imR_[i] = r[7];
     }
     delay_ = fs * piano_mvp_v3::kRadiationDelaySeconds;
+    buildBank(bakedTolerance);
     ready_ = true; reset(); return true;
+}
+// 0.6: the reduced radiation bank. Selection: importance[i] is the fraction of the total radiated energy
+// carried by mode i over the training corpus (baked_importance.hpp). Drop zero-weight modes, then the weakest
+// modes while the dropped sum stays <= tolerance. The kept modes keep their original order, so the light
+// ports (modes < kLightRadiatingModes) drive a prefix of the bank.
+void GrandBoard::buildBank(double tolerance) {
+    std::vector<std::size_t> order;
+    for (std::size_t i = 0; i < kBoardModeCount; ++i) order.push_back(i);
+    std::stable_sort(order.begin(), order.end(), [](std::size_t a, std::size_t b) {
+        return kBakedImportance[a] < kBakedImportance[b]; });
+    std::vector<bool> keep(kBoardModeCount, true);
+    double dropped = 0;
+    for (std::size_t i : order) {
+        if (kBakedImportance[i] > 0 && dropped + kBakedImportance[i] > tolerance) break;
+        dropped += kBakedImportance[i]; keep[i] = false;
+    }
+    Bank b;
+    // Slots: kept light modes (original index < kLightRadiatingModes) padded to 32, then the others padded to 32.
+    const auto padTo8 = [&]() { while (b.index.size() % 32) b.index.push_back(0xffff); };   // whole groups of four 8-mode chunks
+    for (std::size_t i = 0; i < kBoardModeCount; ++i) if (keep[i] && i < kLightRadiatingModes) b.index.push_back(static_cast<std::uint16_t>(i));
+    padTo8(); b.light = b.index.size();
+    for (std::size_t i = 0; i < kBoardModeCount; ++i) if (keep[i] && i >= kLightRadiatingModes) b.index.push_back(static_cast<std::uint16_t>(i));
+    padTo8();
+    b.count = b.index.size(); b.chunks = b.count / 8; b.lightChunks = b.light / 8;
+    for (auto i : b.index) b.kept += i != 0xffff;
+    const auto pick = [&](const std::vector<double>& src, double pad) {
+        std::vector<double> d(b.count);
+        for (std::size_t j = 0; j < b.count; ++j) d[j] = b.index[j] == 0xffff ? pad : src[b.index[j]];
+        return d;
+    };
+    b.omega = pick(omega_, 1.0); b.sigma = pick(sigma_, 0.0); b.c00 = pick(c00_, 0.0); b.c01 = pick(c01_, 0.0); b.c10 = pick(c10_, 0.0);
+    b.c11 = pick(c11_, 0.0); b.reL = pick(reL_, 0.0); b.imL = pick(imL_, 0.0); b.reR = pick(reR_, 0.0); b.imR = pick(imR_, 0.0);
+    b.q.assign(b.count, 0.0); b.v = b.termL = b.termR = b.q; b.drive.assign(b.count, 0.f);
+    b.phiT.assign(b.chunks * kBoardPortCount * 8, 0.f);
+    for (std::size_t p = 0; p < kBoardPortCount; ++p)
+        for (std::size_t j = 0; j < b.count; ++j)
+            if (b.index[j] != 0xffff) b.phiT[((j / 8) * kBoardPortCount + p) * 8 + j % 8] = static_cast<float>(phi_[p * kBoardModeCount + b.index[j]]);
+    bank_ = std::move(b);
+}
+void GrandBoard::setBaked(bool on) noexcept {
+    if (on == baked_) return;
+    baked_ = on;
+    // Clear the bank that takes over (its state is stale); the delay line keeps the last milliseconds.
+    if (on) { std::fill(bank_.q.begin(), bank_.q.end(), 0.0); std::fill(bank_.v.begin(), bank_.v.end(), 0.0); std::fill(bank_.drive.begin(), bank_.drive.end(), 0.f); }
+    else { std::fill(q_.begin(), q_.end(), 0.0); std::fill(v_.begin(), v_.end(), 0.0); std::fill(drive_.begin(), drive_.end(), 0.0); }
 }
 void GrandBoard::reset() noexcept {
     std::fill(r_.begin(), r_.end(), 0.0); std::fill(u_.begin(), u_.end(), 0.0);
     std::fill(force_.begin(), force_.end(), 0.0); std::fill(drive_.begin(), drive_.end(), 0.0);
     std::fill(q_.begin(), q_.end(), 0.0); std::fill(v_.begin(), v_.end(), 0.0);
+    std::fill(bank_.q.begin(), bank_.q.end(), 0.0); std::fill(bank_.v.begin(), bank_.v.end(), 0.0); std::fill(bank_.drive.begin(), bank_.drive.end(), 0.f);
     for (auto& l : lowpass_) l.v = 0;
     for (auto& ch : delayLine_) ch.fill(0);
     cursor_ = 0;
@@ -81,6 +129,7 @@ void GrandBoard::reset() noexcept {
 void GrandBoard::resetRadiation() noexcept {
     std::fill(drive_.begin(), drive_.end(), 0.0); std::fill(q_.begin(), q_.end(), 0.0);
     std::fill(v_.begin(), v_.end(), 0.0);
+    std::fill(bank_.q.begin(), bank_.q.end(), 0.0); std::fill(bank_.v.begin(), bank_.v.end(), 0.0); std::fill(bank_.drive.begin(), bank_.drive.end(), 0.f);
     for (auto& ch : delayLine_) ch.fill(0);
     cursor_ = 0;
 }
@@ -101,10 +150,15 @@ void GrandBoard::advanceCoupled() noexcept {
 }
 double GrandBoard::outputBound() const noexcept {
     double out = 0;
-    for (std::size_t i = 0; i < kBoardModeCount; ++i) {
-        const double a = omega_[i] * omega_[i] * std::abs(q_[i]) + 2 * sigma_[i] * std::abs(v_[i]) + std::abs(drive_[i]);
-        const double w = omega_[i] * std::abs(v_[i]);
-        out += (std::abs(reL_[i]) + std::abs(reR_[i])) * a + (std::abs(imL_[i]) + std::abs(imR_[i])) * w;
+    const std::size_t n = baked_ ? bank_.count : kBoardModeCount;
+    const double *om = baked_ ? bank_.omega.data() : omega_.data(), *sg = baked_ ? bank_.sigma.data() : sigma_.data();
+    const double *q = baked_ ? bank_.q.data() : q_.data(), *v = baked_ ? bank_.v.data() : v_.data();
+    const double *rl = baked_ ? bank_.reL.data() : reL_.data(), *il = baked_ ? bank_.imL.data() : imL_.data();
+    const double *rr = baked_ ? bank_.reR.data() : reR_.data(), *ir = baked_ ? bank_.imR.data() : imR_.data();
+    for (std::size_t i = 0; i < n; ++i) {
+        const double a = om[i] * om[i] * std::abs(q[i]) + 2 * sg[i] * std::abs(v[i]) + std::abs(baked_ ? static_cast<double>(bank_.drive[i]) : drive_[i]);
+        const double w = om[i] * std::abs(v[i]);
+        out += (std::abs(rl[i]) + std::abs(rr[i])) * a + (std::abs(il[i]) + std::abs(ir[i])) * w;
     }
     for (const auto& ch : delayLine_) for (double x : ch) out = std::max(out, std::abs(x));
     return out;
@@ -116,6 +170,13 @@ double GrandBoard::coupledBound() const noexcept {
 }
 bool GrandBoard::quiet(double eps) const noexcept { return !ready_ || (outputBound() < eps && coupledBound() < eps); }
 void GrandBoard::radiationModes(std::size_t lo, std::size_t hi) noexcept {
+    if (baked_) {   // 0.6: the reduced bank (callers always pass the whole range)
+        kern::RadiationArraysF a{bank_.omega.data(), bank_.sigma.data(), bank_.c00.data(), bank_.c01.data(), bank_.c10.data(), bank_.c11.data(),
+                                 bank_.reL.data(), bank_.imL.data(), bank_.reR.data(), bank_.imR.data(),
+                                 bank_.q.data(), bank_.v.data(), bank_.termL.data(), bank_.termR.data(), bank_.drive.data()};
+        kern::radiationModesF(a, bank_.count);
+        return;
+    }
     kern::RadiationArrays a{omega_.data(), sigma_.data(), c00_.data(), c01_.data(), c10_.data(), c11_.data(),
                             reL_.data(), imL_.data(), reR_.data(), imR_.data(),
                             q_.data(), v_.data(), drive_.data(), termL_.data(), termR_.data()};
@@ -123,7 +184,13 @@ void GrandBoard::radiationModes(std::size_t lo, std::size_t hi) noexcept {
 }
 void GrandBoard::radiationFinish(double& left, double& right) noexcept {
     left = right = 0;
-    for (std::size_t i = 0; i < kBoardModeCount; ++i) { left += termL_[i]; right += termR_[i]; }
+    if (baked_) {   // eight interleaved partial sums, combined in a fixed order (count is a multiple of 32)
+        double sl[8] = {}, sr[8] = {};
+        for (std::size_t i = 0; i < bank_.count; i += 8)
+            for (int u = 0; u < 8; ++u) { sl[u] += bank_.termL[i + u]; sr[u] += bank_.termR[i + u]; }
+        left = ((sl[0] + sl[1]) + (sl[2] + sl[3])) + ((sl[4] + sl[5]) + (sl[6] + sl[7]));
+        right = ((sr[0] + sr[1]) + (sr[2] + sr[3])) + ((sr[4] + sr[5]) + (sr[6] + sr[7]));
+    } else for (std::size_t i = 0; i < kBoardModeCount; ++i) { left += termL_[i]; right += termR_[i]; }
     delayLine_[0][cursor_] = left; delayLine_[1][cursor_] = right;
     const auto whole = static_cast<std::size_t>(delay_);
     const double fraction = delay_ - static_cast<double>(whole);
