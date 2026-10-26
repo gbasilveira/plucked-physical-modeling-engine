@@ -54,7 +54,8 @@ class Ctx:
         self.work = Path(work); self.modes = modes; self.out = Path(repo_out)
         w = self.work
         self.E_a = np.load(w/'ir_open.npz')['E']
-        self.E_v1 = np.load(w/'irb_v1_open.npz'); self.E_full = np.load(w/'irb_full_open.npz')
+        self.E_v1 = np.load(w/'irb_v1_open.npz') if (w/'irb_v1_open.npz').exists() else None
+        self.E_full = np.load(w/'irb_full_open.npz') if (w/'irb_full_open.npz').exists() else None
         self.table_a = w/'table_open.bin'; self.table_b = w/'tableb_open_table.bin'
         self.sr_np = w/'strrad_noplate.bin'; self.sr_p = w/'strrad_plate.bin'
     def idx(self, E, mics):
@@ -75,10 +76,10 @@ class Ctx:
             sig['A4'] = add(board_signal(pb, self.E_full['E'], self.idx(self.E_full, mics)), strings_signal(pb, mi))
         return sig
 
-def validate(ctx):
+def validate(ctx, which=('A0', 'A1', 'A2', 'A3', 'A4'), fname='grand-validation-0.7b.json'):
     work, out = ctx.work, ctx.out
     gain_a = MR.gain_of(out)                                   # the 0.7a convention
-    c4 = ctx.signals('c4v60', [(0.0, 8.0, 60, 60)])
+    c4 = ctx.signals('c4v60', [(0.0, 8.0, 60, 60)], which=which)
     ref06 = M.align(MR.render_06(work, 'c4v60', [(0.0, 8.0, 60, 60)]))
     w = slice(int(0.05*M.FS), int(1.0*M.FS))
     def rms(x): return float(np.sqrt(np.mean(M.align(x)[w]**2)))
@@ -89,12 +90,12 @@ def validate(ctx):
         for vel, layer in LAYERS.items():
             notes = [(0.0, 8.0, key, int(vel))]; tag = f'{note}_v{vel}'
             ref = M.load_ref(ref_dir/f'{note}v{layer}.flac')
-            sig = ctx.signals(f'{note.lower()}v{vel}', notes)
+            sig = ctx.signals(f'{note.lower()}v{vel}', notes, which=which)
             rec = {'reference': ref, '0.6': M.align(MR.render_06(work, f'{note.lower()}v{vel}', notes))}
             for k, v in sig.items(): rec[k] = M.align(v*gains[k])
             rows[tag] = {k: {m: (a.tolist() if hasattr(a, 'tolist') else a) for m, a in M.all_metrics(x).items()} for k, x in rec.items()}
             print('validated', tag, flush=True)
-    (out/'grand-validation-0.7b.json').write_text(json.dumps(dict(gains=gains, gain_0p7a=gain_a, rows=rows), indent=1))
+    (out/fname).write_text(json.dumps(dict(gains=gains, gain_0p7a=gain_a, rows=rows), indent=1))
 
 def seg(x, dur=5.0, fade=0.3):
     y = x[:int(dur*M.FS)].copy(); n = int(fade*M.FS); y[-n:] *= np.linspace(1, 0, n)[:, None]; return y
@@ -160,4 +161,7 @@ def etude(ctx):
 
 if __name__ == '__main__':
     work, out, modes, step = sys.argv[1:5]
-    {'validate': validate, 'ab': ab, 'mics': mics, 'chopin': chopin, 'etude': etude}[step](Ctx(work, modes, out))
+    if step == 'validate_partial':
+        validate(Ctx(work, modes, out), ('A0', 'A1', 'A2'), 'grand-validation-0.7b-partial.json')
+    else:
+        {'validate': validate, 'ab': ab, 'mics': mics, 'chopin': chopin, 'etude': etude}[step](Ctx(work, modes, out))

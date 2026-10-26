@@ -29,7 +29,12 @@ class Scene:
         sol, inside, XX, YY = S.solid_mask(self.g, lid, plate)
         self.lab = np.ascontiguousarray(sol)                          # (NX, NY, NZ) uint8
         pm = S.plate_solid(XX, YY - S.Y_BOARD) if plate else np.zeros(XX.shape, bool)
-        self.plate_dist = distance_transform_edt(pm)*self.g.dx        # distance (m) from a plate cell to the nearest open cell (in plane)
+        pm_ext = pm | ~inside                                           # outside the outline is the rim: no opening there
+        self.plate_dist = distance_transform_edt(pm_ext)*self.g.dx      # distance (m) from a plate cell to the nearest open cell (in plane)
+        from scipy.ndimage import maximum_filter
+        r = max(1, int(round(0.06/self.g.dx)))
+        self.plate_halfwidth = maximum_filter(self.plate_dist, size=2*r + 1)   # local half width of a strut (distance to the medial axis)
+        self.plate_ext = pm_ext
         ang = math.radians(S.LID_ANGLES[lid]); self.lid_n = np.array([-math.sin(ang), 0.0, math.cos(ang)])
         self.lid_ang = ang
 
@@ -44,7 +49,7 @@ class Scene:
         """c such that v = c / sqrt(lambda) for the leg A->B (arrays (n,3)); H_CLEAR where no solid cell is crossed."""
         A = np.atleast_2d(A); B = np.broadcast_to(np.asarray(B, float), A.shape)
         n = len(A); L = np.linalg.norm(B - A, axis=1); u = (B - A)/np.maximum(L, 1e-9)[:, None]
-        hbest = np.zeros(n); tbest = np.full(n, 0.5); hit = np.zeros(n, bool)
+        hbest = np.zeros(n); tbest = np.full(n, 0.5); hit = np.zeros(n, bool); h2best = np.full(n, np.inf)
         g = self.g
         for tt in (np.arange(nsteps) + 0.5)/nsteps:
             P = A + (B - A)*tt
@@ -53,18 +58,22 @@ class Scene:
             lab = np.zeros(n, np.uint8); lab[inb] = self.lab[i[inb], j[inb], k[inb]]
             if ignore_lid: lab[lab == 2] = 0
             if not lab.any(): continue
-            h = np.zeros(n)
+            h = np.zeros(n); h2 = np.full(n, np.inf)
             m3 = lab == 3
-            if m3.any(): h[m3] = (self.plate_dist[i[m3], j[m3]] + 0.5*g.dx)*np.abs(u[m3, 2])
+            if m3.any():
+                a = self.plate_dist[i[m3], j[m3]] + 0.5*g.dx; wh = self.plate_halfwidth[i[m3], j[m3]]
+                narrow = wh < 0.045                                  # a strut (a free opening within reach on both sides), not the rim-side band
+                h[m3] = a*np.abs(u[m3, 2]); h2[m3] = np.where(narrow, np.maximum(2*wh - a, 0.0)*np.abs(u[m3, 2]) + 0.5*g.dx, np.inf)
             m2 = lab == 2
             if m2.any(): h[m2] = (self.lid_in_plane_distance(P[m2]) + 0.5*g.dx)*np.abs(u[m2] @ self.lid_n)
             m1 = lab == 1
             if m1.any(): h[m1] = (S.Z_RIM_TOP - P[m1, 2] + 0.5*g.dx)*np.sqrt(np.maximum(1 - u[m1, 2]**2, 0.0))
             better = (lab > 0) & (h >= hbest)
-            hbest[better] = h[better]; tbest[better] = tt; hit |= lab > 0
+            hbest[better] = h[better]; h2best[better] = h2[better]; tbest[better] = tt; hit |= lab > 0
         d1 = np.maximum(tbest*L, 0.01); d2 = np.maximum((1 - tbest)*L, 0.01)
-        c = hbest*np.sqrt(2*(d1 + d2)/(d1*d2))
-        return np.where(hit, c, H_CLEAR)
+        sc = np.sqrt(2*(d1 + d2)/(d1*d2))
+        self.last_c2 = np.where(hit, h2best*sc, np.inf)                 # second edge of a narrow obstacle (strip: factor K(v1) + K(v2))
+        return np.where(hit, hbest*sc, H_CLEAR)
 
 def surface_points(spacing):
     xs = np.arange(spacing/2, 1.4, spacing); ys = np.arange(spacing/2, geo.LEN_Y, spacing)
@@ -77,7 +86,8 @@ class Paths:
         self.sc = sc; m = np.asarray(S.MICS[mic] if isinstance(mic, str) else mic, float); self.mic = m
         P = np.stack([X, Y + S.Y_BOARD, np.full_like(X, S.KB_Z)], 1) + np.array([0, 0, 0.5*sc.g.dx])
         self.r = [np.linalg.norm(P - m, axis=1)]
-        self.legs = [[sc.leg_coefficient(P, m, ignore_lid=False)]]
+        c0 = sc.leg_coefficient(P, m, ignore_lid=False)
+        self.legs = [[c0]]; self.legs2 = [[sc.last_c2]]
         if with_lid and sc.lid != 'closed':
             n = sc.lid_n; h = np.array([S.HINGE_X, 0.0, S.Z_RIM_TOP]); dm = np.dot(m - h, n)
             if dm < 0:
@@ -86,18 +96,24 @@ class Paths:
                 uu = (Sp - h) @ np.array([math.cos(sc.lid_ang), 0.0, math.sin(sc.lid_ang)]); yb = Sp[:, 1] - S.Y_BOARD
                 width = geo.right_edge(np.clip(yb, 0, geo.LEN_Y)) + S.RIM_T - S.HINGE_X
                 on = (uu >= 0) & (uu <= width) & (Sp[:, 1] >= 0.35) & (Sp[:, 1] <= S.Y_BOARD + geo.LEN_Y + S.RIM_T)
-                c1 = sc.leg_coefficient(P, Sp, ignore_lid=True); c2 = sc.leg_coefficient(Sp, m, ignore_lid=True)
-                self.r.append(np.where(on, ri, np.inf)); self.legs.append([c1, c2])
+                c1b = sc.leg_coefficient(P, Sp, ignore_lid=True); c1_2 = sc.last_c2
+                c2b = sc.leg_coefficient(Sp, m, ignore_lid=True); c2_2 = sc.last_c2
+                self.r.append(np.where(on, ri, np.inf)); self.legs.append([c1b, c2b]); self.legs2.append([c1_2, c2_2])
         self.P = P
 
     def weights(self, f):
         """Complex path sum  sum_paths K(v) exp(-jkr)/r  per surface point at frequency f."""
-        k = 2*math.pi*f/C; lam = C/f; acc = np.zeros(len(self.r[0]), complex)
-        for r, legs in zip(self.r, self.legs):
+        k = 2*math.pi*f/C; sq = 1.0/math.sqrt(C/f); acc = np.zeros(len(self.r[0]), complex)
+        if not hasattr(self, '_blk'):
+            self._blk = [[(np.where(c > H_CLEAR + 1)[0], c[c > H_CLEAR + 1], c2[c > H_CLEAR + 1]) for c, c2 in zip(legs, legs2)] for legs, legs2 in zip(self.legs, self.legs2)]
+            self._fin = [np.where(np.isfinite(r))[0] for r in self.r]
+        for r, blk, fin in zip(self.r, self._blk, self._fin):
             w = np.ones(len(r), complex)
-            for c in legs:
-                w = w*np.where(c <= H_CLEAR + 1, 1.0, knife_edge(np.maximum(c, -50)/math.sqrt(lam)))
-            fin = np.isfinite(r)
+            for idx, c, c2 in blk:
+                if len(idx):
+                    kk = knife_edge(c*sq); fin2 = np.isfinite(c2)
+                    if fin2.any(): kk[fin2] = kk[fin2] + knife_edge(c2[fin2]*sq)     # strip: both edges
+                    w[idx] *= kk
             acc[fin] += w[fin]*np.exp(-1j*k*r[fin])/r[fin]
         return acc
 

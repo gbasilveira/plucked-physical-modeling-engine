@@ -21,6 +21,7 @@ FADE = 0.15
 X_COARSE = (900.0, 1300.0)          # coarse -> fine (fine available)
 X_FINE = (2200.0, 3000.0)           # fine -> Rayleigh
 X_COARSE_ONLY = (1400.0, 2000.0)    # coarse -> Rayleigh (no fine run)
+HF_GROUPS = [(0.0, 10000.0, 0.006), (10000.0, 1.0e9, 0.004)]   # (f_lo, f_hi, surface spacing)
 
 def cos_ramp(f, f1, f2):
     x = np.clip((f - f1)/(f2 - f1), 0, 1)
@@ -63,16 +64,25 @@ def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
     sc = RB.Scene(lid, plate=plate)
     # surface sampling
     X12, Y12, dA12 = RB.surface_points(0.012)
-    X6, Y6, dA6 = RB.surface_points(0.006)
     interp = LinearNDInterpolator(d['nodes'], d['W'].astype(np.float64))
     Phi12 = np.nan_to_num(interp(np.stack([X12, Y12], 1))).T
     fgrid = np.arange(1000.0, 5001.0, 10.0)
-    # statistical mode shapes on the 6 mm grid (float32), mass-normalised
-    hsurf = S.geo.thickness(X6, Y6); dsurf = S.geo.edge_distance(X6, Y6)
-    Nh = len(sb.f); Phi_hf = np.zeros((Nh, len(X6)), np.float32)
-    for i0 in range(0, Nh, 25):
-        ii = np.arange(i0, min(Nh, i0 + 25)); Phi_hf[ii] = sb.shape(ii, X6, Y6, dsurf, hsurf).astype(np.float32)
-    print(f'{lid}/{variant}: HF shapes on the surface grid done {time.time()-t_start:.0f}s', flush=True)
+    # statistical mode shapes on the surface grids (6 mm below 10 kHz, 4 mm above: the Rayleigh integrand must be sampled at < lambda_b / 2), mass-normalised
+    Nh = len(sb.f); groups = []
+    for (flo, fhi, sp) in HF_GROUPS:
+        idx = np.where((sb.f >= flo) & (sb.f < fhi))[0]
+        if not len(idx): continue
+        Xg, Yg, dAg = RB.surface_points(sp)
+        cache = Path(hf_npz).with_suffix(f'.shapes{int(sp*1000)}mm.npy')
+        if cache.exists() and np.load(cache, mmap_mode='r').shape == (len(idx), len(Xg)):
+            Pg = np.load(cache)
+        else:
+            hs = S.geo.thickness(Xg, Yg); ds_ = S.geo.edge_distance(Xg, Yg); Pg = np.zeros((len(idx), len(Xg)), np.float32)
+            for i0 in range(0, len(idx), 20):
+                ii = idx[i0:i0 + 20]; Pg[i0:i0 + 20] = sb.shape(ii, Xg, Yg, ds_, hs).astype(np.float32)
+            np.save(cache, Pg)
+        groups.append((idx, Xg, Yg, dAg, Pg))
+    print(f'{lid}/{variant}: HF shapes on the surface grids done {time.time()-t_start:.0f}s', flush=True)
     Yfem = 1j*w48[:, None]/(omega_v[None, :]**2 - w48[:, None]**2 + 2j*sigma_v[None, :]*w48[:, None])
     om_h = 2*np.pi*sb.f; sg_h = 0.5*0.02*om_h
     E = np.zeros((len(mics), 88, nT0), np.float32); diag = {}
@@ -108,12 +118,13 @@ def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
         Ef = Gfem @ phi_fem.T                                              # (nf, 88)
         # ---- statistical modes (Rayleigh only, narrow band)
         if hf is not None and variant in ('v1', 'full'):
-            P6 = RB.Paths(sc, m, X6, Y6)
-            if not diffraction: P6.weights = _binary_weights(P6)
             A = np.zeros(Nh, complex)
-            for i in range(Nh):
-                acc = P6.weights(sb.f[i])
-                A[i] = (Phi_hf[i].astype(np.float64) @ acc)*dA6*(1j*om_h[i]*RB.RHO/(2*math.pi))*np.exp(1j*om_h[i]*tau0)
+            for (idx, Xg, Yg, dAg, Pg) in groups:
+                Pp = RB.Paths(sc, m, Xg, Yg)
+                if not diffraction: Pp.weights = _binary_weights(Pp)
+                for q, i in enumerate(idx):
+                    acc = Pp.weights(sb.f[i])
+                    A[i] = (Pg[q].astype(np.float64) @ acc)*dAg*(1j*om_h[i]*RB.RHO/(2*math.pi))*np.exp(1j*om_h[i]*tau0)
             for i0 in range(0, Nh, 200):
                 ii = slice(i0, min(Nh, i0 + 200))
                 Yh = 1j*w48[:, None]/(om_h[None, ii]**2 - w48[:, None]**2 + 2j*sg_h[None, ii]*w48[:, None])

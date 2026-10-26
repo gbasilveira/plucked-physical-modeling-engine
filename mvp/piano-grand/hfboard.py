@@ -123,7 +123,7 @@ def surface_grid(spacing):
     X, Y = X[ok], Y[ok]
     return X, Y, geo.edge_distance(X, Y), geo.thickness(X, Y)
 
-def make_statboard(f_lo, f_hi, seed, nplane=40, dens_scale=1.0, beta_rib=0.0, norm_spacing=0.01):
+def make_statboard(f_lo, f_hi, seed, nplane=40, dens_scale=1.0, beta_rib=0.0, norm_spacing=0.01, decimate_above=(1.0e9, 1.0)):
     """Draw the statistical modes between f_lo and f_hi (spacing: gamma(2) distributed around 1/n(f), the Wigner-like repulsion of an irregular plate)."""
     rng = np.random.default_rng(seed)
     X, Y, d_edge, h_loc = surface_grid(norm_spacing); dA = norm_spacing**2
@@ -133,7 +133,7 @@ def make_statboard(f_lo, f_hi, seed, nplane=40, dens_scale=1.0, beta_rib=0.0, no
     f_modes = []
     f = f_lo
     while True:
-        n = np.interp(f, fg, ng)
+        n = np.interp(f, fg, ng)/(decimate_above[1] if f > decimate_above[0] else 1.0)     # modal overlap >> 1: fewer, stronger modes carry the same power
         f += rng.gamma(2.0, 1.0/(2.0*n))
         if f > f_hi: break
         f_modes.append(f)
@@ -198,11 +198,17 @@ def calibrate(sb, phi_ports_raw, T0, f0, slope, eta_p=0.0, nb_edges=None):
         phi[:, idx] = phi_ports_raw[:, idx]*c[:, None]
     return phi, ctab, edges
 
-def build_hf_set(modes_npz, f_hi, seed=1, f_lo=None, nplane=40, eta_p=0.0, beta_rib=0.0, spacing=0.012, mobility_from=None):
+def build_hf_set(modes_npz, f_hi, seed=1, f_lo=None, nplane=40, eta_p=0.0, beta_rib=0.0, spacing=0.012, mobility_from=None, decimate_above=(1.0e9, 1.0), anchor_density=True):
     """Statistical mode set above the converged FEM band: returns dict with f, phi (88, N), the board parameters and the calibration."""
     d = np.load(modes_npz); fem_f = d['f']; phi_fem = d['phi']
     f_lo = float(fem_f[-1]) if f_lo is None else f_lo
-    sb = make_statboard(f_lo, f_hi, seed, nplane, beta_rib=beta_rib)
+    dens = 1.0
+    if anchor_density:      # FEM count over the last converged half octave against the Weyl count of the bare plate (ribs and bridges change the constant)
+        xs = np.linspace(0, 1.4, 300); ys = np.linspace(0, geo.LEN_Y, 300); XX, YY = np.meshgrid(xs, ys); ok = geo.inside(XX, YY, 0)
+        hbar = float(geo.thickness(XX[ok], YY[ok]).mean()); per = float(np.sum(np.hypot(*np.diff(geo.outline(0.01), axis=0, append=geo.outline(0.01)[:1]).T)))
+        lo_, hi_ = 0.8*fem_f[-1], 0.985*fem_f[-1]
+        dens = float(((fem_f >= lo_) & (fem_f < hi_)).sum()/(hi_ - lo_)/weyl_density(hbar, np.linspace(lo_, hi_, 6), geo.area(), per).mean())
+    sb = make_statboard(f_lo, f_hi, seed, nplane, dens_scale=dens, beta_rib=beta_rib, decimate_above=decimate_above)
     T0, f0, slope = mobility_target(fem_f, phi_fem) if mobility_from is None else mobility_from
     kx, ky = d['kx'], d['ky']
     # shape at the string points: no edge layer (all points are > 0.13 m from the rim), thickness weight at the point
@@ -213,12 +219,12 @@ def build_hf_set(modes_npz, f_hi, seed=1, f_lo=None, nplane=40, eta_p=0.0, beta_
         ii = idx[i0:i0 + 100]
         raw[:, ii] = sb.shape(ii, kx, ky, dist_k, h_k).T
     phi, ctab, edges = calibrate(sb, raw, T0, f0, slope, eta_p)
-    return dict(sb=sb, phi=phi, phi_raw=raw, ctab=ctab, edges=edges, T0=T0, f0=f0, slope=slope)
+    return dict(sb=sb, phi=phi, phi_raw=raw, ctab=ctab, edges=edges, T0=T0, f0=f0, slope=slope, density_anchor=dens)
 
 def save_hf_set(path, hf):
     sb = hf['sb']
     np.savez(path, f=sb.f, kx=sb.kx, ky=sb.ky, psi=sb.psi, kbar=sb.kbar, norm=sb.norm, beta_rib=sb.beta_rib, rib_phase=sb.rib_phase,
-             phi=hf['phi'], ctab=hf['ctab'], edges=hf['edges'], T0=hf['T0'], f0=hf['f0'], slope=hf['slope'])
+             phi=hf['phi'], ctab=hf['ctab'], edges=hf['edges'], T0=hf['T0'], f0=hf['f0'], slope=hf['slope'], density_anchor=hf.get('density_anchor', 1.0))
 
 def load_hf_set(path):
     d = np.load(path)

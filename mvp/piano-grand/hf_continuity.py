@@ -56,7 +56,7 @@ def main(work, modes_npz, hf_npz, out, lid='open', mic='closeL'):
         ii = idx[i0:i0 + 40]; Shp[ii] = sbt.shape(ii, X, Y, ds, hs)
     Ps = power(sbt.f, hft['phi'], Shp)
     rows = []
-    edges = band_edges(2300, 3500)
+    edges = 2400.0*2**(np.arange(0, 7)/6.0)             # sixth-octave bands 2.4-3.4 kHz
     for lo, hi in zip(edges[:-1], edges[1:]):
         s = (fgrid >= lo) & (fgrid < hi)
         rows.append((math.sqrt(lo*hi), float(10*np.log10(Ps[s].mean()/Pf[s].mean()))))
