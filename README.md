@@ -55,8 +55,8 @@ LV2 control ports (the CLAP version has the same parameters):
 Buffer size: set the host to 128 or 256 samples (2.7 or 5.3 ms at 48 kHz) on a modest CPU; 64 works from about E3 upward. With PipeWire, force the quantum and raise the maximum too:
 
 ```bash
+pw-metadata -n settings 0 clock.max-quantum 256   # or higher; the max must be raised first
 pw-metadata -n settings 0 clock.force-quantum 256
-pw-metadata -n settings 0 clock.max-quantum 256   # or higher
 ```
 
 **Full is offline only** (88 voices, nothing capped); use it for bouncing. Live is for playing and is limited to 16 struck keys.
