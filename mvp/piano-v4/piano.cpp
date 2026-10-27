@@ -770,13 +770,38 @@ void Piano::radiateRecord(std::uint64_t n) noexcept {
     if (!std::isfinite(l) || !std::isfinite(r)) { l = r = 0; radFault_.store(true, std::memory_order_relaxed); board_.resetRadiation(); }
     ring_.outL[slot] = l; ring_.outR[slot] = r;
 }
+// 0.7c: Body Grand batches up to GrandRadiation::kBatch records (each port's residue rows are read once per batch); same arithmetic as radiateRecord.
+void Piano::radiateBatch(std::uint64_t first, unsigned m) noexcept {
+    std::array<GrandRadiation::Record, GrandRadiation::kBatch> recs;
+    for (unsigned i = 0; i < m; ++i) {
+        const std::size_t slot = static_cast<std::size_t>((first + i) & (ringSize - 1));
+        recs[i] = {ring_.keys.data() + slot * 88, ring_.g.data() + slot * 88, ring_.count[slot]};
+    }
+    grand_.loadBatch(recs.data(), static_cast<int>(m));
+    for (unsigned i = 0; i < m; ++i) {
+        const std::size_t slot = static_cast<std::size_t>((first + i) & (ringSize - 1));
+        grand_.stepRecord(static_cast<int>(i));
+        board_.setDirect(ring_.dir.data() + slot * 4);
+        double pressureL, pressureR;
+        board_.radiationFinish(pressureL, pressureR);
+        float l = static_cast<float>(0.05 * pressureL), r = static_cast<float>(0.05 * pressureR);
+        if (!std::isfinite(l) || !std::isfinite(r)) { l = r = 0; radFault_.store(true, std::memory_order_relaxed); board_.resetRadiation(); }
+        ring_.outL[slot] = l; ring_.outR[slot] = r;
+    }
+}
 bool Piano::pumpRecords(std::uint32_t maxRecords, unsigned holdUs) noexcept {
     std::uint32_t expected = 0;
     if (!radLock_.compare_exchange_strong(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) return false;
     std::uint64_t done = consumed_.load(std::memory_order_relaxed);
     const std::uint64_t avail = produced_.load(std::memory_order_acquire);
     std::uint32_t n = 0;
-    while (done < avail && n < maxRecords) { radiateRecord(done); ++done; ++n; consumed_.store(done, std::memory_order_release); }
+    while (done < avail && n < maxRecords) {
+        if (grandOn_) {
+            const unsigned m = static_cast<unsigned>(std::min<std::uint64_t>({GrandRadiation::kBatch, avail - done, std::uint64_t{maxRecords - n}}));
+            radiateBatch(done, m); done += m; n += m;
+        } else { radiateRecord(done); ++done; ++n; }
+        consumed_.store(done, std::memory_order_release);
+    }
     if (holdUs && n > 0) std::this_thread::sleep_for(std::chrono::microseconds(holdUs));   // tests only
     radLock_.store(0, std::memory_order_release);
     return n > 0;

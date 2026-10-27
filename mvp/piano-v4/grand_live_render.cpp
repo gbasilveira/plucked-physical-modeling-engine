@@ -26,14 +26,14 @@ int main(int argc, char** argv) {
     try {
         if (argc < 3) throw std::runtime_error("usage: piano-grand-live-render EVENTS OUT.f32 [options]");
         std::string body = "grand", quality = "full", tablePath; int lid = 0, mic = 0, threads = 1, block = 128; double tail = 4.0;
-        bool direct = true, useSample = false, hash = false;
+        bool direct = true, useSample = false, hash = false; int stride = 0;
         for (int i = 3; i < argc; ++i) {
             const std::string a = argv[i];
             auto next = [&]() { if (i + 1 >= argc) throw std::runtime_error("missing value for " + a); return std::string(argv[++i]); };
             if (a == "--body") body = next(); else if (a == "--quality") quality = next(); else if (a == "--lid") lid = std::stoi(next());
             else if (a == "--mic") mic = std::stoi(next()); else if (a == "--table") tablePath = next(); else if (a == "--threads") threads = std::stoi(next());
             else if (a == "--block") block = std::stoi(next()); else if (a == "--tail") tail = std::stod(next());
-            else if (a == "--no-direct") direct = false; else if (a == "--sample") useSample = true; else if (a == "--hash") hash = true;
+            else if (a == "--stride") stride = std::stoi(next()); else if (a == "--no-direct") direct = false; else if (a == "--sample") useSample = true; else if (a == "--hash") hash = true;
             else throw std::runtime_error("unknown option " + a);
         }
         constexpr int fs = 48000;
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed (no grand table?)");
         piano.setQuality(quality == "live" ? Piano::Quality::Live : quality == "balanced" ? Piano::Quality::Balanced : Piano::Quality::Full);
         piano.setActiveWorkers(threads);
-        piano.setGrandLid(lid); piano.setGrandMic(mic); piano.setGrandDirect(direct);
+        piano.setGrandHighStride(stride); piano.setGrandLid(lid); piano.setGrandMic(mic); piano.setGrandDirect(direct);
         const int end = events.back().frame + 1, finish = end + static_cast<int>(tail * fs);
         std::ofstream out(argv[2], std::ios::binary); if (!out) throw std::runtime_error("cannot write");
         pme::simd::ScopedFlushDenormals denormals;
@@ -91,6 +91,7 @@ int main(int argc, char** argv) {
         const double el = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
         std::printf("%.1f s, rms %.5f peak %.4f faults %llu, %.1f s elapsed (x%.2f real time)\n", finish / double(fs), std::sqrt(energy / (2.0 * finish)), peak,
                     (unsigned long long)piano.numericalFaults(), el, finish / double(fs) / el);
+        std::printf("high stride %d, %zu high modes, %zu low poles\n", piano.grandRadiation().highStride(), piano.grandRadiation().highModeCount(), piano.grandRadiation().lowPoleCount());
         if (hash) std::printf("hash %016llx\n", (unsigned long long)h);
         return piano.numericalFaults() ? 1 : 0;
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }

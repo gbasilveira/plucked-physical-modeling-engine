@@ -161,6 +161,9 @@ PIANO_CLONES void axpyC(float* __restrict dre, float* __restrict dim, const floa
                         float g, std::size_t n) noexcept {
     for (std::size_t i = 0; i < n; ++i) { dre[i] += rre[i] * g; dim[i] += rim[i] * g; }
 }
+PIANO_CLONES void axpyF(float* __restrict y, const float* __restrict x, float g, std::size_t n) noexcept {
+    for (std::size_t i = 0; i < n; ++i) y[i] += x[i] * g;
+}
 PIANO_CLONES void lfStep(const double* __restrict lre, const double* __restrict lim, double* __restrict xre, double* __restrict xim,
                          float* __restrict dre, float* __restrict dim, std::size_t n) noexcept {
     for (std::size_t i = 0; i < n; ++i) {

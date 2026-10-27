@@ -307,6 +307,9 @@ public:
     int grandMic() const noexcept { return micReq_.load(std::memory_order_relaxed); }
     // Direct radiation of the struck strings on/off (default on; Grand only).
     void setGrandDirect(bool on) noexcept { directReq_.store(on ? 1 : 0, std::memory_order_relaxed); }
+    // High-range density of the grand radiation: 0 = Auto (every third statistical mode in Live, all of them in Balanced and Full), 1 = all,
+    // 3 = every third. Real-time safe; the high range restarts from rest when it changes.
+    void setGrandHighStride(int s) noexcept { strideSetting_.store(s == 1 || s == 3 ? s : 0, std::memory_order_relaxed); }
     const GrandRadiation& grandRadiation() const noexcept { return grand_; }
     void reset() noexcept;
     void noteOn(int key, double velocity) noexcept;
@@ -389,15 +392,16 @@ private:
     Body body_{Body::Classic};
     const std::uint8_t* blob_{}; std::size_t blobSize_{};
     GrandTable grandTable_; GrandRadiation grand_; bool grandOn_{};
-    std::atomic<int> lidReq_{0}, micReq_{0}, directReq_{1};
+    std::atomic<int> lidReq_{0}, micReq_{0}, directReq_{1}, strideSetting_{0};
     void computeDirect(Voice& v, int port) noexcept;
     void sumDirect(float* out) const noexcept;
     std::atomic<int> radiationSetting_{0};
     double bakedTolerance_{kBakedDefaultTolerance};
     void syncRadiation() noexcept {
         if (grandOn_) {
-            grand_.request(lidReq_.load(std::memory_order_relaxed), micReq_.load(std::memory_order_relaxed));
             grand_.setDirectEnabled(directReq_.load(std::memory_order_relaxed) != 0);
+            { const int s = strideSetting_.load(std::memory_order_relaxed); grand_.setHighStride(s != 0 ? s : (quality_ == Quality::Live ? 3 : 1)); }
+            grand_.request(lidReq_.load(std::memory_order_relaxed), micReq_.load(std::memory_order_relaxed));   // applies the stride too
             return;
         }
         const int r = radiationSetting_.load(std::memory_order_relaxed);
@@ -453,6 +457,7 @@ private:
     bool pumpRecords(std::uint32_t maxRecords, unsigned holdUs = 0) noexcept; // takes the lock; false if nothing was done
     std::atomic<unsigned> testHelperHoldUs_{0};          // tests: the helper keeps the lock this long per batch (a descheduled helper)
     void radiateRecord(std::uint64_t index) noexcept;
+    void radiateBatch(std::uint64_t first, unsigned count) noexcept;
     void publishSkipped(std::uint64_t n) noexcept;      // advance produced_/consumed_ together, under the lock
     PipelineThread radThread_;
     int workerThreads_{0}, activeWorkers_{0};

@@ -7,6 +7,7 @@
 //       [--radiation auto|modal|baked (0.6, default auto)] [--imperfection X (default 1)] [--voices N (0 Auto)] [--bigchords [notension]]
 //       | --chords BASEKEY [--gap S] [--pedal] [--velocity V]
 //       [--whole (0.6: events from 0 to the last event + 4 s)] [--series FILE (0.6: per-second mean/max deadline ratio, shed level)]
+//       [--body classic|grand (0.7c, default classic)] [--mic 0..2] [--lid 0..2]
 //       [--o-NAME VALUE ...]   (preset overrides: voices sym leaky tension trunc floor sleepforce sleeps)
 #include "piano.hpp"
 #include "midi.hpp"
@@ -26,7 +27,7 @@ int main(int argc, char** argv) {
     using namespace piano_mvp_v4;
     std::string eventsFile, quality = "live", keyList; int chordBase = 0; double chordGap = 0.15;
     double from = 0, to = -1, fs = 48000, velocity = 0.8, seconds = 4;
-    int block = 64, threads = 1; bool pedal = false, adaptive = false, bigchords = false, notension = false; double imperfection = 1.0; int voices = 0; std::string radiation = "auto"; bool whole = false; std::string seriesFile;
+    int block = 64, threads = 1; bool pedal = false, adaptive = false, bigchords = false, notension = false; double imperfection = 1.0; int voices = 0; std::string radiation = "auto"; std::string body = "classic"; int mic = 0, lid = 0; bool whole = false; std::string seriesFile;
     std::vector<std::pair<std::string, double>> overrides;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -39,6 +40,7 @@ int main(int argc, char** argv) {
         else if (a == "--velocity") velocity = std::stod(next()); else if (a == "--adaptive") adaptive = true;
         else if (a == "--imperfection") imperfection = std::stod(next()); else if (a == "--voices") voices = std::stoi(next());
         else if (a == "--radiation") radiation = next();
+        else if (a == "--body") body = next(); else if (a == "--mic") mic = std::stoi(next()); else if (a == "--lid") lid = std::stoi(next());
         else if (a == "--whole") whole = true; else if (a == "--series") seriesFile = next();
         else if (a == "--bigchords") bigchords = true; else if (a == "--bigchords-notension") bigchords = notension = true;
         else if (a.rfind("--o-", 0) == 0) overrides.push_back({a.substr(4), std::stod(next())});
@@ -46,10 +48,11 @@ int main(int argc, char** argv) {
     }
     const auto q = quality == "full" ? Piano::Quality::Full : quality == "balanced" ? Piano::Quality::Balanced : Piano::Quality::Live;
     Piano piano;
+    piano.setBody(body == "grand" ? Piano::Body::Grand : Piano::Body::Classic);
     if (!piano.setWorkerThreads(threads) || !piano.prepare(fs)) return 1;
     piano.setQuality(q);
     piano.setActiveWorkers(threads);
-    piano.setImperfection(imperfection); piano.setVoices(voices);
+    piano.setImperfection(imperfection); piano.setVoices(voices); piano.setGrandMic(mic); piano.setGrandLid(lid);
     piano.setRadiation(radiation == "modal" ? Piano::Radiation::Modal : radiation == "baked" ? Piano::Radiation::Baked : Piano::Radiation::Auto);
     if (adaptive) piano.setAdaptive(true);
     if (!overrides.empty()) {
@@ -144,6 +147,7 @@ int main(int argc, char** argv) {
         }
     }
     std::printf("WINDOW worst1s_mean %.4f at %.2f s; shed_max %d shed_seconds %.3f shed_blocks %llu max_active_voices %d\n", worst1, worstAt + f0 / fs, maxShed, shedSeconds, (unsigned long long)shedBlocks, maxActive);
+    std::printf("body %s mic %d lid %d ", body.c_str(), mic, lid);
     std::printf("%s rad %s voices %d imp %.1f block %d fs %.0f threads %d%s: mean %.2f p99 %.2f p99.9 %.2f max %.2f misses %zu/%zu peak %.3f over1 %llu stalls %llu shed %d (events %llu) steals %llu\n",
                 quality.c_str(), radiation.c_str(), voices, imperfection, block, fs, threads, adaptive ? " adaptive" : "", mean, pct(0.99), pct(0.999), u.back(), miss, ratio.size(), peak,
                 (unsigned long long)over, (unsigned long long)piano.radiationStalls(), piano.shedLevel(), (unsigned long long)piano.shedEvents(), (unsigned long long)piano.voiceSteals());

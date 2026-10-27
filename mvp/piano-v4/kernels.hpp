@@ -91,6 +91,7 @@ void radiationModesF(const RadiationArraysF& a, std::size_t n) noexcept;
 // state, drive d = sum over ports of complex residue * g), or the same with a real shared drive and complex output weights (high range,
 // float state). Elementwise except the lane-wise sums (eight fixed lanes, fixed combine order), so any vector width gives the same bits.
 void axpyC(float* dre, float* dim, const float* rre, const float* rim, float g, std::size_t n) noexcept;
+void axpyF(float* y, const float* x, float g, std::size_t n) noexcept;   // y += g x (float)
 void lfStep(const double* lre, const double* lim, double* xre, double* xim, float* dre, float* dim, std::size_t n) noexcept;
 double sumLanes(const double* x, std::size_t n) noexcept;          // n a multiple of 8
 void hfStep(const float* lre, const float* lim, float* xre, float* xim, float* drive, std::size_t n) noexcept;

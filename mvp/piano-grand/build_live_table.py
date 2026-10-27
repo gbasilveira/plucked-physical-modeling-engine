@@ -41,7 +41,7 @@ def main(work, out, order, prune=None, gain=None):
     sides = [np.load(work/f'irc_{lid}_hf.npz') for lid in LIDS]
     hfd = np.load(work/'hfboard_0.7b16.npz', allow_pickle=True)
     # ---- low range
-    P = pad_to(max(len(f['a']) for f in fits), 8)
+    counts = [pad_to(len(f['a']), 8) for f in fits]; P = max(counts)
     lfOm = np.zeros((3, P)); lfSg = np.zeros((3, P)); nlight = 0
     Rre = np.zeros((9, 2, 88, P), np.float32); Rim = np.zeros_like(Rre)
     for l, f in enumerate(fits):
@@ -57,7 +57,7 @@ def main(work, out, order, prune=None, gain=None):
     f_hf = sides[0]['f_hf']; Nh = pad_to(len(f_hf), 32)
     om_h = np.zeros(Nh); sg_h = np.zeros(Nh); om_h[:len(f_hf)] = 2*np.pi*f_hf; sg_h[:len(f_hf)] = 0.5*0.02*om_h[:len(f_hf)]
     phi = np.zeros((88, Nh), np.float32); phi[:, :len(f_hf)] = hfd['phi']
-    phiT = phi.reshape(88, Nh//8, 8).transpose(1, 0, 2).copy()      # [(chunk*88 + port)*8 + lane]
+    phiT = phi                                                       # port-major [port][Nh]
     Wre = np.zeros((9, 2, Nh), np.float32); Wim = np.zeros_like(Wre); We = np.zeros_like(Wre); delay = np.zeros((9, 2), np.uint16)
     for l, side in enumerate(sides):
         lam, W, D, e = FL.hf_weights(side)
@@ -96,12 +96,12 @@ def main(work, out, order, prune=None, gain=None):
         pos = (pos + 15)//16*16; offs.append(pos); pos += len(s)
     pos = (pos + 15)//16*16
     offs += [0]
-    head = struct.pack('<4sIIIIIfI14Q6i2IQ', b'PGL2', 2, P, nlight, Nh, 9, float(outScale), 0, *offs, *refs, 0, 0, pos)
+    head = struct.pack('<4sIIIIIfI14Q6i2IQ', b'PGL2', 2, P, nlight, Nh, 9, float(outScale), counts[0], *offs, *refs, counts[1], counts[2], pos)
     assert len(head) == hdr
     blob = bytearray(pos); blob[:hdr] = head
     for o, s in zip(offs, secs): blob[o:o+len(s)] = s
     Path(out).write_bytes(bytes(blob))
-    print(f'wrote {out}: {len(blob)/1e6:.2f} MB, P={P} (light {nlight}), Nh={Nh}, direct partials kept {kept_total}/{all_total}, refs {refs}, outScale {outScale:.5f}')
+    print(f'wrote {out}: {len(blob)/1e6:.2f} MB, P={P} (light {nlight}), Nh={Nh}, direct partials kept {kept_total}/{all_total}, per-lid poles {counts}, refs {refs}, outScale {outScale:.5f}')
 
 if __name__ == '__main__':
     a = sys.argv[1:]
