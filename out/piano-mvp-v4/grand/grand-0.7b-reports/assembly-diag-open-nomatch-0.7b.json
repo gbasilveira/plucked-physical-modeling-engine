@@ -1,0 +1,46 @@
+{
+ "lid": "open",
+ "variant": "fullnc",
+ "per_mic": {
+  "closeL": {
+   "coarse_over_rayleigh_dB_1000": 5.475186948540332,
+   "fine_over_rayleigh_dB_1000": 5.117813849257821,
+   "fine_over_coarse_dB_1000": -0.35737309928251015,
+   "coarse_over_rayleigh_dB_1260": 5.607146653138734,
+   "fine_over_rayleigh_dB_1260": 4.659796753936814,
+   "fine_over_coarse_dB_1260": -0.947349899201919,
+   "coarse_over_rayleigh_dB_1587": 5.6469524977347945,
+   "fine_over_rayleigh_dB_1587": 5.307734486617913,
+   "fine_over_coarse_dB_1587": -0.33921801111688105,
+   "coarse_over_rayleigh_dB_2000": 5.6410381455149405,
+   "fine_over_rayleigh_dB_2000": 4.701663974293094,
+   "fine_over_coarse_dB_2000": -0.9393741712218472,
+   "coarse_over_rayleigh_dB_2520": 6.211394900035088,
+   "fine_over_rayleigh_dB_2520": 5.808606001193384,
+   "fine_over_coarse_dB_2520": -0.40278889884170416,
+   "rayleigh_to_fdtd_correction_dB": 0.0,
+   "peak": 0.08905469626188278,
+   "fine_used": true
+  },
+  "closeR": {
+   "coarse_over_rayleigh_dB_1000": 3.511839124323277,
+   "fine_over_rayleigh_dB_1000": 3.4306303367465816,
+   "fine_over_coarse_dB_1000": -0.08120878757669535,
+   "coarse_over_rayleigh_dB_1260": 5.014657275378584,
+   "fine_over_rayleigh_dB_1260": 4.2463507002082395,
+   "fine_over_coarse_dB_1260": -0.7683065751703444,
+   "coarse_over_rayleigh_dB_1587": 4.737451850354419,
+   "fine_over_rayleigh_dB_1587": 4.402678102358001,
+   "fine_over_coarse_dB_1587": -0.334773747996419,
+   "coarse_over_rayleigh_dB_2000": 4.448419232387778,
+   "fine_over_rayleigh_dB_2000": 3.969356810464518,
+   "fine_over_coarse_dB_2000": -0.4790624219232595,
+   "coarse_over_rayleigh_dB_2520": 6.903748891227409,
+   "fine_over_rayleigh_dB_2520": 6.03759975706741,
+   "fine_over_coarse_dB_2520": -0.8661491341599998,
+   "rayleigh_to_fdtd_correction_dB": 0.0,
+   "peak": 0.0982605516910553,
+   "fine_used": true
+  }
+ }
+}

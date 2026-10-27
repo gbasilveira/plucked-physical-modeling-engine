@@ -1,0 +1,13 @@
+1. A1 (key 33) close open
+2. A1 (key 33) player open
+3. A1 (key 33) audience open
+4. C4 (key 60) close open
+5. C4 (key 60) player open
+6. C4 (key 60) audience open
+7. C6 (key 84) close open
+8. C6 (key 84) player open
+9. C6 (key 84) audience open
+10. C4 (key 60) close half
+11. C4 (key 60) close closed
+(each 2 s + 0.5 s gap; tap: 1 ms raised cosine, 20 N peak at the bridge point, no strings; the lid-state impulse responses are 1 s long, faded over the last 0.15 s, so the body rings for 1 s at most here)
+raw peak 0.0237; 24-bit file scaled to a 0.5 peak (x21.09; the taps are quiet at the common gain)

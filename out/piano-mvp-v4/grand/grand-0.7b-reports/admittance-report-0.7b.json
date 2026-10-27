@@ -1,0 +1,156 @@
+{
+ "modes": 144,
+ "z_asymmetry_median": 0.06427140905983404,
+ "re_Z_removed_fraction": 0.007067771410453542,
+ "passivity_projected": {
+  "Z": {
+   "min_over_max_eig": -3.1334405868943815e-16,
+   "max_asym": 9.419393176768576e-17,
+   "median_asym": 8.009119151232273e-17
+  },
+  "Yport": {
+   "min_over_max_eig": -6.098314320506647e-16,
+   "max_asym": 1.3402476651921256e-15,
+   "median_asym": 6.803731554429073e-16
+  }
+ },
+ "bands": [
+  {
+   "band": [
+    30,
+    100
+   ],
+   "vacuum": {
+    "median_abs_dB_own_port": 6.158539824415079,
+    "median_ReY_ratio": 0.4421871216188741
+   },
+   "diagonal_loading": {
+    "median_abs_dB_own_port": 1.2957779900486153,
+    "median_ReY_ratio": 1.2385869116927435
+   },
+   "eigen_reduction": {
+    "median_abs_dB_own_port": 0.7641061564455556,
+    "median_ReY_ratio": 1.063297038922347
+   }
+  },
+  {
+   "band": [
+    100,
+    250
+   ],
+   "vacuum": {
+    "median_abs_dB_own_port": 5.4073726957047485,
+    "median_ReY_ratio": 0.5487110891266245
+   },
+   "diagonal_loading": {
+    "median_abs_dB_own_port": 1.460661971786724,
+    "median_ReY_ratio": 1.0120568971452801
+   },
+   "eigen_reduction": {
+    "median_abs_dB_own_port": 4.17451347106762,
+    "median_ReY_ratio": 0.642120488366738
+   }
+  },
+  {
+   "band": [
+    250,
+    500
+   ],
+   "vacuum": {
+    "median_abs_dB_own_port": 4.445335357272205,
+    "median_ReY_ratio": 0.6989623551983271
+   },
+   "diagonal_loading": {
+    "median_abs_dB_own_port": 0.9535322558372972,
+    "median_ReY_ratio": 0.9688100783114784
+   },
+   "eigen_reduction": {
+    "median_abs_dB_own_port": 3.2578375325018047,
+    "median_ReY_ratio": 0.8397357319334167
+   }
+  },
+  {
+   "band": [
+    500,
+    1000
+   ],
+   "vacuum": {
+    "median_abs_dB_own_port": 2.7797942020942656,
+    "median_ReY_ratio": 0.7883696127771386
+   },
+   "diagonal_loading": {
+    "median_abs_dB_own_port": 1.1719443633939362,
+    "median_ReY_ratio": 0.9376645102683905
+   },
+   "eigen_reduction": {
+    "median_abs_dB_own_port": 2.211664803802443,
+    "median_ReY_ratio": 1.027186756015435
+   }
+  },
+  {
+   "band": [
+    1000,
+    2000
+   ],
+   "vacuum": {
+    "median_abs_dB_own_port": 1.1306250061952663,
+    "median_ReY_ratio": 0.9360109354573247
+   },
+   "diagonal_loading": {
+    "median_abs_dB_own_port": 0.4951231112481419,
+    "median_ReY_ratio": 0.9905017979488719
+   },
+   "eigen_reduction": {
+    "median_abs_dB_own_port": 1.9171836933432003,
+    "median_ReY_ratio": 1.2228593477876746
+   }
+  }
+ ],
+ "table": "diagonal loading (per-mode mass and damping from Z_ii at the mode frequency, vacuum participations)",
+ "f_loaded_over_vacuum": {
+  "0": 0.9005167150969259,
+  "8": 0.9558131391377265,
+  "16": 0.9751018027427673,
+  "24": 0.9538277279094791,
+  "32": 0.9738853133129918,
+  "40": 0.9892691684957576,
+  "48": 0.9957462405187913,
+  "56": 0.9995767065249472,
+  "64": 0.9880538021927233,
+  "72": 0.9818162670157321,
+  "80": 0.9935610208763438,
+  "88": 1.001000551706128,
+  "96": 0.9983041392099447,
+  "104": 1.0002402055598991,
+  "112": 0.9971206438471204,
+  "120": 1.0014403647141907,
+  "128": 1.0003701777833858,
+  "136": 0.9979005897871942
+ },
+ "sigma_loaded_over_vacuum": {
+  "0": 3.164053168397477,
+  "8": 1.8413885025564112,
+  "16": 1.5226660619326895,
+  "24": 4.887281250842362,
+  "32": 3.437406377225091,
+  "40": 3.072573728774921,
+  "48": 2.867153500062827,
+  "56": 2.0720040652895544,
+  "64": 2.2272080777139176,
+  "72": 3.2859714016541157,
+  "80": 2.5050380760719633,
+  "88": 2.1197641505289013,
+  "96": 2.336621920131818,
+  "104": 2.4450903262666914,
+  "112": 1.9265022346979752,
+  "120": 2.0314702401254436,
+  "128": 1.9868543481944112,
+  "136": 1.9817265598727234
+ },
+ "median_f_ratio_first20": 0.968446026278138,
+ "median_sigma_ratio_first20": 1.637462425244596,
+ "median_f_ratio_20_144": 0.9957587916642907,
+ "median_sigma_ratio_20_144": 2.2853154497504446,
+ "eigen_nonproportional_median": 0.26380584266565976,
+ "eigen_nonproportional_max": 0.6652304957738985
+}

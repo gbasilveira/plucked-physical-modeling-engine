@@ -1,0 +1,86 @@
+{
+ "lid": "open",
+ "variant": "full",
+ "per_mic": {
+  "closeL": {
+   "coarse_over_rayleigh_dB_1000": 5.475186948540332,
+   "fine_over_rayleigh_dB_1000": 5.117813849257821,
+   "fine_over_coarse_dB_1000": -0.35737309928251015,
+   "coarse_over_rayleigh_dB_1260": 5.607146653138734,
+   "fine_over_rayleigh_dB_1260": 4.659796753936815,
+   "fine_over_coarse_dB_1260": -0.947349899201919,
+   "coarse_over_rayleigh_dB_1587": 5.6469524977347945,
+   "fine_over_rayleigh_dB_1587": 5.307734486617913,
+   "fine_over_coarse_dB_1587": -0.33921801111688105,
+   "coarse_over_rayleigh_dB_2000": 5.641038145514941,
+   "fine_over_rayleigh_dB_2000": 4.701663974293094,
+   "fine_over_coarse_dB_2000": -0.9393741712218472,
+   "coarse_over_rayleigh_dB_2520": 6.211394900035088,
+   "fine_over_rayleigh_dB_2520": 5.808606001193384,
+   "fine_over_coarse_dB_2520": -0.40278889884170416,
+   "rayleigh_to_fdtd_correction_dB": 5.119123013059806,
+   "peak": 0.16076703369617462,
+   "fine_used": true
+  },
+  "closeR": {
+   "coarse_over_rayleigh_dB_1000": 3.511839124323277,
+   "fine_over_rayleigh_dB_1000": 3.4306303367465816,
+   "fine_over_coarse_dB_1000": -0.08120878757669535,
+   "coarse_over_rayleigh_dB_1260": 5.014657275378584,
+   "fine_over_rayleigh_dB_1260": 4.2463507002082395,
+   "fine_over_coarse_dB_1260": -0.7683065751703444,
+   "coarse_over_rayleigh_dB_1587": 4.737451850354421,
+   "fine_over_rayleigh_dB_1587": 4.402678102358001,
+   "fine_over_coarse_dB_1587": -0.334773747996419,
+   "coarse_over_rayleigh_dB_2000": 4.448419232387778,
+   "fine_over_rayleigh_dB_2000": 3.969356810464518,
+   "fine_over_coarse_dB_2000": -0.4790624219232595,
+   "coarse_over_rayleigh_dB_2520": 6.903748891227409,
+   "fine_over_rayleigh_dB_2520": 6.03759975706741,
+   "fine_over_coarse_dB_2520": -0.8661491341599998,
+   "rayleigh_to_fdtd_correction_dB": 4.41732314136895,
+   "peak": 0.16341714560985565,
+   "fine_used": true
+  },
+  "playerL": {
+   "coarse_over_rayleigh_dB_1000": 13.843589770564595,
+   "coarse_over_rayleigh_dB_1260": 13.142845866328036,
+   "coarse_over_rayleigh_dB_1587": 12.03968950038913,
+   "coarse_over_rayleigh_dB_2000": 11.495545444112182,
+   "coarse_over_rayleigh_dB_2520": 15.375451098236464,
+   "rayleigh_to_fdtd_correction_dB": 13.493217818446315,
+   "peak": 0.014478450641036034,
+   "fine_used": false
+  },
+  "playerR": {
+   "coarse_over_rayleigh_dB_1000": 13.476873394308464,
+   "coarse_over_rayleigh_dB_1260": 13.907111903523361,
+   "coarse_over_rayleigh_dB_1587": 12.485178723829007,
+   "coarse_over_rayleigh_dB_2000": 9.206560278156894,
+   "coarse_over_rayleigh_dB_2520": 13.270955211027637,
+   "rayleigh_to_fdtd_correction_dB": 13.691992648915914,
+   "peak": 0.01312754675745964,
+   "fine_used": false
+  },
+  "audL": {
+   "coarse_over_rayleigh_dB_1000": 14.85478571242181,
+   "coarse_over_rayleigh_dB_1260": 11.12069141851521,
+   "coarse_over_rayleigh_dB_1587": 11.433784945264884,
+   "coarse_over_rayleigh_dB_2000": 13.246651160039827,
+   "coarse_over_rayleigh_dB_2520": 9.180691701688984,
+   "rayleigh_to_fdtd_correction_dB": 12.987738565468511,
+   "peak": 0.0078104897402226925,
+   "fine_used": false
+  },
+  "audR": {
+   "coarse_over_rayleigh_dB_1000": 15.110511463790752,
+   "coarse_over_rayleigh_dB_1260": 11.754434498550593,
+   "coarse_over_rayleigh_dB_1587": 11.667722222014461,
+   "coarse_over_rayleigh_dB_2000": 13.158561395556422,
+   "coarse_over_rayleigh_dB_2520": 9.416399580593316,
+   "rayleigh_to_fdtd_correction_dB": 13.432472981170672,
+   "peak": 0.006758301984518766,
+   "fine_used": false
+  }
+ }
+}

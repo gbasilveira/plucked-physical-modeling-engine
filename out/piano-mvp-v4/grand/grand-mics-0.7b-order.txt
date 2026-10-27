@@ -1,0 +1,10 @@
+open/close
+open/player
+open/audience
+half/close
+half/player
+half/audience
+closed/close
+closed/player
+closed/audience
+(each 5 s + 0.6 s gap; 24-bit copy scaled by 1.000; the strings are radiated directly, the board through the lid-state impulse responses)

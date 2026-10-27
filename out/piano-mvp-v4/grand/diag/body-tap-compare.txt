@@ -1,0 +1,3 @@
+0.6 board, 0.7a board, 0.7b board (C4 bridge point, 20 N tap, close AB, open lid), 2 s + 0.5 s gap each.
+first-second rms: 0.6 2.005e-03, 0.7a 1.087e-03, 0.7b 1.037e-03; raw peak 0.0261; 24-bit file scaled to a 0.5 peak (x19.15), one scale for the three versions
+(each version has its own gain from the C4 v60 level match of the validation, so the levels compare the sound after that normalisation)

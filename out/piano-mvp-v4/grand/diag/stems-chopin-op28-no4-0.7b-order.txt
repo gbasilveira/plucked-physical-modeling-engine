@@ -1,0 +1,10 @@
+Pinned excerpt (Chopin Op. 28 No. 4, source 40-66 s, pedalled), close AB, open lid; five stems of 26 s with 1 s gaps, one common scale:
+(a) full mix
+(b) struck strings only: their bridge force through the body plus their own direct radiation
+(c) unstruck (sympathetic, light-model) strings only: through the body plus their direct radiation (vertical modes below 2 kHz)
+(d) direct string radiation only (struck + unstruck)
+(e) the board without the direct string sound (struck + unstruck bridge force through the body)
+Sums: (b)+(c) and (d)+(e) both equal (a): residuals -320.4 dB and -321.7 dB re (a) (float32 records).
+Voices count as struck from the note-on until they go to sleep, so strings of released notes under the leaky dampers are in (b); (c) is the voices that were never struck since waking.
+Stem (a) differs from the main render by the unstruck strings' direct radiation (not in the main renders).
+raw peak of (a) 0.137; file scaled by 1.000

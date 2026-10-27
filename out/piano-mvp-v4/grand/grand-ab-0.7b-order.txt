@@ -1,0 +1,2 @@
+Each of C2, C4, C6, chord (all velocity 70, close AB, open lid): 0.6 Full, 0.7a, 0.7b; 5 s each with 0.3 s fade, 0.6 s gaps, 1.2 s between groups.
+24-bit copy scaled by 1.000 (raw copy unscaled).

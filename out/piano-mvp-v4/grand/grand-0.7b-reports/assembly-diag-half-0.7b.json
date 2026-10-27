@@ -1,0 +1,66 @@
+{
+ "lid": "half",
+ "variant": "full",
+ "per_mic": {
+  "closeL": {
+   "coarse_over_rayleigh_dB_1000": 7.144668158805425,
+   "coarse_over_rayleigh_dB_1260": 7.741363748662398,
+   "coarse_over_rayleigh_dB_1587": 7.108179517943219,
+   "coarse_over_rayleigh_dB_2000": 8.181137532944545,
+   "coarse_over_rayleigh_dB_2520": 9.968334975442183,
+   "rayleigh_to_fdtd_correction_dB": 7.443015953733911,
+   "peak": 0.227082297205925,
+   "fine_used": false
+  },
+  "closeR": {
+   "coarse_over_rayleigh_dB_1000": 4.688874701311583,
+   "coarse_over_rayleigh_dB_1260": 7.1841722418777,
+   "coarse_over_rayleigh_dB_1587": 6.805152473697079,
+   "coarse_over_rayleigh_dB_2000": 6.5297155852559445,
+   "coarse_over_rayleigh_dB_2520": 9.824833367955739,
+   "rayleigh_to_fdtd_correction_dB": 5.936523471594642,
+   "peak": 0.17578013241291046,
+   "fine_used": false
+  },
+  "playerL": {
+   "coarse_over_rayleigh_dB_1000": 13.54386184937233,
+   "coarse_over_rayleigh_dB_1260": 13.742992825163615,
+   "coarse_over_rayleigh_dB_1587": 13.069423170634302,
+   "coarse_over_rayleigh_dB_2000": 12.769942813714092,
+   "coarse_over_rayleigh_dB_2520": 17.607755150698118,
+   "rayleigh_to_fdtd_correction_dB": 13.643427337267973,
+   "peak": 0.012925536371767521,
+   "fine_used": false
+  },
+  "playerR": {
+   "coarse_over_rayleigh_dB_1000": 13.95614474359541,
+   "coarse_over_rayleigh_dB_1260": 13.975316017289403,
+   "coarse_over_rayleigh_dB_1587": 12.729371993941431,
+   "coarse_over_rayleigh_dB_2000": 13.766852837749875,
+   "coarse_over_rayleigh_dB_2520": 18.637602562620486,
+   "rayleigh_to_fdtd_correction_dB": 13.965730380442405,
+   "peak": 0.013900854624807835,
+   "fine_used": false
+  },
+  "audL": {
+   "coarse_over_rayleigh_dB_1000": 13.590315871322748,
+   "coarse_over_rayleigh_dB_1260": 15.19486272301017,
+   "coarse_over_rayleigh_dB_1587": 17.325043200835832,
+   "coarse_over_rayleigh_dB_2000": 18.263665157800478,
+   "coarse_over_rayleigh_dB_2520": 21.073409142626986,
+   "rayleigh_to_fdtd_correction_dB": 14.39258929716646,
+   "peak": 0.004006546922028065,
+   "fine_used": false
+  },
+  "audR": {
+   "coarse_over_rayleigh_dB_1000": 14.701649490822415,
+   "coarse_over_rayleigh_dB_1260": 15.147801501540094,
+   "coarse_over_rayleigh_dB_1587": 17.082659123846028,
+   "coarse_over_rayleigh_dB_2000": 17.966473806803414,
+   "coarse_over_rayleigh_dB_2520": 20.321580797776555,
+   "rayleigh_to_fdtd_correction_dB": 14.924725496181255,
+   "peak": 0.004602410364896059,
+   "fine_used": false
+  }
+ }
+}
