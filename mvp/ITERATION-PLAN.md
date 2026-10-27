@@ -29,18 +29,21 @@ per-mode diagonal loading for the strings' board (own-port mobility within 0.5 t
 hole is closed and 2 to 4 kHz improves from -7.9 to +2.5 dB, but the full model overshoots 4 to 8 kHz by 12.6 dB and the mean late-window error (7.6 dB) equals 0.6's (7.5 dB);
 the structural damping of the board (0.02, assumed) and the ray-to-FDTD level matching are the first things to revisit.
 
-**0.7c (planned): fit and bake.** Fit what 0.7b built to what can run live; acceptance as before: error against the 0.7b offline render better than -60 dB rms re
-signal, then listen. What it needs: (a) the strings' board: the 144-mode loaded table (done, `tableb_open_table.bin`; same hook, nothing to bake); (b) board radiation:
-the port-to-microphone responses E[mic, port, lag] (88 x 2 FIRs of 1 s per lid state) as a shared-pole modal bank per mic pair: vector fitting on the FDTD-spliced
-transfer functions below 3.6 kHz (about 700 poles: the FEM modes with their air-loaded poles, 2.6 times the 0.6 bank, estimated 8 us per sample at 85 ports in the 0.6 kernels),
-the statistical part above 3.6 kHz replaced by a per-port short decaying-noise FIR or a modal envelope (10 to 20 ms: about 10 us per sample for 20 active ports with partitioned FFT),
-the lid state a parameter by interpolating between the three measured states (3 banks in memory, about 3 times the 0.6 baked tables); (c) direct string radiation: measured cost
-today 9.1 us per sample on the 65 s Chopin excerpt (28.5 s on top of 104 s, single thread, all struck partials to 12 kHz, 6 microphones); pruning the partials whose gain is below -40 dB of the
-board at the same frequency (most below 2 kHz) should bring it to 1 to 2 us; (d) the unstruck strings' radiation (vertical, below 2 kHz) is not in the main renders and is small.
-Live estimate with the 0.6 baked radiation as reference (3 us per sample): about 20 us per sample for the three parts, roughly 1 core at 48 kHz before SIMD and the helper
-thread, so the stage needs the helper thread and AVX2 kernels or fewer poles; this estimate is untested and is the thing 0.7c must measure first. Open points for 0.7c: choose the
-structural loss factor of the board (0.02 is an assumption; the validation suggests the board decays too fast at 125 to 500 Hz), decide whether to keep the ray-to-FDTD matching, and
-the half and closed lid states for the strings' board (only the open-lid admittance was computed).
+**0.7c (done, in the plug-ins; `mvp/piano-v4/README.md`, "Update 0.7c").** The 0.7b sound made playable: Body Classic | Grand, Mic (Close AB | Player | Audience), Lid (Open | Half | Closed) in the LV2 and CLAP plug-ins.
+What was baked, and how (numbers in the README):
+(a) the strings' board for Body Grand is the 0.7b air-loaded 144-mode table through the existing hook, embedded in the binary (`grand_live_table.bin`, `.incbin`); the strings, hammer, dampers and sympathetic strings are the 0.6 Full code, and
+the bridge-force records are bit-identical to `piano-grand-render` (test G7-4);
+(b) board radiation: the 0.7b port-to-microphone responses E[mic, port, lag] (1 s, three lids) are fitted, per lid, by (i) a **low range to 4 kHz of complex one-pole resonators** (about 400 pole pairs, 700 for the closed lid) whose poles come from a subspace
+(ESPRIT / matrix pencil) estimate on the 8 kHz-decimated responses of all ports and microphones (a second 2 kHz run with a 0.5 s window for the long-ringing low poles), polished locally, and whose complex residues are a linear least-squares
+fit per port and microphone on the DFT bins with the exact basis of the truncated and faded 1 s records; and (ii) the **exact high range**: the 2061 statistical modes of the 0.7b board (real port participations, one complex output weight per
+microphone from the assembly amplitudes, a zero at DC), shared by every lid and microphone; Live uses every third of them with weights x sqrt(3). The low range is fitted to E minus what the high range itself produces, so its leakage
+below 4 kHz is absorbed. Shared poles with one real port vector per pole (the 0.6 form) were tried and fail: the residues of the 6 microphones are not rank one beyond 500 Hz (delays and reflections), so every (lid, microphone pair, channel) has its own
+residue set on the lid's poles;
+(c) direct radiation of the struck strings: the 0.7b complex gains, pruned to the partials that are not more than 40 dB below the same partial through the board (76 % are kept: above 4 kHz the strings equal the board), computed in the voice tasks for the
+two microphones in use (four while a crossfade runs);
+(d) the live structure: a Body switch runs two pianos (Classic and Grand are both prepared; note-ons go to the active one, the other keeps receiving pedal and note-offs and is rendered until it is idle); Mic and Lid are crossfades inside the Grand
+radiation. Open points left: the closed lid is fitted less well (the cavity), the high range above 4 kHz matches the 0.7b responses statistically (band levels within 0.1 dB) but not sample by sample, the 0.7b open points (structural loss
+factor 0.02, ray-to-FDTD level matching, half and closed-lid strings' board) are unchanged.
 
 ## 0.6 plan: bake what is static, compute live only what interacts (2026-10-26)
 

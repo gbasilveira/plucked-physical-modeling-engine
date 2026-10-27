@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
         const auto* params = static_cast<const clap_plugin_params_t*>(plugin->get_extension(plugin, CLAP_EXT_PARAMS));
         const auto* render = static_cast<const clap_plugin_render_t*>(plugin->get_extension(plugin, CLAP_EXT_RENDER));
         const auto* state = static_cast<const clap_plugin_state_t*>(plugin->get_extension(plugin, CLAP_EXT_STATE));
-        require(params && render && state && params->count(plugin) == 6, "quality/threads/adaptive/imperfection/voices/radiation parameters missing");
+        require(params && render && state && params->count(plugin) == 9, "quality/threads/adaptive/imperfection/voices/radiation/body/mic/lid parameters missing");
         clap_param_info_t pinfo{};
         require(params->get_info(plugin, 3, &pinfo) && std::string(pinfo.name) == "Imperfection" && pinfo.max_value == 2 && pinfo.default_value == 1 &&
                 !(pinfo.flags & CLAP_PARAM_IS_STEPPED), "imperfection parameter info wrong");
@@ -95,8 +95,18 @@ int main(int argc, char** argv) {
         require(params->value_to_text(plugin, 5, 2, text, sizeof text) && std::string(text) == "Baked", "radiation text wrong");
         double rparsed = -1;
         require(params->text_to_value(plugin, 5, "modal", &rparsed) && rparsed == 1, "radiation parse wrong");
+        require(params->get_info(plugin, 6, &pinfo) && std::string(pinfo.name) == "Body" && pinfo.id == 6 && pinfo.max_value == 1 && pinfo.default_value == 1, "body parameter info wrong");
+        require(params->get_info(plugin, 7, &pinfo) && std::string(pinfo.name) == "Mic" && pinfo.id == 7 && pinfo.max_value == 2 && pinfo.default_value == 0, "mic parameter info wrong");
+        require(params->get_info(plugin, 8, &pinfo) && std::string(pinfo.name) == "Lid" && pinfo.id == 8 && pinfo.max_value == 2 && pinfo.default_value == 0, "lid parameter info wrong");
         // The same note renders differently in Live (real time) and Full (offline render mode): the full model
         // has tension modulation on every key; Live keeps it to the lowest keys.
+        // Adaptive shedding depends on timing (and Body Grand is dearer than Classic): switch it off so that renders are repeatable.
+        {
+            clap_event_param_value_t pe{}; pe.header = {sizeof(pe), 0, CLAP_CORE_EVENT_SPACE_ID, CLAP_EVENT_PARAM_VALUE, 0}; pe.param_id = 2; pe.value = 0;
+            clap_input_events_t pev{&pe, [](const clap_input_events_t*) -> std::uint32_t { return 1; },
+                [](const clap_input_events_t* l, std::uint32_t i) -> const clap_event_header_t* { return i == 0 ? &static_cast<const clap_event_param_value_t*>(l->ctx)->header : nullptr; }};
+            params->flush(plugin, &pev, nullptr);
+        }
         const auto chord = [&](bool offline) {
             plugin->reset(plugin);
             require(render->set(plugin, offline ? CLAP_RENDER_OFFLINE : CLAP_RENDER_REALTIME), "render mode refused");
@@ -111,7 +121,7 @@ int main(int argc, char** argv) {
         const double live = chord(false), full = chord(true), full2 = chord(true), live2 = chord(false);
         require(live == live2 && full == full2, "render is not repeatable");
         require(live != full && std::isfinite(live) && live > 0 && full > 0, "offline render mode did not select the full model");
-        unsigned char saved[16] = {}; std::size_t stored = 0;
+        unsigned char saved[16] = {}; std::size_t stored = 0;   // the state is 13 bytes since 0.7c
         clap_ostream_t out{saved, [](const clap_ostream_t* s, const void* b, std::uint64_t n) -> std::int64_t {
             auto* self = static_cast<unsigned char*>(s->ctx); std::memcpy(self, b, n); return static_cast<std::int64_t>(n); }};
         require(state->save(plugin, &out) , "state save failed"); (void)stored;
@@ -122,8 +132,8 @@ int main(int argc, char** argv) {
             std::memcpy(b, src->d + src->pos, k); src->pos += k; return static_cast<std::int64_t>(k); };
         const auto load = [&](const unsigned char* d, std::size_t n) { Src src{d, n, 0}; clap_istream_t in{&src, read}; return state->load(plugin, &in); };
         const auto value = [&](clap_id id) { double v = -1; params->get_value(plugin, id, &v); return v; };
-        require(saved[7] == 101 && saved[8] == 1 && saved[9] == 1, "state bytes: imperfection 1.00 -> 101, voices Auto -> 1, radiation Auto -> 1");
-        unsigned char custom[10]; std::memcpy(custom, saved, 10); custom[7] = 51; custom[8] = 4; custom[9] = 3;   // 0.50, 48 voices, Baked
+        require(saved[7] == 101 && saved[8] == 1 && saved[9] == 1 && saved[10] == 2 && saved[11] == 1 && saved[12] == 1, "state bytes: imperfection 1.00 -> 101, voices Auto -> 1, radiation Auto -> 1, body Grand -> 2, mic Close -> 1, lid Open -> 1");
+        unsigned char custom[10]; std::memcpy(custom, saved, 10); /* 10 bytes: a 0.6 state, so Body loads as Classic (the Radiation checks below are Body Classic) */ custom[7] = 51; custom[8] = 4; custom[9] = 3;   // 0.50, 48 voices, Baked
         require(load(custom, 10) && value(3) == 0.5 && value(4) == 3 && value(5) == 2, "10-byte state did not restore imperfection, voices and radiation");
         custom[9] = 2;   // Modal
         require(load(custom, 10) && value(5) == 1, "radiation Modal did not round trip");

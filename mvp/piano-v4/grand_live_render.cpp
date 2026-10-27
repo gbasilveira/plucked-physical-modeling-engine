@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed (no grand table?)");
         piano.setQuality(quality == "live" ? Piano::Quality::Live : quality == "balanced" ? Piano::Quality::Balanced : Piano::Quality::Full);
         piano.setActiveWorkers(threads);
-        piano.setGrandHighStride(stride); piano.setGrandLid(lid); piano.setGrandMic(mic); piano.setGrandDirect(direct);
+        piano.setImperfection(Piano::defaultImperfection); piano.setGrandHighStride(stride); piano.setGrandLid(lid); piano.setGrandMic(mic); piano.setGrandDirect(direct);
         const int end = events.back().frame + 1, finish = end + static_cast<int>(tail * fs);
         std::ofstream out(argv[2], std::ios::binary); if (!out) throw std::runtime_error("cannot write");
         pme::simd::ScopedFlushDenormals denormals;

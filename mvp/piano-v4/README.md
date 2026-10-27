@@ -1,5 +1,87 @@
 # MVP 4: bridge feedback
 
+## Update 0.7c: the 0.7b grand in the plug-ins (display name "Piano MVP 4 - Grand", CLAP 0.7.0, LV2 minorVersion 7)
+
+The owner listened to the 0.7b offline grand ("it is perfect, honestly it sounds uncanny real"); 0.7c makes that sound playable live and measures the difference. 0.7b is the frozen reference (loss factor 0.02, level-matched ray part,
+diagonal-loaded admittance table, statistical high-frequency board, string radiation, mic presets): nothing of it was re-tuned.
+
+**New settings** (appended; nothing renumbered). LV2 ports 10 / 11 / 12, CLAP parameters 6 / 7 / 8:
+
+| Setting | Values | Default | Notes |
+| --- | --- | --- | --- |
+| Body | Classic (0.6) / Grand (0.7) | **Grand** | Classic is the 0.6 instrument bit for bit (`piano-previous-bitexact`). Grand: the strings couple to the 0.7b air-loaded 144-mode board, the board radiates through the fitted bank below, the struck strings radiate directly. |
+| Mic | Close AB / Player / Audience | Close AB | Stereo pair per preset (the 0.7b pairs: 12 cm above the strings, at the keyboard, about 3 m from the tail). Body Grand. |
+| Lid | Open / Half / Closed | Open | Radiation lid state. Body Grand. |
+
+Switching is real-time safe: Mic and Lid are a 20 ms crossfade between two complete outputs inside the radiation (precomputed banks; the radiation of the new state starts from rest, so its low-frequency ringing rebuilds over a few tenths of a second; when nothing sounds the
+switch is immediate). Body is switched by routing: both pianos are prepared at activation (about 12 MB each), note-ons go to the active one, the other keeps receiving pedal and note-offs and is rendered until it is idle (at most 8 s), so sounding notes die out naturally and are mixed in.
+All nine Lid x Mic combinations are kept (the table is 11 MB). Old CLAP states (without the new bytes) load as Body Classic, Close AB, Open, so existing sessions keep their sound; a new instance defaults to Grand (LV2 sessions of older versions get the port default, Grand, because LV2 stores no value for a port that did not exist).
+Default Body is Grand because on the i3-8100 the Prelude in Live at 128 and 256 frames has 13 and 3 late blocks in 39665 and 19833 with adaptive shedding (the plug-in default), see the CPU table.
+
+**Strings' board for Body Grand.** `tableb_open_table.bin` (the 0.7b air-loaded board: 144 modes, 88 participations) is embedded in the binary (`grand_live_table.bin`, `.incbin`; no allocation after `prepare`) and installed through the 0.7a hook only for the duration of `prepare()`. The strings, hammers, dampers
+and sympathetic strings are the 0.6 Full code. The bridge-force records of the Grand piano are bit-identical to those of `piano-grand-render` (test G7-4, 2.1 million samples).
+
+**Bake method (board radiation).** The 0.7b port-to-microphone responses E[mic, port, lag] (88 ports x 6 microphones x 1 s, three lid states, `irb_full_*.npz`; faded to zero over the last 0.15 s) are replaced by, per lid:
+1. *a high range, exact*: the 2061 statistical modes of the 0.7b board (3.6 to 16 kHz; real port participations, one complex output weight per microphone from the amplitudes `assemble_b.py` computes, which it now saves in a sidecar; the integer part of the bulk delay is a delay line, the rest is absorbed in the phase; a zero at DC). It is shared by every lid and microphone and costs one real MAC per port and mode.
+   The 0.7b reference is built from analytic signals, so a causal bank matches it in level and statistics (band levels within 0.1 dB) but not sample by sample above 4 kHz (-20 to -28 dB);
+2. *a low range to 4 kHz of complex one-pole resonators*, `y[n] = Re sum_p R[port, p] lam_p^n`: about 400 poles (700 for the closed lid). Poles from a subspace (ESPRIT / matrix pencil) estimate on the 8 kHz-decimated responses of all ports and microphones, a second run at 2 kHz with a 0.5 s window for the long-ringing low poles, sharp poles polished by a local search; residues
+   (complex, per port and per microphone) by linear least squares on the DFT bins up to 6 kHz and quarter-hertz bins below 12 Hz, with the exact basis of the truncated and faded record. The low range is fitted to E minus what the high range itself produces. **The 0.6 form (shared poles, one real port vector per pole) was tried first and does not work**: the residues of the six microphones are not rank one beyond about 500 Hz (the 0.7b ray model has delays and lid reflections), so every (lid, microphone pair, channel) has its own residue set on the lid's poles (the poles are shared by the microphones).
+   Cost per sample: one real axpy of 400 complex residues per active port and channel, and 800 complex state updates.
+
+Fit error against the 0.7b responses (all ports and the six microphones, whole 1 s responses, `mvp/piano-grand/fit_live.py`), error energy over reference energy per octave band (dB) and level difference:
+
+| lid | 20-62 | 62-125 | 125-250 | 250-500 | 0.5-1k | 1-2k | 2-4k | 4-8k | 8-16k | level diff, worst band |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| open | -56 | -52 | -51 | -49 | -49 | -49 | -38 | -28 | -27 | 0.02 dB |
+| half | -56 | -53 | -50 | -45 | -51 | -49 | -41 | -29 | -28 | 0.03 dB |
+| closed | -42 | -29 | -38 | -33 | -33 | -30 | -32 | -27 | -25 | 0.06 dB |
+
+All bands are within 0.5 dB in level (target met); the closed lid is fitted less well (the cavity has many weakly damped modes; 700 poles; a third round of added poles gained little). Shared rendering test (`piano-grand-bank-error`): four ports, four lid / microphone sets, 0.5 s; bounds -18 dB per octave band and 0.3 dB level.
+
+**Waveform error of the plug-in code against the 0.7b offline render** (same events; `compare_live.py`; open lid; Full quality, so only the bake differs; rms of the difference over rms of the 0.7b signal; JSON in `out/piano-mvp-v4/grand/grand-live-{notes,piece}-0.7c.json` with the octave-band tables):
+
+| item | close AB | audience |
+| --- | --- | --- |
+| C2 / C4 / C6, velocity 70, 4 s + tail | -54 / -45 / -47 dB | -39 / -47 / -48 dB |
+| chord C3-E4 | -46 dB | -42 dB |
+| Prelude Op. 28 No. 4, whole | -44.3 dB | -43.1 dB |
+| Etude Op. 10 No. 12 (89-101 s) | -46.2 dB | -44.3 dB |
+
+Per octave band on the Prelude (close AB, error dB): 31-62 Hz -52, 62-125 -47, 125-250 -44, 250-500 -44, 0.5-1k -45, 1-2k -44, 2-4k -42, 4-8k -27, 8-16k -13; level differences 0.00 to 0.19 dB; audience: -35 -35 -41 -42 -46 -44 -39 -14 -9, level differences up to 0.45 dB (4-8k). The waveform target (-60 dB of the 0.7b plan) is **not** met; the band levels are. Where the error
+comes from: above 4 kHz the causal bank against the analytic reference (see above), the closed lid, and at the lowest bands the reference's own truncation (its responses are 1 s long and faded, the bank rings on).
+**Live and Balanced are not the offline render**: they use the 0.6 string caps (16 / 24 voices, tension only below F#3, shed sympathetic strings) and, in Live, every third statistical mode (weights x sqrt(3)), so against the offline render their waveform error is -2 to -4 dB (a different realisation of the same sound; octave-band levels within about 2 dB, up to 5 dB at 62-125 Hz in single notes,
+tables in the JSON files). That is the cost of the real-time model, not of the bake: Full Grand is the offline sound. Isolating the Live high range (Full strings, every third high mode, 30 s of the Prelude, close AB): rms difference -41.8 dB, octave-band levels within 0.04 dB up to 8 kHz and +0.8 dB at 8-16 kHz, waveform error -45 dB at 0.5-1 kHz, -37 at 1-2 kHz, -17 at 2-4 kHz and about 0 dB above 4 kHz (a different noise realisation with the same level).
+
+**Direct radiation of the struck strings** (`string_radiation.py` gains, 18218 partials of the 88 keys, both polarisations): kept when the partial is not more than 40 dB below the pressure the same partial makes through the board (`prune_direct.py`: `|G| w / (|a_n| |E(w_n)| |lp|)` against 0.01, third-octave smoothed E, any of the six microphones; the horizontal polarisation is judged against the vertical partial of the same number). 13842 (76 %) are kept: the strings equal the board (-7 dB) above 4 kHz, so the pruning removes
+the low partials and not the many high ones, and the cost saving is smaller than the 0.7b estimate. Computed in the voice tasks for the two microphones in use. Measured on 30 s of the Prelude (Full): the pruned against the unpruned table differs by -59.6 dB re the mix at close AB and -77.6 dB at the audience pair; the direct part itself is -56 and -71 dB re the mix. The direct sound costs about 1 us per sample (a 30 s Live render took 22.8 s with it and 21.2 s without, before the radiation speed-ups).
+
+**CPU, i3-8100 (4 cores, 48 kHz), one helper thread, whole pieces** (`piano-block-bench`, file `out/piano-mvp-v4/grand/grand-live-bench-0.7c.txt` and `-table.txt` with all 48 runs; mean, p99.9 of the block time over its deadline; late blocks; with adaptive shedding the plug-in default):
+
+| Piece, quality, block | Classic mean / p99.9 / late | Grand mean / p99.9 / late | Classic adaptive | Grand adaptive |
+| --- | --- | --- | --- | --- |
+| Prelude, Live, 64 | 0.20 / 0.74 / 15 of 79330 | 0.37 / 1.02 / 99 | 0.17 / 0.74 / 22 | 0.32 / 0.92 / 35 |
+| Prelude, Live, 128 | 0.20 / 0.78 / 6 of 39665 | 0.37 / 1.01 / 42 | 0.18 / 0.68 / 4 | 0.31 / 0.87 / 13 |
+| Prelude, Live, 256 | 0.20 / 0.72 / 8 of 19833 | 0.38 / 1.07 / 27 | 0.19 / 0.65 / 2 | 0.34 / 0.85 / 3 |
+| Prelude, Balanced, 128 | 0.28 / 0.95 / 16 | 0.53 / 1.31 / 401 | 0.21 / 0.75 / 11 | 0.45 / 1.02 / 84 |
+| Etude, Live, 128 | 0.43 / 1.35 / 989 of 53538 | 0.69 / 1.54 / 6837 | 0.23 / 0.69 / 4 | 0.42 / 0.97 / 43 |
+| Etude, Live, 256 | 0.42 / 1.35 / 483 of 26769 | 0.69 / 1.54 / 3314 | 0.24 / 0.69 / 2 | 0.40 / 0.85 / 9 |
+| Etude, Balanced, 128 | 0.76 / 1.96 / 14606 | 1.14 / 2.45 / 31022 | 0.23 / 0.69 / 18 | 0.42 / 0.92 / 24 |
+
+The goal (Prelude in Live with Grand at 128 to 256 frames with 0 or near-0 late blocks) is met with adaptive shedding (13 and 3 late blocks, 0.03 % and 0.015 %); without shedding it has 42 and 27 (0.1 %). The Etude, like Classic, needs shedding (43 / 9 late blocks with it). Balanced Grand without shedding is not real time on this machine (Classic is borderline). How the cost was brought down:
+the radiation bank alone costs, for 12 struck and 10 unstruck ports, 13.8 us per sample at first; a port-major contiguous drive for the high range (instead of the 0.6 chunk-major kernel, which strides through memory) gave 9.3 us, a Live high range of every third mode 6.1 us, and the helper batches up to 16 records so that each port's residue rows are read once per batch (bit-identical output).
+Closed-lid Live costs more (700 poles). `piano-grand-bank-bench` measures the bank alone.
+
+**Tests** (ctest): `piano-grand-bank-error` (bake error bound), `piano-grand-live` (G7-2 no allocation in 400 blocks with Body / Mic / Lid / quality switches and note events, 0 allocations; G7-3 `sample()` = blocks of 32 / 128 / 256 = 0..3 helper threads, Live / Balanced / Full, with Mic / Lid switches; G7-4 bridge-force records bit-identical to the `piano-grand-render` configuration; G7-5 Classic pair
+bit-identical to a plain piano and a Body switch lets the sounding note ring out), `piano-grand-clap-state` (G7-6 state round trip, 9- and 10-byte states load as Classic). The existing tests pass, `piano-previous-bitexact` included (the Classic code path was not changed).
+
+**Honest limits.** (1) The waveform error against the 0.7b render is -43 to -47 dB for Full, not the -60 dB planned; the causes are listed above and the band levels are within 0.5 dB. (2) Live and Balanced are different from Full as before (voice caps), plus every third high mode in Live. (3) The closed lid is fitted at -29 to -42 dB per band and is dearer. (4) The offline responses are 1 s long and faded; the bank is not truncated. (5) A new Lid or Mic starts the
+low-frequency radiation from rest. (6) Fitted at 48 kHz; other rates run the same poles at that rate (resampling of the continuous poles, no refit). (7) Embedded by `.incbin` on Linux only; other platforms need the table loaded by the caller (`Piano::setGrandTableBlob`). (8) Body Classic and Grand both stay prepared, so a plug-in instance holds two pianos (about 25 MB plus the 11 MB table). (9) The 0.7b assumptions
+(structural loss 0.02, ray-to-FDTD level matching, half and closed lid only in the radiation) are unchanged. (10) Listening has not been done on the 0.7c plug-in; `grand-live-ab-0.7c.wav` (order file next to it) has, per item, the 0.7b offline render, 0.7c Full Grand and 0.7c Live Grand, and the whole Prelude in Live Grand is in `chopin-op28-no4-0.7c-live-{closeab,audience}.wav`.
+
+Files: `mvp/piano-v4/{grand_live.hpp,grand_live.cpp,grand_embed.cpp,piano_pair.hpp,grand_live_table.bin,grand_live_render.cpp,grand_bank_eval.cpp,grand_bank_check.cpp,grand_bank_bench.cpp,grand_live_check.cpp,grand_clap_state_check.cpp}`, `mvp/piano-grand/{fit_live.py,build_live_table.py,prune_direct.py,compare_live.py,make_bank_ref.py,tests/grand_bank_ref.bin}` (the fits and the sidecar need the work folder of 0.7b), kernels in `kernels.cpp`.
+Rebuild the table: `assemble_b.py ... sidecar` for the three lids, `fit_live.py WORK LID 800` (closed: `FIT_GROW=2`), `prune_direct.py`, `build_live_table.py`.
+
+
 ## Update 0.7b: "Grand", highest offline accuracy (not in the plug-ins)
 
 0.7b adds to the 0.7a reference: a statistical board from 3.6 to 16 kHz, direct string radiation and the iron plate, a fine FDTD grid and a diffraction model for the ray part, and the full air-loaded

@@ -15,7 +15,9 @@ import numpy as np
 import scipy.signal as sg
 
 FS = 48000.0
-FMAX_LF = 4000.0
+FMAX_LF = 4000.0          # poles up to here
+WEXP = float(__import__("os").environ.get("FIT_WEXP", "0.0"))
+FIT_FMAX = 6000.0          # residues are fitted up to here (the skirts above the poles' range count)
 
 def hankel_gram(x, L):
     """sum over channels of H H^T for the Hankel matrices (L rows) of the rows of x (channels, n)."""
@@ -65,20 +67,33 @@ def basis(lam, N, b, fade=True):
         return _geo(z, n0) + z**n0*(0.5*_geo(z, M) + 0.25*_geo(z*u, M) + 0.25*_geo(z/u, M))
     return one(lam), one(np.conj(lam))
 
-def fit_residues(Elf, lam, fmax=FMAX_LF):
-    """Least squares complex residues R[m, k, p] of the real model Re sum R lam^n against Elf (mics, ports, N) on the DFT bins 1..fmax."""
+def fit_residues(Elf, lam, fmax=FIT_FMAX, weighted=True):
+    """Complex residues R[m, k, p] of the real model Re sum R lam^n against Elf (mics, ports, N): linear least squares on the DFT bins 1..fmax (1 Hz)
+    and on quarter-hertz bins below 12 Hz (the response must vanish towards DC), each function with relative weights (the inverse of its smoothed
+    magnitude, to the power 0.9) so that the quiet player and audience responses and the skirts between resonances count as much as the loud ones."""
+    from scipy.ndimage import uniform_filter1d
     M, K, N = Elf.shape
-    F = np.fft.rfft(Elf.astype(np.float64), axis=2)
-    b = np.arange(1, int(fmax*N/FS) + 1)
-    B, C = basis(lam, N, b)
+    x = Elf.astype(np.float64)
+    F = np.fft.rfft(x, axis=2)[:, :, 1:int(fmax*N/FS) + 1].reshape(M*K, -1)
+    F4 = np.fft.rfft(x, n=4*N, axis=2)[:, :, :49].reshape(M*K, -1)          # 0, 0.25 .. 12 Hz
+    b = np.arange(1, F.shape[1] + 1); b4 = np.arange(49)/4.0
     P = len(lam)
-    A = np.concatenate([np.concatenate([((B + C)/2).real, (1j*(B - C)/2).real], 1), np.concatenate([((B + C)/2).imag, (1j*(B - C)/2).imag], 1)], 0)
-    Y = F[:, :, b].reshape(M*K, -1).T
-    rhs = np.concatenate([Y.real, Y.imag], 0)
-    cs = np.linalg.norm(A, axis=0)
-    X = np.linalg.lstsq(A/cs, rhs, rcond=1e-13)[0]/cs[:, None]
-    R = (X[:P] + 1j*X[P:]).T.reshape(M, K, P)
-    return R
+    def stack(bb):
+        B, C = basis(lam, N, bb)
+        return np.concatenate([((B + C)/2).real, (1j*(B - C)/2).real], 1), np.concatenate([((B + C)/2).imag, (1j*(B - C)/2).imag], 1)
+    A1r, A1i = stack(b); A4r, A4i = stack(b4)
+    out = np.zeros((M, K, 2*P))
+    for m in range(M):                      # one weight per microphone (the rms over its ports), K right-hand sides
+        Fm = F[m*K:(m + 1)*K]; F4m = F4[m*K:(m + 1)*K]
+        if weighted:
+            e = np.sqrt(uniform_filter1d(np.mean(np.abs(Fm)**2, 0), 15, mode='nearest')); w1 = (e + 1e-3*e.max())**-WEXP
+            e4 = np.sqrt(uniform_filter1d(np.mean(np.abs(F4m)**2, 0), 5, mode='nearest')); w4 = (e4 + 1e-3*e.max())**-WEXP
+        else: w1 = np.ones(len(b)); w4 = np.ones(len(b4))
+        A = np.concatenate([A1r*w1[:, None], A1i*w1[:, None], A4r*w4[:, None], A4i*w4[:, None]], 0)
+        rhs = np.concatenate([Fm.real*w1, Fm.imag*w1, F4m.real*w4, F4m.imag*w4], 1).T
+        cs = np.linalg.norm(A, axis=0)
+        out[m] = (np.linalg.lstsq(A/cs, rhs, rcond=1e-13)[0]/cs[:, None]).T
+    return out[:, :, :P] + 1j*out[:, :, P:]
 
 def refine_poles(Elf, a, R, sigma_max=12.0, sweeps=2):
     """Polish the sharp poles (sigma < sigma_max): for each, the other poles' contribution is held fixed and (f, sigma) are optimised with the

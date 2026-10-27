@@ -238,6 +238,16 @@ void GrandRadiation::request(int lid, int mic) noexcept {
     if (!fading_) slot_ = {presetMic(mic_, 0), presetMic(mic_, 1), -1, -1};
     if (fading_) { if (lid == s1_->lid && mic == s1_->mic) return; promote(); slot_ = {presetMic(mic_, 0), presetMic(mic_, 1), -1, -1}; }
     if (lid == lid_ && mic == mic_) return;
+    if (outputBound() < 1e-9) {   // nothing sounds (start-up, silence): switch at once, a crossfade would only mix in the old set's silence
+        Stream& c = *s0_;
+        c.lid = lid; c.mic = mic; c.set = lid * 3 + mic; lid_ = lid; mic_ = mic;
+        std::fill(c.xre.begin(), c.xre.end(), 0.0); std::fill(c.xim.begin(), c.xim.end(), 0.0);
+        std::fill(c.dre.begin(), c.dre.end(), 0.f); std::fill(c.dim.begin(), c.dim.end(), 0.f);
+        for (auto& r : c.hf) r.fill(0.f);
+        for (auto& r : c.dir) r.fill(0.f);
+        slot_ = {presetMic(mic_, 0), presetMic(mic_, 1), -1, -1};
+        return;
+    }
     Stream& t = *s1_;
     t.lid = lid; t.mic = mic; t.set = lid * 3 + mic;
     std::fill(t.xre.begin(), t.xre.end(), 0.0); std::fill(t.xim.begin(), t.xim.end(), 0.0);
