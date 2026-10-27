@@ -34,20 +34,22 @@ def load_kin_runs(work, prefix, starts, nrows, per_run=16):
             out[j0 + s] = (F[sl, :nrows], u[sl])
     return out, dt
 
-def impedance_matrix(runs, dt, n, nfft=1 << 15):
+def impedance_matrix(runs, dt, n, nfft=1 << 15, fmax=3000.0):
     """Z(f) (nf, n, n) in the e^{+jwt} convention for the driven modes 0..n-1 (rows: force on mode i). Half-sample alignment of the staggered
     velocity (n + 1/2) and force (n) records included. (A DFT ratio of real records is the s = j w transfer function: no conjugation.)"""
-    f = np.fft.rfftfreq(nfft, dt); w = 2*np.pi*f
+    f = np.fft.rfftfreq(nfft, dt); nb = int(np.searchsorted(f, fmax)); f = f[:nb]; w = 2*np.pi*f
     Z = np.zeros((len(f), n, n), complex)
     for j in range(n):
         F, u = runs[j]
-        Fd = np.fft.rfft(F[:, :n], nfft, axis=0); Ud = np.fft.rfft(u, nfft)
+        Fd = np.fft.rfft(F[:, :n], nfft, axis=0)[:nb]; Ud = np.fft.rfft(u, nfft)[:nb]
         Zj = -Fd*np.exp(1j*w*dt/2)[:, None]/Ud[:, None]
         Z[:, :, j] = Zj                                                   # the DFT ratio is the engineering (s = j w) transfer function
     return f, Z
 
 def symmetrise(Z):
-    return 0.5*(Z + np.swapaxes(Z, 1, 2))
+    out = np.empty_like(Z)
+    for a in range(0, len(Z), 256): out[a:a + 256] = 0.5*(Z[a:a + 256] + np.swapaxes(Z[a:a + 256], 1, 2))
+    return out
 
 def loaded_admittance(f, Z, omega, sigma, Phi, fsel=None):
     """Y_port(f) = Phi (D + Z)^-1 Phi^T on the frequencies f (Hz) given; Z interpolated on the grid f_z. Returns (len(f), nport, nport)."""
@@ -57,6 +59,29 @@ def loaded_admittance(f, Z, omega, sigma, Phi, fsel=None):
         D = np.diag(1j*ww + 2*sigma + omega**2/(1j*ww))
         out[a] = Phi @ np.linalg.solve(D + Z[a], Phi.T)
     return out
+
+def enforce_passive(Z, chunk=256):
+    """Project Z onto the passive set: Z = R + jX with R, X real symmetric (reciprocity); negative eigenvalues of R (numerical noise of the FDTD records:
+    the force records are float32 and the slots finite) are set to zero, which is the nearest positive semi-definite R. Returns (Z_passive, fraction of
+    the Frobenius norm of R that was removed)."""
+    out = np.empty_like(Z); removed = 0.0; total = 0.0
+    for a in range(0, len(Z), chunk):
+        Zc = 0.5*(Z[a:a + chunk] + np.swapaxes(Z[a:a + chunk], 1, 2)); R = Zc.real; X = Zc.imag
+        ev, V = np.linalg.eigh(R); evp = np.maximum(ev, 0.0)
+        Rp = (V*evp[:, None, :]) @ np.swapaxes(V, 1, 2)
+        removed += np.sum((R - Rp)**2); total += np.sum(R**2)
+        out[a:a + chunk] = Rp + 1j*X
+    return out, float(np.sqrt(removed/max(total, 1e-300)))
+
+def diagonal_loading(f, Z, omega, sigma):
+    """Per-mode loaded pole from the diagonal of Z at the mode's own frequency (the 0.7a estimate, extended to every mode): the air adds the
+    modal mass Im Z_ii / w and the damping Re Z_ii / 2 to the mode (u-equation  (j w + 2 sigma + Z_ii + w_i^2/(j w)) u = F)."""
+    n = len(omega); oL = omega.copy(); sL = sigma.copy()
+    for k in range(n):
+        ia = int(np.argmin(np.abs(f - omega[k]/(2*np.pi)))); z = Z[ia, k, k]
+        m = 1.0 + z.imag/omega[k]; m = max(m, 0.2)
+        oL[k] = omega[k]/math.sqrt(m); sL[k] = (sigma[k] + 0.5*max(z.real, 0.0))/m
+    return oL, sL
 
 def vacuum_admittance(omega, sigma, Phi, fsel):
     w = 2*np.pi*np.asarray(fsel)

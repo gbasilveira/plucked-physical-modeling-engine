@@ -54,7 +54,7 @@ def rayleigh_fem(paths, Phi_pts, dA, fgrid, tau0):
 
 def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
     t_start = time.time(); work = Path(work)
-    full = variant == 'full'
+    full = variant in ('full', 'fullnc'); match = variant == 'full'     # fullnc: no Rayleigh-to-FDTD level matching (ablation)
     plate, fine_ok, diffraction = full, full, full
     d = np.load(modes_npz); f_fem = d['f']; Nall = len(f_fem); phi_fem = d['phi']
     omega_v = 2*np.pi*f_fem; sigma_v = 0.5*0.02*omega_v
@@ -114,17 +114,28 @@ def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
         Ki[~sel & ~below] = Ki[np.where(sel)[0][-1]]
         Ki *= np.exp(-1j*w48*tau0)[:, None]
         GR = Ki*Yfem
+        corr = 1.0
+        if match:
+            # Rayleigh + diffraction is a ray model of the open board; the wave solver also has the rim tray, lid and plate. Match the model to the best FDTD
+            # where both are valid (all converged FEM modes, no recording): fine grid 1.0-2.5 kHz, coarse grid 1.0-1.26 kHz otherwise.
+            bands = (1000, 1260, 1587, 2000, 2520) if have_fine else (1000, 1260)
+            ref_ = GfF if have_fine else GcF
+            ratios = []
+            for lo in bands:
+                s_ = (f48 >= lo) & (f48 < lo*2**(1/3)); pr = np.sum(np.abs(GR[s_, :191])**2); pf = np.sum(np.abs(ref_[s_, :191])**2)
+                if pr > 0: ratios.append(10*np.log10(pf/pr))
+            corr_dB = float(np.mean(ratios)); corr = 10**(corr_dB/20); GR = GR*corr
         Gfem = GcF*wc[:, None] + (GfF*wf[:, None] if GfF is not None else 0) + GR*wr[:, None]
         Ef = Gfem @ phi_fem.T                                              # (nf, 88)
         # ---- statistical modes (Rayleigh only, narrow band)
-        if hf is not None and variant in ('v1', 'full'):
+        if hf is not None and variant in ('v1', 'full', 'fullnc'):
             A = np.zeros(Nh, complex)
             for (idx, Xg, Yg, dAg, Pg) in groups:
                 Pp = RB.Paths(sc, m, Xg, Yg)
                 if not diffraction: Pp.weights = _binary_weights(Pp)
                 for q, i in enumerate(idx):
                     acc = Pp.weights(sb.f[i])
-                    A[i] = (Pg[q].astype(np.float64) @ acc)*dAg*(1j*om_h[i]*RB.RHO/(2*math.pi))*np.exp(1j*om_h[i]*tau0)
+                    A[i] = corr*(Pg[q].astype(np.float64) @ acc)*dAg*(1j*om_h[i]*RB.RHO/(2*math.pi))*np.exp(1j*om_h[i]*tau0)
             for i0 in range(0, Nh, 200):
                 ii = slice(i0, min(Nh, i0 + 200))
                 Yh = 1j*w48[:, None]/(om_h[None, ii]**2 - w48[:, None]**2 + 2j*sg_h[None, ii]*w48[:, None])
@@ -134,13 +145,13 @@ def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
         dg = {}
         for lo in (1000, 1260, 1587, 2000, 2520):
             hi = lo*2**(1/3); s_ = (f48 >= lo) & (f48 < hi)
-            pr = np.sum(np.abs(GR[s_, :191])**2); pc = np.sum(np.abs(GcF[s_, :191])**2)
+            pr = np.sum(np.abs(GR[s_, :191])**2)/corr**2; pc = np.sum(np.abs(GcF[s_, :191])**2)
             dg[f'coarse_over_rayleigh_dB_{lo}'] = float(10*np.log10(pc/pr)) if pr > 1e-12*pc else None
             if GfF is not None:
                 pf = np.sum(np.abs(GfF[s_, :191])**2)
                 dg[f'fine_over_rayleigh_dB_{lo}'] = float(10*np.log10(pf/pr)) if pr > 1e-12*pf else None
                 dg[f'fine_over_coarse_dB_{lo}'] = float(10*np.log10(pf/pc)) if pc > 0 else None
-        dg['peak'] = float(np.abs(E[mi]).max()); dg['fine_used'] = bool(have_fine); diag[m] = dg
+        dg['rayleigh_to_fdtd_correction_dB'] = 20*float(np.log10(corr)); dg['peak'] = float(np.abs(E[mi]).max()); dg['fine_used'] = bool(have_fine); diag[m] = dg
         print(f'  {lid} {m}: {time.time()-t_start:.0f}s', {k: (None if v is None else float("%.3g" % v)) for k, v in dg.items()}, flush=True)
     np.savez(outprefix + f'_{lid}.npz', E=E, mics=np.array(mics))
     Path(outprefix + f'_{lid}_diag.json').write_text(json.dumps(dict(lid=lid, variant=variant, per_mic=diag), indent=1))

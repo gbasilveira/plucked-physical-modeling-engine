@@ -18,18 +18,29 @@ floor, absorbing sponge), one run per microphone by reciprocity; baffled Rayleig
 AB (12 cm above the strings), player, audience. (4) `piano-grand-render`: the unchanged 0.6 Full strings and hammer through the new board (hook
 `board_override.hpp`; with no override the 0.6 code is bit-identical, `piano-previous-bitexact`). (5) Validation against Salamander. Results and limits: the README.
 
-**0.7b (planned): measure the impulse responses.** Replace the modal reduction by direct measurement of what the strings and the microphones need from the
-validated model: (a) the 88 x 88 bridge admittance matrix of the air-loaded board (one forward FDTD run per bridge point, or per bridge segment with
-spatially coded excitation), instead of the diagonal air-loading estimate of 0.7a; (b) impulse responses bridge point to microphone for all presets and
-lid states, including the bottom-face path and diffraction around the rim that 0.7a leaves to a shadow rule above 1.4 kHz; (c) the missing parts that 0.7a
-lists as limits: the cast-iron plate (a rigid perforated plane above the board), the string-side soundboard prestress (crown, downbearing), a vibrating
-rim and lid (transmission through a closed lid). Refine the grid (dx 1.25 cm, trusted to about 2.8 kHz) only for the presets that need it; GPU is not available.
-Acceptance: the measured admittance reproduces the modal one within 1 dB where both are valid, and reciprocity holds to 1e-3.
+**0.7b (done, offline only; `mvp/piano-grand/README.md`, "Update 0.7b"; the plan below was rescoped by the owner to "highest offline accuracy").**
+(1) Board above 3.6 kHz: physically based statistical continuation to 16 kHz (Mindlin dispersion of the same plate, Weyl density anchored to the FEM, per-key
+bridge mobility from the FEM continued with its slope, random plane-wave shapes with the local thickness), continuity at the crossover: mobility step 0.1 dB,
+radiated power within 2 dB at the close mics (up to 6 dB low at the audience mic). (2) Direct radiation of the strings (line dipoles of the modal string states,
+both polarisations, plate/board image) and the iron plate (rigid obstacle in the FDTD, reflector for the strings; nominal geometry). (3) Fine FDTD (dx 12.5 mm, close
+mics, trusted to about 2.2 kHz, agrees with the coarse grid within 1 dB) and a Fresnel knife-edge diffraction model for the ray part (tested against the exact
+half-plane), ray part level-matched to the FDTD (4 to 15 dB). (4) Full air-loaded 88 x 88 admittance from kinematic FDTD runs (passive and reciprocal), reduced to
+per-mode diagonal loading for the strings' board (own-port mobility within 0.5 to 1.5 dB). Not done: vibrating lid. Validation (nine notes, no fitting): the 4 to 8 kHz
+hole is closed and 2 to 4 kHz improves from -7.9 to +2.5 dB, but the full model overshoots 4 to 8 kHz by 12.6 dB and the mean late-window error (7.6 dB) equals 0.6's (7.5 dB);
+the structural damping of the board (0.02, assumed) and the ray-to-FDTD level matching are the first things to revisit.
 
-**0.7c (planned): fit and bake.** Fit the measured responses to what can run live: a reduced modal bank for the board seen by the strings (energy-based
-selection as 0.6 step 1, now on the FEM modes), and IIR/short-FIR per port and mic for the radiation, with the lid state a parameter (interpolated between
-the three measured states) and the mic preset a parameter. Acceptance: the error against the 0.7a offline render better than -60 dB rms re signal, cost
-below the 0.6 baked radiation (3 us per sample at 85 ports), then listen. The room stays downstream.
+**0.7c (planned): fit and bake.** Fit what 0.7b built to what can run live; acceptance as before: error against the 0.7b offline render better than -60 dB rms re
+signal, then listen. What it needs: (a) the strings' board: the 144-mode loaded table (done, `tableb_open_table.bin`; same hook, nothing to bake); (b) board radiation:
+the port-to-microphone responses E[mic, port, lag] (88 x 2 FIRs of 1 s per lid state) as a shared-pole modal bank per mic pair: vector fitting on the FDTD-spliced
+transfer functions below 3.6 kHz (about 700 poles: the FEM modes with their air-loaded poles, 2.6 times the 0.6 bank, estimated 8 us per sample at 85 ports in the 0.6 kernels),
+the statistical part above 3.6 kHz replaced by a per-port short decaying-noise FIR or a modal envelope (10 to 20 ms: about 10 us per sample for 20 active ports with partitioned FFT),
+the lid state a parameter by interpolating between the three measured states (3 banks in memory, about 3 times the 0.6 baked tables); (c) direct string radiation: measured cost
+today 9.1 us per sample on the 65 s Chopin excerpt (28.5 s on top of 104 s, single thread, all struck partials to 12 kHz, 6 microphones); pruning the partials whose gain is below -40 dB of the
+board at the same frequency (most below 2 kHz) should bring it to 1 to 2 us; (d) the unstruck strings' radiation (vertical, below 2 kHz) is not in the main renders and is small.
+Live estimate with the 0.6 baked radiation as reference (3 us per sample): about 20 us per sample for the three parts, roughly 1 core at 48 kHz before SIMD and the helper
+thread, so the stage needs the helper thread and AVX2 kernels or fewer poles; this estimate is untested and is the thing 0.7c must measure first. Open points for 0.7c: choose the
+structural loss factor of the board (0.02 is an assumption; the validation suggests the board decays too fast at 125 to 500 Hz), decide whether to keep the ray-to-FDTD matching, and
+the half and closed lid states for the strings' board (only the open-lid admittance was computed).
 
 ## 0.6 plan: bake what is static, compute live only what interacts (2026-10-26)
 

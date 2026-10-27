@@ -14,31 +14,34 @@ def main(work, modes_npz, outprefix, n=144):
     missing = [j for j in range(n) if j not in runs]
     assert not missing, f'missing kinematic runs for modes {missing[:5]}'
     f, Z = A.impedance_matrix(runs, dt, n)
-    Zs = A.symmetrise(Z)
+    asym = np.concatenate([np.linalg.norm(Z[a:a+256] - np.swapaxes(Z[a:a+256], 1, 2), axis=(1, 2))/np.maximum(np.linalg.norm(Z[a:a+256], axis=(1, 2)), 1e-300) for a in range(0, len(Z), 256)])
+    Zp, removed = A.enforce_passive(Z); del Z
     om, sg, Phi = om_all[:n], sg_all[:n], Phi_all[:, :n]
-    asym = np.linalg.norm(Z - np.swapaxes(Z, 1, 2), axis=(1, 2))/np.maximum(np.linalg.norm(Z, axis=(1, 2)), 1e-300)
     fsel = np.arange(30.0, 2000.0, 10.0)
     ia = [int(np.argmin(np.abs(f - x))) for x in fsel]
-    Y = A.loaded_admittance(f, Zs[ia], om, sg, Phi, fsel)
+    Y = A.loaded_admittance(f, Zp[ia], om, sg, Phi, fsel)
     Y0 = A.vacuum_admittance(om, sg, Phi, fsel)
-    rep = A.passivity_report(Zs[ia], Y)
-    oL, sL, phiL, nonprop = A.reduce_modes(f, Zs, om, sg, Phi)
-    Yr = A.vacuum_admittance(oL, sL, phiL, fsel)
-    err = np.linalg.norm(Yr - Y, axis=(1, 2))/np.linalg.norm(Y, axis=(1, 2))
-    err_vac = np.linalg.norm(Y0 - Y, axis=(1, 2))/np.linalg.norm(Y, axis=(1, 2))
-    # band summaries
-    bands = [(30, 100), (100, 250), (250, 500), (500, 1000), (1000, 2000)]
+    rep = A.passivity_report(Zp[ia], Y)
+    oD, sD = A.diagonal_loading(f, Zp, om, sg)
+    oE, sE, phiE, nonprop = A.reduce_modes(f, Zp, om, sg, Phi)
+    diag_ = lambda M: np.einsum('fkk->fk', M)
+    def derr(Ya): return 20*np.log10(np.abs(diag_(Ya))/np.abs(diag_(Y)))
+    YD = A.vacuum_admittance(oD, sD, Phi, fsel); YE = A.vacuum_admittance(oE, sE, phiE, fsel)
     summ = []
-    for lo, hi in bands:
+    for lo, hi in [(30, 100), (100, 250), (250, 500), (500, 1000), (1000, 2000)]:
         s = (fsel >= lo) & (fsel < hi)
-        summ.append(dict(band=[lo, hi], median_err_reduced=float(np.median(err[s])), median_err_vacuum=float(np.median(err_vac[s])),
-                         median_Re_mobility_ratio=float(np.median(np.real(np.einsum('fkk->fk', Y[s]))/np.real(np.einsum('fkk->fk', Y0[s]))))))
-    k = np.arange(n)
-    out = dict(modes=n, z_asymmetry_median=float(np.median(asym[(f > 30) & (f < 2000)])), passivity=rep, bands=summ,
-               f_loaded_over_vacuum={str(i): float(oL[i]/om[i]) for i in range(0, n, 8)}, sigma_loaded_over_vacuum={str(i): float(sL[i]/sg[i]) for i in range(0, n, 8)},
-               median_f_ratio_first20=float(np.median(oL[:20]/om[:20])), median_sigma_ratio_first20=float(np.median(sL[:20]/sg[:20])),
-               median_f_ratio_20_144=float(np.median(oL[20:]/om[20:])), median_sigma_ratio_20_144=float(np.median(sL[20:]/sg[20:])),
-               nonproportional_median=float(np.median(nonprop)), nonproportional_max=float(nonprop.max()))
+        row = dict(band=[lo, hi])
+        for nm, Ya in (('vacuum', Y0), ('diagonal_loading', YD), ('eigen_reduction', YE)):
+            e = derr(Ya)[s]
+            row[nm] = dict(median_abs_dB_own_port=float(np.median(np.abs(e))), median_ReY_ratio=float(np.median((diag_(Ya).real/diag_(Y).real)[s])))
+        summ.append(row)
+    out = dict(modes=n, z_asymmetry_median=float(np.median(asym[(f > 30) & (f < 2000)])), re_Z_removed_fraction=removed, passivity_projected=rep, bands=summ,
+               table='diagonal loading (per-mode mass and damping from Z_ii at the mode frequency, vacuum participations)',
+               f_loaded_over_vacuum={str(i): float(oD[i]/om[i]) for i in range(0, n, 8)}, sigma_loaded_over_vacuum={str(i): float(sD[i]/sg[i]) for i in range(0, n, 8)},
+               median_f_ratio_first20=float(np.median(oD[:20]/om[:20])), median_sigma_ratio_first20=float(np.median(sD[:20]/sg[:20])),
+               median_f_ratio_20_144=float(np.median(oD[20:]/om[20:])), median_sigma_ratio_20_144=float(np.median(sD[20:]/sg[20:])),
+               eigen_nonproportional_median=float(np.median(nonprop)), eigen_nonproportional_max=float(nonprop.max()))
+    oL, sL, phiL = oD, sD, Phi
     Path(outprefix + '_report.json').write_text(json.dumps(out, indent=1))
     np.savez(outprefix + '_admittance.npz', f=fsel, Y=Y.astype(np.complex64), Y_vacuum=Y0.astype(np.complex64))
     # table for the renderer: loaded poles for the first n modes, vacuum for the rest

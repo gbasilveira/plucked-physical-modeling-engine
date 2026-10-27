@@ -6,7 +6,8 @@ import numpy as np
 
 BANDS = ['62-125', '125-250', '250-500', '500-1k', '1k-2k', '2k-4k', '4k-8k', '8k+']
 CB = ['125', '250', '500', '1k', '2k', '4k']
-NAMES = {'0.6': '0.6 Full', 'A0': '0.7a', 'A1': '+HF board', 'A2': '+strings', 'A3': '+plate/fine/diffraction', 'A4': '0.7b (+admittance)'}
+NAMES = {'0.6': '0.6 Full', 'A0': '0.7a', 'A1': '+HF board', 'A2': '+strings', 'A3': '+plate/fine/diffraction',
+         'A3n': '  (A3 without Rayleigh level matching)', 'A4': '0.7b (+admittance)'}
 
 def db(a, b): return 10*np.log10(np.maximum(a, 1e-30)/np.maximum(b, 1e-30))
 
@@ -43,7 +44,7 @@ def main(path, out):
     L.append('Ablation: change of the mean absolute late-share error (dB) when each addition is made (negative = closer to the reference)')
     prev = None
     for v in variants:
-        if v in ('0.6',): continue
+        if v in ('0.6', 'A3n'): continue
         a = np.abs(agg[v])
         if prev is not None:
             L.append('%-26s' % ('-> ' + NAMES[v]) + ' '.join('%+8.1f' % x for x in (a.mean(0) - np.abs(agg[prev]).mean(0))) + '   all %+.2f' % (a.mean() - np.abs(agg[prev]).mean()))

@@ -54,13 +54,14 @@ class Ctx:
         self.work = Path(work); self.modes = modes; self.out = Path(repo_out)
         w = self.work
         self.E_a = np.load(w/'ir_open.npz')['E']
+        self.E_nc = np.load(w/'irb_fullnc_open.npz') if (w/'irb_fullnc_open.npz').exists() else None
         self.E_v1 = np.load(w/'irb_v1_open.npz') if (w/'irb_v1_open.npz').exists() else None
         self.E_full = np.load(w/'irb_full_open.npz') if (w/'irb_full_open.npz').exists() else None
         self.table_a = w/'table_open.bin'; self.table_b = w/'tableb_open_table.bin'
         self.sr_np = w/'strrad_noplate.bin'; self.sr_p = w/'strrad_plate.bin'
     def idx(self, E, mics):
         names = [str(x) for x in E['mics']]; return [names.index(m) for m in mics]
-    def signals(self, name, notes, mics=PRESET_MICS['close'], tail=4.0, which=('A0', 'A1', 'A2', 'A3', 'A4')):
+    def signals(self, name, notes, mics=PRESET_MICS['close'], tail=4.0, which=('A0', 'A1', 'A2', 'A3', 'A3n', 'A4')):
         w = self.work; mi = [MICS.index(m) for m in mics]; sig = {}
         pa = render(w, name, notes, 'a_np', self.table_a, self.sr_np, tail)
         if 'A0' in which: sig['A0'] = board_signal(pa, self.E_a, mi)
@@ -71,12 +72,15 @@ class Ctx:
         if 'A3' in which:
             pp = render(w, name, notes, 'a_p', self.table_a, self.sr_p, tail)
             sig['A3'] = add(board_signal(pp, self.E_full['E'], self.idx(self.E_full, mics)), strings_signal(pp, mi))
+        if 'A3n' in which and self.E_nc is not None:
+            pp = render(w, name, notes, 'a_p', self.table_a, self.sr_p, tail)
+            sig['A3n'] = add(board_signal(pp, self.E_nc['E'], self.idx(self.E_nc, mics)), strings_signal(pp, mi))
         if 'A4' in which:
             pb = render(w, name, notes, 'b_p', self.table_b, self.sr_p, tail)
             sig['A4'] = add(board_signal(pb, self.E_full['E'], self.idx(self.E_full, mics)), strings_signal(pb, mi))
         return sig
 
-def validate(ctx, which=('A0', 'A1', 'A2', 'A3', 'A4'), fname='grand-validation-0.7b.json'):
+def validate(ctx, which=('A0', 'A1', 'A2', 'A3', 'A3n', 'A4'), fname='grand-validation-0.7b.json'):
     work, out = ctx.work, ctx.out
     gain_a = MR.gain_of(out)                                   # the 0.7a convention
     c4 = ctx.signals('c4v60', [(0.0, 8.0, 60, 60)], which=which)

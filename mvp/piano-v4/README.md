@@ -1,5 +1,12 @@
 # MVP 4: bridge feedback
 
+## Update 0.7b: "Grand", highest offline accuracy (not in the plug-ins)
+
+0.7b adds to the 0.7a reference: a statistical board from 3.6 to 16 kHz, direct string radiation and the iron plate, a fine FDTD grid and a diffraction model for the ray part, and the full air-loaded
+bridge admittance (diagonal loading for all 144 low modes in the strings' board). Against Salamander (nine notes, no fitting) the 4 to 8 kHz hole of 0.7a is closed (-20.6 dB to +12.6 dB; +2.4 without the
+ray-to-FDTD level matching) and 2 to 4 kHz improves (-7.9 to +2.5 dB), but the mean late-window error equals 0.6's (7.6 against 7.5 dB): honest numbers, ablation, limits and the diagnostic renders (body taps, stems, a solo string) in
+`mvp/piano-grand/README.md` ("Update 0.7b"); plan: `mvp/ITERATION-PLAN.md`. Renders in `out/piano-mvp-v4/grand/`. The 0.6 plug-ins are unchanged (`piano-previous-bitexact`).
+
 ## Update 0.7a: "Grand", an offline reference of the grand's body and near field (not in the plug-ins)
 
 Full sounded like a vertical piano. 0.7a builds, offline only, a Reissner-Mindlin FEM grand soundboard (explicit ribs and bridges, per-key string points), a 3-D FDTD of the

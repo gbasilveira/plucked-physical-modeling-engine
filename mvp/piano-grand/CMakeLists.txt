@@ -37,3 +37,5 @@ endforeach()
 add_test(NAME grand-admittance COMMAND ${PIANO_GRAND_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_admittance.py
   $<TARGET_FILE:grand-fdtd> ${CMAKE_CURRENT_BINARY_DIR}/admittance)
 set_tests_properties(grand-admittance PROPERTIES TIMEOUT 600 SKIP_RETURN_CODE 77)
+add_executable(piano-body-tap-06 body_tap_06.cpp)
+target_link_libraries(piano-body-tap-06 PRIVATE piano_core)

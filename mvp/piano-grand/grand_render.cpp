@@ -10,6 +10,10 @@
 // the vibrating strings, from the modal states of the struck strings and the complex gain table of string_radiation.py (G per unit modal
 // velocity at omega_n: p = Re[G (u/dt + j omega (q - u/2))], the analytic signal of a decaying partial, both polarisations).
 //
+// Diagnostics (0.7b): --split also writes out_prefix.gu.f32 (the bridge force records of the unstruck voices only; the struck part is g - gu) and, with
+// --strrad, out_prefix.sl.f32 (direct radiation of the unstruck strings, vertical modes below 2 kHz, the light model's states); --solo KEY writes
+// out_prefix.solo.f32 (frames x (nmics + 1) float32): direct radiation of that key's strings (struck or unstruck) and a pickup, the strings' summed
+// velocity 20 mm from the bridge (m/s, vertical + horizontal when struck).
 // usage: piano-grand-render events board_table.bin out_prefix [--full] [--seconds-tail S] [--strrad strrad.bin]
 //   board_table.bin: 512 omega, 512 sigma, 88*512 phi (little-endian doubles)
 //   out_prefix.g.f32: frames x 88 float32 (force records); out_prefix.info.txt
@@ -30,10 +34,11 @@
 int main(int argc, char** argv) {
     try {
         if (argc < 4) throw std::runtime_error("usage: piano-grand-render events board_table.bin out_prefix [--full] [--tail seconds]");
-        bool full = false; double tail = 4.0; std::string dumpPath, strradPath;
+        bool full = false; double tail = 4.0; std::string dumpPath, strradPath; bool split = false; int solo = -1;
         for (int i = 4; i < argc; ++i) {
             const std::string a = argv[i];
             if (a == "--full") full = true; else if (a == "--tail" && i + 1 < argc) tail = std::stod(argv[++i]);
+            else if (a == "--split") split = true; else if (a == "--solo" && i + 1 < argc) solo = std::stoi(argv[++i]);
             else if (a == "--dump-strings" && i + 1 < argc) dumpPath = argv[++i]; else if (a == "--strrad" && i + 1 < argc) strradPath = argv[++i];
             else throw std::runtime_error("unknown option " + a);
         }
@@ -101,9 +106,14 @@ int main(int argc, char** argv) {
                 if (!in) throw std::runtime_error("short strrad table");
             }
         }
+        std::ofstream gu, sl, sosf; if (split) gu.open(std::string(argv[3]) + ".gu.f32", std::ios::binary);
+        if (nmic && split) sl.open(std::string(argv[3]) + ".sl.f32", std::ios::binary);
+        if (solo >= 21) sosf.open(std::string(argv[3]) + ".solo.f32", std::ios::binary);
+        std::vector<float> recu(88), soloFrame(8, 0.f); std::vector<double> lacc(8, 0.0), soacc(8, 0.0);
         std::ofstream sout; std::vector<double> sacc(std::max(nmic, 1), 0.0); std::vector<float> sframe(std::max(nmic, 1), 0.f);
         if (nmic) sout.open(std::string(argv[3]) + ".s.f32", std::ios::binary);
-        const double invDt = fs;
+        const double invDt = fs; std::vector<double> compiledLen(88, 1.0);
+        for (int k = 0; k < 88; ++k) compiledLen[k] = piano.compiledString(k + 21, 0).L;
         const int end = events.back().frame + 1;
         const int finish = full ? end + int(tail * fs) : events.back().frame + int(tail * fs);
         std::ofstream out(std::string(argv[3]) + ".g.f32", std::ios::binary); if (!out) throw std::runtime_error("cannot write");
@@ -119,7 +129,25 @@ int main(int argc, char** argv) {
                 const double g = piano.radiationDrive(k); rec[piano.radiationPort(k)] = float(g); peakG = std::max(peakG, std::fabs(g));
             }
             out.write(reinterpret_cast<const char*>(rec.data()), 88 * 4);
+            if (split) {
+                std::fill(recu.begin(), recu.end(), 0.f);
+                for (int k = 0; k < piano.radiationPortCount(); ++k) { const int p = piano.radiationPort(k); if (!piano.voiceStruck(p + 21)) recu[p] = rec[p]; }
+                gu.write(reinterpret_cast<const char*>(recu.data()), 88 * 4);
+            }
             if (nmic) {
+                std::fill(lacc.begin(), lacc.end(), 0.0); std::fill(soacc.begin(), soacc.end(), 0.0);
+                if (split || solo >= 21)
+                    piano.visitLightStrings([&](int k, int j, std::size_t nAct, const double* om, const double* q, const double* u) {
+                        const auto& t = tabs[k]; if (j >= t.count) return;
+                        const std::size_t n = std::min<std::size_t>(nAct, t.nm[j]); const float* gV = t.g.data() + t.off[j];
+                        const double lp = (solo == k + 21) ? 1.0 : 0.0;
+                        for (std::size_t i = 0; i < n; ++i) {
+                            const double vV = u[i] * invDt, dV = om[i] * (q[i] - 0.5 * u[i]); const float* a = gV + i * nmic * 2;
+                            for (int m = 0; m < nmic; ++m) { const double c = a[2 * m] * vV - a[2 * m + 1] * dV; lacc[m] += c; if (lp) soacc[m] += c; }
+                            if (lp) soacc[nmic] += vV * std::sqrt(2.0 / compiledLen[k]) * std::sin((i + 1) * 3.14159265358979323846 * (compiledLen[k] - 0.02) / compiledLen[k]);
+                        }
+                    });
+                if (split) { for (int m = 0; m < nmic; ++m) sframe[m] = float(lacc[m]); sl.write(reinterpret_cast<const char*>(sframe.data()), nmic * 4); }
                 std::fill(sacc.begin(), sacc.end(), 0.0);
                 piano.visitStrings([&](int k, int j, std::size_t nAct, const double* om, const double* qV, const double* uV, const double* qH, const double* uH) {
                     const auto& t = tabs[k]; if (j >= t.count) return;
@@ -129,11 +157,13 @@ int main(int argc, char** argv) {
                         const double vV = uV[i] * invDt, dV = om[i] * (qV[i] - 0.5 * uV[i]);
                         const double vH = uH[i] * invDt, dH = om[i] * (qH[i] - 0.5 * uH[i]);
                         const float* a = gV + i * nmic * 2; const float* b = gH + i * nmic * 2;
-                        for (int m = 0; m < nmic; ++m) sacc[m] += a[2 * m] * vV - a[2 * m + 1] * dV + b[2 * m] * vH - b[2 * m + 1] * dH;
+                        for (int m = 0; m < nmic; ++m) { const double c = a[2 * m] * vV - a[2 * m + 1] * dV + b[2 * m] * vH - b[2 * m + 1] * dH; sacc[m] += c; if (k + 21 == solo) soacc[m] += c; }
+                        if (k + 21 == solo) soacc[nmic] += (vV + vH) * std::sqrt(2.0 / compiledLen[k]) * std::sin((i + 1) * 3.14159265358979323846 * (compiledLen[k] - 0.02) / compiledLen[k]);
                     }
                 });
                 for (int m = 0; m < nmic; ++m) sframe[m] = float(sacc[m]);
                 sout.write(reinterpret_cast<const char*>(sframe.data()), nmic * 4);
+                if (solo >= 21) { for (int m = 0; m <= nmic; ++m) soloFrame[m] = float(soacc[m]); sosf.write(reinterpret_cast<const char*>(soloFrame.data()), (nmic + 1) * 4); }
             }
         }
         std::ofstream(std::string(argv[3]) + ".info.txt") << "frames=" << finish << "\nfs=" << fs << "\npeak_g=" << peakG << "\nfaults=" << piano.numericalFaults() << "\n";

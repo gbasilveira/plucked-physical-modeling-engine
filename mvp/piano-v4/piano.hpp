@@ -313,6 +313,17 @@ public:
             }
         }
     }
+    // 0.7b diagnostics: is the key's voice a struck one (false: unstruck, excited only through the board)?
+    bool voiceStruck(int key) const noexcept { return key >= 21 && key <= 108 && voices_[key - 21].struck; }
+    // Unstruck (sympathetic / leaky-damped-by-the-light-model) strings: f(key, string, modes, omega, q, u), vertical polarisation only.
+    template <class F> void visitLightStrings(F&& f) const {
+        for (int k = 0; k < 88; ++k) {
+            const Voice& v = voices_[k];
+            if (!v.active || v.struck) continue;
+            for (std::size_t j = 0; j < v.light.strings(); ++j)
+                f(k, static_cast<int>(j), v.light.modeCount(j), v.modes[j].omega.data(), v.light.q(j), v.light.u(j));
+        }
+    }
     // Compiled data of the strings of a key (after prepare): count, speaking length, number of modes, omega.
     int keyStringCount(int key) const noexcept { return stringsForKey(key); }
     const pme::StringModes& compiledString(int key, int j) const noexcept { return voices_[key - 21].modes[j]; }
