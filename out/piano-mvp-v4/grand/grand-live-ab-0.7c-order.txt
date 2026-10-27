@@ -1,0 +1,20 @@
+Each item 4 s with a 0.3 s fade, 0.5 s gaps, an extra 0.5 s between groups; velocity 70, open lid. Per group: 0.7b offline (piano-grand-render + 1 s responses), 0.7c Full Grand (the plug-in code, Full quality), 0.7c Live Grand (Live quality, 128-frame blocks, one helper thread).
+1. close C2: 0.7b offline
+2. close C2: 0.7c Full Grand
+3. close C2: 0.7c Live Grand
+4. close C4: 0.7b offline
+5. close C4: 0.7c Full Grand
+6. close C4: 0.7c Live Grand
+7. close C6: 0.7b offline
+8. close C6: 0.7c Full Grand
+9. close C6: 0.7c Live Grand
+10. close chord: 0.7b offline
+11. close chord: 0.7c Full Grand
+12. close chord: 0.7c Live Grand
+13. audience C4: 0.7b offline
+14. audience C4: 0.7c Full Grand
+15. audience C4: 0.7c Live Grand
+16. audience chord: 0.7b offline
+17. audience chord: 0.7c Full Grand
+18. audience chord: 0.7c Live Grand
+24-bit scaled by 1.000.

@@ -10,9 +10,9 @@
 
 <https://gbasilveira.github.io/plucked-physical-modeling-engine/mvp/piano-v4>
     a lv2:Plugin, lv2:InstrumentPlugin ;
-    doap:name "Piano MVP 4 - Baked radiation" ;
+    doap:name "Piano MVP 4 - Grand" ;
     doap:license <https://opensource.org/license/mit> ;
-    lv2:minorVersion 6 ;
+    lv2:minorVersion 7 ;
     lv2:microVersion 0 ;
     lv2:requiredFeature urid:map ;
     rdfs:comment "Experimental physical piano with velocity, sustain and a fixed preset; quality Live / Balanced / Full." ;
@@ -77,4 +77,30 @@
         lv2:scalePoint [ rdfs:label "Auto" ; rdf:value 0 ] ,
                        [ rdfs:label "Modal (512 modes, reference)" ; rdf:value 1 ] ,
                        [ rdfs:label "Baked (reduced bank)" ; rdf:value 2 ]
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 10 ; lv2:symbol "body" ; lv2:name "Body" ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        rdfs:comment "Classic = the 0.6 board and radiation (sessions saved before 0.7c sound exactly as they did). Grand = the 0.7 grand: the strings couple to the FEM grand board with air loading, the board radiates through a shared-pole bank fitted to the 0.7b port-to-microphone responses, and the struck strings radiate directly. A change applies from the next note-on; sounding notes of the other body ring out." ;
+        lv2:portProperty lv2:integer, lv2:enumeration, lv2:connectionOptional ;
+        lv2:scalePoint [ rdfs:label "Classic (0.6)" ; rdf:value 0 ] ,
+                       [ rdfs:label "Grand (0.7)" ; rdf:value 1 ]
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 11 ; lv2:symbol "mic" ; lv2:name "Mic" ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        rdfs:comment "Body Grand: the stereo pair that is rendered. Close AB (12 cm above the strings, the Salamander style), Player (at the keyboard) or Audience (about 3 m from the tail). A change is a 20 ms crossfade." ;
+        lv2:portProperty lv2:integer, lv2:enumeration, lv2:connectionOptional ;
+        lv2:scalePoint [ rdfs:label "Close AB" ; rdf:value 0 ] ,
+                       [ rdfs:label "Player" ; rdf:value 1 ] ,
+                       [ rdfs:label "Audience" ; rdf:value 2 ]
+    ], [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 12 ; lv2:symbol "lid" ; lv2:name "Lid" ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        rdfs:comment "Body Grand: the lid state of the radiation (open, half open on the prop stick, closed). A change is a 20 ms crossfade; the radiation of the new state starts from rest." ;
+        lv2:portProperty lv2:integer, lv2:enumeration, lv2:connectionOptional ;
+        lv2:scalePoint [ rdfs:label "Open" ; rdf:value 0 ] ,
+                       [ rdfs:label "Half" ; rdf:value 1 ] ,
+                       [ rdfs:label "Closed" ; rdf:value 2 ]
     ] .

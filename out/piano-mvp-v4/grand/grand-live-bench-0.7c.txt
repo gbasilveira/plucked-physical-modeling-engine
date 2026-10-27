@@ -1,0 +1,145 @@
+--- chopin-op28-no4 live block 64 fixed classic
+WINDOW worst1s_mean 0.4619 at 62.59 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 16
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.20 p99 0.49 p99.9 0.74 max 1.66 misses 15/79330 peak 0.176 over1 0 stalls 1 shed 0 (events 0) steals 4
+--- chopin-op28-no4 live block 64 fixed grand
+WINDOW worst1s_mean 0.7461 at 62.58 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 16
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.37 p99 0.74 p99.9 1.02 max 1.97 misses 99/79330 peak 0.140 over1 0 stalls 2 shed 0 (events 0) steals 3
+--- chopin-op28-no4 live block 64 --adaptive classic
+WINDOW worst1s_mean 0.3016 at 61.14 s; shed_max 3 shed_seconds 43.532 shed_blocks 32649 max_active_voices 16
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1 adaptive: mean 0.17 p99 0.35 p99.9 0.74 max 4.23 misses 22/79330 peak 0.176 over1 0 stalls 1 shed 0 (events 4) steals 18
+--- chopin-op28-no4 live block 64 --adaptive grand
+WINDOW worst1s_mean 0.7299 at 62.16 s; shed_max 3 shed_seconds 70.775 shed_blocks 53082 max_active_voices 9
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1 adaptive: mean 0.32 p99 0.73 p99.9 0.92 max 1.67 misses 35/79330 peak 0.136 over1 0 stalls 1 shed 3 (events 3) steals 46
+--- chopin-op28-no4 live block 128 fixed classic
+WINDOW worst1s_mean 0.4592 at 62.59 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 16
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.20 p99 0.49 p99.9 0.78 max 1.58 misses 6/39665 peak 0.176 over1 0 stalls 0 shed 0 (events 0) steals 4
+--- chopin-op28-no4 live block 128 fixed grand
+WINDOW worst1s_mean 0.7444 at 62.59 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 16
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.37 p99 0.74 p99.9 1.01 max 1.95 misses 42/39665 peak 0.140 over1 0 stalls 2 shed 0 (events 0) steals 3
+--- chopin-op28-no4 live block 128 --adaptive classic
+WINDOW worst1s_mean 0.4597 at 62.59 s; shed_max 3 shed_seconds 16.592 shed_blocks 6222 max_active_voices 16
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1 adaptive: mean 0.18 p99 0.45 p99.9 0.68 max 1.27 misses 4/39665 peak 0.176 over1 0 stalls 0 shed 0 (events 3) steals 6
+--- chopin-op28-no4 live block 128 --adaptive grand
+WINDOW worst1s_mean 0.5315 at 61.07 s; shed_max 3 shed_seconds 69.794 shed_blocks 26173 max_active_voices 12
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1 adaptive: mean 0.31 p99 0.56 p99.9 0.87 max 1.56 misses 13/39665 peak 0.139 over1 0 stalls 0 shed 3 (events 3) steals 40
+--- chopin-op28-no4 live block 256 fixed classic
+WINDOW worst1s_mean 0.4627 at 93.44 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 16
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.20 p99 0.47 p99.9 0.72 max 1.46 misses 8/19833 peak 0.176 over1 0 stalls 0 shed 0 (events 0) steals 4
+--- chopin-op28-no4 live block 256 fixed grand
+WINDOW worst1s_mean 0.8707 at 88.95 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 16
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.38 p99 0.86 p99.9 1.07 max 2.37 misses 27/19833 peak 0.140 over1 0 stalls 4 shed 0 (events 0) steals 3
+--- chopin-op28-no4 live block 256 --adaptive classic
+WINDOW worst1s_mean 0.4546 at 62.58 s; shed_max 2 shed_seconds 14.685 shed_blocks 2754 max_active_voices 16
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1 adaptive: mean 0.19 p99 0.45 p99.9 0.65 max 1.44 misses 2/19833 peak 0.176 over1 0 stalls 0 shed 1 (events 2) steals 4
+--- chopin-op28-no4 live block 256 --adaptive grand
+WINDOW worst1s_mean 0.6332 at 61.14 s; shed_max 3 shed_seconds 43.821 shed_blocks 8217 max_active_voices 16
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1 adaptive: mean 0.34 p99 0.62 p99.9 0.85 max 1.49 misses 3/19833 peak 0.140 over1 0 stalls 2 shed 3 (events 3) steals 15
+--- chopin-op28-no4 balanced block 64 fixed classic
+WINDOW worst1s_mean 0.6494 at 92.58 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.29 p99 0.65 p99.9 0.95 max 5.19 misses 56/79330 peak 0.178 over1 0 stalls 2 shed 0 (events 0) steals 0
+--- chopin-op28-no4 balanced block 64 fixed grand
+WINDOW worst1s_mean 1.4309 at 91.09 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.59 p99 1.47 p99.9 1.83 max 6.15 misses 7884/79330 peak 0.144 over1 0 stalls 5 shed 0 (events 0) steals 0
+--- chopin-op28-no4 balanced block 64 --adaptive classic
+WINDOW worst1s_mean 0.3412 at 31.87 s; shed_max 3 shed_seconds 73.619 shed_blocks 55214 max_active_voices 12
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1 adaptive: mean 0.20 p99 0.39 p99.9 0.74 max 2.22 misses 8/79330 peak 0.181 over1 0 stalls 3 shed 0 (events 4) steals 22
+--- chopin-op28-no4 balanced block 64 --adaptive grand
+WINDOW worst1s_mean 0.8991 at 58.59 s; shed_max 3 shed_seconds 92.390 shed_blocks 69293 max_active_voices 9
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1 adaptive: mean 0.43 p99 0.87 p99.9 1.04 max 3.19 misses 98/79330 peak 0.141 over1 0 stalls 2 shed 3 (events 4) steals 48
+--- chopin-op28-no4 balanced block 128 fixed classic
+WINDOW worst1s_mean 0.6504 at 92.59 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.28 p99 0.64 p99.9 0.95 max 1.87 misses 16/39665 peak 0.178 over1 0 stalls 1 shed 0 (events 0) steals 0
+--- chopin-op28-no4 balanced block 128 fixed grand
+WINDOW worst1s_mean 1.0096 at 62.74 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.53 p99 1.00 p99.9 1.31 max 2.32 misses 401/39665 peak 0.144 over1 0 stalls 1 shed 0 (events 0) steals 0
+--- chopin-op28-no4 balanced block 128 --adaptive classic
+WINDOW worst1s_mean 0.3687 at 61.14 s; shed_max 3 shed_seconds 43.563 shed_blocks 16336 max_active_voices 18
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1 adaptive: mean 0.21 p99 0.42 p99.9 0.75 max 2.50 misses 11/39665 peak 0.178 over1 0 stalls 0 shed 0 (events 4) steals 16
+--- chopin-op28-no4 balanced block 128 --adaptive grand
+WINDOW worst1s_mean 0.9499 at 37.49 s; shed_max 3 shed_seconds 70.874 shed_blocks 26578 max_active_voices 9
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1 adaptive: mean 0.45 p99 0.93 p99.9 1.02 max 1.61 misses 84/39665 peak 0.141 over1 0 stalls 2 shed 3 (events 4) steals 47
+--- chopin-op28-no4 balanced block 256 fixed classic
+WINDOW worst1s_mean 0.6578 at 92.59 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.28 p99 0.65 p99.9 0.94 max 1.76 misses 8/19833 peak 0.178 over1 0 stalls 1 shed 0 (events 0) steals 0
+--- chopin-op28-no4 balanced block 256 fixed grand
+WINDOW worst1s_mean 1.6764 at 62.94 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.67 p99 1.64 p99.9 1.96 max 4.01 misses 3061/19833 peak 0.144 over1 0 stalls 6 shed 0 (events 0) steals 0
+--- chopin-op28-no4 balanced block 256 --adaptive classic
+WINDOW worst1s_mean 0.6393 at 63.44 s; shed_max 2 shed_seconds 38.331 shed_blocks 7187 max_active_voices 18
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1 adaptive: mean 0.23 p99 0.60 p99.9 0.82 max 1.94 misses 14/19833 peak 0.178 over1 0 stalls 1 shed 0 (events 3) steals 6
+--- chopin-op28-no4 balanced block 256 --adaptive grand
+WINDOW worst1s_mean 0.9912 at 61.36 s; shed_max 3 shed_seconds 93.127 shed_blocks 17462 max_active_voices 9
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1 adaptive: mean 0.44 p99 0.97 p99.9 1.04 max 1.70 misses 66/19833 peak 0.141 over1 0 stalls 4 shed 3 (events 4) steals 50
+--- chopin-op10-no12 live block 64 fixed classic
+WINDOW worst1s_mean 1.1036 at 59.22 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.43 p99 1.06 p99.9 1.35 max 1.72 misses 2037/107075 peak 0.330 over1 0 stalls 2 shed 0 (events 0) steals 262
+--- chopin-op10-no12 live block 64 fixed grand
+WINDOW worst1s_mean 1.4021 at 110.60 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 17
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.70 p99 1.40 p99.9 1.57 max 2.15 misses 15431/107075 peak 0.274 over1 0 stalls 4 shed 0 (events 0) steals 277
+--- chopin-op10-no12 live block 64 --adaptive classic
+WINDOW worst1s_mean 0.4112 at 2.08 s; shed_max 3 shed_seconds 140.406 shed_blocks 105305 max_active_voices 13
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1 adaptive: mean 0.20 p99 0.44 p99.9 0.71 max 1.24 misses 9/107075 peak 0.335 over1 0 stalls 2 shed 2 (events 3) steals 630
+--- chopin-op10-no12 live block 64 --adaptive grand
+WINDOW worst1s_mean 0.5881 at 20.89 s; shed_max 3 shed_seconds 140.681 shed_blocks 105511 max_active_voices 12
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1 adaptive: mean 0.40 p99 0.70 p99.9 0.90 max 1.62 misses 47/107075 peak 0.276 over1 0 stalls 0 shed 3 (events 3) steals 911
+--- chopin-op10-no12 live block 128 fixed classic
+WINDOW worst1s_mean 1.1058 at 59.22 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.43 p99 1.06 p99.9 1.35 max 1.64 misses 989/53538 peak 0.330 over1 0 stalls 0 shed 0 (events 0) steals 262
+--- chopin-op10-no12 live block 128 fixed grand
+WINDOW worst1s_mean 1.3055 at 64.99 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 17
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.69 p99 1.37 p99.9 1.54 max 4.05 misses 6837/53538 peak 0.274 over1 0 stalls 3 shed 0 (events 0) steals 277
+--- chopin-op10-no12 live block 128 --adaptive classic
+WINDOW worst1s_mean 0.5362 at 62.47 s; shed_max 3 shed_seconds 140.401 shed_blocks 52651 max_active_voices 16
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1 adaptive: mean 0.23 p99 0.54 p99.9 0.69 max 1.28 misses 4/53538 peak 0.331 over1 0 stalls 2 shed 2 (events 3) steals 451
+--- chopin-op10-no12 live block 128 --adaptive grand
+WINDOW worst1s_mean 0.7978 at 61.33 s; shed_max 3 shed_seconds 140.681 shed_blocks 52756 max_active_voices 14
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1 adaptive: mean 0.42 p99 0.78 p99.9 0.97 max 2.88 misses 43/53538 peak 0.276 over1 0 stalls 2 shed 3 (events 3) steals 835
+--- chopin-op10-no12 live block 256 fixed classic
+WINDOW worst1s_mean 1.1073 at 59.22 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 18
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.42 p99 1.05 p99.9 1.35 max 1.58 misses 483/26769 peak 0.330 over1 0 stalls 1 shed 0 (events 0) steals 262
+--- chopin-op10-no12 live block 256 fixed grand
+WINDOW worst1s_mean 1.3472 at 64.99 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 17
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.69 p99 1.36 p99.9 1.54 max 3.89 misses 3314/26769 peak 0.274 over1 0 stalls 3 shed 0 (events 0) steals 277
+--- chopin-op10-no12 live block 256 --adaptive classic
+WINDOW worst1s_mean 0.5106 at 25.18 s; shed_max 2 shed_seconds 132.526 shed_blocks 24849 max_active_voices 16
+body classic mic 0 lid 0 live rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1 adaptive: mean 0.24 p99 0.54 p99.9 0.69 max 1.20 misses 2/26769 peak 0.337 over1 0 stalls 0 shed 1 (events 3) steals 441
+--- chopin-op10-no12 live block 256 --adaptive grand
+WINDOW worst1s_mean 0.6453 at 2.36 s; shed_max 3 shed_seconds 140.596 shed_blocks 26362 max_active_voices 13
+body grand mic 0 lid 0 live rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1 adaptive: mean 0.40 p99 0.68 p99.9 0.85 max 2.72 misses 9/26769 peak 0.276 over1 0 stalls 1 shed 3 (events 3) steals 909
+--- chopin-op10-no12 balanced block 64 fixed classic
+WINDOW worst1s_mean 1.8571 at 59.37 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 24
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 0.76 p99 1.76 p99.9 1.92 max 2.20 misses 30504/107075 peak 0.326 over1 0 stalls 2 shed 0 (events 0) steals 73
+--- chopin-op10-no12 balanced block 64 fixed grand
+WINDOW worst1s_mean 2.5331 at 62.29 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 25
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1: mean 1.12 p99 2.42 p99.9 2.69 max 2.93 misses 61501/107075 peak 0.269 over1 0 stalls 3 shed 0 (events 0) steals 56
+--- chopin-op10-no12 balanced block 64 --adaptive classic
+WINDOW worst1s_mean 0.4074 at 2.63 s; shed_max 3 shed_seconds 140.781 shed_blocks 105586 max_active_voices 15
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1 adaptive: mean 0.23 p99 0.46 p99.9 0.66 max 3.50 misses 9/107075 peak 0.326 over1 0 stalls 1 shed 2 (events 3) steals 689
+--- chopin-op10-no12 balanced block 64 --adaptive grand
+WINDOW worst1s_mean 0.6147 at 39.51 s; shed_max 3 shed_seconds 142.766 shed_blocks 107075 max_active_voices 13
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 64 fs 48000 threads 1 adaptive: mean 0.42 p99 0.70 p99.9 0.92 max 1.66 misses 49/107075 peak 0.268 over1 0 stalls 0 shed 3 (events 3) steals 912
+--- chopin-op10-no12 balanced block 128 fixed classic
+WINDOW worst1s_mean 1.8867 at 59.37 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 24
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 0.76 p99 1.75 p99.9 1.96 max 5.21 misses 14606/53538 peak 0.326 over1 0 stalls 1 shed 0 (events 0) steals 73
+--- chopin-op10-no12 balanced block 128 fixed grand
+WINDOW worst1s_mean 2.2878 at 90.89 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 25
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1: mean 1.14 p99 2.33 p99.9 2.45 max 9.25 misses 31022/53538 peak 0.269 over1 0 stalls 5 shed 0 (events 0) steals 56
+--- chopin-op10-no12 balanced block 128 --adaptive classic
+WINDOW worst1s_mean 0.4251 at 2.63 s; shed_max 3 shed_seconds 140.780 shed_blocks 52793 max_active_voices 15
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1 adaptive: mean 0.23 p99 0.47 p99.9 0.69 max 1.69 misses 18/53538 peak 0.326 over1 0 stalls 2 shed 2 (events 3) steals 724
+--- chopin-op10-no12 balanced block 128 --adaptive grand
+WINDOW worst1s_mean 0.6325 at 2.36 s; shed_max 3 shed_seconds 142.766 shed_blocks 53538 max_active_voices 13
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 128 fs 48000 threads 1 adaptive: mean 0.42 p99 0.70 p99.9 0.92 max 2.53 misses 24/53538 peak 0.268 over1 0 stalls 1 shed 3 (events 3) steals 910
+--- chopin-op10-no12 balanced block 256 fixed classic
+WINDOW worst1s_mean 1.8561 at 59.37 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 24
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 0.76 p99 1.76 p99.9 1.92 max 2.29 misses 7379/26769 peak 0.326 over1 0 stalls 1 shed 0 (events 0) steals 73
+--- chopin-op10-no12 balanced block 256 fixed grand
+WINDOW worst1s_mean 2.3316 at 90.89 s; shed_max 0 shed_seconds 0.000 shed_blocks 0 max_active_voices 25
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1: mean 1.16 p99 2.34 p99.9 2.80 max 3.49 misses 16479/26769 peak 0.269 over1 0 stalls 6 shed 0 (events 0) steals 56
+--- chopin-op10-no12 balanced block 256 --adaptive classic
+WINDOW worst1s_mean 0.5986 at 90.98 s; shed_max 2 shed_seconds 140.782 shed_blocks 26397 max_active_voices 15
+body classic mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1 adaptive: mean 0.26 p99 0.58 p99.9 0.71 max 1.08 misses 2/26769 peak 0.325 over1 0 stalls 0 shed 1 (events 2) steals 449
+--- chopin-op10-no12 balanced block 256 --adaptive grand
+WINDOW worst1s_mean 0.9944 at 103.93 s; shed_max 3 shed_seconds 142.766 shed_blocks 26769 max_active_voices 13
+body grand mic 0 lid 0 balanced rad auto voices 0 imp 1.0 block 256 fs 48000 threads 1 adaptive: mean 0.53 p99 0.99 p99.9 1.19 max 2.30 misses 193/26769 peak 0.268 over1 0 stalls 7 shed 3 (events 3) steals 896
+finished

@@ -1,9 +1,9 @@
-Piano MVP 4 - Baked radiation (LV2 0.6, Linux; version 6.0 = minorVersion 6, microVersion 0)
+Piano MVP 4 - Grand (LV2 0.7c, Linux; version 7.0 = minorVersion 7, microVersion 0)
 
 Extract the entire piano-mvp-v4.lv2 folder into ~/.lv2/.
 Keep manifest.ttl, piano.ttl and piano-mvp-v4.so together.
 Restart/rescan your LV2 host (for example Carla or Ardour).
-Look for "Piano MVP 4 - Baked radiation" under instruments/synthesizers.
+Look for "Piano MVP 4 - Grand" under instruments/synthesizers. (The URI is unchanged.)
 
 Connect MIDI to MIDI input and Left/Right audio to your playback outputs.
 MIDI notes 21-108, velocity, CC64 sustain, CC67 una corda (soft pedal), CC120 panic, CC123 note release.
@@ -35,6 +35,15 @@ deschedules is detected and its work moves to the audio thread. Control ports:
     drops the 246 board modes that radiate nothing and accumulates the drive in float: about -133 dB rms against Modal, 2.5x cheaper
     for the stage. Switching clears the radiation tail of the bank being left (a click only if notes ring). Port 9 is new; hosts that
     do not connect it get Auto.
+  Body (port 10, Classic (0.6) / Grand (0.7), default Grand): Classic is the 0.6 instrument exactly (its board, its radiation, bit for bit).
+    Grand is the 0.7 grand: the strings couple to the FEM grand soundboard with air loading, the board radiates through a pole-residue bank fitted
+    to the 0.7b port-to-microphone responses (below 4 kHz) plus the 0.7b statistical high-frequency board (above, every third mode in Live), and the
+    struck strings radiate directly. Both bodies are kept ready; a change applies from the next note-on and the sounding notes of the other body ring
+    out. Grand costs about twice Classic in Live (see the README for measurements). Hosts that do not connect port 10 get Classic.
+  Mic (port 11, Close AB / Player / Audience, default Close AB; Body Grand): the stereo pair that is rendered. Close AB sits 12 cm above the strings
+    (the Salamander style), Player at the keyboard, Audience about 3 m from the tail. A change is a 20 ms crossfade of two complete outputs.
+  Lid (port 12, Open / Half / Closed, default Open; Body Grand): the lid state of the radiation. A change is a 20 ms crossfade; the radiation of
+    the new state starts from rest (its low-frequency ringing builds up again over a few tenths of a second).
   Free-wheeling (optional, lv2:freeWheeling designation): a host that bounces offline raises it and
     the plug-in uses Full.
 When nothing sounds the plug-in stops simulating and costs well under 1 percent of a core.
