@@ -18,6 +18,16 @@ bool Piano::prepare(double fs) {
     if (!qualitySet_) tensionLimit_ = tensionMaxKey_;
     shared_ = sharedBoard_ && feedback_;
     leakyActive_ = leaky_ && shared_;
+    // 0.7c Body Grand: the strings' board is the 0.7b table for the duration of this call (the hook is read only here).
+    struct OverrideGuard { ~OverrideGuard() { setBoardOverride(nullptr); } } overrideGuard;
+    grandOn_ = false;
+    if (body_ == Body::Grand) {
+        std::size_t size = blobSize_; const std::uint8_t* blob = blob_;
+        if (!blob) blob = embeddedGrandTable(size);
+        if (!shared_ || !blob || !grandTable_.parse(blob, size) || !grand_.configure(&grandTable_, fs)) return false;
+        setBoardOverride(&grandTable_.board);
+        grandOn_ = true;
+    }
     std::vector<double> phi;
     if (shared_) buildParticipation(grandGeometry_, phi);
     releaseStep_ = std::exp(-35.0 / fs);
@@ -102,6 +112,7 @@ bool Piano::prepare(double fs) {
                     if (std::abs(1200 * std::log2(os[m] / oc[n])) < 20) coincidence_[c * 88 + s] += 1.0f / float((n + 1) * (m + 1));
         }
         if (!board_.configure(fs,std::move(phi),kLocalBridgeModes,false,bridgeMass_,bakedTolerance_)) return false;
+        board_.setGrand(grandOn_ ? &grand_ : nullptr);
     } else if (!soundboard_.prepare(fs)) return false;
     bridgeMassFilter_.prepare(fs);
     sleepSamples_ = static_cast<std::uint64_t>(sleepSeconds_ * fs);
@@ -113,7 +124,7 @@ bool Piano::prepare(double fs) {
     radThread_.stop(); pool_.stop();
     ring_.keys.assign(std::size_t{ringSize} * 88, 0); ring_.count.assign(ringSize, 0);
     ring_.g.assign(std::size_t{ringSize} * 88, 0.0);
-    ring_.outL.assign(ringSize, 0.0f); ring_.outR.assign(ringSize, 0.0f);
+    ring_.outL.assign(ringSize, 0.0f); ring_.outR.assign(ringSize, 0.0f); ring_.dir.assign(std::size_t{ringSize} * 4, 0.0f);
     blockL_.assign(maxBlockFrames, 0.0f); blockR_.assign(maxBlockFrames, 0.0f);
     produced_.store(0); consumed_.store(0); radLock_.store(0); radFault_.store(false);
     ready_ = true; reset();
@@ -556,7 +567,7 @@ void Piano::voiceStep(int port) noexcept {
     const double dw = board_.portIncrement(port);
     const bool damped = !v.held && !pedal_ && !v.undamped;
     double force;
-    v.faulted = false; v.radiated = false; v.peakMotion = 0;
+    v.faulted = false; v.radiated = false; v.peakMotion = 0; v.direct.fill(0.f);
     if (v.struck) {
         v.bridge.setExternalVelocity(dw * fs_);
         v.note.step();
@@ -616,6 +627,43 @@ void Piano::voiceStep(int port) noexcept {
     if (v.release < 1e-6 || v.quiet > sleepSamples_ || (v.fade > 0 && --v.fade == 0)) {
         v.active = v.struck = v.sympathetic = false; v.note.reset(); v.bridge.reset(); v.light.reset(); v.force = 0; v.fade = 0;
     }
+    if (grandOn_ && v.active && v.struck) computeDirect(v, port); else v.direct.fill(0.f);
+}
+// 0.7c direct radiation of the struck strings (the 0.7b model of grand_render --strrad, pruned): per kept partial, for each of the
+// slot microphones, c = Re[G (u/dt + j omega (q - u/2))] of both polarisations (SPEC-OSC difference-form states, velocity u/dt).
+void Piano::computeDirect(Voice& v, int port) noexcept {
+    v.direct.fill(0.f);
+    if (!grand_.directEnabled()) return;
+    const auto& slots = grand_.slots();
+    const double invDt = fs_;
+    double acc[4] = {0, 0, 0, 0};
+    const std::size_t strings = std::min<std::size_t>(v.note.stringCount(), 3);
+    for (std::size_t j = 0; j < strings; ++j) {
+        const GrandDirectString& d = grandTable_.direct[port][j];
+        const std::size_t nAct = v.note.activeModes(j);
+        const std::size_t off = v.note.modeOffset(j);
+        const double* om = v.modes[j].omega.data();
+        const double *qV = v.note.segment().q() + off, *uV = v.note.segment().u() + off;
+        const double *qH = v.note.horizontalQ(j), *uH = v.note.horizontalU(j);
+        for (std::uint32_t e = 0; e < d.nV; ++e) {
+            const std::size_t i = d.idxV[e]; if (i >= nAct) break;
+            const double vel = uV[i] * invDt, dis = om[i] * (qV[i] - 0.5 * uV[i]);
+            const float* g = d.gV + std::size_t{e} * 12;
+            for (int s = 0; s < 4; ++s) if (slots[s] >= 0) acc[s] += g[2 * slots[s]] * vel - g[2 * slots[s] + 1] * dis;
+        }
+        for (std::uint32_t e = 0; e < d.nH; ++e) {
+            const std::size_t i = d.idxH[e]; if (i >= nAct) break;
+            const double vel = uH[i] * invDt, dis = om[i] * (qH[i] - 0.5 * uH[i]);
+            const float* g = d.gH + std::size_t{e} * 12;
+            for (int s = 0; s < 4; ++s) if (slots[s] >= 0) acc[s] += g[2 * slots[s]] * vel - g[2 * slots[s] + 1] * dis;
+        }
+    }
+    for (int s = 0; s < 4; ++s) v.direct[s] = static_cast<float>(acc[s]);
+}
+void Piano::sumDirect(float* out) const noexcept {
+    double a[4] = {0, 0, 0, 0};
+    for (int k = 0; k < nPorts_; ++k) { const auto& v = voices_[ports_[k]]; for (int s = 0; s < 4; ++s) a[s] += v.direct[s]; }
+    for (int s = 0; s < 4; ++s) out[s] = static_cast<float>(a[s]);
 }
 void Piano::stringsStep() noexcept {
     if (sympathetic_ && (sampleClock_++ & 31u) == 0) wakeSympathetic();
@@ -667,6 +715,7 @@ void Piano::radiateInline(float& left, float& right) noexcept {
         if (v.radiated) board_.accumulateDrive(ports_[k], v.g, 0, v.radModes);
     }
     board_.radiationModes(0, kBoardModeCount);
+    if (grandOn_) { float d[4]; sumDirect(d); board_.setDirect(d); }
     double pressureL, pressureR;
     board_.radiationFinish(pressureL, pressureR);
     left = static_cast<float>(0.05 * pressureL);
@@ -714,6 +763,7 @@ void Piano::radiateRecord(std::uint64_t n) noexcept {
         board_.accumulateDrive(port, g[k], 0, (keys[k] & 0x80u) ? kLightRadiatingModes : kBoardModeCount);
     }
     board_.radiationModes(0, kBoardModeCount);
+    if (grandOn_) board_.setDirect(ring_.dir.data() + slot * 4);
     double pressureL, pressureR;
     board_.radiationFinish(pressureL, pressureR);
     float l = static_cast<float>(0.05 * pressureL), r = static_cast<float>(0.05 * pressureR);
@@ -803,6 +853,7 @@ void Piano::blockStep() noexcept {
         g[count++] = v.g;
     }
     ring_.count[s] = static_cast<std::uint8_t>(count);
+    if (grandOn_) sumDirect(ring_.dir.data() + s * 4);
     produced_.store(n + 1, std::memory_order_release);
 }
 void Piano::blockEnd(float* left, float* right) noexcept {

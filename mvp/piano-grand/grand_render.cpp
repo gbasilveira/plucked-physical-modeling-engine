@@ -34,12 +34,12 @@
 int main(int argc, char** argv) {
     try {
         if (argc < 4) throw std::runtime_error("usage: piano-grand-render events board_table.bin out_prefix [--full] [--tail seconds]");
-        bool full = false; double tail = 4.0; std::string dumpPath, strradPath; bool split = false; int solo = -1;
+        bool full = false; double tail = 4.0; std::string dumpPath, dumpTerms, strradPath; bool split = false; int solo = -1;
         for (int i = 4; i < argc; ++i) {
             const std::string a = argv[i];
             if (a == "--full") full = true; else if (a == "--tail" && i + 1 < argc) tail = std::stod(argv[++i]);
             else if (a == "--split") split = true; else if (a == "--solo" && i + 1 < argc) solo = std::stoi(argv[++i]);
-            else if (a == "--dump-strings" && i + 1 < argc) dumpPath = argv[++i]; else if (a == "--strrad" && i + 1 < argc) strradPath = argv[++i];
+            else if (a == "--dump-strings" && i + 1 < argc) dumpPath = argv[++i]; else if (a == "--dump-terms" && i + 1 < argc) dumpTerms = argv[++i]; else if (a == "--strrad" && i + 1 < argc) strradPath = argv[++i];
             else throw std::runtime_error("unknown option " + a);
         }
         constexpr int fs = 48000;
@@ -74,6 +74,17 @@ int main(int argc, char** argv) {
         piano.setRadiation(piano_mvp_v4::Piano::Radiation::Modal);
         if (!piano.setWorkerThreads(0)) throw std::runtime_error("threads");
         if (!piano.prepare(fs)) throw std::runtime_error("prepare failed");
+        if (!dumpTerms.empty()) {   // 0.7c: bridge-force coefficients a_n of every string (count, then per string nm and a[nm] float32)
+            std::ofstream d(dumpTerms, std::ios::binary);
+            for (int key = 21; key <= 108; ++key) {
+                const std::int32_t cnt = piano.keyStringCount(key); d.write(reinterpret_cast<const char*>(&cnt), 4);
+                for (int j = 0; j < cnt; ++j) {
+                    const auto& t = piano.compiledTerms(key, j); const std::int32_t nm = static_cast<std::int32_t>(t.a.size());
+                    d.write(reinterpret_cast<const char*>(&nm), 4); d.write(reinterpret_cast<const char*>(t.a.data()), 4 * nm);
+                }
+            }
+            return 0;
+        }
         if (!dumpPath.empty()) {
             std::ofstream d(dumpPath, std::ios::binary);
             for (int key = 21; key <= 108; ++key) {

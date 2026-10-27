@@ -115,7 +115,7 @@ void GrandBoard::buildBank(double tolerance) {
     bank_ = std::move(b);
 }
 void GrandBoard::setBaked(bool on) noexcept {
-    if (on == baked_) return;
+    if (grand_ || on == baked_) return;
     baked_ = on;
     // Clear the bank that takes over (its state is stale); the delay line keeps the last milliseconds.
     if (on) { std::fill(bank_.q.begin(), bank_.q.end(), 0.0); std::fill(bank_.v.begin(), bank_.v.end(), 0.0); std::fill(bank_.drive.begin(), bank_.drive.end(), 0.f); }
@@ -129,6 +129,7 @@ void GrandBoard::reset() noexcept {
     for (auto& l : lowpass_) l.v = 0;
     for (auto& ch : delayLine_) ch.fill(0);
     cursor_ = 0;
+    if (grand_) grand_->reset();
 }
 void GrandBoard::resetRadiation() noexcept {
     std::fill(drive_.begin(), drive_.end(), 0.0); std::fill(q_.begin(), q_.end(), 0.0);
@@ -136,6 +137,7 @@ void GrandBoard::resetRadiation() noexcept {
     std::fill(bank_.q.begin(), bank_.q.end(), 0.0); std::fill(bank_.v.begin(), bank_.v.end(), 0.0); std::fill(bank_.drive.begin(), bank_.drive.end(), 0.f);
     for (auto& ch : delayLine_) ch.fill(0);
     cursor_ = 0;
+    if (grand_) grand_->reset();
 }
 void GrandBoard::addForce(std::size_t port, double f) noexcept {
     kern::axpy(force_.data(), participation(port), f, coupled_);   // coupled: raw force
@@ -153,6 +155,7 @@ void GrandBoard::advanceCoupled() noexcept {
     std::fill(force_.begin() + static_cast<std::ptrdiff_t>(coupled_), force_.end(), 0.0);
 }
 double GrandBoard::outputBound() const noexcept {
+    if (grand_) return grand_->outputBound();
     double out = 0;
     const std::size_t n = baked_ ? bank_.count : kBoardModeCount;
     const double *om = baked_ ? bank_.omega.data() : omega_.data(), *sg = baked_ ? bank_.sigma.data() : sigma_.data();
@@ -174,6 +177,7 @@ double GrandBoard::coupledBound() const noexcept {
 }
 bool GrandBoard::quiet(double eps) const noexcept { return !ready_ || (outputBound() < eps && coupledBound() < eps); }
 void GrandBoard::radiationModes(std::size_t lo, std::size_t hi) noexcept {
+    if (grand_) { grand_->step(); return; }
     if (baked_) {   // 0.6: the reduced bank (callers always pass the whole range)
         kern::RadiationArraysF a{bank_.omega.data(), bank_.sigma.data(), bank_.c00.data(), bank_.c01.data(), bank_.c10.data(), bank_.c11.data(),
                                  bank_.reL.data(), bank_.imL.data(), bank_.reR.data(), bank_.imR.data(),
@@ -188,6 +192,7 @@ void GrandBoard::radiationModes(std::size_t lo, std::size_t hi) noexcept {
 }
 void GrandBoard::radiationFinish(double& left, double& right) noexcept {
     left = right = 0;
+    if (grand_) { grand_->finish(left, right, direct_.data()); return; }
     if (baked_) {   // eight interleaved partial sums, combined in a fixed order (count is a multiple of 32)
         double sl[8] = {}, sr[8] = {};
         for (std::size_t i = 0; i < bank_.count; i += 8)

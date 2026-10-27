@@ -3,6 +3,7 @@
 #include <lv2/atom/atom.h>
 #include <lv2/midi/midi.h>
 #include <lv2/urid/urid.h>
+#include "piano_pair.hpp"
 #include "midi.hpp"
 #include "pme/simd/denormals.hpp"
 #include <algorithm>
@@ -13,7 +14,7 @@ namespace {
 constexpr const char* kUri = "https://gbasilveira.github.io/plucked-physical-modeling-engine/mvp/piano-v4";
 constexpr int kMaxThreads = 3;
 struct Instance {
-    piano_mvp_v4::Piano piano;
+    piano_mvp_v4::PianoPair piano;
     const LV2_Atom_Sequence* midi{};
     float* left{};
     float* right{};
@@ -23,7 +24,10 @@ struct Instance {
     const float* freeWheel{};    // port 5 (optional, designation lv2:freeWheeling): offline bounce -> Full
     const float* imperfection{}; // port 7: 0..2, default 1; a key takes it at its next note-on
     const float* voices{};       // port 8: 0 Auto, 1..4 = 16/32/48/64 struck voices
-    const float* radiation{};    // port 9 (0.6): 0 Auto, 1 Modal, 2 Baked
+    const float* radiation{};    // port 9 (0.6): 0 Auto, 1 Modal, 2 Baked (Body Classic)
+    const float* body{};         // port 10 (0.7c): 0 Classic (0.6), 1 Grand (0.7); a missing port means Classic
+    const float* mic{};          // port 11 (0.7c): 0 Close AB, 1 Player, 2 Audience (Body Grand)
+    const float* lid{};          // port 12 (0.7c): 0 Open, 1 Half, 2 Closed (Body Grand)
     int appliedQuality{-1}, appliedThreads{-1}, appliedAdaptive{-1};
     LV2_URID midiType{}, sequenceType{}, frameTime{}, beatTime{};
     bool active{};
@@ -38,6 +42,8 @@ struct Instance {
         if (t != appliedThreads) { piano.setActiveWorkers(t); appliedThreads = t; }
         { static constexpr int kChoices[] = {0, 16, 32, 48, 64}; piano.setVoices(kChoices[std::clamp(voices ? static_cast<int>(*voices + 0.5f) : 0, 0, 4)]); }
         piano.setRadiation(static_cast<piano_mvp_v4::Piano::Radiation>(std::clamp(radiation ? static_cast<int>(*radiation + 0.5f) : 0, 0, 2)));
+        piano.setBody(body ? static_cast<int>(*body + 0.5f) : 0);   // takes effect at the next note-on; the other body rings out
+        piano.setGrandMic(mic ? static_cast<int>(*mic + 0.5f) : 0); piano.setGrandLid(lid ? static_cast<int>(*lid + 0.5f) : 0);
         piano.setImperfection(imperfection ? static_cast<double>(*imperfection) : piano_mvp_v4::Piano::defaultImperfection);
         const int a = ((!adaptive || *adaptive > 0.5f) && q != 2) ? 1 : 0;
         if (a != appliedAdaptive) { piano.setAdaptive(a != 0); appliedAdaptive = a; }
@@ -76,6 +82,9 @@ void connect(LV2_Handle handle,std::uint32_t port,void* data) {
     if (port == 7) s.imperfection = static_cast<const float*>(data);
     if (port == 8) s.voices = static_cast<const float*>(data);
     if (port == 9) s.radiation = static_cast<const float*>(data);
+    if (port == 10) s.body = static_cast<const float*>(data);
+    if (port == 11) s.mic = static_cast<const float*>(data);
+    if (port == 12) s.lid = static_cast<const float*>(data);
 }
 void activate(LV2_Handle handle) {
     auto& s = *static_cast<Instance*>(handle);

@@ -52,7 +52,7 @@ def rayleigh_fem(paths, Phi_pts, dA, fgrid, tau0):
         K[fi] = (Phi_pts @ (acc*dA))*(1j*2*math.pi*f*RB.RHO/(2*math.pi))*np.exp(1j*2*math.pi*f*tau0)
     return K
 
-def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
+def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None, sidecar=False):
     t_start = time.time(); work = Path(work)
     full = variant in ('full', 'fullnc'); match = variant == 'full'     # fullnc: no Rayleigh-to-FDTD level matching (ablation)
     plate, fine_ok, diffraction = full, full, full
@@ -86,6 +86,7 @@ def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
     Yfem = 1j*w48[:, None]/(omega_v[None, :]**2 - w48[:, None]**2 + 2j*sigma_v[None, :]*w48[:, None])
     om_h = 2*np.pi*sb.f; sg_h = 0.5*0.02*om_h
     E = np.zeros((len(mics), 88, nT0), np.float32); diag = {}
+    Ehf = np.zeros_like(E) if sidecar else None; Ahf = np.zeros((len(mics), Nh), complex); tau0s = np.zeros(len(mics))
     for mi, m in enumerate(mics):
         r0 = np.linalg.norm(np.array(S.MICS[m]) - np.array([0.6, 1.1, 0.625])); tau0 = max(r0 - 0.7, 0.0)/RB.C
         # ---- FDTD spectra
@@ -127,6 +128,7 @@ def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
             corr_dB = float(np.mean(ratios)); corr = 10**(corr_dB/20); GR = GR*corr
         Gfem = GcF*wc[:, None] + (GfF*wf[:, None] if GfF is not None else 0) + GR*wr[:, None]
         Ef = Gfem @ phi_fem.T                                              # (nf, 88)
+        Ef_fem = Ef.copy() if sidecar else None
         # ---- statistical modes (Rayleigh only, narrow band)
         if hf is not None and variant in ('v1', 'full', 'fullnc'):
             A = np.zeros(Nh, complex)
@@ -136,11 +138,13 @@ def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
                 for q, i in enumerate(idx):
                     acc = Pp.weights(sb.f[i])
                     A[i] = corr*(Pg[q].astype(np.float64) @ acc)*dAg*(1j*om_h[i]*RB.RHO/(2*math.pi))*np.exp(1j*om_h[i]*tau0)
+            Ahf[mi] = A; tau0s[mi] = tau0
             for i0 in range(0, Nh, 200):
                 ii = slice(i0, min(Nh, i0 + 200))
                 Yh = 1j*w48[:, None]/(om_h[None, ii]**2 - w48[:, None]**2 + 2j*sg_h[None, ii]*w48[:, None])
                 Ef += (Yh*A[None, ii]*np.exp(-1j*w48*tau0)[:, None]) @ phi_hf[:, ii].T
         E[mi] = np.fft.irfft(Ef, N_E, axis=0)[:nT0].T.astype(np.float32)
+        if sidecar: Ehf[mi] = np.fft.irfft(Ef - Ef_fem, N_E, axis=0)[:nT0].T.astype(np.float32)
         # diagnostics: FDTD against the Rayleigh model for the FEM modes where both are used (third-octave bands)
         dg = {}
         for lo in (1000, 1260, 1587, 2000, 2520):
@@ -154,6 +158,7 @@ def main(work, modes_npz, hf_npz, lid, outprefix, variant, mic_list=None):
         dg['rayleigh_to_fdtd_correction_dB'] = 20*float(np.log10(corr)); dg['peak'] = float(np.abs(E[mi]).max()); dg['fine_used'] = bool(have_fine); diag[m] = dg
         print(f'  {lid} {m}: {time.time()-t_start:.0f}s', {k: (None if v is None else float("%.3g" % v)) for k, v in dg.items()}, flush=True)
     np.savez(outprefix + f'_{lid}.npz', E=E, mics=np.array(mics))
+    if sidecar: np.savez(outprefix + f'_{lid}_hf.npz', Ehf=Ehf, A=Ahf, tau0=tau0s, mics=np.array(mics), f_hf=sb.f)   # 0.7c: the exact statistical-mode part
     Path(outprefix + f'_{lid}_diag.json').write_text(json.dumps(dict(lid=lid, variant=variant, per_mic=diag), indent=1))
     print('assembled', lid, variant, f'{time.time()-t_start:.0f}s')
 
@@ -169,4 +174,4 @@ def _binary_weights(paths):
     return weights
 
 if __name__ == '__main__':
-    main(*sys.argv[1:7], *(sys.argv[7:8]))
+    main(*sys.argv[1:7], *(sys.argv[7:8]), sidecar=len(sys.argv) > 8)

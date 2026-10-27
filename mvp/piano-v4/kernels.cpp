@@ -157,6 +157,44 @@ static inline __attribute__((always_inline)) void radiationLoopF(
 PIANO_CLONES void radiationModesF(const RadiationArraysF& a, std::size_t n) noexcept {
     radiationLoopF(a.omega, a.sigma, a.c00, a.c01, a.c10, a.c11, a.reL, a.imL, a.reR, a.imR, a.q, a.v, a.drive, a.termL, a.termR, n);
 }
+PIANO_CLONES void axpyC(float* __restrict dre, float* __restrict dim, const float* __restrict rre, const float* __restrict rim,
+                        float g, std::size_t n) noexcept {
+    for (std::size_t i = 0; i < n; ++i) { dre[i] += rre[i] * g; dim[i] += rim[i] * g; }
+}
+PIANO_CLONES void lfStep(const double* __restrict lre, const double* __restrict lim, double* __restrict xre, double* __restrict xim,
+                         float* __restrict dre, float* __restrict dim, std::size_t n) noexcept {
+    for (std::size_t i = 0; i < n; ++i) {
+        const double a = xre[i], b = xim[i];
+        xre[i] = lre[i] * a - lim[i] * b + static_cast<double>(dre[i]);
+        xim[i] = lre[i] * b + lim[i] * a + static_cast<double>(dim[i]);
+        dre[i] = 0.f; dim[i] = 0.f;
+    }
+}
+PIANO_CLONES double sumLanes(const double* __restrict x, std::size_t n) noexcept {
+    double s[8] = {};
+    for (std::size_t i = 0; i < n; i += 8) for (int l = 0; l < 8; ++l) s[l] += x[i + l];
+    return ((s[0] + s[1]) + (s[2] + s[3])) + ((s[4] + s[5]) + (s[6] + s[7]));
+}
+PIANO_CLONES void hfStep(const float* __restrict lre, const float* __restrict lim, float* __restrict xre, float* __restrict xim,
+                         float* __restrict drive, std::size_t n) noexcept {
+    for (std::size_t i = 0; i < n; ++i) {
+        const float a = xre[i], b = xim[i];
+        xre[i] = lre[i] * a - lim[i] * b + drive[i];
+        xim[i] = lre[i] * b + lim[i] * a;
+        drive[i] = 0.f;
+    }
+}
+PIANO_CLONES double hfDot(const float* __restrict cre, const float* __restrict cim, const float* __restrict xre,
+                          const float* __restrict xim, std::size_t n) noexcept {
+    float s[8] = {};
+    for (std::size_t i = 0; i < n; i += 8) for (int l = 0; l < 8; ++l) s[l] += cre[i + l] * xre[i + l] - cim[i + l] * xim[i + l];
+    return static_cast<double>(((s[0] + s[1]) + (s[2] + s[3])) + ((s[4] + s[5]) + (s[6] + s[7])));
+}
+PIANO_CLONES double dotF(const float* __restrict a, const float* __restrict b, std::size_t n) noexcept {
+    float s[8] = {};
+    for (std::size_t i = 0; i < n; i += 8) for (int l = 0; l < 8; ++l) s[l] += a[i + l] * b[i + l];
+    return static_cast<double>(((s[0] + s[1]) + (s[2] + s[3])) + ((s[4] + s[5]) + (s[6] + s[7])));
+}
 namespace {
 template <int R>
 inline __attribute__((always_inline)) void passA(const double* const* W, const double* __restrict q,

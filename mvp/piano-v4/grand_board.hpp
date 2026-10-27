@@ -8,6 +8,7 @@
 #include "baked_importance.hpp"
 #include "pme/osc/mode_bank.hpp"
 #include "kernels.hpp"
+#include "grand_live.hpp"
 
 namespace piano_mvp_v4 {
 inline constexpr std::size_t kBoardModeCount = 512;   // radiating modes (MVP 3 table)
@@ -65,6 +66,12 @@ public:
     // Modal bank: the same per-port axpy sequence as accumulateDrive (bit-exact). Baked bank: float drive, one
     // chunked pass (see kern::bankDrive).
     void accumulateDrives(const std::uint8_t* port, const double* g, const std::uint8_t* light, int count) noexcept {
+        if (grand_) {   // 0.7c Body Grand: the 0.7b shared-pole bank
+            std::array<float, kBoardPortCount> gf;
+            for (int k = 0; k < count; ++k) gf[k] = static_cast<float>(g[k]);
+            grand_->accumulate(port, gf.data(), light, count);
+            return;
+        }
         if (!baked_) {
             for (int k = 0; k < count; ++k) accumulateDrive(port[k], g[k], 0, light[k] ? kLightRadiatingModes : kBoardModeCount);
             return;
@@ -81,7 +88,12 @@ public:
     // bank, so the error is only the dropped modes. Switching: the state of the bank being switched to is
     // cleared (a sounding tail of the other bank is lost); the delay line is kept.
     void setBaked(bool on) noexcept;
-    bool baked() const noexcept { return baked_; }
+    bool baked() const noexcept { return baked_ || grand_ != nullptr; }
+    // 0.7c Body Grand: radiation by the bank of grand_live.hpp (the 0.6 banks and the delay line are unused). Non-audio.
+    void setGrand(GrandRadiation* g) noexcept { grand_ = g; }
+    bool grand() const noexcept { return grand_ != nullptr; }
+    // The direct string radiation of the sample (values of the slot microphones), consumed by the next radiationFinish().
+    void setDirect(const float* d) noexcept { for (int i = 0; i < 4; ++i) direct_[i] = d ? d[i] : 0.f; }
     std::size_t bakedModes() const noexcept { return bank_.kept; }          // radiating modes kept
     std::size_t bakedPaddedModes() const noexcept { return bank_.count; }   // incl. zero padding to whole 8-mode chunks
     std::size_t bakedLightModes() const noexcept { return bank_.light; }
@@ -127,6 +139,8 @@ private:
         std::vector<float> drive, phiT;                                   // phiT[(chunk * 88 + port) * 8 + lane]
     } bank_;
     bool baked_{};
+    GrandRadiation* grand_{};
+    std::array<float, 4> direct_{};
     void buildBank(double tolerance);
     struct alignas(64) PaddedDouble { double v{}; };   // per-port state on its own cache line (threads write ports)
     std::array<PaddedDouble, kBoardPortCount> lowpass_{};

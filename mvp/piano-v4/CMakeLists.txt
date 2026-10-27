@@ -14,10 +14,15 @@ add_library(piano_core STATIC
   ${CORE}/engine/src/nonlinear/sav.cpp
   ${CORE}/engine/src/nonlinear/tension.cpp
   ${CORE}/engine/src/exciters/hammer.cpp
-  ../piano-baked/fitted_string.cpp piano.cpp kernels.cpp tension_note.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
+  ../piano-baked/fitted_string.cpp piano.cpp grand_live.cpp grand_embed.cpp kernels.cpp tension_note.cpp bridge_model.cpp string_loss.cpp grand_board.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v3/soundboard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v2/preset.cpp
   ${CORE}/engine/src/simd/denormals.cpp)
 target_include_directories(piano_core PUBLIC ${CORE}/engine/include ${CMAKE_CURRENT_SOURCE_DIR})
+# 0.7c: the bundled grand table (built by mvp/piano-grand/build_live_table.py) is embedded with .incbin when present.
+set(PIANO_GRAND_LIVE_TABLE "${CMAKE_CURRENT_SOURCE_DIR}/grand_live_table.bin" CACHE FILEPATH "0.7c grand radiation table (PGL1)")
+if(EXISTS "${PIANO_GRAND_LIVE_TABLE}")
+  set_source_files_properties(grand_embed.cpp PROPERTIES COMPILE_DEFINITIONS "PIANO_GRAND_TABLE_PATH=\"${PIANO_GRAND_LIVE_TABLE}\"" OBJECT_DEPENDS "${PIANO_GRAND_LIVE_TABLE}")
+endif()
 find_package(Threads REQUIRED)
 target_link_libraries(piano_core PUBLIC Threads::Threads)
 target_include_directories(piano_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../piano-v2)
@@ -26,6 +31,10 @@ target_include_directories(piano_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../pian
 foreach(module osc string bridge nonlinear exciters simd)
   target_include_directories(piano_core PUBLIC ${CORE}/engine/src/${module}/include)
 endforeach()
+add_executable(piano-grand-bank grand_bank_eval.cpp)
+target_link_libraries(piano-grand-bank PRIVATE piano_core)
+add_executable(piano-grand-live-render grand_live_render.cpp)
+target_link_libraries(piano-grand-live-render PRIVATE piano_core)
 add_executable(piano-block-bench block_bench.cpp)
 target_link_libraries(piano-block-bench PRIVATE piano_core)
 add_executable(piano-render render.cpp)

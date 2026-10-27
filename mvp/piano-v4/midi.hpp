@@ -5,7 +5,8 @@
 #include "piano.hpp"
 
 namespace piano_mvp_v4 {
-inline void dispatchMidi(Piano& piano, const std::uint8_t* data, std::size_t size) noexcept {
+template <class P>
+inline void dispatchMidi(P& piano, const std::uint8_t* data, std::size_t size) noexcept {
     if (!data || size < 3 || data[1] > 127 || data[2] > 127) return;
     switch (data[0] & 0xf0) {
         case 0x90: piano.noteOn(data[1],data[2]/127.0); break;

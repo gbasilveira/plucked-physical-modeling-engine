@@ -87,6 +87,16 @@ struct RadiationArraysF {
 };
 void radiationModesF(const RadiationArraysF& a, std::size_t n) noexcept;
 
+// ---- 0.7c grand radiation bank (grand_live.hpp). A complex one-pole resonator bank: x <- lam x + d, output Re sum x (low range, double
+// state, drive d = sum over ports of complex residue * g), or the same with a real shared drive and complex output weights (high range,
+// float state). Elementwise except the lane-wise sums (eight fixed lanes, fixed combine order), so any vector width gives the same bits.
+void axpyC(float* dre, float* dim, const float* rre, const float* rim, float g, std::size_t n) noexcept;
+void lfStep(const double* lre, const double* lim, double* xre, double* xim, float* dre, float* dim, std::size_t n) noexcept;
+double sumLanes(const double* x, std::size_t n) noexcept;          // n a multiple of 8
+void hfStep(const float* lre, const float* lim, float* xre, float* xim, float* drive, std::size_t n) noexcept;
+double hfDot(const float* cre, const float* cim, const float* xre, const float* xim, std::size_t n) noexcept;   // sum cre xre - cim xim
+double dotF(const float* a, const float* b, std::size_t n) noexcept;      // sum a b, eight float lanes (n a multiple of 8)
+
 // Exact sequential dot products of up to three independent chains (interleaved for ILP; each
 // chain's own sum is formed in index order, as the scalar reference).
 inline void dotExact3(int chains, const double* const* a, const double* const* q,

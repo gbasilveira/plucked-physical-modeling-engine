@@ -9,6 +9,7 @@
 #include "pme/bridge/terms.hpp"
 #include "soundboard.hpp"
 #include "grand_board.hpp"
+#include "grand_live.hpp"
 #include "sympathetic_string.hpp"
 #include "bridge_mass.hpp"
 #include "tension_note.hpp"
@@ -287,6 +288,26 @@ public:
     int radiationPort(int k) const noexcept { return ports_[k]; }
     double radiationDrive(int k) const noexcept { const auto& v = voices_[ports_[k]]; return v.radiated ? v.g : 0.0; }
     bool radiationLight(int k) const noexcept { return voices_[ports_[k]].radModes == kLightRadiatingModes; }
+    // ---- 0.7c Body (README "Update 0.7c") ----
+    // Classic = the 0.6 instrument unchanged (bit-identical). Grand = the 0.7b grand: the strings couple to the 0.7b air-loaded
+    // 144-mode board, the board radiates through the fitted shared-pole bank of grand_live.hpp (lid and microphone preset live)
+    // and the struck strings radiate directly. Before prepare() only (a runtime switch is made by the plug-ins with two pianos:
+    // PianoPair in piano_pair.hpp). prepare() fails if the bundled table is missing or invalid.
+    enum class Body : int { Classic = 0, Grand = 1 };
+    bool setBody(Body b) noexcept { if (ready_) return false; body_ = b; return true; }
+    Body body() const noexcept { return body_; }
+    // Before prepare(): use this table blob instead of the embedded one (tests, tools). It must outlive the piano.
+    bool setGrandTableBlob(const std::uint8_t* blob, std::size_t size) noexcept { if (ready_) return false; blob_ = blob; blobSize_ = size; return true; }
+    // Real-time safe at any time on the audio thread; applied at the next block (or sample) with the radiation drained, as a
+    // 20 ms crossfade of two complete outputs of the same oscillator states. lid: 0 open, 1 half, 2 closed. mic: 0 close AB,
+    // 1 player, 2 audience. No effect with Body Classic.
+    void setGrandLid(int lid) noexcept { lidReq_.store(std::clamp(lid, 0, kGrandLids - 1), std::memory_order_relaxed); }
+    void setGrandMic(int mic) noexcept { micReq_.store(std::clamp(mic, 0, kGrandMics - 1), std::memory_order_relaxed); }
+    int grandLid() const noexcept { return lidReq_.load(std::memory_order_relaxed); }
+    int grandMic() const noexcept { return micReq_.load(std::memory_order_relaxed); }
+    // Direct radiation of the struck strings on/off (default on; Grand only).
+    void setGrandDirect(bool on) noexcept { directReq_.store(on ? 1 : 0, std::memory_order_relaxed); }
+    const GrandRadiation& grandRadiation() const noexcept { return grand_; }
     void reset() noexcept;
     void noteOn(int key, double velocity) noexcept;
     void noteOff(int key) noexcept;
@@ -327,6 +348,8 @@ public:
     // Compiled data of the strings of a key (after prepare): count, speaking length, number of modes, omega.
     int keyStringCount(int key) const noexcept { return stringsForKey(key); }
     const pme::StringModes& compiledString(int key, int j) const noexcept { return voices_[key - 21].modes[j]; }
+    // 0.7c pruning analysis: the bridge-force coefficients a_n (F = sum a_n q_n - (T/L) w) of a compiled string.
+    const pme::SegmentBridgeTerms& compiledTerms(int key, int j) const noexcept { return voices_[key - 21].terms[j]; }
     bool sharedBoardActive() const noexcept { return shared_; }
     bool voiceActive(int key) const noexcept { return key >= 21 && key <= 108 && voices_[key-21].active; }
     // Last bridge force (N) this key's strings put on the board (shared board only).
@@ -358,13 +381,25 @@ private:
         bool radiated{}, faulted{};
         double tuneApplied{};           // 0.5.5: imperfection amount the compiled coefficients carry (0 = as compiled)
         double env{};                   // 0.5.5 decaying peak of |force| (steal policy)
+        std::array<float, 4> direct{};  // 0.7c direct string radiation at the grand's slot microphones (this sample)
         std::uint64_t sinceOn{};        // samples since the note-on (steal protection)
         int fade{};                     // >0: being stolen, samples left of the fade-out
     };
     void applyImperfection(Voice& v, int key) noexcept;
+    Body body_{Body::Classic};
+    const std::uint8_t* blob_{}; std::size_t blobSize_{};
+    GrandTable grandTable_; GrandRadiation grand_; bool grandOn_{};
+    std::atomic<int> lidReq_{0}, micReq_{0}, directReq_{1};
+    void computeDirect(Voice& v, int port) noexcept;
+    void sumDirect(float* out) const noexcept;
     std::atomic<int> radiationSetting_{0};
     double bakedTolerance_{kBakedDefaultTolerance};
     void syncRadiation() noexcept {
+        if (grandOn_) {
+            grand_.request(lidReq_.load(std::memory_order_relaxed), micReq_.load(std::memory_order_relaxed));
+            grand_.setDirectEnabled(directReq_.load(std::memory_order_relaxed) != 0);
+            return;
+        }
         const int r = radiationSetting_.load(std::memory_order_relaxed);
         const bool want = r == static_cast<int>(Radiation::Baked) || (r == static_cast<int>(Radiation::Auto) && quality_ != Quality::Full);
         if (want != board_.baked()) board_.setBaked(want);
@@ -404,6 +439,7 @@ private:
         std::vector<std::uint8_t> keys, count;           // [rec*88 + k] port | 0x80 for unstruck; [rec]
         std::vector<double> g;                           // [rec*88 + k]
         std::vector<float> outL, outR;                   // [rec]
+        std::vector<float> dir;                          // [rec*4] 0.7c direct string radiation
     } ring_;
     alignas(64) std::atomic<std::uint64_t> produced_{0};
     alignas(64) std::atomic<std::uint64_t> consumed_{0};
